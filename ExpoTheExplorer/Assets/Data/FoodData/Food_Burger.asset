@@ -1,0 +1,51 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1de7473fd8b6048418bc6124b5d2d5f2, type: 3}
+  m_Name: Food_Burger
+  m_EditorClassIdentifier:
+  id: burger
+  displayName: Burger
+  sprite: {fileID: 1657646917480650874, guid: 94f27f15fe8754355b44f3b6b54cf704, type: 3}
+  category: 0
+  availableModifications:
+  - {fileID: 11400000, guid: 520299ab8e2a46099af12eeae558b73d, type: 2}
+  - {fileID: 11400000, guid: a4df3305487e48bc87894f35d7e82e1a, type: 2}
+  - {fileID: 11400000, guid: d8f055057bb942a4a50734be24f044ed, type: 2}
+  spriteVariants:
+  - modifications:
+    - config: {fileID: 11400000, guid: a4df3305487e48bc87894f35d7e82e1a, type: 2}
+      isAddition: 1
+    sprite: {fileID: -3023782284800273439, guid: be80f33620c404af6bd03bde8069ccac, type: 3}
+  - modifications:
+    - config: {fileID: 11400000, guid: 520299ab8e2a46099af12eeae558b73d, type: 2}
+      isAddition: 0
+    sprite: {fileID: -8609103908721789577, guid: e2b7c6dc208f54d0d9c792dc5ca00ba5, type: 3}
+  - modifications:
+    - config: {fileID: 11400000, guid: 520299ab8e2a46099af12eeae558b73d, type: 2}
+      isAddition: 0
+    - config: {fileID: 11400000, guid: a4df3305487e48bc87894f35d7e82e1a, type: 2}
+      isAddition: 1
+    sprite: {fileID: -6054518596513162499, guid: a9207d4d37db74447a0f95ed1c20a558, type: 3}
+  - modifications:
+    - config: {fileID: 11400000, guid: 520299ab8e2a46099af12eeae558b73d, type: 2}
+      isAddition: 0
+    - config: {fileID: 11400000, guid: d8f055057bb942a4a50734be24f044ed, type: 2}
+      isAddition: 0
+    - config: {fileID: 11400000, guid: a4df3305487e48bc87894f35d7e82e1a, type: 2}
+      isAddition: 1
+    sprite: {fileID: 3977808907625128505, guid: c55c8c954dfe04cb2a005f1c07b5d4b7, type: 3}
+  - modifications:
+    - config: {fileID: 11400000, guid: 520299ab8e2a46099af12eeae558b73d, type: 2}
+      isAddition: 0
+    - config: {fileID: 11400000, guid: d8f055057bb942a4a50734be24f044ed, type: 2}
+      isAddition: 0
+    sprite: {fileID: 1397001224267213058, guid: 855c6405de8c44b84896f705c2c484da, type: 3}

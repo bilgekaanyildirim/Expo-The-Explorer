@@ -20,6 +20,12 @@ namespace ExpoTheExplorer.Core
         public bool IsFull => OccupiedCellCount >= CellCount;
         public int PendingSpawnCount => pendingSpawns.Count;
 
+        // Payload is just the coordinate — subscribers call ItemAt(x, y) to read
+        // the current state, so this stays a thin notification, not a second
+        // source of truth. Mirrors the EventBus<T> pattern already used by
+        // GameState.TicketDelivered/TicketCancelled.
+        public EventBus<(int X, int Y)> CellChanged { get; } = new();
+
         public BoardGrid(GameConfig config)
         {
             Width = config.BoardWidth;
@@ -57,6 +63,7 @@ namespace ExpoTheExplorer.Core
 
             cells[x, y] = item;
             OccupiedCellCount++;
+            CellChanged.Publish((x, y));
             return true;
         }
 
@@ -83,7 +90,11 @@ namespace ExpoTheExplorer.Core
 
             if (pendingSpawns.Count > 0)
             {
-                TryPlaceItem(pendingSpawns.Dequeue(), x, y);
+                TryPlaceItem(pendingSpawns.Dequeue(), x, y); // publishes CellChanged itself
+            }
+            else
+            {
+                CellChanged.Publish((x, y));
             }
 
             return removed;

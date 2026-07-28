@@ -121,6 +121,32 @@ namespace ExpoTheExplorer.Tests.EditMode
             Assert.IsFalse(grid.TryGetFirstEmptyCell(out _, out _));
         }
 
+        [Test]
+        public void TryPlaceItem_OnEmptyCell_PublishesCellChanged()
+        {
+            var grid = new BoardGrid(config);
+            var item = CreateItem();
+            (int X, int Y)? published = null;
+            grid.CellChanged.Subscribe(coords => published = coords);
+
+            grid.TryPlaceItem(item, 2, 3);
+
+            Assert.AreEqual((2, 3), published);
+        }
+
+        [Test]
+        public void RemoveItem_PublishesCellChanged()
+        {
+            var grid = new BoardGrid(config);
+            grid.TryPlaceItem(CreateItem(), 1, 1);
+            (int X, int Y)? published = null;
+            grid.CellChanged.Subscribe(coords => published = coords);
+
+            grid.RemoveItem(1, 1);
+
+            Assert.AreEqual((1, 1), published);
+        }
+
         private void FillGrid(BoardGrid grid)
         {
             for (var y = 0; y < grid.Height; y++)

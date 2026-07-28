@@ -24,10 +24,10 @@ namespace ExpoTheExplorer.Tests.EditMode
         [TearDown]
         public void TearDown()
         {
-            Object.DestroyImmediate(gameConfig);
+            UnityEngine.Object.DestroyImmediate(gameConfig);
             foreach (var asset in spawnedAssets)
             {
-                Object.DestroyImmediate(asset);
+                UnityEngine.Object.DestroyImmediate(asset);
             }
             spawnedAssets.Clear();
         }
@@ -200,7 +200,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             var genConfig = ScriptableObject.CreateInstance<TicketGenerationConfig>();
             spawnedAssets.Add(genConfig);
 
-            var factory = new TicketFactory(genConfig, new Random(12345));
+            var factory = new TicketFactory(genConfig, new System.Random(12345));
             var ticket = factory.Create(pool, "Test Customer", PatienceType.Normal);
 
             Assert.That(ticket.RequiredItems.Count, Is.InRange(1, 3));
