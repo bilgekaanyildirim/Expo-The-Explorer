@@ -2,6 +2,7 @@
 ## Game Design Document (v0.5)
 
 *v0.5: Powerup 3 (Gürültü Temizleme) onaylandı; powerup kazanım/kullanım kuralları netleşti (meta-ilerleme + Gem).*
+*v0.6: Etkileşim yöntemi netleşti — Drag & Drop birincil etkileşim olarak onaylandı (bkz. Bölüm 5).*
 
 ---
 
@@ -94,7 +95,14 @@ Board zaten sabit boyutlu bir grid (prototipte 6×5 = 30 hücre, bkz. Bölüm 13
 ## 5. Tepsi / Teslimat Sistemi
 
 - Her aktif biletin altında bir **tepsi alanı** bulunur — bu, prototipteki koyu renkli kutunun ta kendisidir.
-- Oyuncu board'dan doğru yemeği seçip tepsiye yerleştirir (dokunmatik: tap-to-select + tap-to-place, ya da drag & drop — platform mobil olduğu için **tap tabanlı etkileşim önerilir**, drag hedefleri küçük parmak için hataya açık olabilir).
+- Oyuncu board'dan doğru yemeği seçip tepsiye yerleştirir (dokunmatik: **drag & drop**).
+
+### ✅ Çözüldü — Etkileşim Yöntemi
+
+Birincil etkileşim yöntemi **drag & drop** olarak onaylandı. Mobilde küçük parmak hedeflerinin hataya açık olma riskine karşı şu önlemler alınacak:
+- Drop zone/hitbox'lar görsel öğe sınırlarından daha **cömert** tutulacak.
+- Sürükleme sırasında geçerli bırakma alanı **highlight** ile vurgulanacak.
+- Geçersiz bırakmada **snap-back** (öğenin board'daki konumuna geri dönme) animasyonu gösterilecek.
 - **Yerleştirilen her ürün, tepsi alanında anında görünür** — yani tepsi, oyuncunun o ana kadar topladığı ürünleri gerçek zamanlı olarak gösterir (bir sonraki düzeltmeye bkz: bu bir "önizleme" değil, oyuncunun aktif olarak doldurduğu gerçek tepsidir).
 - Tepsi sayacı `x/y` şeklinde ilerler (bkz. Bölüm 3 — sadece ürün sayısı, modifikasyonlar dahil değil).
 - **Tepsi doluyor ve tüm öğeler doğruysa:** Bilet otomatik olarak teslim edilir → Para + XP + (hıza bağlı) bahşiş kazanılır.

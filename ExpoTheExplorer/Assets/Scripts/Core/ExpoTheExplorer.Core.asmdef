@@ -1,0 +1,16 @@
+{
+    "name": "ExpoTheExplorer.Core",
+    "rootNamespace": "ExpoTheExplorer.Core",
+    "references": [
+        "ExpoTheExplorer.Data"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
