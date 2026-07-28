@@ -42,10 +42,10 @@
   <Project Path="Unity.Mathematics.Editor.csproj" />
   <Project Path="Unity.VisualScripting.SettingsProvider.Editor.csproj" />
   <Project Path="Unity.2D.Common.Runtime.csproj" />
+  <Project Path="ExpoTheExplorer.Core.csproj" />
   <Project Path="Unity.InputSystem.TestFramework.csproj" />
   <Project Path="Unity.VisualScripting.Shared.Editor.csproj" />
   <Project Path="Unity.2D.Aseprite.Common.csproj" />
-  <Project Path="ExpoTheExplorer.Core.csproj" />
   <Project Path="ExpoTheExplorer.Tests.EditMode.csproj" />
   <Project Path="Unity.CollabProxy.Editor.csproj" />
   <Project Path="Unity.InputSystem.DocCodeSamples.csproj" />

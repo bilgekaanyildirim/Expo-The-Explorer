@@ -20,11 +20,14 @@ namespace ExpoTheExplorer.Core
         public EventBus<Ticket> TicketDelivered { get; } = new();
         public EventBus<Ticket> TicketCancelled { get; } = new();
 
+        public BoardGrid Board { get; }
+
         public GameState(GameConfig config)
         {
             Lives = config.StartingLives;
             SoftMoney = config.StartingSoftMoney;
             Gems = config.StartingGems;
+            Board = new BoardGrid(config);
         }
     }
 }

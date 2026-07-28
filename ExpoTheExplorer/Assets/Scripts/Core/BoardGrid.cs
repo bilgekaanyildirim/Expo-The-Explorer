@@ -1,0 +1,92 @@
+using System.Collections.Generic;
+using ExpoTheExplorer.Data;
+
+namespace ExpoTheExplorer.Core
+{
+    // Raw grid mechanics only — capacity, cell occupancy, and the "queue a spawn
+    // request when the board is full, place it the moment a cell frees up" rule
+    // from GDD Section 4. Deciding WHAT to spawn (required pool / noise pool) is
+    // out of scope here — that's the future Systems/BoardDistribution module,
+    // which only ever calls RequestSpawn on this grid.
+    public class BoardGrid
+    {
+        private readonly BoardItem[,] cells;
+        private readonly Queue<BoardItem> pendingSpawns = new();
+
+        public int Width { get; }
+        public int Height { get; }
+        public int CellCount => Width * Height;
+        public int OccupiedCellCount { get; private set; }
+        public bool IsFull => OccupiedCellCount >= CellCount;
+        public int PendingSpawnCount => pendingSpawns.Count;
+
+        public BoardGrid(GameConfig config)
+        {
+            Width = config.BoardWidth;
+            Height = config.BoardHeight;
+            cells = new BoardItem[Width, Height];
+        }
+
+        public bool IsInBounds(int x, int y) => x >= 0 && x < Width && y >= 0 && y < Height;
+
+        public bool IsCellEmpty(int x, int y) => IsInBounds(x, y) && cells[x, y] == null;
+
+        public BoardItem ItemAt(int x, int y) => IsInBounds(x, y) ? cells[x, y] : null;
+
+        public bool TryGetFirstEmptyCell(out int x, out int y)
+        {
+            for (var scanY = 0; scanY < Height; scanY++)
+            {
+                for (var scanX = 0; scanX < Width; scanX++)
+                {
+                    if (cells[scanX, scanY] != null) continue;
+                    x = scanX;
+                    y = scanY;
+                    return true;
+                }
+            }
+
+            x = -1;
+            y = -1;
+            return false;
+        }
+
+        public bool TryPlaceItem(BoardItem item, int x, int y)
+        {
+            if (!IsCellEmpty(x, y)) return false;
+
+            cells[x, y] = item;
+            OccupiedCellCount++;
+            return true;
+        }
+
+        public bool RequestSpawn(BoardItem item)
+        {
+            if (TryGetFirstEmptyCell(out var x, out var y))
+            {
+                return TryPlaceItem(item, x, y);
+            }
+
+            pendingSpawns.Enqueue(item);
+            return false;
+        }
+
+        public BoardItem RemoveItem(int x, int y)
+        {
+            if (!IsInBounds(x, y)) return null;
+
+            var removed = cells[x, y];
+            if (removed == null) return null;
+
+            cells[x, y] = null;
+            OccupiedCellCount--;
+
+            if (pendingSpawns.Count > 0)
+            {
+                TryPlaceItem(pendingSpawns.Dequeue(), x, y);
+            }
+
+            return removed;
+        }
+    }
+}
