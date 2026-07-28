@@ -1,0 +1,105 @@
+# This .gitignore file should be placed at the root of your Unity project
+
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Mm]emoryCaptures/
+UserSettings/
+
+# Asset meta data should only be ignored when the corresponding asset is ignored
+!/[Aa]ssets/**/*.meta
+!/[Pp]ackages/**/*.meta
+!/[Pp]rojectSettings/**/*.meta
+
+# Visual Studio / Rider
+.vs/
+.vscode/
+.idea/
+.gradle/
+
+ExportedObj/
+.consulo/
+
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+# Unity generated
+sysinfo.txt
+
+# Crash reports
+sysinfo.txt
+*.stacktrace
+
+# Build outputs
+*.apk
+*.aab
+*.ipa
+
+# Addressables
+ServerData/
+
+# Android
+.gradle/
+local.properties
+
+# iOS
+DerivedData/
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# JetBrains Rider
+.idea/
+
+# Visual Studio Code
+.vscode/*
+
+# Except recommended VSCode files
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+
+# Unity cache
+*.pidb.meta
+*.pdb.meta
+*.mdb.meta
+
+# Recordings
+Recordings/
+
+# Test results
+TestResults/
+
+# Burst
+[Bb]urstDebugInformation_DoNotShip/
+
+# Memory Captures
+MemoryCaptures/
+
+# Temporary auto-generated files
+*.tmp
+*.bak
+*.orig
+
+# Coverage reports
+Coverage/
