@@ -4,6 +4,7 @@
     "references": [
         "ExpoTheExplorer.Core",
         "ExpoTheExplorer.Data",
+        "ExpoTheExplorer.Systems.TicketSystem",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

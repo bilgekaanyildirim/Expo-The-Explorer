@@ -19,6 +19,7 @@
   <Project Path="Unity.2D.SpriteShape.Runtime.csproj" />
   <Project Path="Unity.VisualScripting.Core.csproj" />
   <Project Path="Unity.VisualScripting.State.Editor.csproj" />
+  <Project Path="ExpoTheExplorer.Data.csproj" />
   <Project Path="Unity.Burst.CodeGen.csproj" />
   <Project Path="Unity.VisualScripting.Flow.csproj" />
   <Project Path="Unity.PerformanceTesting.csproj" />
@@ -34,7 +35,6 @@
   <Project Path="Unity.2D.Tooling.Editor.csproj" />
   <Project Path="Unity.VisualScripting.State.csproj" />
   <Project Path="Unity.InternalAPIEditorBridge.001.csproj" />
-  <Project Path="ExpoTheExplorer.Data.csproj" />
   <Project Path="Unity.InputSystem.ForUI.csproj" />
   <Project Path="Unity.Collections.CodeGen.csproj" />
   <Project Path="Unity.2D.Tilemap.Extras.csproj" />
@@ -53,4 +53,5 @@
   <Project Path="Unity.PlasticSCM.Editor.Entities.csproj" />
   <Project Path="Assembly-CSharp.csproj" />
   <Project Path="Unity.Collections.Editor.csproj" />
+  <Project Path="ExpoTheExplorer.Systems.TicketSystem.csproj" />
 </Solution>
