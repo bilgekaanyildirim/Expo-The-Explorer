@@ -18,7 +18,6 @@ namespace ExpoTheExplorer.Bootstrap
         public TicketSlotManager TicketSlotManager { get; private set; }
 
         private TicketFactory ticketFactory;
-        private int nextCustomerNumber;
 
         private void Awake()
         {
@@ -35,9 +34,9 @@ namespace ExpoTheExplorer.Bootstrap
 
         private Ticket CreateNextTicket()
         {
-            nextCustomerNumber++;
             var patienceType = ticketFactory.PickRandomPatienceType();
-            return ticketFactory.Create(foodCatalog.Items, $"Customer {nextCustomerNumber}", patienceType);
+            var customerName = ticketFactory.PickRandomCustomerName();
+            return ticketFactory.Create(foodCatalog.Items, customerName, patienceType);
         }
     }
 }

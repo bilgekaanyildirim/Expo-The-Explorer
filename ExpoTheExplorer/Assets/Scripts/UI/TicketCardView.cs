@@ -1,0 +1,177 @@
+using System.Collections.Generic;
+using System.Linq;
+using ExpoTheExplorer.Bootstrap;
+using ExpoTheExplorer.Core;
+using ExpoTheExplorer.Data;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+
+namespace ExpoTheExplorer.UI
+{
+    // One ticket slot's card. Pure "bind" component — every visual piece is a
+    // reference wired up in the Inspector (the Canvas/card hierarchy is built by
+    // hand in the Editor, not procedurally), so this script only ever changes
+    // .sprite/.text/.SetActive on those existing references. Never creates or
+    // destroys structural GameObjects except cloning modificationRowTemplate.
+    //
+    // Polls its slot every frame instead of binding to GameState.TicketDelivered/
+    // TicketCancelled: those events fire BEFORE TicketSlotManager reassigns the
+    // slot, and FillEmptySlots (initial population) never fires anything at all —
+    // neither event can tell this view what's actually in the slot right now.
+    // The same per-frame check drives the numeric timer, which has no event at
+    // all since RemainingSeconds is mutated directly every frame.
+    public class TicketCardView : MonoBehaviour
+    {
+        [SerializeField] private Image background;
+        [SerializeField] private TMP_Text customerNameText;
+        [SerializeField] private TMP_Text timeRemainingText;
+        [SerializeField] private Image dishImage;
+        [SerializeField] private Transform modificationsListParent;
+        [SerializeField] private ModificationSlotView modificationRowTemplate;
+        [SerializeField] private Image sideImage;
+        [SerializeField] private Image drinkImage;
+
+        private GameManager gameManager;
+        private int slotIndex;
+        private TicketCardsView owner;
+        private Ticket cachedTicket;
+        private bool isValid;
+        private readonly List<ModificationSlotView> modificationRows = new();
+
+        public void Initialize(GameManager gameManager, int slotIndex, TicketCardsView owner)
+        {
+            this.gameManager = gameManager;
+            this.slotIndex = slotIndex;
+            this.owner = owner;
+
+            isValid = ValidateReferences();
+            if (!isValid) return;
+
+            modificationRowTemplate.gameObject.SetActive(false);
+            RebuildContent(null);
+        }
+
+        // Every field here is wired by hand in the Editor (no procedural
+        // fallback) — a missing one should fail loudly with a clear pointer to
+        // which GameObject/field, not a bare NullReferenceException three
+        // frames deep in Unity's own Instantiate code.
+        private bool ValidateReferences()
+        {
+            var missing = new List<string>();
+            if (background == null) missing.Add(nameof(background));
+            if (customerNameText == null) missing.Add(nameof(customerNameText));
+            if (timeRemainingText == null) missing.Add(nameof(timeRemainingText));
+            if (dishImage == null) missing.Add(nameof(dishImage));
+            if (modificationsListParent == null) missing.Add(nameof(modificationsListParent));
+            if (modificationRowTemplate == null) missing.Add(nameof(modificationRowTemplate));
+            if (sideImage == null) missing.Add(nameof(sideImage));
+            if (drinkImage == null) missing.Add(nameof(drinkImage));
+
+            if (missing.Count == 0) return true;
+
+            Debug.LogError($"{nameof(TicketCardView)} on '{name}' is missing Inspector reference(s): {string.Join(", ", missing)}. Check the TicketCard prefab.", this);
+            return false;
+        }
+
+        private void Update()
+        {
+            if (!isValid) return;
+
+            var ticket = gameManager.State.TicketSlots[slotIndex];
+            if (!ReferenceEquals(ticket, cachedTicket))
+            {
+                cachedTicket = ticket;
+                RebuildContent(ticket);
+            }
+
+            if (ticket != null)
+            {
+                RefreshTimer(ticket);
+            }
+        }
+
+        private void RebuildContent(Ticket ticket)
+        {
+            background.sprite = owner.TicketSpriteFor(ticket?.PatienceType ?? PatienceType.Normal);
+
+            ClearModificationRows();
+
+            if (ticket == null)
+            {
+                customerNameText.text = string.Empty;
+                timeRemainingText.text = string.Empty;
+                dishImage.enabled = false;
+                sideImage.gameObject.SetActive(false);
+                drinkImage.gameObject.SetActive(false);
+                return;
+            }
+
+            customerNameText.text = ticket.CustomerName;
+
+            var main = ticket.RequiredItems.FirstOrDefault(item => item.Category == FoodCategory.Main);
+            SetDishImage(main);
+
+            // Cleared above and rebuilt in the ticket's own order every time —
+            // this list is dynamic (0..N rows), not a fixed pool of slots.
+            foreach (var modification in ticket.Modifications)
+            {
+                var row = Instantiate(modificationRowTemplate, modificationsListParent);
+                row.gameObject.SetActive(true);
+                row.SetModification(modification.Config.Icon, owner.DirectionSpriteFor(modification.IsAddition));
+                modificationRows.Add(row);
+            }
+
+            var side = ticket.RequiredItems.FirstOrDefault(item => item.Category == FoodCategory.Side);
+            SetOptionalImage(sideImage, side);
+
+            var drink = ticket.RequiredItems.FirstOrDefault(item => item.Category == FoodCategory.Drink);
+            SetOptionalImage(drinkImage, drink);
+
+            RefreshTimer(ticket);
+        }
+
+        private void RefreshTimer(Ticket ticket)
+        {
+            timeRemainingText.text = TicketCardFormatting.FormatRemainingTime(ticket.RemainingSeconds);
+        }
+
+        private void SetDishImage(FoodItemConfig main)
+        {
+            // Always the BASE sprite, never SpriteVariants — GDD Section 3.2: the
+            // card's main image is the unmodified dish photo, modifications are
+            // shown separately as the list below.
+            if (main != null && main.Sprite != null)
+            {
+                dishImage.enabled = true;
+                dishImage.sprite = main.Sprite;
+            }
+            else
+            {
+                dishImage.enabled = false;
+            }
+        }
+
+        private static void SetOptionalImage(Image image, FoodItemConfig config)
+        {
+            if (config != null && config.Sprite != null)
+            {
+                image.gameObject.SetActive(true);
+                image.sprite = config.Sprite;
+            }
+            else
+            {
+                image.gameObject.SetActive(false);
+            }
+        }
+
+        private void ClearModificationRows()
+        {
+            foreach (var row in modificationRows)
+            {
+                Destroy(row.gameObject);
+            }
+            modificationRows.Clear();
+        }
+    }
+}

@@ -208,5 +208,17 @@ namespace ExpoTheExplorer.Tests.EditMode
             Assert.AreEqual(genConfig.NormalTimeLimitSeconds, ticket.TimeLimitSeconds);
             Assert.IsTrue(ticket.Modifications.All(m => main.AvailableModifications.Contains(m.Config)));
         }
+
+        [Test]
+        public void TicketFactory_PickRandomCustomerName_ReturnsNameFromConfigPool()
+        {
+            var genConfig = ScriptableObject.CreateInstance<TicketGenerationConfig>();
+            spawnedAssets.Add(genConfig);
+
+            var factory = new TicketFactory(genConfig, new System.Random(12345));
+            var name = factory.PickRandomCustomerName();
+
+            Assert.IsTrue(genConfig.CustomerNames.Contains(name));
+        }
     }
 }

@@ -29,6 +29,13 @@ namespace ExpoTheExplorer.Systems.TicketSystem
             return (PatienceType)random.Next(0, 3);
         }
 
+        // Same rationale as PickRandomPatienceType: which name a ticket gets is
+        // flavor, not a decision GameManager needs to own.
+        public string PickRandomCustomerName()
+        {
+            return config.CustomerNames[random.Next(config.CustomerNames.Count)];
+        }
+
         public Ticket Create(IReadOnlyList<FoodItemConfig> pool, string customerName, PatienceType patienceType)
         {
             var mains = pool.Where(item => item.Category == FoodCategory.Main).ToList();

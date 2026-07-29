@@ -14,6 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   id: cola
   displayName: Cola
-  sprite: {fileID: -1556071078381340475, guid: f537c52041e3d40858b3a189ee962027, type: 3}
+  sprite: {fileID: 21300000, guid: f537c52041e3d40858b3a189ee962027, type: 3}
   category: 2
   availableModifications: []

@@ -19,3 +19,9 @@ MonoBehaviour:
   drinkInclusionChance: 0.5
   modificationInclusionChance: 0.3
   modificationAdditionChance: 0.5
+  customerNames:
+  - Alice
+  - Bob
+  - Charlie
+  - Diana
+  - Ethan

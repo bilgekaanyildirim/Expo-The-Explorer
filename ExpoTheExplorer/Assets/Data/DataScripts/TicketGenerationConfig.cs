@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace ExpoTheExplorer.Data
@@ -20,6 +21,10 @@ namespace ExpoTheExplorer.Data
         [SerializeField, Range(0f, 1f)] private float modificationInclusionChance = 0.3f;
         [SerializeField, Range(0f, 1f)] private float modificationAdditionChance = 0.5f;
 
+        [Header("Customer Names")]
+        [Tooltip("Pool of names randomly assigned to generated tickets.")]
+        [SerializeField] private string[] customerNames = { "Alice", "Bob", "Charlie", "Diana", "Ethan" };
+
         public float ImpatientTimeLimitSeconds => impatientTimeLimitSeconds;
         public float NormalTimeLimitSeconds => normalTimeLimitSeconds;
         public float PatientTimeLimitSeconds => patientTimeLimitSeconds;
@@ -27,5 +32,6 @@ namespace ExpoTheExplorer.Data
         public float DrinkInclusionChance => drinkInclusionChance;
         public float ModificationInclusionChance => modificationInclusionChance;
         public float ModificationAdditionChance => modificationAdditionChance;
+        public IReadOnlyList<string> CustomerNames => customerNames;
     }
 }
