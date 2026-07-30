@@ -350,6 +350,7 @@ GameObject:
   m_Component:
   - component: {fileID: 800000003}
   - component: {fileID: 800000002}
+  - component: {fileID: 800000004}
   m_Layer: 0
   m_Name: GameManager
   m_TagString: Untagged
@@ -367,11 +368,25 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 616c2e1a5f7fd4853b62923439e852ea, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   gameConfig: {fileID: 11400000, guid: 85c26087e3fa489286892002584f8ce1, type: 2}
   ticketGenerationConfig: {fileID: 11400000, guid: 7088b884da0a4b76be1fb3ae95f86c6b, type: 2}
   foodCatalog: {fileID: 11400000, guid: 2805916cc49b49268e25d404d7e06672, type: 2}
+  boardDistributionConfig: {fileID: 11400000, guid: 3fa806689133430484752431865908bc, type: 2}
+--- !u!114 &800000004
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 800000001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8b34a210ab324c45a7fcee36200d6f26, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  gameManager: {fileID: 800000002}
 --- !u!4 &800000003
 Transform:
   m_ObjectHideFlags: 0

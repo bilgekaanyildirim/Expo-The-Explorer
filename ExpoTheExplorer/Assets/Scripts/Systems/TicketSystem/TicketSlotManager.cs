@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using ExpoTheExplorer.Core;
 
 namespace ExpoTheExplorer.Systems.TicketSystem
@@ -7,15 +8,26 @@ namespace ExpoTheExplorer.Systems.TicketSystem
     // Section 3) plus per-ticket countdown/timeout (GDD Section 7). Deliberately
     // has no reference to BoardGrid — timeout never scatters a tray, only a
     // wrong delivery does (that's the future Tray system's job).
+    //
+    // Slots are filled from a pre-generated lookahead queue rather than calling
+    // nextTicketProvider on demand — this is what lets BoardDistributor's noise
+    // pool "leak" items from tickets the player hasn't seen yet (GDD Section 4).
+    // Queued-but-not-yet-active tickets are never touched by Tick (it only walks
+    // TicketSlots), so their timers stay frozen until they're dequeued into a slot.
     public class TicketSlotManager
     {
         private readonly GameState state;
         private readonly Func<Ticket> nextTicketProvider;
+        private readonly int lookaheadCount;
+        private readonly List<Ticket> upcomingTickets = new();
 
-        public TicketSlotManager(GameState state, Func<Ticket> nextTicketProvider)
+        public IReadOnlyList<Ticket> UpcomingTickets => upcomingTickets;
+
+        public TicketSlotManager(GameState state, Func<Ticket> nextTicketProvider, int lookaheadCount = 10)
         {
             this.state = state;
             this.nextTicketProvider = nextTicketProvider;
+            this.lookaheadCount = Math.Max(GameState.TicketSlotCount, lookaheadCount);
         }
 
         public void FillEmptySlots()
@@ -24,7 +36,7 @@ namespace ExpoTheExplorer.Systems.TicketSystem
             {
                 if (state.TicketSlots[i] == null)
                 {
-                    state.TicketSlots[i] = nextTicketProvider();
+                    state.TicketSlots[i] = DequeueNextTicket();
                 }
             }
         }
@@ -36,7 +48,7 @@ namespace ExpoTheExplorer.Systems.TicketSystem
 
             ticket.State = TicketState.Delivered;
             state.TicketDelivered.Publish(ticket);
-            state.TicketSlots[slotIndex] = nextTicketProvider();
+            state.TicketSlots[slotIndex] = DequeueNextTicket();
         }
 
         // Life-agnostic on purpose: GDD only ties life loss to a failed tray
@@ -49,7 +61,24 @@ namespace ExpoTheExplorer.Systems.TicketSystem
 
             ticket.State = TicketState.Cancelled;
             state.TicketCancelled.Publish(ticket);
-            state.TicketSlots[slotIndex] = nextTicketProvider();
+            state.TicketSlots[slotIndex] = DequeueNextTicket();
+        }
+
+        private void EnsureQueueFilled()
+        {
+            while (upcomingTickets.Count < lookaheadCount)
+            {
+                upcomingTickets.Add(nextTicketProvider());
+            }
+        }
+
+        private Ticket DequeueNextTicket()
+        {
+            EnsureQueueFilled();
+            var next = upcomingTickets[0];
+            upcomingTickets.RemoveAt(0);
+            EnsureQueueFilled();
+            return next;
         }
 
         public void Tick(float deltaSeconds)

@@ -59,6 +59,10 @@ namespace ExpoTheExplorer.Data
         [Tooltip("Pool of names randomly assigned to generated tickets.")]
         [SerializeField] private string[] customerNames = { "Alice", "Bob", "Charlie", "Diana", "Ethan" };
 
+        [Header("Lookahead — placeholder, not balanced")]
+        [Tooltip("How many tickets are pre-generated and held in a lookahead queue ahead of the 3 active slots. BoardDistributor's noise pool leaks items from these not-yet-active tickets (GDD Section 4). Must be at least 3 (TicketSlotManager clamps it).")]
+        [SerializeField] private int upcomingQueueSize = 10;
+
         public float ImpatientTimeLimitSeconds => impatientTimeLimitSeconds;
         public float NormalTimeLimitSeconds => normalTimeLimitSeconds;
         public float PatientTimeLimitSeconds => patientTimeLimitSeconds;
@@ -68,5 +72,6 @@ namespace ExpoTheExplorer.Data
         public float ModificationAdditionChance => modificationAdditionChance;
         public IReadOnlyList<MainDishWeight> MainDishWeights => mainDishWeights;
         public IReadOnlyList<string> CustomerNames => customerNames;
+        public int UpcomingQueueSize => upcomingQueueSize;
     }
 }

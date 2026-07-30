@@ -42,9 +42,9 @@ namespace ExpoTheExplorer.Tests.EditMode
                 timeLimitSeconds);
         }
 
-        private TicketSlotManager CreateManager(GameState state, Func<Ticket> provider = null)
+        private TicketSlotManager CreateManager(GameState state, Func<Ticket> provider = null, int lookaheadCount = 10)
         {
-            return new TicketSlotManager(state, provider ?? (() => CreateSimpleTicket()));
+            return new TicketSlotManager(state, provider ?? (() => CreateSimpleTicket()), lookaheadCount);
         }
 
         private FoodItemConfig CreateFoodItem(FoodCategory category, List<ModificationConfig> availableModifications = null)
@@ -149,6 +149,46 @@ namespace ExpoTheExplorer.Tests.EditMode
             manager.FillEmptySlots();
 
             Assert.IsTrue(state.TicketSlots.All(t => t != null));
+        }
+
+        [Test]
+        public void FillEmptySlots_PreGeneratesLookaheadQueue_OfConfiguredSize()
+        {
+            var state = new GameState(gameConfig);
+            var manager = CreateManager(state, lookaheadCount: 5);
+
+            manager.FillEmptySlots();
+
+            Assert.AreEqual(5, manager.UpcomingTickets.Count);
+        }
+
+        [Test]
+        public void DeliverTicket_DequeuesFromLookaheadQueue_AndRefillsBackToConfiguredSize()
+        {
+            var state = new GameState(gameConfig);
+            var manager = CreateManager(state, lookaheadCount: 5);
+            manager.FillEmptySlots();
+            var queuedTicket = manager.UpcomingTickets[0];
+
+            manager.DeliverTicket(0);
+
+            Assert.AreEqual(5, manager.UpcomingTickets.Count);
+            Assert.AreSame(queuedTicket, state.TicketSlots[0]);
+            Assert.IsFalse(manager.UpcomingTickets.Contains(queuedTicket));
+        }
+
+        [Test]
+        public void UpcomingTickets_NeverContainsAnyActiveSlotTicket()
+        {
+            var state = new GameState(gameConfig);
+            var manager = CreateManager(state, lookaheadCount: 5);
+
+            manager.FillEmptySlots();
+
+            foreach (var activeTicket in state.TicketSlots)
+            {
+                Assert.IsFalse(manager.UpcomingTickets.Contains(activeTicket));
+            }
         }
 
         [Test]
