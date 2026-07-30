@@ -38,6 +38,8 @@ namespace ExpoTheExplorer.Data
         [SerializeField] private Vector2 offset;
         [Tooltip("Added to every layer AFTER this one in the list, only while this layer is visible — lets one ingredient (e.g. an extra patty) push the ones stacked above it, and lets removing a default ingredient close the gap it leaves.")]
         [SerializeField] private Vector2 pushAmount;
+        [Tooltip("Relative size multiplier on top of the default fit-to-cell scale — every layer independently fits the cell by default, so differently-cropped art (e.g. a thin cheese slice vs. a full bun) needs this to look correctly sized relative to the others. 1 = default fit-to-cell size.")]
+        [SerializeField] private float scale = 1f;
 
         public Sprite Sprite => sprite;
         public LayerVisibility Visibility => visibility;
@@ -45,6 +47,7 @@ namespace ExpoTheExplorer.Data
         public bool Direction => direction;
         public Vector2 Offset => offset;
         public Vector2 PushAmount => pushAmount;
+        public float Scale => scale;
     }
 
     [CreateAssetMenu(fileName = "FoodItemConfig", menuName = "ExpoTheExplorer/Data/Food Item Config")]
@@ -61,11 +64,15 @@ namespace ExpoTheExplorer.Data
         [Tooltip("Board-rendering layers, authored back-to-front. Empty for items with no modifications (e.g. Side/Drink) — Core.BoardItem.ResolvedLayers falls back to Sprite.")]
         [SerializeField] private List<SpriteLayer> spriteLayers = new();
 
+        [Tooltip("How large this item appears relative to its board cell overall — a multiplier applied on top of every layer's own Scale. 1 = fills the cell (default fit-to-cell behavior). Use this to make e.g. a drink look smaller than a burger, independent of each layer's relative sizing.")]
+        [SerializeField, Range(0.1f, 1.5f)] private float overallScale = 1f;
+
         public string Id => id;
         public string DisplayName => displayName;
         public Sprite Sprite => sprite;
         public FoodCategory Category => category;
         public IReadOnlyList<ModificationConfig> AvailableModifications => availableModifications;
         public IReadOnlyList<SpriteLayer> SpriteLayers => spriteLayers;
+        public float OverallScale => overallScale;
     }
 }

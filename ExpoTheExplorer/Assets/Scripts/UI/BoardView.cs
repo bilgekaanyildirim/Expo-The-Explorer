@@ -159,7 +159,7 @@ namespace ExpoTheExplorer.UI
                 }
 
                 layerRenderer.transform.localPosition = new Vector3(resolved.Offset.x * cellSize, resolved.Offset.y * cellSize, 0f);
-                ApplyFittedScale(layerRenderer.transform, layerRenderer.sprite);
+                ApplyFittedScale(layerRenderer.transform, layerRenderer.sprite, resolved.Scale);
             }
 
             DeactivateUnusedLayers(pool, resolvedLayers.Count);
@@ -194,13 +194,16 @@ namespace ExpoTheExplorer.UI
         // Real imported sprites can be any native size (e.g. ~10 world units at
         // 1000px/100 PPU) while the procedural placeholder is exactly 1 unit —
         // scale each sprite individually so it fits inside a cell instead of
-        // assuming every sprite is already cell-sized.
-        private void ApplyFittedScale(Transform target, Sprite spriteToFit)
+        // assuming every sprite is already cell-sized. additionalScale is each
+        // SpriteLayer's own relative-size tuning on top of that fit (independently
+        // cropped ingredient art doesn't share a canvas, so "fit to cell" alone
+        // would make a thin cheese slice as big as the whole bun).
+        private void ApplyFittedScale(Transform target, Sprite spriteToFit, float additionalScale = 1f)
         {
             var targetSize = cellSize * (1f - cellPadding);
             var nativeSize = spriteToFit.bounds.size;
             var scale = Mathf.Min(targetSize / nativeSize.x, targetSize / nativeSize.y);
-            target.localScale = Vector3.one * scale;
+            target.localScale = Vector3.one * (scale * additionalScale);
         }
 
         private Vector3 CellPosition(int x, int y, float z)

@@ -36,13 +36,18 @@ namespace ExpoTheExplorer.Core
                 {
                     if (!IsVisible(layer)) continue;
 
-                    result.Add(new ResolvedLayer(layer.Sprite, layer.Offset + cumulativePush));
+                    // OverallScale multiplies BOTH size and position — the whole
+                    // stack must scale like one rigid object (zoomed in/out around
+                    // the cell center), not just have each layer inflate in place
+                    // while every layer's relative offset stays fixed.
+                    var offset = (layer.Offset + cumulativePush) * Config.OverallScale;
+                    result.Add(new ResolvedLayer(layer.Sprite, offset, layer.Scale * Config.OverallScale));
                     cumulativePush += layer.PushAmount;
                 }
 
                 if (result.Count == 0 && Config.Sprite != null)
                 {
-                    result.Add(new ResolvedLayer(Config.Sprite, Vector2.zero));
+                    result.Add(new ResolvedLayer(Config.Sprite, Vector2.zero, Config.OverallScale));
                 }
 
                 return result;
@@ -77,16 +82,19 @@ namespace ExpoTheExplorer.Core
     }
 
     // A single resolved board sprite + its final screen-space offset (in cell-size
-    // fractions — BoardView scales this by its own dynamic cell size).
+    // fractions — BoardView scales this by its own dynamic cell size) and its
+    // relative size multiplier on top of the default fit-to-cell scale.
     public readonly struct ResolvedLayer
     {
         public Sprite Sprite { get; }
         public Vector2 Offset { get; }
+        public float Scale { get; }
 
-        public ResolvedLayer(Sprite sprite, Vector2 offset)
+        public ResolvedLayer(Sprite sprite, Vector2 offset, float scale)
         {
             Sprite = sprite;
             Offset = offset;
+            Scale = scale;
         }
     }
 }
