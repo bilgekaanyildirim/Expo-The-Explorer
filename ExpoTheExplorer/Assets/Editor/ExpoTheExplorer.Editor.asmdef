@@ -1,0 +1,18 @@
+{
+    "name": "ExpoTheExplorer.Editor",
+    "rootNamespace": "ExpoTheExplorer.Editor",
+    "references": [
+        "ExpoTheExplorer.Data"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

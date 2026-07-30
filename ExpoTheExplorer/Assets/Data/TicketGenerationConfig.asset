@@ -11,13 +11,13 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 30892c3b839fe4512948bc8a38d51a11, type: 3}
   m_Name: TicketGenerationConfig
-  m_EditorClassIdentifier:
+  m_EditorClassIdentifier: 
   impatientTimeLimitSeconds: 45
   normalTimeLimitSeconds: 90
   patientTimeLimitSeconds: 150
-  sideInclusionChance: 0.5
-  drinkInclusionChance: 0.5
-  modificationInclusionChance: 0.3
+  sideInclusionChance: 0.9
+  drinkInclusionChance: 0.9
+  modificationInclusionChance: 0.5
   modificationAdditionChance: 0.5
   customerNames:
   - Alice

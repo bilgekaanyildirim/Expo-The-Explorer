@@ -54,4 +54,5 @@
   <Project Path="Unity.PlasticSCM.Editor.Entities.csproj" />
   <Project Path="Unity.Collections.Editor.csproj" />
   <Project Path="ExpoTheExplorer.Systems.TicketSystem.csproj" />
+  <Project Path="ExpoTheExplorer.Editor.csproj" />
 </Solution>
