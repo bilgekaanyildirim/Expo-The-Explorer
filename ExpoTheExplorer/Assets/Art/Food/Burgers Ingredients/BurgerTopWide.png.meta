@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: a9207d4d37db74447a0f95ed1c20a558
+guid: c26b39de0c6584d26b3e1d4fe20202bf
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -6054518596513162499
-    second: Burger-No Lettuce-Extra Cheese_0
+      213: 7195426168241290453
+    second: BurgerTopWide_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -113,13 +113,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: Burger-No Lettuce-Extra Cheese_0
+      name: BurgerTopWide_0
       rect:
         serializedVersion: 2
         x: 0
-        y: 12
-        width: 922
-        height: 926
+        y: 0
+        width: 1005
+        height: 418
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -128,8 +128,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: dfa16d82a670afba0800000000000000
-      internalID: -6054518596513162499
+      spriteID: 5dc729d1af94bd360800000000000000
+      internalID: 7195426168241290453
       vertices: []
       indices: 
       edges: []
@@ -148,7 +148,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      Burger-No Lettuce-Extra Cheese_0: -6054518596513162499
+      BurgerTopWide_0: 7195426168241290453
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

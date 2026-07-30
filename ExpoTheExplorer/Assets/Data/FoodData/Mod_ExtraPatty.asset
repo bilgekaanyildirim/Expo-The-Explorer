@@ -10,9 +10,9 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f83e5b40d0a3b4c3aa09277af96774c1, type: 3}
-  m_Name: Mod_ExtraCheese
-  m_EditorClassIdentifier: 
-  id: extra_cheese
-  displayName: Extra Cheese
-  icon: {fileID: 21300000, guid: b78ab36571e824666be90c2c03f080f2, type: 3}
-  allowedDirection: 2
+  m_Name: Mod_ExtraPatty
+  m_EditorClassIdentifier:
+  id: extra_patty
+  displayName: Extra Patty
+  icon: {fileID: 21300000, guid: 1d4193a0a27f74da3b2d15c2a663d26a, type: 3}
+  allowedDirection: 0

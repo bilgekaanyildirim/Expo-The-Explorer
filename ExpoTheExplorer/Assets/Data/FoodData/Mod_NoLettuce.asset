@@ -15,3 +15,4 @@ MonoBehaviour:
   id: no_lettuce
   displayName: No Lettuce
   icon: {fileID: 21300000, guid: c39d7b3b5d0bd443c945298791ceb0dc, type: 3}
+  allowedDirection: 1

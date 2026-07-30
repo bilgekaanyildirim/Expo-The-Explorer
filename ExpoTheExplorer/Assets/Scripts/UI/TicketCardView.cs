@@ -48,6 +48,11 @@ namespace ExpoTheExplorer.UI
             isValid = ValidateReferences();
             if (!isValid) return;
 
+            // The container itself must stay active — only the template row
+            // inside it (and the clones built from it) toggle. Prefab authoring
+            // sometimes leaves this off after hiding the two sample rows in the
+            // Editor, which silently hides every real modification row too.
+            modificationsListParent.gameObject.SetActive(true);
             modificationRowTemplate.gameObject.SetActive(false);
             RebuildContent(null);
         }
@@ -138,9 +143,9 @@ namespace ExpoTheExplorer.UI
 
         private void SetDishImage(FoodItemConfig main)
         {
-            // Always the BASE sprite, never SpriteVariants — GDD Section 3.2: the
-            // card's main image is the unmodified dish photo, modifications are
-            // shown separately as the list below.
+            // Always the BASE sprite, never the board's SpriteLayers — GDD Section
+            // 3.2: the card's main image is the unmodified dish photo, modifications
+            // are shown separately as the list below.
             if (main != null && main.Sprite != null)
             {
                 dishImage.enabled = true;

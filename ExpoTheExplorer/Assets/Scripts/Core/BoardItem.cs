@@ -20,45 +20,73 @@ namespace ExpoTheExplorer.Core
             Modifications = modifications;
         }
 
-        // The sprite the board should show for THIS specific instance — matches
-        // Config.SpriteVariants against the applied modifications (config +
-        // direction, exact set), falling back to Config.Sprite (may be null,
-        // callers fall back further to a placeholder). Lives here rather than on
-        // FoodItemConfig because matching needs Modification (Core), and Data
-        // can't depend on Core (Core already depends on Data).
-        public Sprite ResolvedSprite
+        // Which sprites the board should draw for THIS specific instance, back to
+        // front, each with its final (already-pushed) position offset. Lives here
+        // rather than on FoodItemConfig because resolving visibility needs
+        // Modification (Core), and Data can't depend on Core (Core already
+        // depends on Data).
+        public IReadOnlyList<ResolvedLayer> ResolvedLayers
         {
             get
             {
-                foreach (var variant in Config.SpriteVariants)
+                var result = new List<ResolvedLayer>();
+                var cumulativePush = Vector2.zero;
+
+                foreach (var layer in Config.SpriteLayers)
                 {
-                    if (MatchesVariant(variant)) return variant.Sprite;
+                    if (!IsVisible(layer)) continue;
+
+                    result.Add(new ResolvedLayer(layer.Sprite, layer.Offset + cumulativePush));
+                    cumulativePush += layer.PushAmount;
                 }
 
-                return Config.Sprite;
+                if (result.Count == 0 && Config.Sprite != null)
+                {
+                    result.Add(new ResolvedLayer(Config.Sprite, Vector2.zero));
+                }
+
+                return result;
             }
         }
 
-        private bool MatchesVariant(SpriteVariant variant)
+        private bool IsVisible(SpriteLayer layer)
         {
-            if (variant.Modifications.Count != Modifications.Count) return false;
+            if (layer.Visibility == LayerVisibility.AlwaysVisible) return true;
 
-            foreach (var state in variant.Modifications)
+            if (layer.Visibility == LayerVisibility.VisibleByDefault)
             {
-                var found = false;
+                // Hidden by the tied modification in EITHER direction, not just a
+                // specific one — e.g. the base cheese layer hides whether Cheese
+                // was removed (gone entirely) or added (Extra Cheese takes its
+                // place instead of stacking on top of it).
                 foreach (var mod in Modifications)
                 {
-                    if (mod.Config == state.Config && mod.IsAddition == state.IsAddition)
-                    {
-                        found = true;
-                        break;
-                    }
+                    if (mod.Config == layer.Modification) return false;
                 }
-
-                if (!found) return false;
+                return true;
             }
 
-            return true;
+            // HiddenByDefault: visible only for the exact (modification, direction)
+            // pair this layer represents.
+            foreach (var mod in Modifications)
+            {
+                if (mod.Config == layer.Modification && mod.IsAddition == layer.Direction) return true;
+            }
+            return false;
+        }
+    }
+
+    // A single resolved board sprite + its final screen-space offset (in cell-size
+    // fractions — BoardView scales this by its own dynamic cell size).
+    public readonly struct ResolvedLayer
+    {
+        public Sprite Sprite { get; }
+        public Vector2 Offset { get; }
+
+        public ResolvedLayer(Sprite sprite, Vector2 offset)
+        {
+            Sprite = sprite;
+            Offset = offset;
         }
     }
 }

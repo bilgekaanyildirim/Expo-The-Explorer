@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using ExpoTheExplorer.Bootstrap;
 using ExpoTheExplorer.Core;
 using UnityEngine;
@@ -19,7 +20,8 @@ namespace ExpoTheExplorer.UI
 
         private BoardGrid board;
         private Sprite placeholderSprite;
-        private SpriteRenderer[,] itemRenderers;
+        private Transform[,] itemContainers;
+        private List<SpriteRenderer>[,] itemLayerPools;
         private Transform itemsParent;
         private float cellSize;
         private Vector2 boardOrigin;
@@ -28,7 +30,8 @@ namespace ExpoTheExplorer.UI
         {
             board = gameManager.State.Board;
             placeholderSprite = CreatePlaceholderSprite();
-            itemRenderers = new SpriteRenderer[board.Width, board.Height];
+            itemContainers = new Transform[board.Width, board.Height];
+            itemLayerPools = new List<SpriteRenderer>[board.Width, board.Height];
 
             FitToCamera();
             BuildBackground();
@@ -101,40 +104,91 @@ namespace ExpoTheExplorer.UI
         private void RefreshCell(int x, int y)
         {
             var item = board.ItemAt(x, y);
-            var renderer = itemRenderers[x, y];
+            var container = itemContainers[x, y];
 
             if (item == null)
             {
-                if (renderer != null) renderer.gameObject.SetActive(false);
+                if (container != null) container.gameObject.SetActive(false);
                 return;
             }
 
-            if (renderer == null)
+            if (container == null)
             {
                 var itemObject = new GameObject($"Item_{x}_{y}");
                 itemObject.transform.SetParent(itemsParent, false);
                 itemObject.transform.localPosition = CellPosition(x, y, -0.1f);
 
-                renderer = itemObject.AddComponent<SpriteRenderer>();
-                renderer.sortingOrder = 1;
-                itemRenderers[x, y] = renderer;
+                container = itemObject.transform;
+                itemContainers[x, y] = container;
+                itemLayerPools[x, y] = new List<SpriteRenderer>();
             }
 
-            renderer.gameObject.SetActive(true);
+            container.gameObject.SetActive(true);
 
-            var resolvedSprite = item.ResolvedSprite;
-            if (resolvedSprite != null)
+            var resolvedLayers = item.ResolvedLayers;
+            var pool = itemLayerPools[x, y];
+
+            // ResolvedLayers falls back to Config.Sprite internally, so this only
+            // stays empty for a genuinely unconfigured FoodItemConfig (no layers,
+            // no base sprite) — show one placeholder layer for that case.
+            if (resolvedLayers.Count == 0)
             {
-                renderer.sprite = resolvedSprite;
-                renderer.color = Color.white;
-            }
-            else
-            {
-                renderer.sprite = placeholderSprite;
-                renderer.color = placeholderItemColor;
+                var placeholderRenderer = GetPooledLayerRenderer(pool, container, 0);
+                placeholderRenderer.sprite = placeholderSprite;
+                placeholderRenderer.color = placeholderItemColor;
+                placeholderRenderer.transform.localPosition = Vector3.zero;
+                ApplyFittedScale(placeholderRenderer.transform, placeholderSprite);
+                DeactivateUnusedLayers(pool, 1);
+                return;
             }
 
-            ApplyFittedScale(renderer.transform, renderer.sprite);
+            for (var i = 0; i < resolvedLayers.Count; i++)
+            {
+                var resolved = resolvedLayers[i];
+                var layerRenderer = GetPooledLayerRenderer(pool, container, i);
+
+                if (resolved.Sprite != null)
+                {
+                    layerRenderer.sprite = resolved.Sprite;
+                    layerRenderer.color = Color.white;
+                }
+                else
+                {
+                    layerRenderer.sprite = placeholderSprite;
+                    layerRenderer.color = placeholderItemColor;
+                }
+
+                layerRenderer.transform.localPosition = new Vector3(resolved.Offset.x * cellSize, resolved.Offset.y * cellSize, 0f);
+                ApplyFittedScale(layerRenderer.transform, layerRenderer.sprite);
+            }
+
+            DeactivateUnusedLayers(pool, resolvedLayers.Count);
+        }
+
+        private static SpriteRenderer GetPooledLayerRenderer(List<SpriteRenderer> pool, Transform container, int index)
+        {
+            if (index < pool.Count)
+            {
+                var existing = pool[index];
+                existing.gameObject.SetActive(true);
+                return existing;
+            }
+
+            var layerObject = new GameObject($"Layer_{index}");
+            layerObject.transform.SetParent(container, false);
+
+            var renderer = layerObject.AddComponent<SpriteRenderer>();
+            renderer.sortingOrder = 1 + index;
+            pool.Add(renderer);
+            return renderer;
+        }
+
+        private static void DeactivateUnusedLayers(List<SpriteRenderer> pool, int usedCount)
+        {
+            for (var i = usedCount; i < pool.Count; i++)
+            {
+                pool[i].gameObject.SetActive(false);
+            }
         }
 
         // Real imported sprites can be any native size (e.g. ~10 world units at

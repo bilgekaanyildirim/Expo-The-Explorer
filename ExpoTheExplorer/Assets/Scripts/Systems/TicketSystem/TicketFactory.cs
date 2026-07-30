@@ -53,9 +53,8 @@ namespace ExpoTheExplorer.Systems.TicketSystem
             var modifications = new List<Modification>();
             foreach (var modConfig in main.AvailableModifications)
             {
-                if (random.NextDouble() >= config.ModificationInclusionChance) continue;
-                var isAddition = random.NextDouble() < config.ModificationAdditionChance;
-                modifications.Add(new Modification(modConfig, isAddition));
+                var modification = TryCreateModification(modConfig);
+                if (modification != null) modifications.Add(modification);
             }
 
             var timeLimitSeconds = patienceType switch
@@ -76,6 +75,24 @@ namespace ExpoTheExplorer.Systems.TicketSystem
             if (candidates.Count == 0) return;
 
             requiredItems.Add(candidates[random.Next(candidates.Count)]);
+        }
+
+        // A modification's direction is intrinsic to its type (ModificationConfig.AllowedDirection),
+        // not a random per-ticket roll — only a Both-direction modification (e.g.
+        // Cheese) still needs the extra coin flip.
+        private Modification TryCreateModification(ModificationConfig modConfig)
+        {
+            if (random.NextDouble() >= config.ModificationInclusionChance) return null;
+
+            var isAddition = modConfig.AllowedDirection switch
+            {
+                ModificationDirection.AdditionOnly => true,
+                ModificationDirection.RemovalOnly => false,
+                ModificationDirection.Both => random.NextDouble() < config.ModificationAdditionChance,
+                _ => throw new ArgumentOutOfRangeException(nameof(modConfig), modConfig.AllowedDirection, "Unhandled ModificationDirection."),
+            };
+
+            return new Modification(modConfig, isAddition);
         }
     }
 }

@@ -11,33 +11,40 @@ namespace ExpoTheExplorer.Data
         Drink
     }
 
-    // A modification type + direction, used only to describe which combination a
-    // SpriteVariant depicts. Data-only (no dependency on Core.Modification) so
-    // this stays in the Data assembly; Core.BoardItem does the actual matching
-    // since it's the one that knows a runtime item's applied modifications.
-    [Serializable]
-    public struct ModificationState
+    // Whether a layer is part of the always-present base art, part of the
+    // default recipe (hidden when its tied modification's removal is present),
+    // or an add-on (hidden until its tied modification's addition is present).
+    public enum LayerVisibility
     {
-        [SerializeField] private ModificationConfig config;
-        [SerializeField] private bool isAddition;
-
-        public ModificationConfig Config => config;
-        public bool IsAddition => isAddition;
+        AlwaysVisible,
+        VisibleByDefault,
+        HiddenByDefault
     }
 
-    // A pre-composed sprite for one specific modification combination (e.g. the
-    // burger with lettuce removed and cheese added). The board needs these so the
-    // player can visually tell modified items apart; the ticket card always shows
-    // the base Sprite regardless (GDD Section 3.2 — base dish photo + separate
-    // modification icon list).
+    // One composited board-visual layer (e.g. "lettuce", "extra cheese"). Data-only
+    // (no dependency on Core.Modification) so this stays in the Data assembly;
+    // Core.BoardItem does the actual visibility/offset resolution since it's the
+    // one that knows a runtime item's applied modifications.
     [Serializable]
-    public class SpriteVariant
+    public class SpriteLayer
     {
-        [SerializeField] private List<ModificationState> modifications = new();
         [SerializeField] private Sprite sprite;
+        [SerializeField] private LayerVisibility visibility;
+        [Tooltip("Unused when Visibility is AlwaysVisible.")]
+        [SerializeField] private ModificationConfig modification;
+        [Tooltip("Which IsAddition value (of Modification) makes this layer visible/hidden. Unused when Visibility is AlwaysVisible.")]
+        [SerializeField] private bool direction;
+        [Tooltip("This layer's own position offset, tuned visually per food item.")]
+        [SerializeField] private Vector2 offset;
+        [Tooltip("Added to every layer AFTER this one in the list, only while this layer is visible — lets one ingredient (e.g. an extra patty) push the ones stacked above it, and lets removing a default ingredient close the gap it leaves.")]
+        [SerializeField] private Vector2 pushAmount;
 
-        public IReadOnlyList<ModificationState> Modifications => modifications;
         public Sprite Sprite => sprite;
+        public LayerVisibility Visibility => visibility;
+        public ModificationConfig Modification => modification;
+        public bool Direction => direction;
+        public Vector2 Offset => offset;
+        public Vector2 PushAmount => pushAmount;
     }
 
     [CreateAssetMenu(fileName = "FoodItemConfig", menuName = "ExpoTheExplorer/Data/Food Item Config")]
@@ -51,14 +58,14 @@ namespace ExpoTheExplorer.Data
         [Tooltip("Modifications that can appear on a ticket for this item. Only meaningful for Main category items — leave empty for Side/Drink (GDD Section 3.2).")]
         [SerializeField] private List<ModificationConfig> availableModifications = new();
 
-        [Tooltip("Pre-composed sprites per exact modification combination, for board rendering. Falls back to Sprite when no combination matches (Core.BoardItem.ResolvedSprite does the matching).")]
-        [SerializeField] private List<SpriteVariant> spriteVariants = new();
+        [Tooltip("Board-rendering layers, authored back-to-front. Empty for items with no modifications (e.g. Side/Drink) — Core.BoardItem.ResolvedLayers falls back to Sprite.")]
+        [SerializeField] private List<SpriteLayer> spriteLayers = new();
 
         public string Id => id;
         public string DisplayName => displayName;
         public Sprite Sprite => sprite;
         public FoodCategory Category => category;
         public IReadOnlyList<ModificationConfig> AvailableModifications => availableModifications;
-        public IReadOnlyList<SpriteVariant> SpriteVariants => spriteVariants;
+        public IReadOnlyList<SpriteLayer> SpriteLayers => spriteLayers;
     }
 }

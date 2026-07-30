@@ -70,11 +70,29 @@ namespace ExpoTheExplorer.Tests.EditMode
             return foodConfig;
         }
 
-        private ModificationConfig CreateModification()
+        private ModificationConfig CreateModification(ModificationDirection direction = ModificationDirection.Both)
         {
             var modConfig = ScriptableObject.CreateInstance<ModificationConfig>();
             spawnedAssets.Add(modConfig);
+
+            var serialized = new SerializedObject(modConfig);
+            serialized.FindProperty("allowedDirection").enumValueIndex = (int)direction;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
             return modConfig;
+        }
+
+        private TicketGenerationConfig CreateGenerationConfig(float modificationInclusionChance, float modificationAdditionChance = 0.5f)
+        {
+            var genConfig = ScriptableObject.CreateInstance<TicketGenerationConfig>();
+            spawnedAssets.Add(genConfig);
+
+            var serialized = new SerializedObject(genConfig);
+            serialized.FindProperty("modificationInclusionChance").floatValue = modificationInclusionChance;
+            serialized.FindProperty("modificationAdditionChance").floatValue = modificationAdditionChance;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            return genConfig;
         }
 
         [Test]
@@ -207,6 +225,52 @@ namespace ExpoTheExplorer.Tests.EditMode
             Assert.IsTrue(ticket.RequiredItems.All(item => pool.Contains(item)));
             Assert.AreEqual(genConfig.NormalTimeLimitSeconds, ticket.TimeLimitSeconds);
             Assert.IsTrue(ticket.Modifications.All(m => main.AvailableModifications.Contains(m.Config)));
+        }
+
+        [Test]
+        public void TicketFactory_Create_RemovalOnlyModification_AlwaysGeneratesRemoval()
+        {
+            var mod = CreateModification(ModificationDirection.RemovalOnly);
+            var main = CreateFoodItem(FoodCategory.Main, new List<ModificationConfig> { mod });
+            var pool = new List<FoodItemConfig> { main };
+            var genConfig = CreateGenerationConfig(modificationInclusionChance: 1f, modificationAdditionChance: 1f);
+            var factory = new TicketFactory(genConfig, new System.Random(1));
+
+            var ticket = factory.Create(pool, "Test Customer", PatienceType.Normal);
+
+            Assert.AreEqual(1, ticket.Modifications.Count);
+            Assert.IsFalse(ticket.Modifications[0].IsAddition);
+        }
+
+        [Test]
+        public void TicketFactory_Create_AdditionOnlyModification_AlwaysGeneratesAddition()
+        {
+            var mod = CreateModification(ModificationDirection.AdditionOnly);
+            var main = CreateFoodItem(FoodCategory.Main, new List<ModificationConfig> { mod });
+            var pool = new List<FoodItemConfig> { main };
+            var genConfig = CreateGenerationConfig(modificationInclusionChance: 1f, modificationAdditionChance: 0f);
+            var factory = new TicketFactory(genConfig, new System.Random(1));
+
+            var ticket = factory.Create(pool, "Test Customer", PatienceType.Normal);
+
+            Assert.AreEqual(1, ticket.Modifications.Count);
+            Assert.IsTrue(ticket.Modifications[0].IsAddition);
+        }
+
+        [Test]
+        public void TicketFactory_Create_BothDirectionModification_RespectsAdditionChanceExtremes()
+        {
+            var mod = CreateModification(ModificationDirection.Both);
+            var main = CreateFoodItem(FoodCategory.Main, new List<ModificationConfig> { mod });
+            var pool = new List<FoodItemConfig> { main };
+
+            var alwaysAddition = CreateGenerationConfig(modificationInclusionChance: 1f, modificationAdditionChance: 1f);
+            var additionTicket = new TicketFactory(alwaysAddition, new System.Random(1)).Create(pool, "Test Customer", PatienceType.Normal);
+            Assert.IsTrue(additionTicket.Modifications[0].IsAddition);
+
+            var alwaysRemoval = CreateGenerationConfig(modificationInclusionChance: 1f, modificationAdditionChance: 0f);
+            var removalTicket = new TicketFactory(alwaysRemoval, new System.Random(1)).Create(pool, "Test Customer", PatienceType.Normal);
+            Assert.IsFalse(removalTicket.Modifications[0].IsAddition);
         }
 
         [Test]

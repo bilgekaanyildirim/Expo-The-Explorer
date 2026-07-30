@@ -19,6 +19,8 @@ namespace ExpoTheExplorer.Data
         [SerializeField, Range(0f, 1f)] private float sideInclusionChance = 0.5f;
         [SerializeField, Range(0f, 1f)] private float drinkInclusionChance = 0.5f;
         [SerializeField, Range(0f, 1f)] private float modificationInclusionChance = 0.3f;
+
+        [Tooltip("Only consulted for Both-direction modifications (e.g. Cheese) — AdditionOnly/RemovalOnly modifications get their direction from ModificationConfig.AllowedDirection directly, no roll needed.")]
         [SerializeField, Range(0f, 1f)] private float modificationAdditionChance = 0.5f;
 
         [Header("Customer Names")]

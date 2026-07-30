@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 94f27f15fe8754355b44f3b6b54cf704
+guid: de589d69adb5d42a1bab141e1a75b14d
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 1657646917480650874
-    second: Burger-Basic_0
+      213: 6582011127417039112
+    second: Cheese_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -113,13 +113,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: Burger-Basic_0
+      name: Cheese_0
       rect:
         serializedVersion: 2
         x: 0
         y: 0
-        width: 991
-        height: 959
+        width: 834
+        height: 340
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -128,8 +128,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: a78947fb615210710800000000000000
-      internalID: 1657646917480650874
+      spriteID: 8096c555f30085b50800000000000000
+      internalID: 6582011127417039112
       vertices: []
       indices: 
       edges: []
@@ -148,7 +148,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      Burger-Basic_0: 1657646917480650874
+      Cheese_0: 6582011127417039112
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
