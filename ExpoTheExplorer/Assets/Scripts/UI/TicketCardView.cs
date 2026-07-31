@@ -43,7 +43,6 @@ namespace ExpoTheExplorer.UI
         private bool isValid;
         private bool transitionInProgress;
         private RectTransform rectTransform;
-        private Vector2 restAnchoredPosition;
         private readonly List<ModificationSlotView> modificationRows = new();
 
         public void Initialize(GameManager gameManager, int slotIndex, TicketCardsView owner, BoardAnimationConfig animConfig)
@@ -57,7 +56,6 @@ namespace ExpoTheExplorer.UI
             if (!isValid) return;
 
             rectTransform = (RectTransform)transform;
-            restAnchoredPosition = rectTransform.anchoredPosition;
 
             // The container itself must stay active — only the template row
             // inside it (and the clones built from it) toggle. Prefab authoring
@@ -128,20 +126,42 @@ namespace ExpoTheExplorer.UI
             rectTransform.DOKill();
             canvasGroup.DOKill();
 
+            // Read fresh, not cached — cardsParent is a HorizontalLayoutGroup
+            // (TicketCardsView), so "rest position" isn't a fixed constant:
+            // it depends on every card's current size, which can shift
+            // (e.g. a differing modification-row count changes this card's
+            // own preferred size) — a value captured once back at
+            // Initialize could already be stale by the time any particular
+            // delivery happens.
+            var exitFromPos = rectTransform.anchoredPosition;
+
             var sequence = DOTween.Sequence();
-            sequence.Append(rectTransform.DOAnchorPosY(restAnchoredPosition.y + animConfig.TicketExitLiftDistance, animConfig.TicketExitDuration).SetEase(Ease.InQuad));
+            sequence.Append(rectTransform.DOAnchorPosY(exitFromPos.y + animConfig.TicketExitLiftDistance, animConfig.TicketExitDuration).SetEase(Ease.InQuad));
             sequence.Join(canvasGroup.DOFade(0f, animConfig.TicketExitDuration));
             sequence.AppendCallback(() =>
             {
                 var newTicket = gameManager.State.TicketSlots[slotIndex];
                 cachedTicket = newTicket;
                 RebuildContent(newTicket);
-                rectTransform.anchoredPosition = new Vector2(restAnchoredPosition.x, restAnchoredPosition.y + animConfig.TicketEntryDropDistance);
+
+                // RebuildContent can change this card's own size (a
+                // different modification-row count) — force the parent
+                // layout group to react to that now, so the position read
+                // right after is authoritative for the NEW ticket's content
+                // instead of trusting a pre-rebuild value.
+                if (rectTransform.parent is RectTransform parentRect)
+                {
+                    LayoutRebuilder.ForceRebuildLayoutImmediate(parentRect);
+                }
+
+                var settledPos = rectTransform.anchoredPosition;
+                rectTransform.anchoredPosition = new Vector2(settledPos.x, settledPos.y + animConfig.TicketEntryDropDistance);
                 canvasGroup.alpha = 0f;
+
+                rectTransform.DOAnchorPos(settledPos, animConfig.TicketEntryDuration).SetEase(Ease.OutBack)
+                    .OnComplete(() => transitionInProgress = false);
+                canvasGroup.DOFade(1f, animConfig.TicketEntryDuration);
             });
-            sequence.Append(rectTransform.DOAnchorPos(restAnchoredPosition, animConfig.TicketEntryDuration).SetEase(Ease.OutBack));
-            sequence.Join(canvasGroup.DOFade(1f, animConfig.TicketEntryDuration));
-            sequence.OnComplete(() => transitionInProgress = false);
         }
 
         private void RebuildContent(Ticket ticket)
