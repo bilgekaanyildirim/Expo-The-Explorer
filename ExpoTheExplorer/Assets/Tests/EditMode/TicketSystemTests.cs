@@ -207,19 +207,21 @@ namespace ExpoTheExplorer.Tests.EditMode
         }
 
         [Test]
-        public void DeliverTicket_PublishesTicketDeliveredEvent_WithTheDeliveredTicket()
+        public void DeliverTicket_PublishesTicketDeliveredEvent_WithTheDeliveredTicketAndSlotIndex()
         {
             var state = new GameState(gameConfig);
             var manager = CreateManager(state);
             manager.FillEmptySlots();
             var original = state.TicketSlots[0];
 
-            Ticket published = null;
-            state.TicketDelivered.Subscribe(t => published = t);
+            (int SlotIndex, Ticket Ticket)? published = null;
+            state.TicketDelivered.Subscribe(p => published = p);
 
             manager.DeliverTicket(0);
 
-            Assert.AreSame(original, published);
+            Assert.IsNotNull(published);
+            Assert.AreEqual(0, published.Value.SlotIndex);
+            Assert.AreSame(original, published.Value.Ticket);
         }
 
         [Test]

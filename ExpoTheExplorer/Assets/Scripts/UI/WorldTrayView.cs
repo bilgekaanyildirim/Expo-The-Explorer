@@ -1,5 +1,7 @@
 using System.Collections.Generic;
+using DG.Tweening;
 using ExpoTheExplorer.Bootstrap;
+using ExpoTheExplorer.Core;
 using ExpoTheExplorer.Data;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -30,9 +32,16 @@ namespace ExpoTheExplorer.UI
         [SerializeField] private Transform drinkSlot;
         [Tooltip("Optional — shown while a valid drag is hovering over this tray (GDD Section 5 drop-zone highlight).")]
         [SerializeField] private GameObject highlightVisual;
+        [Tooltip("Shared tuning for board/tray animation durations (snap-back, tray settle, pop-in, slot clear).")]
+        [SerializeField] private BoardAnimationConfig animConfig;
+        [Tooltip("Needed so a wrong-order scatter can tell BoardView to fly those items in from this tray instead of Starting Point.")]
+        [SerializeField] private BoardView boardView;
 
         private bool isValid;
         private int lastKnownCount = -1;
+        private bool justDelivered;
+        private Vector3 restScale;
+        private Vector3 restPosition;
 
         private void Awake()
         {
@@ -46,7 +55,27 @@ namespace ExpoTheExplorer.UI
         // always finishes every object's Awake() before any Start() runs).
         private void Start()
         {
-            if (isValid) lastKnownCount = gameManager.TrayManager.GetContents(slotIndex).Count;
+            if (!isValid) return;
+
+            lastKnownCount = gameManager.TrayManager.GetContents(slotIndex).Count;
+            restScale = transform.localScale;
+            restPosition = transform.position;
+            gameManager.State.TicketDelivered.Subscribe(OnTicketDelivered);
+        }
+
+        private void OnDestroy()
+        {
+            if (isValid) gameManager.State.TicketDelivered.Unsubscribe(OnTicketDelivered);
+        }
+
+        // TrayManager.TryAddItem calls deliverTicket (-> TicketSlotManager.
+        // DeliverTicket -> this publish) synchronously before returning, so
+        // by the time TryAcceptDrop's call to TryAddItem below returns,
+        // justDelivered is already correctly set for this exact drop if it
+        // was the one that completed a successful delivery on this slot.
+        private void OnTicketDelivered((int SlotIndex, Ticket Ticket) delivery)
+        {
+            if (delivery.SlotIndex == slotIndex) justDelivered = true;
         }
 
         private bool ValidateReferences()
@@ -56,6 +85,7 @@ namespace ExpoTheExplorer.UI
             if (mainDishSlot == null) missing.Add(nameof(mainDishSlot));
             if (sideSlot == null) missing.Add(nameof(sideSlot));
             if (drinkSlot == null) missing.Add(nameof(drinkSlot));
+            if (boardView == null) missing.Add(nameof(boardView));
 
             if (missing.Count == 0) return true;
 
@@ -94,7 +124,18 @@ namespace ExpoTheExplorer.UI
             if (!isValid || dragHandler == null || dragHandler.CurrentItem == null) return false;
 
             var item = dragHandler.CurrentItem;
+            justDelivered = false;
+
+            // TryAddItem runs the batch check synchronously and, on a wrong
+            // order, scatters every item in this slot back onto the board
+            // (one RequestSpawn per item) before returning — bracketing the
+            // whole call means all of them fly in from this tray instead of
+            // Starting Point. Harmless if no scatter happens (nothing ever
+            // consumes the override, so it's just cleared again below).
+            boardView.BeginFlyInOverride(transform.position);
             var accepted = gameManager.TrayManager.TryAddItem(slotIndex, item);
+            boardView.EndFlyInOverride();
+
             dragHandler.WasAcceptedByTray = accepted;
             if (!accepted) return false;
 
@@ -106,8 +147,15 @@ namespace ExpoTheExplorer.UI
                 // was sitting in our slots (from earlier drops on this same
                 // ticket) is stale now, and this drop's own item was never
                 // placed into a slot, so it needs cleanup here instead.
-                ClearAllSlotVisuals();
-                dragHandler.ReleaseAndDestroy();
+                if (justDelivered)
+                {
+                    PlayDeliverySuccess(dragHandler);
+                }
+                else
+                {
+                    ClearAllSlotVisuals();
+                    dragHandler.ReleaseAndDestroy();
+                }
             }
             else
             {
@@ -116,6 +164,72 @@ namespace ExpoTheExplorer.UI
 
             lastKnownCount = newCount;
             return true;
+        }
+
+        // Successful delivery only (a wrong-order scatter still uses the
+        // plain ClearAllSlotVisuals shrink-and-destroy above) — grows the
+        // whole tray (background + every slot's contents, since they're all
+        // descendants of this transform) as if lifting toward the camera,
+        // then moves it up while every SpriteRenderer underneath fades out
+        // together, before resetting back to normal for the next ticket.
+        // The just-delivered item itself was never parented under a slot,
+        // so it gets the identical treatment on its own transform in
+        // parallel (BoardItemDragHandler.PlayDeliverySuccessAndDestroy).
+        private void PlayDeliverySuccess(BoardItemDragHandler finalItem)
+        {
+            var renderers = GetComponentsInChildren<SpriteRenderer>(true);
+
+            transform.DOKill();
+            var sequence = DOTween.Sequence();
+            sequence.Append(transform.DOScale(restScale * animConfig.DeliveryGrowScale, animConfig.DeliveryGrowDuration).SetEase(Ease.OutQuad));
+            sequence.Append(transform.DOMoveY(transform.position.y + animConfig.DeliveryLiftDistance, animConfig.DeliveryFadeDuration).SetEase(Ease.InQuad));
+            foreach (var renderer in renderers)
+            {
+                if (renderer != null) sequence.Join(renderer.DOFade(0f, animConfig.DeliveryFadeDuration));
+            }
+
+            sequence.OnComplete(() =>
+            {
+                DestroySlotChildrenImmediate(mainDishSlot);
+                DestroySlotChildrenImmediate(sideSlot);
+                DestroySlotChildrenImmediate(drinkSlot);
+
+                // "New tray" re-entrance: comes back in from directly below
+                // rest position, growing from nothing into place, instead of
+                // just snapping back for the next ticket. Re-fetched here
+                // (rather than reusing the captured `renderers`) since those
+                // included the now-destroyed slot items — this only picks up
+                // the tray's own remaining renderers (background sprite etc.).
+                var remainingRenderers = GetComponentsInChildren<SpriteRenderer>(true);
+
+                transform.DOKill();
+                transform.position = restPosition - new Vector3(0f, animConfig.DeliveryLiftDistance, 0f);
+                transform.localScale = Vector3.zero;
+                foreach (var renderer in remainingRenderers)
+                {
+                    var color = renderer.color;
+                    color.a = 0f;
+                    renderer.color = color;
+                }
+
+                transform.DOMove(restPosition, animConfig.DeliveryReentryDuration).SetEase(Ease.OutQuad);
+                transform.DOScale(restScale, animConfig.DeliveryReentryDuration).SetEase(Ease.OutBack);
+                foreach (var renderer in remainingRenderers)
+                {
+                    renderer.DOFade(1f, animConfig.DeliveryReentryDuration);
+                }
+            });
+
+            finalItem.PlayDeliverySuccessAndDestroy(animConfig);
+        }
+
+        private static void DestroySlotChildrenImmediate(Transform slot)
+        {
+            if (slot == null) return;
+            for (var i = slot.childCount - 1; i >= 0; i--)
+            {
+                Destroy(slot.GetChild(i).gameObject);
+            }
         }
 
         // Called by BoardItemDragHandler.UpdateHoveredTray, driven off the
@@ -160,7 +274,7 @@ namespace ExpoTheExplorer.UI
             ClearSlot(drinkSlot);
         }
 
-        private static void ClearSlot(Transform slot)
+        private void ClearSlot(Transform slot)
         {
             if (slot == null) return;
             for (var i = slot.childCount - 1; i >= 0; i--)
@@ -175,7 +289,11 @@ namespace ExpoTheExplorer.UI
                 var dragHandler = child.GetComponent<BoardItemDragHandler>();
                 if (dragHandler != null && dragHandler.IsDragging) continue;
 
-                Destroy(child.gameObject);
+                var childTransform = child;
+                childTransform.DOKill();
+                childTransform.DOScale(Vector3.zero, animConfig.SlotClearDuration)
+                    .SetEase(Ease.InBack)
+                    .OnComplete(() => Destroy(childTransform.gameObject));
             }
         }
     }

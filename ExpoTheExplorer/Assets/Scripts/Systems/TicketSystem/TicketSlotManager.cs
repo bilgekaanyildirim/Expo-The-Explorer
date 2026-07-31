@@ -47,7 +47,7 @@ namespace ExpoTheExplorer.Systems.TicketSystem
             if (ticket == null) return;
 
             ticket.State = TicketState.Delivered;
-            state.TicketDelivered.Publish(ticket);
+            state.TicketDelivered.Publish((slotIndex, ticket));
             AssignTicket(slotIndex);
         }
 

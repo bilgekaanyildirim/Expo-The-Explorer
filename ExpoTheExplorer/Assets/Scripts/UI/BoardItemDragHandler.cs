@@ -1,6 +1,7 @@
 using DG.Tweening;
 using ExpoTheExplorer.Bootstrap;
 using ExpoTheExplorer.Core;
+using ExpoTheExplorer.Data;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -44,6 +45,7 @@ namespace ExpoTheExplorer.UI
         private BoardView boardView;
         private GameManager gameManager;
         private DragFeelSettings dragFeel;
+        private BoardAnimationConfig animConfig;
         private Collider2D ownCollider;
         private int cellX;
         private int cellY;
@@ -61,6 +63,9 @@ namespace ExpoTheExplorer.UI
         private float lastFingerX;
         private float lastFingerY;
         private WorldTrayView hoveredTray;
+        private Tween scaleTween;
+        private Tween positionTween;
+        private bool deliverySuccessInProgress;
         private SpriteRenderer[] layerRenderers;
         private int[] homeSortingOrders;
 
@@ -80,13 +85,14 @@ namespace ExpoTheExplorer.UI
         // to finalize the pickup or snap back to the board.
         public bool WasAcceptedByTray { get; set; }
 
-        public void Configure(BoardGrid board, Camera dragCamera, BoardView boardView, GameManager gameManager, DragFeelSettings dragFeel)
+        public void Configure(BoardGrid board, Camera dragCamera, BoardView boardView, GameManager gameManager, DragFeelSettings dragFeel, BoardAnimationConfig animConfig)
         {
             this.board = board;
             this.dragCamera = dragCamera;
             this.boardView = boardView;
             this.gameManager = gameManager;
             this.dragFeel = dragFeel;
+            this.animConfig = animConfig;
         }
 
         public void SetCell(int x, int y, BoardItem item)
@@ -117,8 +123,12 @@ namespace ExpoTheExplorer.UI
             homePosition = transform.position;
             homeScale = transform.localScale;
 
+            // A blanket kill here is safe (and intended) — grabbing the item
+            // is a deliberate takeover of anything currently animating it
+            // (a leftover pop-in, snap-back, or tray-settle tween), unlike
+            // OnEndDrag below where a targeted kill is needed instead.
             transform.DOKill();
-            transform.DOScale(homeScale * dragFeel.pickupScaleMultiplier, dragFeel.pickupScaleDuration).SetEase(Ease.OutBack);
+            scaleTween = transform.DOScale(homeScale * dragFeel.pickupScaleMultiplier, dragFeel.pickupScaleDuration).SetEase(Ease.OutBack);
 
             // Snap straight to the resting hover position (finger + offset)
             // the moment it's picked up, and remember the finger's starting
@@ -232,8 +242,19 @@ namespace ExpoTheExplorer.UI
 
             IsDragging = false;
 
-            transform.DOKill();
-            transform.localScale = homeScale;
+            // Targeted kill, not a blanket transform.DOKill() — in the
+            // direct-hit tray-drop case, OnDrop (and the PlaceInSlot fly-in
+            // tween it starts) already ran just before UGUI calls OnEndDrag,
+            // and a blanket kill here would cancel that tween before it
+            // even got to play. Skipped entirely when a delivery-success
+            // grow/lift/fade is already underway (started by OnDrop too) —
+            // this would otherwise instantly snap the scale back to
+            // homeScale mid-animation.
+            if (!deliverySuccessInProgress)
+            {
+                scaleTween?.Kill();
+                transform.localScale = homeScale;
+            }
 
             // hoveredTray already reflects whichever tray the item's own
             // displayed position was last over (kept in sync every
@@ -252,7 +273,10 @@ namespace ExpoTheExplorer.UI
                 hoveredTray = null;
             }
 
-            if (ownCollider != null) ownCollider.enabled = true;
+            // Also skipped during a delivery-success animation — the item
+            // is on its way out (lifting/fading), it shouldn't become
+            // draggable again for however long that takes.
+            if (!deliverySuccessInProgress && ownCollider != null) ownCollider.enabled = true;
 
             if (layerRenderers != null)
             {
@@ -291,17 +315,31 @@ namespace ExpoTheExplorer.UI
                     board.RemoveItem(cellX, cellY);
                 }
 
+                // This is a relocation of an item that already existed
+                // (board-to-board, or a tray pickup landing back on the
+                // board), not a genuinely new appearance — skip the
+                // Starting Point fly-in BoardView would otherwise give it.
+                boardView.BeginFlyInOverride(null);
                 board.TryPlaceItem(CurrentItem, newX, newY);
+                boardView.EndFlyInOverride();
                 Destroy(gameObject);
             }
             else if (!wasOnBoard)
             {
+                // A tray pickup dropped somewhere invalid — it still needs
+                // to land on the board (same as a wrong-delivery scatter),
+                // but flying in from Starting Point would look wrong for an
+                // item the player was just holding; fly in from wherever it
+                // last visually was instead.
+                boardView.BeginFlyInOverride(transform.position);
                 board.RequestSpawn(CurrentItem);
+                boardView.EndFlyInOverride();
                 Destroy(gameObject);
             }
             else
             {
-                transform.position = homePosition;
+                // GDD Section 5: "...snap-back animation on invalid drop."
+                positionTween = transform.DOMove(homePosition, animConfig.SnapBackDuration).SetEase(Ease.OutQuad);
             }
         }
 
@@ -321,8 +359,16 @@ namespace ExpoTheExplorer.UI
             }
 
             currentTraySlotIndex = slotIndex;
+
+            // Reparent without letting the item jump to the slot's local
+            // zero instantly — restoring its world position right after
+            // SetParent keeps it exactly where it visually was, so the
+            // settle tween below has an actual distance to travel instead
+            // of the item just appearing already-seated.
+            var worldPos = transform.position;
             transform.SetParent(slotTransform, false);
-            transform.localPosition = Vector3.zero;
+            transform.position = worldPos;
+            positionTween = transform.DOLocalMove(Vector3.zero, animConfig.TraySettleDuration).SetEase(Ease.OutBack);
         }
 
         // Called by WorldTrayView.OnDrop when this exact drop just resolved
@@ -338,6 +384,37 @@ namespace ExpoTheExplorer.UI
             }
 
             Destroy(gameObject);
+        }
+
+        // Called by WorldTrayView.TryAcceptDrop instead of ReleaseAndDestroy
+        // when this exact drop was the one that completed a successful
+        // delivery — this item was never placed into a slot, so it's still
+        // sitting wherever the drag left it. Grows then lifts-and-fades in
+        // sync with the tray's own delivery animation (WorldTrayView.
+        // PlayDeliverySuccess) instead of just vanishing. OnEndDrag's own
+        // scale reset / collider re-enable check deliverySuccessInProgress
+        // and stay hands-off for the rest of this object's short remaining
+        // lifetime; board-side pool release still happens the normal way
+        // back in OnEndDrag once this returns.
+        public void PlayDeliverySuccessAndDestroy(BoardAnimationConfig config)
+        {
+            deliverySuccessInProgress = true;
+            if (ownCollider != null) ownCollider.enabled = false;
+
+            transform.DOKill();
+            var sequence = DOTween.Sequence();
+            sequence.Append(transform.DOScale(homeScale * config.DeliveryGrowScale, config.DeliveryGrowDuration).SetEase(Ease.OutQuad));
+            sequence.Append(transform.DOMoveY(transform.position.y + config.DeliveryLiftDistance, config.DeliveryFadeDuration).SetEase(Ease.InQuad));
+
+            if (layerRenderers != null)
+            {
+                foreach (var layerRenderer in layerRenderers)
+                {
+                    if (layerRenderer != null) sequence.Join(layerRenderer.DOFade(0f, config.DeliveryFadeDuration));
+                }
+            }
+
+            sequence.OnComplete(() => Destroy(gameObject));
         }
     }
 }

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using DG.Tweening;
 using ExpoTheExplorer.Bootstrap;
 using ExpoTheExplorer.Core;
 using ExpoTheExplorer.Data;
@@ -22,6 +23,10 @@ namespace ExpoTheExplorer.UI
         [Header("Drag Feel")]
         [Tooltip("Shared tuning for the pickup/hover/follow feel of dragged board items.")]
         [SerializeField] private DragFeelConfig dragFeelConfig;
+        [Tooltip("Shared tuning for board/tray animation durations (snap-back, tray settle, pop-in, slot clear).")]
+        [SerializeField] private BoardAnimationConfig animConfig;
+        [Tooltip("Optional — if set, newly-appearing items fly in from this point (scaling up as they travel) instead of just popping in at their destination cell.")]
+        [SerializeField] private Transform startingPoint;
 
         private BoardGrid board;
         private Sprite placeholderSprite;
@@ -87,6 +92,32 @@ namespace ExpoTheExplorer.UI
         public void ReleaseContainer(int x, int y)
         {
             itemContainers[x, y] = null;
+        }
+
+        // Brackets whatever call below is expected to trigger RefreshCell for
+        // a "new appearance" — a board-to-board move (BoardItemDragHandler),
+        // a tray pickup dropped somewhere invalid (BoardItemDragHandler), or
+        // a wrong-order scatter (WorldTrayView, around TrayManager.
+        // TryAddItem) — so that appearance uses the given origin instead of
+        // Starting Point. origin == null means "no fly-in at all" (a plain
+        // relocation, not a new appearance); a real Vector3 means "fly in
+        // from here instead" (the item's last position, or the tray's
+        // position). Not one-shot/per-cell: a single scatter can trigger
+        // several RequestSpawn calls (one per item) before the caller ends
+        // the bracket, and all of them should use the same origin.
+        private bool flyInOverrideActive;
+        private Vector3? flyInOverrideOrigin;
+
+        public void BeginFlyInOverride(Vector3? origin)
+        {
+            flyInOverrideActive = true;
+            flyInOverrideOrigin = origin;
+        }
+
+        public void EndFlyInOverride()
+        {
+            flyInOverrideActive = false;
+            flyInOverrideOrigin = null;
         }
 
         // Inverse of CellPosition — used by BoardItemDragHandler to figure out
@@ -161,6 +192,12 @@ namespace ExpoTheExplorer.UI
                 return;
             }
 
+            // Computed before container gets created/reactivated below — a
+            // brand-new container is active-by-default the instant it's
+            // made, so "was this inactive" has to be captured first or a
+            // fresh spawn would never look newly-appearing.
+            var isNewlyAppearing = container == null || !container.gameObject.activeSelf;
+
             if (container == null)
             {
                 var itemObject = new GameObject($"Item_{x}_{y}");
@@ -174,7 +211,7 @@ namespace ExpoTheExplorer.UI
                 collider.size = new Vector2(cellSize, cellSize);
 
                 var dragHandler = itemObject.AddComponent<BoardItemDragHandler>();
-                dragHandler.Configure(board, resolvedCamera, this, gameManager, dragFeel);
+                dragHandler.Configure(board, resolvedCamera, this, gameManager, dragFeel, animConfig);
 
                 container = itemObject.transform;
                 itemContainers[x, y] = container;
@@ -183,6 +220,49 @@ namespace ExpoTheExplorer.UI
 
             container.gameObject.SetActive(true);
             container.GetComponent<BoardItemDragHandler>().SetCell(x, y, item);
+
+            if (isNewlyAppearing)
+            {
+                // Covers a brand-new spawn, a wrong-delivery/timeout scatter
+                // back onto the board, and a board-to-board move's
+                // destination cell — all three go through this exact same
+                // "container was inactive/nonexistent, now showing an item"
+                // path. Which origin (if any) the fly-in should use depends
+                // on which of those this actually is: a genuinely new item
+                // defaults to Starting Point; a caller-specified override
+                // (BeginFlyInOverride) takes priority when active — either a
+                // specific origin (last drag position, tray position) or
+                // null (a relocation, no fly-in — plain in-place pop-in).
+                container.DOKill();
+                Vector3? flyInOrigin = flyInOverrideActive
+                    ? flyInOverrideOrigin
+                    : (startingPoint != null ? startingPoint.position : null);
+
+                if (flyInOrigin.HasValue)
+                {
+                    // container.position is already this cell's correct
+                    // destination (set above for a brand-new container, or
+                    // never moved for a reused one) — captured before it
+                    // gets overwritten below, then animated back to it, so
+                    // the item visually flies in from flyInOrigin and grows
+                    // into place rather than just popping in place.
+                    var destinationWorldPos = container.position;
+                    container.position = flyInOrigin.Value;
+                    container.localScale = Vector3.zero;
+                    // DOJump arcs the path itself (a real parabola, not just
+                    // an eased straight line) — jumpPower is the arc's peak
+                    // height, scaled by cellSize so it holds up across
+                    // different board/camera sizes; 1 jump = a single arc,
+                    // not a bounced/repeating hop.
+                    container.DOJump(destinationWorldPos, animConfig.PopInJumpPower * cellSize, 1, animConfig.PopInDuration).SetEase(Ease.OutQuad);
+                    container.DOScale(Vector3.one, animConfig.PopInDuration).SetEase(Ease.OutBack);
+                }
+                else
+                {
+                    container.localScale = Vector3.zero;
+                    container.DOScale(Vector3.one, animConfig.PopInDuration).SetEase(Ease.OutBack);
+                }
+            }
 
             var resolvedLayers = item.ResolvedLayers;
             var pool = itemLayerPools[x, y];

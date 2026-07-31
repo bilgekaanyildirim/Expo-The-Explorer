@@ -17,7 +17,13 @@ namespace ExpoTheExplorer.Core
         public int Xp { get; set; }
         public int Level { get; set; }
 
-        public EventBus<Ticket> TicketDelivered { get; } = new();
+        // Carries the slot index alongside the ticket — WorldTrayView needs it
+        // to tell whether a just-resolved batch on ITS OWN slot was a delivery
+        // (plays the delivery-success lift/fade) as opposed to a wrong-order
+        // scatter (TrayManager.TryAddItem calls this synchronously before
+        // returning, so a subscriber's flag is already set by the time the
+        // caller checks it).
+        public EventBus<(int SlotIndex, Ticket Ticket)> TicketDelivered { get; } = new();
         public EventBus<Ticket> TicketCancelled { get; } = new();
 
         // Fires with the slot index + NEW ticket whenever one is assigned into a
