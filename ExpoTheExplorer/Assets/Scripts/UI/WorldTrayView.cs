@@ -61,11 +61,16 @@ namespace ExpoTheExplorer.UI
             restScale = transform.localScale;
             restPosition = transform.position;
             gameManager.State.TicketDelivered.Subscribe(OnTicketDelivered);
+            gameManager.State.TraySlotScatterBegin.Subscribe(OnTraySlotScatterBegin);
+            gameManager.State.TraySlotScatterEnd.Subscribe(OnTraySlotScatterEnd);
         }
 
         private void OnDestroy()
         {
-            if (isValid) gameManager.State.TicketDelivered.Unsubscribe(OnTicketDelivered);
+            if (!isValid) return;
+            gameManager.State.TicketDelivered.Unsubscribe(OnTicketDelivered);
+            gameManager.State.TraySlotScatterBegin.Unsubscribe(OnTraySlotScatterBegin);
+            gameManager.State.TraySlotScatterEnd.Unsubscribe(OnTraySlotScatterEnd);
         }
 
         // TrayManager.TryAddItem calls deliverTicket (-> TicketSlotManager.
@@ -76,6 +81,22 @@ namespace ExpoTheExplorer.UI
         private void OnTicketDelivered((int SlotIndex, Ticket Ticket) delivery)
         {
             if (delivery.SlotIndex == slotIndex) justDelivered = true;
+        }
+
+        // These bracket exactly TrayManager.ScatterBackToBoard's own
+        // RequestSpawn calls for THIS slot (a wrong order or a timeout,
+        // never a delivery) — narrower than wrapping the whole TryAddItem
+        // call, which on a successful delivery also cascades into the
+        // *next* ticket's unrelated required-item spawn and would wrongly
+        // tag that as flying in from this tray too.
+        private void OnTraySlotScatterBegin(int scatteringSlotIndex)
+        {
+            if (scatteringSlotIndex == slotIndex) boardView.BeginFlyInOverride(transform.position);
+        }
+
+        private void OnTraySlotScatterEnd(int scatteringSlotIndex)
+        {
+            if (scatteringSlotIndex == slotIndex) boardView.EndFlyInOverride();
         }
 
         private bool ValidateReferences()
@@ -126,15 +147,12 @@ namespace ExpoTheExplorer.UI
             var item = dragHandler.CurrentItem;
             justDelivered = false;
 
-            // TryAddItem runs the batch check synchronously and, on a wrong
-            // order, scatters every item in this slot back onto the board
-            // (one RequestSpawn per item) before returning — bracketing the
-            // whole call means all of them fly in from this tray instead of
-            // Starting Point. Harmless if no scatter happens (nothing ever
-            // consumes the override, so it's just cleared again below).
-            boardView.BeginFlyInOverride(transform.position);
+            // A wrong order's scatter (if this call causes one) is handled
+            // by OnTraySlotScatterBegin/End above, triggered from inside
+            // TrayManager.ScatterBackToBoard itself — narrower than
+            // bracketing this whole call, which on a successful delivery
+            // also cascades into the next ticket's unrelated spawn.
             var accepted = gameManager.TrayManager.TryAddItem(slotIndex, item);
-            boardView.EndFlyInOverride();
 
             dragHandler.WasAcceptedByTray = accepted;
             if (!accepted) return false;

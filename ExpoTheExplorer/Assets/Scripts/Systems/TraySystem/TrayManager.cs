@@ -66,7 +66,7 @@ namespace ExpoTheExplorer.Systems.TraySystem
                 {
                     Debug.Log($"[Tray] Slot {slotIndex}: wrong order for {ticket.CustomerName} — losing a life and scattering items back to the board.");
                     state.Lives--;
-                    ScatterBackToBoard(slot);
+                    ScatterBackToBoard(slotIndex, slot);
                 }
 
                 slot.Clear();
@@ -86,16 +86,26 @@ namespace ExpoTheExplorer.Systems.TraySystem
             var slot = slots[slotIndex];
             if (slot.Items.Count == 0) return;
 
-            ScatterBackToBoard(slot);
+            ScatterBackToBoard(slotIndex, slot);
             slot.Clear();
         }
 
-        private void ScatterBackToBoard(TraySlot slot)
+        // Brackets its own RequestSpawn calls with TraySlotScatterBegin/End
+        // (slotIndex) — narrower than TicketDelivered/TicketAssigned on
+        // purpose: a successful delivery cascades into AssignTicket ->
+        // TicketAssigned synchronously too (the next ticket's required
+        // items spawning), and a view reacting to those broader events
+        // would otherwise wrongly tag that unrelated spawn as part of a
+        // scatter. This method is only ever reached for a wrong order or a
+        // timeout, never a delivery, so it can't cross paths with that.
+        private void ScatterBackToBoard(int slotIndex, TraySlot slot)
         {
+            state.TraySlotScatterBegin.Publish(slotIndex);
             foreach (var item in slot.Items)
             {
                 state.Board.RequestSpawn(item, random);
             }
+            state.TraySlotScatterEnd.Publish(slotIndex);
         }
     }
 }

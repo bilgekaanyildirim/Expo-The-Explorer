@@ -33,6 +33,17 @@ namespace ExpoTheExplorer.Core
         // items; TrayManager listens to clear/scatter that slot's tray.
         public EventBus<(int SlotIndex, Ticket Ticket)> TicketAssigned { get; } = new();
 
+        // Brackets exactly TrayManager.ScatterBackToBoard's own RequestSpawn
+        // calls for one slot (a wrong order OR a timeout — never a
+        // delivery, which never calls it) — deliberately narrower than
+        // TicketAssigned, which also fires for the *next* ticket's
+        // required-item spawn on a successful delivery (same synchronous
+        // call, unrelated cause). A view that only cares about "did this
+        // slot's leftover tray items just get sent back to the board"
+        // should use these, not TicketAssigned.
+        public EventBus<int> TraySlotScatterBegin { get; } = new();
+        public EventBus<int> TraySlotScatterEnd { get; } = new();
+
         public BoardGrid Board { get; }
 
         public GameState(GameConfig config)
