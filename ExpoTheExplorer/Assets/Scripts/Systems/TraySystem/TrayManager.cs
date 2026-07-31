@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using ExpoTheExplorer.Core;
+using UnityEngine;
 
 namespace ExpoTheExplorer.Systems.TraySystem
 {
@@ -15,14 +16,14 @@ namespace ExpoTheExplorer.Systems.TraySystem
     {
         private readonly GameState state;
         private readonly Action<int> deliverTicket;
-        private readonly Random random;
+        private readonly System.Random random;
         private readonly TraySlot[] slots;
 
-        public TrayManager(GameState state, Action<int> deliverTicket, Random random = null)
+        public TrayManager(GameState state, Action<int> deliverTicket, System.Random random = null)
         {
             this.state = state;
             this.deliverTicket = deliverTicket;
-            this.random = random ?? new Random();
+            this.random = random ?? new System.Random();
 
             slots = new TraySlot[GameState.TicketSlotCount];
             for (var i = 0; i < slots.Length; i++)
@@ -53,10 +54,12 @@ namespace ExpoTheExplorer.Systems.TraySystem
             {
                 if (slot.Matches(ticket))
                 {
+                    Debug.Log($"[Tray] Slot {slotIndex}: successfully delivered ticket for {ticket.CustomerName}.");
                     deliverTicket(slotIndex);
                 }
                 else
                 {
+                    Debug.Log($"[Tray] Slot {slotIndex}: wrong order for {ticket.CustomerName} — losing a life and scattering items back to the board.");
                     state.Lives--;
                     ScatterBackToBoard(slot);
                 }
