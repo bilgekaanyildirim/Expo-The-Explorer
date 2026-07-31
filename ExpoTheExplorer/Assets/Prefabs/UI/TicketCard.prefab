@@ -361,6 +361,7 @@ GameObject:
   - component: {fileID: 2851843585372797065}
   - component: {fileID: 9175185640774675680}
   - component: {fileID: 7325544329419098748}
+  - component: {fileID: 2019018694474104031}
   m_Layer: 5
   m_Name: TicketCard
   m_TagString: Untagged
@@ -451,6 +452,7 @@ MonoBehaviour:
   modificationRowTemplate: {fileID: 3489336218224831120}
   sideImage: {fileID: 4948874337212885525}
   drinkImage: {fileID: 1206896203553760044}
+  canvasGroup: {fileID: 2019018694474104031}
 --- !u!114 &7325544329419098748
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -464,6 +466,18 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ExpoTheExplorer.UI.TrayFillCounterView
   fillCounterText: {fileID: 3146512096675668775}
+--- !u!225 &2019018694474104031
+CanvasGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2219557404740664662}
+  m_Enabled: 1
+  m_Alpha: 1
+  m_Interactable: 1
+  m_BlocksRaycasts: 1
+  m_IgnoreParentGroups: 0
 --- !u!1 &2402403542571836272
 GameObject:
   m_ObjectHideFlags: 0
