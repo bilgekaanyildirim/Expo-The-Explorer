@@ -45,6 +45,7 @@ namespace ExpoTheExplorer.UI
         private Vector3 restScale;
         private Vector3 restPosition;
         private TicketCardView ticketCardView;
+        private bool inDropCall;
 
         private void Awake()
         {
@@ -97,9 +98,19 @@ namespace ExpoTheExplorer.UI
         // call, which on a successful delivery also cascades into the
         // *next* ticket's unrelated required-item spawn and would wrongly
         // tag that as flying in from this tray too.
+        //
+        // inDropCall distinguishes which of those two this actually is: only
+        // a wrong order (inDropCall true, set around TryAcceptDrop's own
+        // TryAddItem call below) delays the scattered items' board pop-in to
+        // match PlayWrongOrderShakeThenScatter's shake — a timeout scatter
+        // (inDropCall false, triggered from GameManager.OnTicketAssigned
+        // instead) isn't preceded by any shake, so it keeps appearing
+        // immediately.
         private void OnTraySlotScatterBegin(int scatteringSlotIndex)
         {
-            if (scatteringSlotIndex == slotIndex) boardView.BeginFlyInOverride(transform.position);
+            if (scatteringSlotIndex != slotIndex) return;
+            var delay = inDropCall ? animConfig.ScatterShakeDuration : 0f;
+            boardView.BeginFlyInOverride(transform.position, delay);
         }
 
         private void OnTraySlotScatterEnd(int scatteringSlotIndex)
@@ -161,7 +172,12 @@ namespace ExpoTheExplorer.UI
             // TrayManager.ScatterBackToBoard itself — narrower than
             // bracketing this whole call, which on a successful delivery
             // also cascades into the next ticket's unrelated spawn.
+            // inDropCall tells that handler this scatter (if any) came from
+            // a manual drop rather than a timeout, so it knows to delay the
+            // board-side pop-in to match the shake below.
+            inDropCall = true;
             var accepted = gameManager.TrayManager.TryAddItem(slotIndex, item);
+            inDropCall = false;
 
             dragHandler.WasAcceptedByTray = accepted;
             if (!accepted) return false;
@@ -180,8 +196,7 @@ namespace ExpoTheExplorer.UI
                 }
                 else
                 {
-                    ClearAllSlotVisuals();
-                    dragHandler.ReleaseAndDestroy();
+                    PlayWrongOrderShakeThenScatter(dragHandler);
                 }
             }
             else
@@ -251,6 +266,29 @@ namespace ExpoTheExplorer.UI
             });
 
             finalItem.PlayDeliverySuccessAndDestroy(animConfig);
+        }
+
+        // Wrong order: the tray (and everything sitting in it, since
+        // they're all descendants) plus the just-dropped final item shake
+        // in place for ScatterShakeDuration before actually vanishing — the
+        // model already placed the scattered items on their board cells
+        // synchronously inside TryAddItem above, but BoardView.RefreshCell
+        // is holding their pop-in invisible for this same duration (the
+        // delay passed through OnTraySlotScatterBegin), so nothing shows up
+        // on the board until this shake finishes and hands off to it.
+        private void PlayWrongOrderShakeThenScatter(BoardItemDragHandler finalItem)
+        {
+            transform.DOKill();
+            transform.DOShakePosition(animConfig.ScatterShakeDuration, animConfig.ScatterShakeStrength);
+
+            finalItem.transform.DOKill();
+            finalItem.transform.DOShakePosition(animConfig.ScatterShakeDuration, animConfig.ScatterShakeStrength);
+
+            DOVirtual.DelayedCall(animConfig.ScatterShakeDuration, () =>
+            {
+                ClearAllSlotVisuals();
+                finalItem.ReleaseAndDestroy();
+            });
         }
 
         private static void DestroySlotChildrenImmediate(Transform slot)

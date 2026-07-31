@@ -21,6 +21,12 @@ namespace ExpoTheExplorer.Data
         [Tooltip("Duration (seconds) of the scale-down tween before a resolved tray slot's items are destroyed.")]
         [SerializeField] private float slotClearDuration = 0.15f;
 
+        [Header("Wrong Order")]
+        [Tooltip("Duration (seconds) the tray and its contents shake before scattering back to the board on a wrong order.")]
+        [SerializeField] private float scatterShakeDuration = 0.5f;
+        [Tooltip("Shake strength (world units) for the wrong-order pre-scatter shake.")]
+        [SerializeField] private float scatterShakeStrength = 0.3f;
+
         [Header("Delivery Success")]
         [Tooltip("Scale multiplier the tray (and the just-delivered item) grows to on a successful delivery.")]
         [SerializeField] private float deliveryGrowScale = 1.15f;
@@ -48,6 +54,8 @@ namespace ExpoTheExplorer.Data
         public float PopInDuration => popInDuration;
         public float PopInJumpPower => popInJumpPower;
         public float SlotClearDuration => slotClearDuration;
+        public float ScatterShakeDuration => scatterShakeDuration;
+        public float ScatterShakeStrength => scatterShakeStrength;
         public float DeliveryGrowScale => deliveryGrowScale;
         public float DeliveryGrowDuration => deliveryGrowDuration;
         public float DeliveryLiftDistance => deliveryLiftDistance;

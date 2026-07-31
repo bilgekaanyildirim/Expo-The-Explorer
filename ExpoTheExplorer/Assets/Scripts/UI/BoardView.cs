@@ -107,17 +107,25 @@ namespace ExpoTheExplorer.UI
         // the bracket, and all of them should use the same origin.
         private bool flyInOverrideActive;
         private Vector3? flyInOverrideOrigin;
+        private float flyInOverrideDelay;
 
-        public void BeginFlyInOverride(Vector3? origin)
+        // delay lets a wrong-order scatter hold the newly-appeared item
+        // invisible (still scale zero at its origin) for as long as
+        // WorldTrayView's own pre-scatter shake takes, so the two stay in
+        // sync instead of the board item popping in while the tray is still
+        // visibly shaking with the (about to vanish) old items.
+        public void BeginFlyInOverride(Vector3? origin, float delay = 0f)
         {
             flyInOverrideActive = true;
             flyInOverrideOrigin = origin;
+            flyInOverrideDelay = delay;
         }
 
         public void EndFlyInOverride()
         {
             flyInOverrideActive = false;
             flyInOverrideOrigin = null;
+            flyInOverrideDelay = 0f;
         }
 
         // Inverse of CellPosition — used by BoardItemDragHandler to figure out
@@ -237,6 +245,7 @@ namespace ExpoTheExplorer.UI
                 Vector3? flyInOrigin = flyInOverrideActive
                     ? flyInOverrideOrigin
                     : (startingPoint != null ? startingPoint.position : null);
+                var flyInDelay = flyInOverrideActive ? flyInOverrideDelay : 0f;
 
                 if (flyInOrigin.HasValue)
                 {
@@ -253,9 +262,12 @@ namespace ExpoTheExplorer.UI
                     // an eased straight line) — jumpPower is the arc's peak
                     // height, scaled by cellSize so it holds up across
                     // different board/camera sizes; 1 jump = a single arc,
-                    // not a bounced/repeating hop.
-                    container.DOJump(destinationWorldPos, animConfig.PopInJumpPower * cellSize, 1, animConfig.PopInDuration).SetEase(Ease.OutQuad);
-                    container.DOScale(Vector3.one, animConfig.PopInDuration).SetEase(Ease.OutBack);
+                    // not a bounced/repeating hop. flyInDelay (only nonzero
+                    // for a wrong-order scatter) keeps the container
+                    // invisible at its origin until WorldTrayView's own
+                    // pre-scatter shake finishes, so the two stay in sync.
+                    container.DOJump(destinationWorldPos, animConfig.PopInJumpPower * cellSize, 1, animConfig.PopInDuration).SetEase(Ease.OutQuad).SetDelay(flyInDelay);
+                    container.DOScale(Vector3.one, animConfig.PopInDuration).SetEase(Ease.OutBack).SetDelay(flyInDelay);
                 }
                 else
                 {
