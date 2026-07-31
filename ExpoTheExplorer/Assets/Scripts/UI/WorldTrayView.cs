@@ -225,8 +225,8 @@ namespace ExpoTheExplorer.UI
                 DestroySlotChildrenImmediate(sideSlot);
                 DestroySlotChildrenImmediate(drinkSlot);
 
-                // "New tray" re-entrance: comes back in from directly below
-                // rest position, growing from nothing into place, instead of
+                // "New tray" re-entrance: grows and fades in right at rest
+                // position (no movement) instead of sliding up from below or
                 // just snapping back for the next ticket. Re-fetched here
                 // (rather than reusing the captured `renderers`) since those
                 // included the now-destroyed slot items — this only picks up
@@ -234,7 +234,7 @@ namespace ExpoTheExplorer.UI
                 var remainingRenderers = GetComponentsInChildren<SpriteRenderer>(true);
 
                 transform.DOKill();
-                transform.position = restPosition - new Vector3(0f, animConfig.DeliveryLiftDistance, 0f);
+                transform.position = restPosition;
                 transform.localScale = Vector3.zero;
                 foreach (var renderer in remainingRenderers)
                 {
@@ -243,7 +243,6 @@ namespace ExpoTheExplorer.UI
                     renderer.color = color;
                 }
 
-                transform.DOMove(restPosition, animConfig.DeliveryReentryDuration).SetEase(Ease.OutQuad);
                 transform.DOScale(restScale, animConfig.DeliveryReentryDuration).SetEase(Ease.OutBack);
                 foreach (var renderer in remainingRenderers)
                 {
