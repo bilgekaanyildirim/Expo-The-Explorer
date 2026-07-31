@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using ExpoTheExplorer.Bootstrap;
 using ExpoTheExplorer.Core;
+using ExpoTheExplorer.Data;
 using UnityEngine;
 
 namespace ExpoTheExplorer.UI
@@ -15,6 +16,8 @@ namespace ExpoTheExplorer.UI
         [SerializeField] private GameManager gameManager;
         [SerializeField] private TicketCardView cardPrefab;
         [SerializeField] private Transform cardsParent;
+        [Tooltip("Shared tuning for board/tray/ticket-card animation durations.")]
+        [SerializeField] private BoardAnimationConfig animConfig;
 
         [Tooltip("Ticket background art per patience type (GDD Section 8): red=impatient, green=patient. Normal uses the yellow background here in place of the GDD's neutral/cream suggestion.")]
         [SerializeField] private Sprite normalTicketSprite;
@@ -34,16 +37,26 @@ namespace ExpoTheExplorer.UI
 
         public Sprite DirectionSpriteFor(bool isAddition) => isAddition ? additionSprite : removalSprite;
 
+        private readonly List<TicketCardView> cards = new();
+
+        // Looked up by WorldTrayView (via its own TicketCardsView reference)
+        // once this object's Awake has run — cards are Instantiate'd here at
+        // runtime, so unlike this component itself they can't be wired by
+        // hand in the Editor ahead of time.
+        public TicketCardView GetCard(int slotIndex) => cards[slotIndex];
+
         private void Awake()
         {
             if (!ValidateReferences()) return;
 
             ClearExistingCards();
+            cards.Clear();
 
             for (var i = 0; i < GameState.TicketSlotCount; i++)
             {
                 var card = Instantiate(cardPrefab, cardsParent);
-                card.Initialize(gameManager, i, this);
+                card.Initialize(gameManager, i, this, animConfig);
+                cards.Add(card);
 
                 var fillCounter = card.GetComponentInChildren<TrayFillCounterView>(true);
                 if (fillCounter != null) fillCounter.Initialize(gameManager, i);
@@ -59,6 +72,7 @@ namespace ExpoTheExplorer.UI
             if (gameManager == null) missing.Add(nameof(gameManager));
             if (cardPrefab == null) missing.Add(nameof(cardPrefab));
             if (cardsParent == null) missing.Add(nameof(cardsParent));
+            if (animConfig == null) missing.Add(nameof(animConfig));
 
             if (missing.Count == 0) return true;
 

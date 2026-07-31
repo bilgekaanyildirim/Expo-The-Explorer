@@ -36,12 +36,15 @@ namespace ExpoTheExplorer.UI
         [SerializeField] private BoardAnimationConfig animConfig;
         [Tooltip("Needed so a wrong-order scatter can tell BoardView to fly those items in from this tray instead of Starting Point.")]
         [SerializeField] private BoardView boardView;
+        [Tooltip("Needed to look up this slot's TicketCardView so its own exit/entry animation can sync with a successful delivery's lift-off.")]
+        [SerializeField] private TicketCardsView ticketCardsView;
 
         private bool isValid;
         private int lastKnownCount = -1;
         private bool justDelivered;
         private Vector3 restScale;
         private Vector3 restPosition;
+        private TicketCardView ticketCardView;
 
         private void Awake()
         {
@@ -60,6 +63,11 @@ namespace ExpoTheExplorer.UI
             lastKnownCount = gameManager.TrayManager.GetContents(slotIndex).Count;
             restScale = transform.localScale;
             restPosition = transform.position;
+            // TicketCardsView.Awake() instantiates its cards at runtime, so
+            // this can't be wired by hand in the Editor — resolved here
+            // instead, safe because Unity finishes every object's Awake()
+            // before any Start() runs.
+            ticketCardView = ticketCardsView.GetCard(slotIndex);
             gameManager.State.TicketDelivered.Subscribe(OnTicketDelivered);
             gameManager.State.TraySlotScatterBegin.Subscribe(OnTraySlotScatterBegin);
             gameManager.State.TraySlotScatterEnd.Subscribe(OnTraySlotScatterEnd);
@@ -107,6 +115,7 @@ namespace ExpoTheExplorer.UI
             if (sideSlot == null) missing.Add(nameof(sideSlot));
             if (drinkSlot == null) missing.Add(nameof(drinkSlot));
             if (boardView == null) missing.Add(nameof(boardView));
+            if (ticketCardsView == null) missing.Add(nameof(ticketCardsView));
 
             if (missing.Count == 0) return true;
 
@@ -200,6 +209,10 @@ namespace ExpoTheExplorer.UI
             transform.DOKill();
             var sequence = DOTween.Sequence();
             sequence.Append(transform.DOScale(restScale * animConfig.DeliveryGrowScale, animConfig.DeliveryGrowDuration).SetEase(Ease.OutQuad));
+            // Fires exactly when the grow finishes and the lift begins —
+            // the ticket card's own exit (slide + fade) starts in sync with
+            // the tray actually starting to move up, not the grow before it.
+            sequence.InsertCallback(animConfig.DeliveryGrowDuration, () => ticketCardView.PlayDeliveryTransition());
             sequence.Append(transform.DOMoveY(transform.position.y + animConfig.DeliveryLiftDistance, animConfig.DeliveryFadeDuration).SetEase(Ease.InQuad));
             foreach (var renderer in renderers)
             {

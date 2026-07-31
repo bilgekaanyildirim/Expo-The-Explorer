@@ -33,6 +33,16 @@ namespace ExpoTheExplorer.Data
         [Tooltip("Duration (seconds) of the next tray growing back in from below (DeliveryLiftDistance below rest position) once the previous one finishes lifting off.")]
         [SerializeField] private float deliveryReentryDuration = 0.25f;
 
+        [Header("Ticket Card")]
+        [Tooltip("How far the ticket card slides (RectTransform units) while fading out, once its tray starts lifting off after a successful delivery.")]
+        [SerializeField] private float ticketExitLiftDistance = 150f;
+        [Tooltip("Duration (seconds) of the ticket card's exit slide-and-fade.")]
+        [SerializeField] private float ticketExitDuration = 0.3f;
+        [Tooltip("How far above rest position (RectTransform units) the next ticket's card starts before dropping in.")]
+        [SerializeField] private float ticketEntryDropDistance = 150f;
+        [Tooltip("Duration (seconds) of the next ticket card's drop-in-and-fade.")]
+        [SerializeField] private float ticketEntryDuration = 0.3f;
+
         public float SnapBackDuration => snapBackDuration;
         public float TraySettleDuration => traySettleDuration;
         public float PopInDuration => popInDuration;
@@ -43,5 +53,9 @@ namespace ExpoTheExplorer.Data
         public float DeliveryLiftDistance => deliveryLiftDistance;
         public float DeliveryFadeDuration => deliveryFadeDuration;
         public float DeliveryReentryDuration => deliveryReentryDuration;
+        public float TicketExitLiftDistance => ticketExitLiftDistance;
+        public float TicketExitDuration => ticketExitDuration;
+        public float TicketEntryDropDistance => ticketEntryDropDistance;
+        public float TicketEntryDuration => ticketEntryDuration;
     }
 }

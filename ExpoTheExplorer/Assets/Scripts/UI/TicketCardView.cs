@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using DG.Tweening;
 using ExpoTheExplorer.Bootstrap;
 using ExpoTheExplorer.Core;
 using ExpoTheExplorer.Data;
@@ -31,22 +32,32 @@ namespace ExpoTheExplorer.UI
         [SerializeField] private ModificationSlotView modificationRowTemplate;
         [SerializeField] private Image sideImage;
         [SerializeField] private Image drinkImage;
+        [Tooltip("Needed to fade the whole card (including dynamically-created modification rows) as one unit during the delivery-success exit/entry transition.")]
+        [SerializeField] private CanvasGroup canvasGroup;
 
         private GameManager gameManager;
         private int slotIndex;
         private TicketCardsView owner;
+        private BoardAnimationConfig animConfig;
         private Ticket cachedTicket;
         private bool isValid;
+        private bool transitionInProgress;
+        private RectTransform rectTransform;
+        private Vector2 restAnchoredPosition;
         private readonly List<ModificationSlotView> modificationRows = new();
 
-        public void Initialize(GameManager gameManager, int slotIndex, TicketCardsView owner)
+        public void Initialize(GameManager gameManager, int slotIndex, TicketCardsView owner, BoardAnimationConfig animConfig)
         {
             this.gameManager = gameManager;
             this.slotIndex = slotIndex;
             this.owner = owner;
+            this.animConfig = animConfig;
 
             isValid = ValidateReferences();
             if (!isValid) return;
+
+            rectTransform = (RectTransform)transform;
+            restAnchoredPosition = rectTransform.anchoredPosition;
 
             // The container itself must stay active — only the template row
             // inside it (and the clones built from it) toggle. Prefab authoring
@@ -72,6 +83,7 @@ namespace ExpoTheExplorer.UI
             if (modificationRowTemplate == null) missing.Add(nameof(modificationRowTemplate));
             if (sideImage == null) missing.Add(nameof(sideImage));
             if (drinkImage == null) missing.Add(nameof(drinkImage));
+            if (canvasGroup == null) missing.Add(nameof(canvasGroup));
 
             if (missing.Count == 0) return true;
 
@@ -81,7 +93,13 @@ namespace ExpoTheExplorer.UI
 
         private void Update()
         {
-            if (!isValid) return;
+            // Suppressed for the duration of PlayDeliveryTransition below —
+            // that method already knows the ticket changed (it caused it)
+            // and handles the rebuild itself once its exit animation
+            // finishes; letting this poll rebuild instantly the moment the
+            // reference changes would skip straight past the whole
+            // exit/entry animation.
+            if (!isValid || transitionInProgress) return;
 
             var ticket = gameManager.State.TicketSlots[slotIndex];
             if (!ReferenceEquals(ticket, cachedTicket))
@@ -94,6 +112,36 @@ namespace ExpoTheExplorer.UI
             {
                 RefreshTimer(ticket);
             }
+        }
+
+        // Called by WorldTrayView.PlayDeliverySuccess (via TicketCardsView.
+        // GetCard) exactly when the tray for this slot starts its own lift
+        // phase after a successful delivery — slides this (still the OLD
+        // ticket's) card up while fading out, then swaps to whatever ticket
+        // is now actually in this slot (already reassigned synchronously by
+        // the time this runs) and drops the new card in from above.
+        public void PlayDeliveryTransition()
+        {
+            if (!isValid) return;
+
+            transitionInProgress = true;
+            rectTransform.DOKill();
+            canvasGroup.DOKill();
+
+            var sequence = DOTween.Sequence();
+            sequence.Append(rectTransform.DOAnchorPosY(restAnchoredPosition.y + animConfig.TicketExitLiftDistance, animConfig.TicketExitDuration).SetEase(Ease.InQuad));
+            sequence.Join(canvasGroup.DOFade(0f, animConfig.TicketExitDuration));
+            sequence.AppendCallback(() =>
+            {
+                var newTicket = gameManager.State.TicketSlots[slotIndex];
+                cachedTicket = newTicket;
+                RebuildContent(newTicket);
+                rectTransform.anchoredPosition = new Vector2(restAnchoredPosition.x, restAnchoredPosition.y + animConfig.TicketEntryDropDistance);
+                canvasGroup.alpha = 0f;
+            });
+            sequence.Append(rectTransform.DOAnchorPos(restAnchoredPosition, animConfig.TicketEntryDuration).SetEase(Ease.OutBack));
+            sequence.Join(canvasGroup.DOFade(1f, animConfig.TicketEntryDuration));
+            sequence.OnComplete(() => transitionInProgress = false);
         }
 
         private void RebuildContent(Ticket ticket)
