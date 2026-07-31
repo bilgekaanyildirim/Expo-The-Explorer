@@ -6,6 +6,7 @@
         "ExpoTheExplorer.Data",
         "ExpoTheExplorer.Systems.TicketSystem",
         "ExpoTheExplorer.Systems.BoardDistribution",
+        "ExpoTheExplorer.Systems.TraySystem",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

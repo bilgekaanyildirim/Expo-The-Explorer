@@ -11,9 +11,11 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1de7473fd8b6048418bc6124b5d2d5f2, type: 3}
   m_Name: Food_Fries
-  m_EditorClassIdentifier:
+  m_EditorClassIdentifier: 
   id: fries
   displayName: Fries
   sprite: {fileID: 21300000, guid: d053bf9d019d04564af39d4b99556378, type: 3}
   category: 1
   availableModifications: []
+  spriteLayers: []
+  overallScale: 0.85

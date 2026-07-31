@@ -89,6 +89,49 @@ namespace ExpoTheExplorer.Tests.EditMode
         }
 
         [Test]
+        public void RequestSpawn_WithoutRandom_PlacesAtFirstEmptyCell()
+        {
+            var grid = new BoardGrid(config);
+
+            grid.RequestSpawn(CreateItem());
+
+            Assert.IsNotNull(grid.ItemAt(0, 0));
+        }
+
+        [Test]
+        public void RequestSpawn_WithRandomSource_PlacesAtVariousEmptyCells_NotAlwaysTheFirst()
+        {
+            var landedPositions = new HashSet<(int X, int Y)>();
+            for (var seed = 0; seed < 30; seed++)
+            {
+                var grid = new BoardGrid(config);
+                grid.RequestSpawn(CreateItem(), new System.Random(seed));
+
+                for (var y = 0; y < grid.Height; y++)
+                {
+                    for (var x = 0; x < grid.Width; x++)
+                    {
+                        if (grid.ItemAt(x, y) != null) landedPositions.Add((x, y));
+                    }
+                }
+            }
+
+            Assert.Greater(landedPositions.Count, 1, "Expected spawns across many seeds to land on more than one cell.");
+        }
+
+        [Test]
+        public void RequestSpawn_WithRandomSource_WhenGridIsFull_QueuesInsteadOfPlacing()
+        {
+            var grid = new BoardGrid(config);
+            FillGrid(grid);
+
+            var placed = grid.RequestSpawn(CreateItem(), new System.Random(1));
+
+            Assert.IsFalse(placed);
+            Assert.AreEqual(1, grid.PendingSpawnCount);
+        }
+
+        [Test]
         public void RemoveItem_DrainsQueuedSpawnIntoFreedCell()
         {
             var grid = new BoardGrid(config);

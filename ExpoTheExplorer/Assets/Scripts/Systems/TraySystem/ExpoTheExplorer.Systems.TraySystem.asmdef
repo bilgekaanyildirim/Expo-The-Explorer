@@ -1,0 +1,17 @@
+{
+    "name": "ExpoTheExplorer.Systems.TraySystem",
+    "rootNamespace": "ExpoTheExplorer.Systems.TraySystem",
+    "references": [
+        "ExpoTheExplorer.Core",
+        "ExpoTheExplorer.Data"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

@@ -36,7 +36,7 @@ namespace ExpoTheExplorer.Systems.TicketSystem
             {
                 if (state.TicketSlots[i] == null)
                 {
-                    state.TicketSlots[i] = DequeueNextTicket();
+                    AssignTicket(i);
                 }
             }
         }
@@ -48,7 +48,7 @@ namespace ExpoTheExplorer.Systems.TicketSystem
 
             ticket.State = TicketState.Delivered;
             state.TicketDelivered.Publish(ticket);
-            state.TicketSlots[slotIndex] = DequeueNextTicket();
+            AssignTicket(slotIndex);
         }
 
         // Life-agnostic on purpose: GDD only ties life loss to a failed tray
@@ -61,7 +61,18 @@ namespace ExpoTheExplorer.Systems.TicketSystem
 
             ticket.State = TicketState.Cancelled;
             state.TicketCancelled.Publish(ticket);
-            state.TicketSlots[slotIndex] = DequeueNextTicket();
+            AssignTicket(slotIndex);
+        }
+
+        // Publishes TicketAssigned with the slot index + NEW ticket — this is
+        // what lets BoardDistributor spawn that order's required items and
+        // TrayManager clear that slot's tray, right when the order arrives,
+        // rather than polling every frame.
+        private void AssignTicket(int slotIndex)
+        {
+            var ticket = DequeueNextTicket();
+            state.TicketSlots[slotIndex] = ticket;
+            state.TicketAssigned.Publish((slotIndex, ticket));
         }
 
         private void EnsureQueueFilled()

@@ -50,13 +50,13 @@ namespace ExpoTheExplorer.Tests.EditMode
             return modConfig;
         }
 
-        private BoardDistributionConfig CreateDistributionConfig(float noiseSpawnIntervalSeconds)
+        private BoardDistributionConfig CreateDistributionConfig(float noiseLeakChance)
         {
             var config = ScriptableObject.CreateInstance<BoardDistributionConfig>();
             spawnedAssets.Add(config);
 
             var serialized = new SerializedObject(config);
-            serialized.FindProperty("noiseSpawnIntervalSeconds").floatValue = noiseSpawnIntervalSeconds;
+            serialized.FindProperty("noiseLeakChance").floatValue = noiseLeakChance;
             serialized.ApplyModifiedPropertiesWithoutUndo();
 
             return config;
@@ -84,100 +84,100 @@ namespace ExpoTheExplorer.Tests.EditMode
         }
 
         [Test]
-        public void Tick_ActiveTicketNeedsMissingItem_SpawnsIt()
+        public void OnOrderPlaced_ActiveTicketNeedsMissingItem_SpawnsIt()
         {
             var state = new GameState(gameConfig);
             var main = CreateFoodItem();
             var ticket = CreateTicket(new List<FoodItemConfig> { main });
-            var distributor = new BoardDistributor(state, CreateDistributionConfig(999f));
+            var distributor = new BoardDistributor(state, CreateDistributionConfig(0f));
 
-            distributor.Tick(0f, new[] { ticket }, Array.Empty<Ticket>());
+            distributor.OnOrderPlaced(new[] { ticket }, Array.Empty<Ticket>());
 
             Assert.AreEqual(1, CountMatchingItemsOnBoard(state.Board, main, ticket.Modifications));
         }
 
         [Test]
-        public void Tick_RequiredItemAlreadyOnBoard_DoesNotSpawnDuplicate()
+        public void OnOrderPlaced_RequiredItemAlreadyOnBoard_DoesNotSpawnDuplicate()
         {
             var state = new GameState(gameConfig);
             var main = CreateFoodItem();
             var ticket = CreateTicket(new List<FoodItemConfig> { main });
             state.Board.TryPlaceItem(new BoardItem(main, ticket.Modifications), 0, 0);
-            var distributor = new BoardDistributor(state, CreateDistributionConfig(999f));
+            var distributor = new BoardDistributor(state, CreateDistributionConfig(0f));
 
-            distributor.Tick(0f, new[] { ticket }, Array.Empty<Ticket>());
+            distributor.OnOrderPlaced(new[] { ticket }, Array.Empty<Ticket>());
 
             Assert.AreEqual(1, CountMatchingItemsOnBoard(state.Board, main, ticket.Modifications));
         }
 
         [Test]
-        public void Tick_TwoTicketsNeedSameExactItem_SpawnsTwoCopies()
+        public void OnOrderPlaced_TwoTicketsNeedSameExactItem_SpawnsTwoCopies()
         {
             var state = new GameState(gameConfig);
             var main = CreateFoodItem();
             var ticketA = CreateTicket(new List<FoodItemConfig> { main });
             var ticketB = CreateTicket(new List<FoodItemConfig> { main });
-            var distributor = new BoardDistributor(state, CreateDistributionConfig(999f));
+            var distributor = new BoardDistributor(state, CreateDistributionConfig(0f));
 
-            distributor.Tick(0f, new[] { ticketA, ticketB }, Array.Empty<Ticket>());
+            distributor.OnOrderPlaced(new[] { ticketA, ticketB }, Array.Empty<Ticket>());
 
             Assert.AreEqual(2, CountMatchingItemsOnBoard(state.Board, main, ticketA.Modifications));
         }
 
         [Test]
-        public void Tick_DifferentModificationCombosOfSameFood_TrackedSeparately()
+        public void OnOrderPlaced_DifferentModificationCombosOfSameFood_TrackedSeparately()
         {
             var state = new GameState(gameConfig);
             var main = CreateFoodItem();
             var mod = CreateModification();
             var ticketPlain = CreateTicket(new List<FoodItemConfig> { main });
             var ticketModified = CreateTicket(new List<FoodItemConfig> { main }, new List<Modification> { new(mod, true) });
-            var distributor = new BoardDistributor(state, CreateDistributionConfig(999f));
+            var distributor = new BoardDistributor(state, CreateDistributionConfig(0f));
 
-            distributor.Tick(0f, new[] { ticketPlain, ticketModified }, Array.Empty<Ticket>());
+            distributor.OnOrderPlaced(new[] { ticketPlain, ticketModified }, Array.Empty<Ticket>());
 
             Assert.AreEqual(1, CountMatchingItemsOnBoard(state.Board, main, ticketPlain.Modifications));
             Assert.AreEqual(1, CountMatchingItemsOnBoard(state.Board, main, ticketModified.Modifications));
         }
 
         [Test]
-        public void Tick_NoiseInterval_DoesNotSpawnBeforeIntervalElapses()
+        public void OnOrderPlaced_NoiseLeakChanceZero_NeverLeaks()
         {
             var state = new GameState(gameConfig);
             var main = CreateFoodItem();
             var upcoming = CreateTicket(new List<FoodItemConfig> { main });
-            var distributor = new BoardDistributor(state, CreateDistributionConfig(4f));
+            var distributor = new BoardDistributor(state, CreateDistributionConfig(0f));
 
-            distributor.Tick(1f, Array.Empty<Ticket>(), new[] { upcoming });
+            distributor.OnOrderPlaced(Array.Empty<Ticket>(), new[] { upcoming });
 
             Assert.AreEqual(0, state.Board.OccupiedCellCount);
         }
 
         [Test]
-        public void Tick_NoiseInterval_SpawnsItemFromUpcomingQueue_AfterIntervalElapses()
+        public void OnOrderPlaced_NoiseLeakChanceOne_LeaksFromUpcomingQueue()
         {
             var state = new GameState(gameConfig);
             var main = CreateFoodItem();
             var upcoming = CreateTicket(new List<FoodItemConfig> { main });
-            var distributor = new BoardDistributor(state, CreateDistributionConfig(2f));
+            var distributor = new BoardDistributor(state, CreateDistributionConfig(1f));
 
-            distributor.Tick(2f, Array.Empty<Ticket>(), new[] { upcoming });
+            distributor.OnOrderPlaced(Array.Empty<Ticket>(), new[] { upcoming });
 
             Assert.AreEqual(1, state.Board.OccupiedCellCount);
         }
 
         [Test]
-        public void Tick_NoUpcomingTickets_SkipsNoiseSpawnWithoutThrowing()
+        public void OnOrderPlaced_NoUpcomingTickets_SkipsNoiseSpawnWithoutThrowing()
         {
             var state = new GameState(gameConfig);
             var distributor = new BoardDistributor(state, CreateDistributionConfig(1f));
 
-            Assert.DoesNotThrow(() => distributor.Tick(5f, Array.Empty<Ticket>(), Array.Empty<Ticket>()));
+            Assert.DoesNotThrow(() => distributor.OnOrderPlaced(Array.Empty<Ticket>(), Array.Empty<Ticket>()));
             Assert.AreEqual(0, state.Board.OccupiedCellCount);
         }
 
         [Test]
-        public void Tick_SameUpcomingTicket_NeverLeaksMoreThanOnce_AcrossManyIntervals()
+        public void OnOrderPlaced_SameUpcomingTicket_NeverLeaksMoreThanOnce_AcrossManyOrders()
         {
             var state = new GameState(gameConfig);
             var main = CreateFoodItem();
@@ -186,14 +186,14 @@ namespace ExpoTheExplorer.Tests.EditMode
 
             for (var i = 0; i < 10; i++)
             {
-                distributor.Tick(1f, Array.Empty<Ticket>(), new[] { upcoming });
+                distributor.OnOrderPlaced(Array.Empty<Ticket>(), new[] { upcoming });
             }
 
             Assert.AreEqual(1, state.Board.OccupiedCellCount);
         }
 
         [Test]
-        public void Tick_TicketLeavesUpcomingQueue_NewTicketBecomesEligibleForNoiseAgain()
+        public void OnOrderPlaced_TicketLeavesUpcomingQueue_NewTicketBecomesEligibleForNoiseAgain()
         {
             var state = new GameState(gameConfig);
             var mainA = CreateFoodItem();
@@ -202,14 +202,14 @@ namespace ExpoTheExplorer.Tests.EditMode
             var ticketB = CreateTicket(new List<FoodItemConfig> { mainB });
             var distributor = new BoardDistributor(state, CreateDistributionConfig(1f));
 
-            distributor.Tick(1f, Array.Empty<Ticket>(), new[] { ticketA });
-            distributor.Tick(1f, Array.Empty<Ticket>(), new[] { ticketB });
+            distributor.OnOrderPlaced(Array.Empty<Ticket>(), new[] { ticketA });
+            distributor.OnOrderPlaced(Array.Empty<Ticket>(), new[] { ticketB });
 
             Assert.AreEqual(2, state.Board.OccupiedCellCount);
         }
 
         [Test]
-        public void Tick_BoardFull_RequestSpawnQueuesWithoutThrowing()
+        public void OnOrderPlaced_BoardFull_RequestSpawnQueuesWithoutThrowing()
         {
             var state = new GameState(gameConfig);
             for (var y = 0; y < state.Board.Height; y++)
@@ -222,9 +222,9 @@ namespace ExpoTheExplorer.Tests.EditMode
 
             var main = CreateFoodItem();
             var ticket = CreateTicket(new List<FoodItemConfig> { main });
-            var distributor = new BoardDistributor(state, CreateDistributionConfig(999f));
+            var distributor = new BoardDistributor(state, CreateDistributionConfig(0f));
 
-            Assert.DoesNotThrow(() => distributor.Tick(0f, new[] { ticket }, Array.Empty<Ticket>()));
+            Assert.DoesNotThrow(() => distributor.OnOrderPlaced(new[] { ticket }, Array.Empty<Ticket>()));
             Assert.AreEqual(1, state.Board.PendingSpawnCount);
         }
     }

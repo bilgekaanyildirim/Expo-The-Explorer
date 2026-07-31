@@ -25,6 +25,7 @@ namespace ExpoTheExplorer.UI
         private Transform itemsParent;
         private float cellSize;
         private Vector2 boardOrigin;
+        private Camera resolvedCamera;
 
         private void Start()
         {
@@ -59,6 +60,15 @@ namespace ExpoTheExplorer.UI
 
         private void OnCellChanged((int X, int Y) coords) => RefreshCell(coords.X, coords.Y);
 
+        // Called by BoardItemDragHandler.PlaceInSlot when an item is permanently
+        // reparented into a tray slot — that container no longer belongs to this
+        // cell's pool, so a future spawn into (x, y) must build a fresh one
+        // instead of reactivating/repositioning the one now sitting in the tray.
+        public void ReleaseContainer(int x, int y)
+        {
+            itemContainers[x, y] = null;
+        }
+
         // Cell size/origin aren't designer-tunable magic numbers — they're derived
         // from the camera's orthographic viewport so the board always fits the
         // screen regardless of aspect ratio (mobile portrait vs. editor window).
@@ -66,6 +76,8 @@ namespace ExpoTheExplorer.UI
         {
             var cam = targetCamera != null ? targetCamera : Camera.main;
             if (cam == null) return;
+
+            resolvedCamera = cam;
 
             var visibleHeight = 2f * cam.orthographicSize;
             var visibleWidth = visibleHeight * cam.aspect;
@@ -118,12 +130,22 @@ namespace ExpoTheExplorer.UI
                 itemObject.transform.SetParent(itemsParent, false);
                 itemObject.transform.localPosition = CellPosition(x, y, -0.1f);
 
+                // Generous hitbox (GDD Section 5 — mobile drop targets should be
+                // larger than the visual bounds) sized to the whole cell, plus the
+                // drag handler that lets this item be picked up toward a tray.
+                var collider = itemObject.AddComponent<BoxCollider2D>();
+                collider.size = new Vector2(cellSize, cellSize);
+
+                var dragHandler = itemObject.AddComponent<BoardItemDragHandler>();
+                dragHandler.Configure(board, resolvedCamera, this);
+
                 container = itemObject.transform;
                 itemContainers[x, y] = container;
                 itemLayerPools[x, y] = new List<SpriteRenderer>();
             }
 
             container.gameObject.SetActive(true);
+            container.GetComponent<BoardItemDragHandler>().SetCell(x, y, item);
 
             var resolvedLayers = item.ResolvedLayers;
             var pool = itemLayerPools[x, y];

@@ -10,9 +10,9 @@ namespace ExpoTheExplorer.Data
     [CreateAssetMenu(fileName = "BoardDistributionConfig", menuName = "ExpoTheExplorer/Data/Board Distribution Config")]
     public class BoardDistributionConfig : ScriptableObject
     {
-        [Tooltip("How often the noise pool attempts to leak one item from an upcoming (not-yet-active) ticket onto the board.")]
-        [SerializeField] private float noiseSpawnIntervalSeconds = 4f;
+        [Tooltip("Chance that a newly placed order leaks one item from the upcoming (not-yet-active) ticket queue onto the board.")]
+        [SerializeField, Range(0f, 1f)] private float noiseLeakChance = 0.5f;
 
-        public float NoiseSpawnIntervalSeconds => noiseSpawnIntervalSeconds;
+        public float NoiseLeakChance => noiseLeakChance;
     }
 }

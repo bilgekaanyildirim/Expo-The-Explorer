@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1de7473fd8b6048418bc6124b5d2d5f2, type: 3}
   m_Name: Food_Burger
-  m_EditorClassIdentifier:
+  m_EditorClassIdentifier: 
   id: burger
   displayName: Burger
   sprite: {fileID: 21300000, guid: 8219fedc0259c4500918c7c405c3d17f, type: 3}
@@ -26,35 +26,42 @@ MonoBehaviour:
     visibility: 0
     modification: {fileID: 0}
     direction: 0
-    offset: {x: 0, y: 0}
-    pushAmount: {x: 0, y: 0}
+    offset: {x: 0, y: -0.35}
+    pushAmount: {x: 0, y: -0.35}
+    scale: 1
   - sprite: {fileID: 21300000, guid: 990ced55ec7a74b898990b9d8db3a773, type: 3}
     visibility: 2
     modification: {fileID: 11400000, guid: d801d15b9fc94fb1a1afd211216b1921, type: 2}
     direction: 1
-    offset: {x: 0, y: 0}
-    pushAmount: {x: 0, y: 0}
+    offset: {x: 0, y: 0.21}
+    pushAmount: {x: 0, y: 0.12}
+    scale: 1
   - sprite: {fileID: 21300000, guid: de589d69adb5d42a1bab141e1a75b14d, type: 3}
     visibility: 1
     modification: {fileID: 11400000, guid: a4df3305487e48bc87894f35d7e82e1a, type: 2}
     direction: 0
-    offset: {x: 0, y: 0}
-    pushAmount: {x: 0, y: 0}
-  - sprite: {fileID: 21300000, guid: bedb57bea345a42b490d43e351f57443, type: 3}
-    visibility: 1
-    modification: {fileID: 11400000, guid: 520299ab8e2a46099af12eeae558b73d, type: 2}
-    direction: 0
-    offset: {x: 0, y: 0}
-    pushAmount: {x: 0, y: 0}
+    offset: {x: 0, y: 0.12}
+    pushAmount: {x: 0, y: 0.09}
+    scale: 1.02
   - sprite: {fileID: 21300000, guid: 9c2a10277cbfb4b579b8d428383519b3, type: 3}
     visibility: 1
     modification: {fileID: 11400000, guid: d8f055057bb942a4a50734be24f044ed, type: 2}
     direction: 0
-    offset: {x: 0, y: 0}
-    pushAmount: {x: 0, y: 0}
+    offset: {x: 0, y: 0.15}
+    pushAmount: {x: 0, y: 0.09}
+    scale: 0.96
+  - sprite: {fileID: 21300000, guid: bedb57bea345a42b490d43e351f57443, type: 3}
+    visibility: 1
+    modification: {fileID: 11400000, guid: 520299ab8e2a46099af12eeae558b73d, type: 2}
+    direction: 0
+    offset: {x: 0, y: 0.15}
+    pushAmount: {x: 0, y: 0.13}
+    scale: 1.05
   - sprite: {fileID: 21300000, guid: 4f25edd88dbc346318bb96cb97b2e8fc, type: 3}
     visibility: 0
     modification: {fileID: 0}
     direction: 0
-    offset: {x: 0, y: 0}
+    offset: {x: 0, y: 0.26}
     pushAmount: {x: 0, y: 0}
+    scale: 0.95
+  overallScale: 0.8

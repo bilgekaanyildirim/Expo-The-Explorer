@@ -44,6 +44,9 @@ namespace ExpoTheExplorer.UI
             {
                 var card = Instantiate(cardPrefab, cardsParent);
                 card.Initialize(gameManager, i, this);
+
+                var fillCounter = card.GetComponentInChildren<TrayFillCounterView>(true);
+                if (fillCounter != null) fillCounter.Initialize(gameManager, i);
             }
         }
 

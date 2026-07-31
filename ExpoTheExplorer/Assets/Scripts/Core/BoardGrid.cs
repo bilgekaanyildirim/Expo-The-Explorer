@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using ExpoTheExplorer.Data;
 
@@ -67,15 +68,43 @@ namespace ExpoTheExplorer.Core
             return true;
         }
 
-        public bool RequestSpawn(BoardItem item)
+        // A caller-supplied random source picks uniformly among ALL empty cells
+        // (not just the first found) so spawned items don't visibly cluster in
+        // scan order — omit it (or pass null) to fall back to the deterministic
+        // first-empty-cell behavior, which existing callers/tests still rely on.
+        public bool RequestSpawn(BoardItem item, Random random = null)
         {
-            if (TryGetFirstEmptyCell(out var x, out var y))
+            if (TryGetEmptyCell(random, out var x, out var y))
             {
                 return TryPlaceItem(item, x, y);
             }
 
             pendingSpawns.Enqueue(item);
             return false;
+        }
+
+        private bool TryGetEmptyCell(Random random, out int x, out int y)
+        {
+            if (random == null) return TryGetFirstEmptyCell(out x, out y);
+
+            var emptyCells = new List<(int X, int Y)>();
+            for (var scanY = 0; scanY < Height; scanY++)
+            {
+                for (var scanX = 0; scanX < Width; scanX++)
+                {
+                    if (cells[scanX, scanY] == null) emptyCells.Add((scanX, scanY));
+                }
+            }
+
+            if (emptyCells.Count == 0)
+            {
+                x = -1;
+                y = -1;
+                return false;
+            }
+
+            (x, y) = emptyCells[random.Next(emptyCells.Count)];
+            return true;
         }
 
         public BoardItem RemoveItem(int x, int y)

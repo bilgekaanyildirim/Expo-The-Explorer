@@ -223,6 +223,52 @@ namespace ExpoTheExplorer.Tests.EditMode
         }
 
         [Test]
+        public void FillEmptySlots_PublishesTicketAssigned_ForEachFilledSlot()
+        {
+            var state = new GameState(gameConfig);
+            var manager = CreateManager(state);
+
+            var assignedCount = 0;
+            state.TicketAssigned.Subscribe(_ => assignedCount++);
+
+            manager.FillEmptySlots();
+
+            Assert.AreEqual(GameState.TicketSlotCount, assignedCount);
+        }
+
+        [Test]
+        public void DeliverTicket_PublishesTicketAssigned_WithTheSlotIndexAndNewTicket()
+        {
+            var state = new GameState(gameConfig);
+            var manager = CreateManager(state);
+            manager.FillEmptySlots();
+
+            (int SlotIndex, Ticket Ticket)? assigned = null;
+            state.TicketAssigned.Subscribe(a => assigned = a);
+
+            manager.DeliverTicket(0);
+
+            Assert.AreEqual(0, assigned?.SlotIndex);
+            Assert.AreSame(state.TicketSlots[0], assigned?.Ticket);
+        }
+
+        [Test]
+        public void CancelTicket_PublishesTicketAssigned_WithTheSlotIndexAndNewTicket()
+        {
+            var state = new GameState(gameConfig);
+            var manager = CreateManager(state);
+            manager.FillEmptySlots();
+
+            (int SlotIndex, Ticket Ticket)? assigned = null;
+            state.TicketAssigned.Subscribe(a => assigned = a);
+
+            manager.CancelTicket(0);
+
+            Assert.AreEqual(0, assigned?.SlotIndex);
+            Assert.AreSame(state.TicketSlots[0], assigned?.Ticket);
+        }
+
+        [Test]
         public void Tick_WhenTicketTimesOut_DecrementsLivesAndCancelsAndRefillsSameSlot()
         {
             var state = new GameState(gameConfig);

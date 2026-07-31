@@ -20,6 +20,13 @@ namespace ExpoTheExplorer.Core
         public EventBus<Ticket> TicketDelivered { get; } = new();
         public EventBus<Ticket> TicketCancelled { get; } = new();
 
+        // Fires with the slot index + NEW ticket whenever one is assigned into a
+        // slot (initial fill, or right after a deliver/cancel refills it) —
+        // unlike TicketDelivered/TicketCancelled, which carry the ticket that
+        // just LEFT. BoardDistributor listens to spawn that order's required
+        // items; TrayManager listens to clear/scatter that slot's tray.
+        public EventBus<(int SlotIndex, Ticket Ticket)> TicketAssigned { get; } = new();
+
         public BoardGrid Board { get; }
 
         public GameState(GameConfig config)
