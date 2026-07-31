@@ -69,6 +69,23 @@ namespace ExpoTheExplorer.UI
             itemContainers[x, y] = null;
         }
 
+        // Inverse of CellPosition — used by BoardItemDragHandler to figure out
+        // which board cell (if any) a drag was released over, so an item can
+        // be moved to another empty cell instead of only ever going to a tray
+        // or snapping back home. boardOrigin/cellSize are expressed in this
+        // object's LOCAL space (CellPosition's result is used as a
+        // localPosition under itemsParent, which sits at zero offset from
+        // this transform) — converting the incoming world position through
+        // InverseTransformPoint first keeps this correct no matter where the
+        // BoardView GameObject itself has been moved/rotated/scaled in the scene.
+        public bool TryGetCellAt(Vector3 worldPosition, out int x, out int y)
+        {
+            var localPosition = transform.InverseTransformPoint(worldPosition);
+            x = Mathf.RoundToInt((localPosition.x - boardOrigin.x) / cellSize);
+            y = Mathf.RoundToInt((localPosition.y - boardOrigin.y) / cellSize);
+            return board.IsInBounds(x, y);
+        }
+
         // Cell size/origin aren't designer-tunable magic numbers — they're derived
         // from the camera's orthographic viewport so the board always fits the
         // screen regardless of aspect ratio (mobile portrait vs. editor window).
@@ -137,7 +154,7 @@ namespace ExpoTheExplorer.UI
                 collider.size = new Vector2(cellSize, cellSize);
 
                 var dragHandler = itemObject.AddComponent<BoardItemDragHandler>();
-                dragHandler.Configure(board, resolvedCamera, this);
+                dragHandler.Configure(board, resolvedCamera, this, gameManager);
 
                 container = itemObject.transform;
                 itemContainers[x, y] = container;

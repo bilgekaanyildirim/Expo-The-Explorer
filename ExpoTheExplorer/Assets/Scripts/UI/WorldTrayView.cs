@@ -99,7 +99,7 @@ namespace ExpoTheExplorer.UI
             }
             else
             {
-                dragHandler.PlaceInSlot(SlotFor(item.Config.Category));
+                dragHandler.PlaceInSlot(SlotFor(item.Config.Category), slotIndex);
             }
 
             lastKnownCount = newCount;
@@ -125,10 +125,17 @@ namespace ExpoTheExplorer.UI
             // same poll+diff approach TicketCardView already uses for its timer.
             // OnDrop keeps lastKnownCount in sync for its own changes, so this
             // only ever fires for that external case.
+            //
+            // Only a drop to exactly zero means the WHOLE tray was cleared
+            // externally (OnTicketAssigned/TryAddItem's batch-resolve paths
+            // both always empty the slot completely) — a single manual
+            // pickup (BoardItemDragHandler.OnBeginDrag removing just one item)
+            // decrements by exactly one and must NOT wipe the other items
+            // still legitimately sitting in this tray.
             var currentCount = gameManager.TrayManager.GetContents(slotIndex).Count;
             if (currentCount == lastKnownCount) return;
 
-            if (currentCount < lastKnownCount) ClearAllSlotVisuals();
+            if (currentCount == 0) ClearAllSlotVisuals();
 
             lastKnownCount = currentCount;
         }
@@ -145,7 +152,17 @@ namespace ExpoTheExplorer.UI
             if (slot == null) return;
             for (var i = slot.childCount - 1; i >= 0; i--)
             {
-                Destroy(slot.GetChild(i).gameObject);
+                var child = slot.GetChild(i);
+
+                // Picking an item back up out of this tray already removed it
+                // from TrayManager's count (BoardItemDragHandler.OnBeginDrag),
+                // which looks identical to an external clear from here — skip
+                // it while it's actively being dragged so it doesn't get
+                // destroyed out from under the player mid-drag.
+                var dragHandler = child.GetComponent<BoardItemDragHandler>();
+                if (dragHandler != null && dragHandler.IsDragging) continue;
+
+                Destroy(child.gameObject);
             }
         }
     }

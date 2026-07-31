@@ -34,6 +34,11 @@ namespace ExpoTheExplorer.Systems.TraySystem
 
         public IReadOnlyList<BoardItem> GetContents(int slotIndex) => slots[slotIndex].Items;
 
+        // Called when a player drags an item back out of a tray (e.g. to
+        // return it to the board) — must stop counting it toward that slot's
+        // fill the instant it's picked up, not just once it lands elsewhere.
+        public bool RemoveItem(int slotIndex, BoardItem item) => slots[slotIndex].Remove(item);
+
         // Attempts to add one item to a slot's tray. Returns false (item not
         // accepted) if that slot has no active ticket or its tray is already
         // full — the drag handler is expected to treat a false result the same

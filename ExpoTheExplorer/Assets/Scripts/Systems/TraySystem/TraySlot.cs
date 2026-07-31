@@ -17,6 +17,12 @@ namespace ExpoTheExplorer.Systems.TraySystem
 
         public void Add(BoardItem item) => items.Add(item);
 
+        // Used when an item already sitting in this tray is picked back up
+        // and dragged away (e.g. back onto the board) — must stop counting
+        // toward this slot's fill immediately, not just when it lands
+        // somewhere else.
+        public bool Remove(BoardItem item) => items.Remove(item);
+
         public void Clear() => items.Clear();
 
         public bool IsFull(Ticket ticket) => ticket != null && items.Count >= ticket.RequiredItems.Count;
