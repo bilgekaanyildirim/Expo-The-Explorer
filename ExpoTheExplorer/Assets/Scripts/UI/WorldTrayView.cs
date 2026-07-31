@@ -32,6 +32,8 @@ namespace ExpoTheExplorer.UI
         [SerializeField] private Transform drinkSlot;
         [Tooltip("Optional — shown while a valid drag is hovering over this tray (GDD Section 5 drop-zone highlight).")]
         [SerializeField] private GameObject highlightVisual;
+        [Tooltip("Optional — shown for the duration of the wrong-order pre-scatter shake.")]
+        [SerializeField] private GameObject wrongVisual;
         [Tooltip("Shared tuning for board/tray animation durations (snap-back, tray settle, pop-in, slot clear).")]
         [SerializeField] private BoardAnimationConfig animConfig;
         [Tooltip("Needed so a wrong-order scatter can tell BoardView to fly those items in from this tray instead of Starting Point.")]
@@ -51,6 +53,7 @@ namespace ExpoTheExplorer.UI
         {
             isValid = ValidateReferences();
             if (highlightVisual != null) highlightVisual.SetActive(false);
+            if (wrongVisual != null) wrongVisual.SetActive(false);
         }
 
         // GameManager.Awake() builds TrayManager, but Unity doesn't guarantee
@@ -280,6 +283,7 @@ namespace ExpoTheExplorer.UI
         {
             transform.DOKill();
             finalItem.transform.DOKill();
+            if (wrongVisual != null) wrongVisual.SetActive(true);
 
             // Every currently-visible slot item plus the just-dropped final
             // item — all shake horizontally in sync with the tray, but at
@@ -321,6 +325,7 @@ namespace ExpoTheExplorer.UI
                     SetWorldX(transform, trayBaseX);
                     for (var i = 0; i < itemTransforms.Count; i++) SetWorldX(itemTransforms[i], itemBaseX[i]);
 
+                    if (wrongVisual != null) wrongVisual.SetActive(false);
                     ClearAllSlotVisuals();
                     finalItem.ReleaseAndDestroy();
                 });
