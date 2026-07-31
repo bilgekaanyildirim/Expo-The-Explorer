@@ -1,3 +1,4 @@
+using DG.Tweening;
 using ExpoTheExplorer.Bootstrap;
 using ExpoTheExplorer.Core;
 using UnityEngine;
@@ -19,12 +20,30 @@ namespace ExpoTheExplorer.UI
     // container the moment the model changed underneath it.
     public class BoardItemDragHandler : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler
     {
+        // Resolved (world-unit) drag-feel tuning, computed once by BoardView
+        // from its own cellSize-relative Inspector fields and handed down
+        // through Configure. Intentionally a plain serializable struct rather
+        // than a ScriptableObject — this is view-local presentation tuning
+        // (how a drag *feels*), not shared gameplay-balance data, matching
+        // BoardView's own screenFillFraction/cellPadding/cellColor fields.
+        [System.Serializable]
+        public struct DragFeelSettings
+        {
+            public float offsetDistance;
+            public float followMultiplierUp;
+            public float followMultiplierDown;
+            public float followMultiplierHorizontal;
+            public float pickupScaleMultiplier;
+            public float pickupScaleDuration;
+        }
+
         private const int DragSortingBoost = 1000;
 
         private BoardGrid board;
         private Camera dragCamera;
         private BoardView boardView;
         private GameManager gameManager;
+        private DragFeelSettings dragFeel;
         private Collider2D ownCollider;
         private int cellX;
         private int cellY;
@@ -38,6 +57,10 @@ namespace ExpoTheExplorer.UI
         private int? pickupSourceTraySlotIndex;
 
         private Vector3 homePosition;
+        private Vector3 homeScale;
+        private float lastFingerX;
+        private float lastFingerY;
+        private WorldTrayView hoveredTray;
         private SpriteRenderer[] layerRenderers;
         private int[] homeSortingOrders;
 
@@ -57,12 +80,13 @@ namespace ExpoTheExplorer.UI
         // to finalize the pickup or snap back to the board.
         public bool WasAcceptedByTray { get; set; }
 
-        public void Configure(BoardGrid board, Camera dragCamera, BoardView boardView, GameManager gameManager)
+        public void Configure(BoardGrid board, Camera dragCamera, BoardView boardView, GameManager gameManager, DragFeelSettings dragFeel)
         {
             this.board = board;
             this.dragCamera = dragCamera;
             this.boardView = boardView;
             this.gameManager = gameManager;
+            this.dragFeel = dragFeel;
         }
 
         public void SetCell(int x, int y, BoardItem item)
@@ -91,6 +115,23 @@ namespace ExpoTheExplorer.UI
 
             WasAcceptedByTray = false;
             homePosition = transform.position;
+            homeScale = transform.localScale;
+
+            transform.DOKill();
+            transform.DOScale(homeScale * dragFeel.pickupScaleMultiplier, dragFeel.pickupScaleDuration).SetEase(Ease.OutBack);
+
+            // Snap straight to the resting hover position (finger + offset)
+            // the moment it's picked up, and remember the finger's starting
+            // height so OnDrag's very first call has a real previous-frame
+            // value to diff against instead of a spurious huge jump.
+            if (dragCamera != null)
+            {
+                var fingerWorldPos = ComputeFingerWorldPos(eventData.position);
+                lastFingerX = fingerWorldPos.x;
+                lastFingerY = fingerWorldPos.y;
+                transform.position = new Vector3(fingerWorldPos.x, fingerWorldPos.y + dragFeel.offsetDistance, fingerWorldPos.z);
+                UpdateHoveredTray();
+            }
 
             // Disabled for the duration of the drag — this item's own
             // collider follows the pointer exactly, so left enabled it would
@@ -114,12 +155,75 @@ namespace ExpoTheExplorer.UI
         {
             if (CurrentItem == null || dragCamera == null) return;
 
-            // Round-tripping through WorldToScreenPoint gives the correct
-            // orthographic screen-space depth to feed back into
-            // ScreenToWorldPoint, so the item stays at its original Z.
+            var fingerWorldPos = ComputeFingerWorldPos(eventData.position);
+
+            // The item's own movement is the finger's frame-to-frame delta
+            // scaled by an up/down multiplier — pushing up moves it faster
+            // than the finger (the gap stretches beyond offsetDistance), and
+            // pulling down brings it back down faster too, but never past
+            // the offset floor: once the floor clamps a frame, the item is
+            // effectively pinned there (1:1 with the finger) until the
+            // finger reverses upward and the gap can grow again.
+            var fingerDeltaY = fingerWorldPos.y - lastFingerY;
+            var verticalMultiplier = fingerDeltaY >= 0f ? dragFeel.followMultiplierUp : dragFeel.followMultiplierDown;
+            var newY = transform.position.y + fingerDeltaY * verticalMultiplier;
+            newY = Mathf.Max(newY, fingerWorldPos.y + dragFeel.offsetDistance);
+
+            // Horizontal movement uses the same finger-delta-times-multiplier
+            // feel, symmetric left/right — there's no "offset floor" concept
+            // on this axis (that's specifically about staying above the
+            // finger vertically), so no clamp is applied here.
+            var fingerDeltaX = fingerWorldPos.x - lastFingerX;
+            var newX = transform.position.x + fingerDeltaX * dragFeel.followMultiplierHorizontal;
+
+            transform.position = new Vector3(newX, newY, fingerWorldPos.z);
+            lastFingerX = fingerWorldPos.x;
+            lastFingerY = fingerWorldPos.y;
+            UpdateHoveredTray();
+        }
+
+        // Round-tripping through WorldToScreenPoint gives the correct
+        // orthographic screen-space depth to feed back into
+        // ScreenToWorldPoint, so the item stays at its original Z.
+        private Vector3 ComputeFingerWorldPos(Vector2 screenPosition)
+        {
             var screenDepth = dragCamera.WorldToScreenPoint(homePosition).z;
-            var screenPoint = new Vector3(eventData.position.x, eventData.position.y, screenDepth);
-            transform.position = dragCamera.ScreenToWorldPoint(screenPoint);
+            var screenPoint = new Vector3(screenPosition.x, screenPosition.y, screenDepth);
+            return dragCamera.ScreenToWorldPoint(screenPoint);
+        }
+
+        private static readonly Collider2D[] TrayOverlapBuffer = new Collider2D[8];
+
+        // Drives the tray highlight (GDD Section 5 drop-zone feedback) and
+        // the OnEndDrag drop fallback below off the item's own displayed
+        // position rather than the pointer — with the drag-feel hover
+        // offset, the item can be sitting right on top of a tray while the
+        // finger itself is still outside its hitbox, and the highlight
+        // should reflect what the player actually sees the item on top of.
+        private void UpdateHoveredTray()
+        {
+            // OverlapPoint alone would return whichever single collider
+            // happens to be first — often an item already resting in a
+            // tray slot rather than the tray's own hitbox underneath it —
+            // so every overlapping collider at this point is checked and
+            // the tray always wins if it's among them, regardless of what
+            // else is sitting there.
+            WorldTrayView tray = null;
+            var hitCount = Physics2D.OverlapPoint(transform.position, new ContactFilter2D().NoFilter(), TrayOverlapBuffer);
+            for (var i = 0; i < hitCount; i++)
+            {
+                if (TrayOverlapBuffer[i].TryGetComponent<WorldTrayView>(out var trayView))
+                {
+                    tray = trayView;
+                    break;
+                }
+            }
+
+            if (tray == hoveredTray) return;
+
+            if (hoveredTray != null) hoveredTray.SetHighlighted(false);
+            hoveredTray = tray;
+            if (hoveredTray != null) hoveredTray.SetHighlighted(true);
         }
 
         public void OnEndDrag(PointerEventData eventData)
@@ -127,6 +231,26 @@ namespace ExpoTheExplorer.UI
             if (CurrentItem == null) return;
 
             IsDragging = false;
+
+            transform.DOKill();
+            transform.localScale = homeScale;
+
+            // hoveredTray already reflects whichever tray the item's own
+            // displayed position was last over (kept in sync every
+            // OnBeginDrag/OnDrag call via UpdateHoveredTray) — reused here
+            // as a drop fallback for when the drag-feel hover offset put
+            // the item over a tray while the pointer itself (what OnDrop's
+            // own raycast checks) was still below its hitbox.
+            if (!WasAcceptedByTray && hoveredTray != null)
+            {
+                hoveredTray.TryAcceptDrop(this);
+            }
+
+            if (hoveredTray != null)
+            {
+                hoveredTray.SetHighlighted(false);
+                hoveredTray = null;
+            }
 
             if (ownCollider != null) ownCollider.enabled = true;
 

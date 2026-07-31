@@ -21,7 +21,7 @@ namespace ExpoTheExplorer.UI
     // hitbox for the whole tray (BoxCollider2D added by hand in the Editor) —
     // which of mainDishSlot/sideSlot/drinkSlot an accepted item belongs to is
     // resolved from its own FoodCategory, not from where exactly it was dropped.
-    public class WorldTrayView : MonoBehaviour, IDropHandler, IPointerEnterHandler, IPointerExitHandler
+    public class WorldTrayView : MonoBehaviour, IDropHandler
     {
         [SerializeField] private GameManager gameManager;
         [SerializeField] private int slotIndex;
@@ -74,17 +74,29 @@ namespace ExpoTheExplorer.UI
         public void OnDrop(PointerEventData eventData)
         {
             if (!isValid) return;
-            if (highlightVisual != null) highlightVisual.SetActive(false);
 
             var dragHandler = eventData.pointerDrag != null
                 ? eventData.pointerDrag.GetComponent<BoardItemDragHandler>()
                 : null;
-            if (dragHandler == null || dragHandler.CurrentItem == null) return;
+            if (dragHandler == null) return;
+
+            TryAcceptDrop(dragHandler);
+        }
+
+        // Also called directly by BoardItemDragHandler.OnEndDrag as a fallback:
+        // the drag-feel hover offset means the item can visually be sitting
+        // right on top of this tray while the actual pointer (what OnDrop's
+        // own raycast above checks) is still below it, outside this
+        // collider — that fallback finds this tray from the item's own
+        // displayed position instead and accepts the drop the same way.
+        public bool TryAcceptDrop(BoardItemDragHandler dragHandler)
+        {
+            if (!isValid || dragHandler == null || dragHandler.CurrentItem == null) return false;
 
             var item = dragHandler.CurrentItem;
             var accepted = gameManager.TrayManager.TryAddItem(slotIndex, item);
             dragHandler.WasAcceptedByTray = accepted;
-            if (!accepted) return;
+            if (!accepted) return false;
 
             var newCount = gameManager.TrayManager.GetContents(slotIndex).Count;
             if (newCount == 0)
@@ -103,16 +115,17 @@ namespace ExpoTheExplorer.UI
             }
 
             lastKnownCount = newCount;
+            return true;
         }
 
-        public void OnPointerEnter(PointerEventData eventData)
+        // Called by BoardItemDragHandler.UpdateHoveredTray, driven off the
+        // dragged item's own displayed position rather than pointer
+        // enter/exit events — with the drag-feel hover offset, the pointer
+        // and the item can be over different things, and the highlight
+        // should reflect what the player actually sees the item on top of.
+        public void SetHighlighted(bool active)
         {
-            if (highlightVisual != null && eventData.pointerDrag != null) highlightVisual.SetActive(true);
-        }
-
-        public void OnPointerExit(PointerEventData eventData)
-        {
-            if (highlightVisual != null) highlightVisual.SetActive(false);
+            if (highlightVisual != null) highlightVisual.SetActive(active);
         }
 
         private void Update()

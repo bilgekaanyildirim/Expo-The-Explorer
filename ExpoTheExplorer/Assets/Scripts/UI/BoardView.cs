@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using ExpoTheExplorer.Bootstrap;
 using ExpoTheExplorer.Core;
+using ExpoTheExplorer.Data;
 using UnityEngine;
 
 namespace ExpoTheExplorer.UI
@@ -18,6 +19,10 @@ namespace ExpoTheExplorer.UI
         [SerializeField] private Color cellColorB = new(0.93f, 0.64f, 0.34f);
         [SerializeField] private Color placeholderItemColor = new(0.85f, 0.35f, 0.12f);
 
+        [Header("Drag Feel")]
+        [Tooltip("Shared tuning for the pickup/hover/follow feel of dragged board items.")]
+        [SerializeField] private DragFeelConfig dragFeelConfig;
+
         private BoardGrid board;
         private Sprite placeholderSprite;
         private Transform[,] itemContainers;
@@ -26,6 +31,7 @@ namespace ExpoTheExplorer.UI
         private float cellSize;
         private Vector2 boardOrigin;
         private Camera resolvedCamera;
+        private BoardItemDragHandler.DragFeelSettings dragFeel;
 
         private void Start()
         {
@@ -35,6 +41,20 @@ namespace ExpoTheExplorer.UI
             itemLayerPools = new List<SpriteRenderer>[board.Width, board.Height];
 
             FitToCamera();
+
+            // Resolved once cellSize is known (post-FitToCamera) so the drag
+            // feel stays proportional to the board's on-screen size instead
+            // of being a fixed world-unit constant tied to one aspect ratio.
+            dragFeel = new BoardItemDragHandler.DragFeelSettings
+            {
+                offsetDistance = dragFeelConfig.OffsetFraction * cellSize,
+                followMultiplierUp = dragFeelConfig.FollowMultiplierUp,
+                followMultiplierDown = dragFeelConfig.FollowMultiplierDown,
+                followMultiplierHorizontal = dragFeelConfig.FollowMultiplierHorizontal,
+                pickupScaleMultiplier = dragFeelConfig.PickupScaleMultiplier,
+                pickupScaleDuration = dragFeelConfig.PickupScaleDuration,
+            };
+
             BuildBackground();
             itemsParent = new GameObject("Items").transform;
             itemsParent.SetParent(transform, false);
@@ -154,7 +174,7 @@ namespace ExpoTheExplorer.UI
                 collider.size = new Vector2(cellSize, cellSize);
 
                 var dragHandler = itemObject.AddComponent<BoardItemDragHandler>();
-                dragHandler.Configure(board, resolvedCamera, this, gameManager);
+                dragHandler.Configure(board, resolvedCamera, this, gameManager, dragFeel);
 
                 container = itemObject.transform;
                 itemContainers[x, y] = container;
