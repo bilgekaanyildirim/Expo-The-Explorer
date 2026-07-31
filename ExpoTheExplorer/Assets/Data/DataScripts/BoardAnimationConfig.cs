@@ -26,6 +26,10 @@ namespace ExpoTheExplorer.Data
         [SerializeField] private float scatterShakeDuration = 0.5f;
         [Tooltip("Shake strength (world units) for the wrong-order pre-scatter shake.")]
         [SerializeField] private float scatterShakeStrength = 0.3f;
+        [Tooltip("Number of full left-right oscillations during the pre-scatter shake.")]
+        [SerializeField] private float scatterShakeFrequency = 8f;
+        [Tooltip("How much more (multiplier on ScatterShakeStrength) the tray's contents shake compared to the tray itself.")]
+        [SerializeField] private float scatterShakeItemMultiplier = 1.2f;
 
         [Header("Delivery Success")]
         [Tooltip("Scale multiplier the tray (and the just-delivered item) grows to on a successful delivery.")]
@@ -56,6 +60,8 @@ namespace ExpoTheExplorer.Data
         public float SlotClearDuration => slotClearDuration;
         public float ScatterShakeDuration => scatterShakeDuration;
         public float ScatterShakeStrength => scatterShakeStrength;
+        public float ScatterShakeFrequency => scatterShakeFrequency;
+        public float ScatterShakeItemMultiplier => scatterShakeItemMultiplier;
         public float DeliveryGrowScale => deliveryGrowScale;
         public float DeliveryGrowDuration => deliveryGrowDuration;
         public float DeliveryLiftDistance => deliveryLiftDistance;

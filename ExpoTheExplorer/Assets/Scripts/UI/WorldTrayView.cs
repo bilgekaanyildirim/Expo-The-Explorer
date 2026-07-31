@@ -279,16 +279,64 @@ namespace ExpoTheExplorer.UI
         private void PlayWrongOrderShakeThenScatter(BoardItemDragHandler finalItem)
         {
             transform.DOKill();
-            transform.DOShakePosition(animConfig.ScatterShakeDuration, animConfig.ScatterShakeStrength);
-
             finalItem.transform.DOKill();
-            finalItem.transform.DOShakePosition(animConfig.ScatterShakeDuration, animConfig.ScatterShakeStrength);
 
-            DOVirtual.DelayedCall(animConfig.ScatterShakeDuration, () =>
-            {
-                ClearAllSlotVisuals();
-                finalItem.ReleaseAndDestroy();
-            });
+            // Every currently-visible slot item plus the just-dropped final
+            // item — all shake horizontally in sync with the tray, but at
+            // ScatterShakeItemMultiplier times its strength (e.g. tray moves
+            // 1 unit right, these move 1.2). Driven from one shared
+            // oscillation instead of independent DOShakePosition calls per
+            // object, which would each roll their own random pattern and
+            // drift out of sync with each other.
+            var itemTransforms = new List<Transform>();
+            CollectSlotChildren(mainDishSlot, itemTransforms);
+            CollectSlotChildren(sideSlot, itemTransforms);
+            CollectSlotChildren(drinkSlot, itemTransforms);
+            itemTransforms.Add(finalItem.transform);
+            foreach (var t in itemTransforms) t.DOKill();
+
+            var trayBaseX = transform.position.x;
+            var itemBaseX = new float[itemTransforms.Count];
+            for (var i = 0; i < itemTransforms.Count; i++) itemBaseX[i] = itemTransforms[i].position.x;
+
+            var progress = 0f;
+            DOTween.To(() => progress, p => progress = p, 1f, animConfig.ScatterShakeDuration)
+                .SetEase(Ease.Linear)
+                .OnUpdate(() =>
+                {
+                    // Decaying sine wave — horizontal only, settles to zero
+                    // by the end instead of cutting off abruptly.
+                    var decay = 1f - progress;
+                    var wave = Mathf.Sin(progress * animConfig.ScatterShakeDuration * animConfig.ScatterShakeFrequency * Mathf.PI * 2f) * decay;
+
+                    SetWorldX(transform, trayBaseX + wave * animConfig.ScatterShakeStrength);
+                    var itemOffset = wave * animConfig.ScatterShakeStrength * animConfig.ScatterShakeItemMultiplier;
+                    for (var i = 0; i < itemTransforms.Count; i++)
+                    {
+                        SetWorldX(itemTransforms[i], itemBaseX[i] + itemOffset);
+                    }
+                })
+                .OnComplete(() =>
+                {
+                    SetWorldX(transform, trayBaseX);
+                    for (var i = 0; i < itemTransforms.Count; i++) SetWorldX(itemTransforms[i], itemBaseX[i]);
+
+                    ClearAllSlotVisuals();
+                    finalItem.ReleaseAndDestroy();
+                });
+        }
+
+        private static void SetWorldX(Transform t, float x)
+        {
+            var pos = t.position;
+            pos.x = x;
+            t.position = pos;
+        }
+
+        private static void CollectSlotChildren(Transform slot, List<Transform> into)
+        {
+            if (slot == null) return;
+            for (var i = 0; i < slot.childCount; i++) into.Add(slot.GetChild(i));
         }
 
         private static void DestroySlotChildrenImmediate(Transform slot)
