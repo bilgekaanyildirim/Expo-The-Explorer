@@ -43,6 +43,13 @@ MonoBehaviour:
     offset: {x: 0, y: 0.12}
     pushAmount: {x: 0, y: 0.09}
     scale: 1.02
+  - sprite: {fileID: 21300000, guid: 012ebed33fdba4d70937a8dc70b27312, type: 3}
+    visibility: 2
+    modification: {fileID: 11400000, guid: a4df3305487e48bc87894f35d7e82e1a, type: 2}
+    direction: 1
+    offset: {x: 0, y: 0.12}
+    pushAmount: {x: 0, y: 0.09}
+    scale: 1.1
   - sprite: {fileID: 21300000, guid: 9c2a10277cbfb4b579b8d428383519b3, type: 3}
     visibility: 1
     modification: {fileID: 11400000, guid: d8f055057bb942a4a50734be24f044ed, type: 2}
