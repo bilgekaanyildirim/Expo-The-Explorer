@@ -112,6 +112,21 @@ namespace ExpoTheExplorer.UI
             }
         }
 
+        // Called by WorldTrayView.TryAcceptDrop the instant it knows a
+        // delivery just happened — must run in the very same frame as the
+        // model's ticket reassignment (TicketSlotManager.DeliverTicket,
+        // synchronous inside TrayManager.TryAddItem), otherwise Update()'s
+        // own poll would catch the changed ticket reference on the very
+        // next frame and instantly rebuild to the new ticket well before
+        // PlayDeliveryTransition (deferred until the tray's lift phase
+        // starts, ~DeliveryGrowDuration seconds later) gets a chance to
+        // play its exit animation on the still-old content.
+        public void SuppressPollUntilDeliveryTransition()
+        {
+            if (!isValid) return;
+            transitionInProgress = true;
+        }
+
         // Called by WorldTrayView.PlayDeliverySuccess (via TicketCardsView.
         // GetCard) exactly when the tray for this slot starts its own lift
         // phase after a successful delivery — slides this (still the OLD

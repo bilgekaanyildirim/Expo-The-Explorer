@@ -195,6 +195,13 @@ namespace ExpoTheExplorer.UI
                 // placed into a slot, so it needs cleanup here instead.
                 if (justDelivered)
                 {
+                    // Must happen in this exact frame, before PlayDeliverySuccess
+                    // (whose own PlayDeliveryTransition trigger is deferred to
+                    // the tray's lift phase) — otherwise TicketCardView.Update's
+                    // poll catches the already-reassigned ticket on the very
+                    // next frame and rebuilds instantly, well before the exit
+                    // animation would even start.
+                    ticketCardView.SuppressPollUntilDeliveryTransition();
                     PlayDeliverySuccess(dragHandler);
                 }
                 else
