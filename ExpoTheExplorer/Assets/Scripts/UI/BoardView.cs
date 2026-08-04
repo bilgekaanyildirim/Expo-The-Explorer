@@ -20,6 +20,11 @@ namespace ExpoTheExplorer.UI
         [SerializeField] private Color cellColorB = new(0.93f, 0.64f, 0.34f);
         [SerializeField] private Color placeholderItemColor = new(0.85f, 0.35f, 0.12f);
 
+        [Header("Frame")]
+        [SerializeField] private Color frameColor = new(0.45f, 0.25f, 0.1f);
+        [Tooltip("Frame thickness as a fraction of cell size, added around the whole board on every side. 0 = no frame.")]
+        [SerializeField, Range(0f, 1f)] private float frameThicknessFraction = 0.08f;
+
         [Header("Drag Feel")]
         [Tooltip("Shared tuning for the pickup/hover/follow feel of dragged board items.")]
         [SerializeField] private DragFeelConfig dragFeelConfig;
@@ -60,6 +65,7 @@ namespace ExpoTheExplorer.UI
                 pickupScaleDuration = dragFeelConfig.PickupScaleDuration,
             };
 
+            BuildFrame();
             BuildBackground();
             itemsParent = new GameObject("Items").transform;
             itemsParent.SetParent(transform, false);
@@ -165,6 +171,31 @@ namespace ExpoTheExplorer.UI
             boardOrigin = new Vector2(
                 cam.transform.position.x - (board.Width - 1) * cellSize / 2f,
                 cam.transform.position.y - (board.Height - 1) * cellSize / 2f);
+        }
+
+        // A single oversized sprite behind the cells, extending frameThicknessFraction * cellSize
+        // past the board's edge on every side — reads as a border/frame around the grid.
+        private void BuildFrame()
+        {
+            if (frameThicknessFraction <= 0f) return;
+
+            var frameObject = new GameObject("Frame");
+            frameObject.transform.SetParent(transform, false);
+
+            var centerX = boardOrigin.x + (board.Width - 1) * cellSize / 2f;
+            var centerY = boardOrigin.y + (board.Height - 1) * cellSize / 2f;
+            frameObject.transform.localPosition = new Vector3(centerX, centerY, 0.05f);
+
+            var renderer = frameObject.AddComponent<SpriteRenderer>();
+            renderer.sprite = placeholderSprite;
+            renderer.color = frameColor;
+            renderer.sortingOrder = -1;
+
+            var thickness = frameThicknessFraction * cellSize;
+            frameObject.transform.localScale = new Vector3(
+                board.Width * cellSize + thickness * 2f,
+                board.Height * cellSize + thickness * 2f,
+                1f);
         }
 
         private void BuildBackground()
