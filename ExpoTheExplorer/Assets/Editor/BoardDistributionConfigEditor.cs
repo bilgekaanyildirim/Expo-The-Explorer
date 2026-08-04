@@ -5,12 +5,12 @@ using UnityEditor;
 namespace ExpoTheExplorer.Editor
 {
     // Read-only preview appended below the normal Inspector — never edits
-    // anything itself. LeakDepth IS "how many upcoming tickets are eligible"
-    // (BoardDistributor.LeakNoiseItems windows candidates with
-    // Take(LeakDepth)), and the real upcoming queue is kept topped up to at
-    // least that many entries at essentially all times (TicketSlotManager's
-    // EnsureQueueFilled), so no separate "what if N tickets were queued"
-    // slider is needed — LeakDepth itself is the eligible-ticket count.
+    // anything itself. MaxLeakCount is the Poisson truncation ceiling, so the
+    // probabilities below depend only on (MaxLeakCount, NoiseLeakCountLambda)
+    // — not on LeakDepth or how many tickets happen to be queued, mirroring
+    // BoardDistributor.LeakNoiseItems exactly. LeakDepth only decides which
+    // tickets are eligible as leak sources, so it has no bearing on this
+    // preview.
     [CustomEditor(typeof(BoardDistributionConfig))]
     public class BoardDistributionConfigEditor : UnityEditor.Editor
     {
@@ -27,7 +27,7 @@ namespace ExpoTheExplorer.Editor
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("Noise Leak Preview (read-only)", EditorStyles.boldLabel);
 
-            var n = config.LeakDepth;
+            var n = config.MaxLeakCount;
             var probabilities = TruncatedPoisson.Probabilities(n, config.NoiseLeakCountLambda);
             for (var k = 0; k <= n; k++)
             {

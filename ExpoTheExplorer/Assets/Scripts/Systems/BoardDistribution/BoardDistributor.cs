@@ -113,15 +113,18 @@ namespace ExpoTheExplorer.Systems.BoardDistribution
         // Pruning against the current upcomingTickets list also means a ticket
         // that got dequeued into an active slot stops being tracked, and the
         // fresh ticket that replaces it in the queue is immediately eligible.
-        // LeakDepth further restricts candidates to the nearest upcomingTickets
-        // entries — index 0 is the front of the FIFO queue (arrives soonest), so
-        // Take(LeakDepth) means "only look this many tickets ahead", leaving
-        // tickets further back in the queue untouched until they age forward
-        // into the window. How many items leak from that window is
-        // Poisson-sampled once per order placed (NoiseLeakCountLambda),
-        // truncated to the number of not-yet-leaked candidates — the same
-        // pattern TicketFactory uses for modification count, so more than one
-        // item can leak from a single OnOrderPlaced call.
+        // LeakDepth restricts WHICH tickets are candidates — the nearest
+        // upcomingTickets entries only (index 0 is the front of the FIFO queue,
+        // arrives soonest), so Take(LeakDepth) means "only look this many
+        // tickets ahead", leaving tickets further back in the queue untouched
+        // until they age forward into the window. HOW MANY items leak is a
+        // separate concern: Poisson-sampled once per order placed
+        // (NoiseLeakCountLambda), truncated to MaxLeakCount — independent of
+        // LeakDepth/candidate availability, so the preview's probabilities
+        // never depend on how many tickets happen to be queued. The sampled
+        // count can still exceed the actual candidates on hand (e.g.
+        // MaxLeakCount=5 but only 2 un-leaked tickets are within LeakDepth), so
+        // it's capped down to candidates.Count before leaking.
         private void LeakNoiseItems(IReadOnlyList<Ticket> upcomingTickets)
         {
             leakedTickets.IntersectWith(upcomingTickets);
@@ -129,7 +132,9 @@ namespace ExpoTheExplorer.Systems.BoardDistribution
             var candidates = upcomingTickets.Take(config.LeakDepth).Where(t => !leakedTickets.Contains(t)).ToList();
             if (candidates.Count == 0) return;
 
-            var leakCount = TruncatedPoisson.Sample(candidates.Count, config.NoiseLeakCountLambda, random);
+            var leakCount = Math.Min(
+                TruncatedPoisson.Sample(config.MaxLeakCount, config.NoiseLeakCountLambda, random),
+                candidates.Count);
 
             for (var i = 0; i < leakCount; i++)
             {
