@@ -33,17 +33,25 @@ namespace ExpoTheExplorer.Systems.BoardDistribution
         public void OnOrderPlaced(IReadOnlyList<Ticket> activeTickets, IReadOnlyList<Ticket> upcomingTickets)
         {
             // Required pool always spawns before noise (GDD Section 4).
-            SpawnMissingRequiredItems(activeTickets);
+            SpawnMissingRequiredItems(activeTickets, upcomingTickets);
             TryLeakNoiseItem(upcomingTickets);
         }
 
-        private void SpawnMissingRequiredItems(IReadOnlyList<Ticket> activeTickets)
+        // Guarantees the GuaranteedTicketCount earliest-arrived tickets are
+        // completable from the required pool (GDD Section 4 — "oyuncu her
+        // zaman en az bir bileti tamamlayabilecek malzemeye sahip olmalı": AT
+        // LEAST ONE ticket, not every active ticket). Selection is by arrival
+        // order, not by remaining time or slot index — active tickets are
+        // considered first, and once GuaranteedTicketCount exceeds the active
+        // count, it reaches into the upcoming queue too.
+        private void SpawnMissingRequiredItems(IReadOnlyList<Ticket> activeTickets, IReadOnlyList<Ticket> upcomingTickets)
         {
-            var neededCounts = new Dictionary<RequiredItemKey, int>();
-            foreach (var ticket in activeTickets)
-            {
-                if (ticket == null || ticket.State != TicketState.Active) continue;
+            var guaranteedTickets = SelectGuaranteedTickets(activeTickets, upcomingTickets);
+            if (guaranteedTickets.Count == 0) return;
 
+            var neededCounts = new Dictionary<RequiredItemKey, int>();
+            foreach (var ticket in guaranteedTickets)
+            {
                 foreach (var food in ticket.RequiredItems)
                 {
                     var mods = food.Category == FoodCategory.Main ? ticket.Modifications : Array.Empty<Modification>();
@@ -52,8 +60,6 @@ namespace ExpoTheExplorer.Systems.BoardDistribution
                     neededCounts[key] = count + 1;
                 }
             }
-
-            if (neededCounts.Count == 0) return;
 
             var presentCounts = CountItemsOnBoard();
 
@@ -65,6 +71,21 @@ namespace ExpoTheExplorer.Systems.BoardDistribution
                     state.Board.RequestSpawn(new BoardItem(key.Food, key.Modifications), random);
                 }
             }
+        }
+
+        // Active tickets always precede queued ones in true arrival order (the
+        // upcoming queue is strict FIFO — TicketSlotManager always dequeues the
+        // front and enqueues at the back), so concatenating the two lists and
+        // sorting by ArrivalSequence reconstructs full arrival order without
+        // needing a separate global ticket registry.
+        private List<Ticket> SelectGuaranteedTickets(IReadOnlyList<Ticket> activeTickets, IReadOnlyList<Ticket> upcomingTickets)
+        {
+            return activeTickets
+                .Where(t => t != null && t.State == TicketState.Active)
+                .Concat(upcomingTickets)
+                .OrderBy(t => t.ArrivalSequence)
+                .Take(config.GuaranteedTicketCount)
+                .ToList();
         }
 
         private Dictionary<RequiredItemKey, int> CountItemsOnBoard()

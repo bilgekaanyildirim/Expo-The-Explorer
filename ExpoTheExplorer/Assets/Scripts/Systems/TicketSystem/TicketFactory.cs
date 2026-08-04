@@ -14,6 +14,7 @@ namespace ExpoTheExplorer.Systems.TicketSystem
     {
         private readonly TicketGenerationConfig config;
         private readonly Random random;
+        private long nextArrivalSequence;
 
         public TicketFactory(TicketGenerationConfig config, Random random = null)
         {
@@ -62,7 +63,7 @@ namespace ExpoTheExplorer.Systems.TicketSystem
                 _ => config.NormalTimeLimitSeconds,
             };
 
-            return new Ticket(customerName, patienceType, requiredItems, modifications, timeLimitSeconds);
+            return new Ticket(customerName, patienceType, requiredItems, modifications, timeLimitSeconds, nextArrivalSequence++);
         }
 
         // Weighted pick over MainDishWeights (falls back to DefaultWeight for any

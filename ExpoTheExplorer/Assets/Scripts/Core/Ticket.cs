@@ -24,12 +24,20 @@ namespace ExpoTheExplorer.Core
         public float RemainingSeconds { get; set; }
         public TicketState State { get; set; } = TicketState.Active;
 
+        // Creation order across the whole ticket lifecycle (active slots AND
+        // the upcoming lookahead queue), used by BoardDistributor to pick which
+        // tickets' required items are guaranteed on the board (GDD Section 4).
+        // Slot index can't serve this purpose since slots get reused on
+        // delivery/cancellation.
+        public long ArrivalSequence { get; }
+
         public Ticket(
             string customerName,
             PatienceType patienceType,
             IReadOnlyList<FoodItemConfig> requiredItems,
             IReadOnlyList<Modification> modifications,
-            float timeLimitSeconds)
+            float timeLimitSeconds,
+            long arrivalSequence = 0)
         {
             CustomerName = customerName;
             PatienceType = patienceType;
@@ -37,6 +45,7 @@ namespace ExpoTheExplorer.Core
             Modifications = modifications;
             TimeLimitSeconds = timeLimitSeconds;
             RemainingSeconds = timeLimitSeconds;
+            ArrivalSequence = arrivalSequence;
         }
     }
 }
