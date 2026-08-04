@@ -53,11 +53,11 @@
   <Project Path="Unity.2D.Aseprite.Common.csproj" />
   <Project Path="Unity.CollabProxy.Editor.csproj" />
   <Project Path="ExpoTheExplorer.Systems.EconomySystem.csproj" />
+  <Project Path="ExpoTheExplorer.Systems.LivesSystem.csproj" />
   <Project Path="Unity.InputSystem.DocCodeSamples.csproj" />
   <Project Path="Unity.VisualScripting.DocCodeExamples.csproj" />
   <Project Path="Unity.PlasticSCM.Editor.Entities.csproj" />
   <Project Path="ExpoTheExplorer.Systems.BoardDistribution.csproj" />
   <Project Path="Unity.Collections.Editor.csproj" />
   <Project Path="ExpoTheExplorer.Systems.TicketSystem.csproj" />
-  <Project Path="ExpoTheExplorer.Systems.LivesSystem.csproj" />
 </Solution>
