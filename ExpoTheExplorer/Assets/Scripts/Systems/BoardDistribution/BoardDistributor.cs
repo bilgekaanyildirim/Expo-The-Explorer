@@ -113,15 +113,20 @@ namespace ExpoTheExplorer.Systems.BoardDistribution
         // Pruning against the current upcomingTickets list also means a ticket
         // that got dequeued into an active slot stops being tracked, and the
         // fresh ticket that replaces it in the queue is immediately eligible.
-        // How many items leak is Poisson-sampled once per order placed
-        // (NoiseLeakCountLambda), truncated to the number of not-yet-leaked
-        // candidates — the same pattern TicketFactory uses for modification
-        // count, so more than one item can leak from a single OnOrderPlaced call.
+        // LeakDepth further restricts candidates to the nearest upcomingTickets
+        // entries — index 0 is the front of the FIFO queue (arrives soonest), so
+        // Take(LeakDepth) means "only look this many tickets ahead", leaving
+        // tickets further back in the queue untouched until they age forward
+        // into the window. How many items leak from that window is
+        // Poisson-sampled once per order placed (NoiseLeakCountLambda),
+        // truncated to the number of not-yet-leaked candidates — the same
+        // pattern TicketFactory uses for modification count, so more than one
+        // item can leak from a single OnOrderPlaced call.
         private void LeakNoiseItems(IReadOnlyList<Ticket> upcomingTickets)
         {
             leakedTickets.IntersectWith(upcomingTickets);
 
-            var candidates = upcomingTickets.Where(t => !leakedTickets.Contains(t)).ToList();
+            var candidates = upcomingTickets.Take(config.LeakDepth).Where(t => !leakedTickets.Contains(t)).ToList();
             if (candidates.Count == 0) return;
 
             var leakCount = TruncatedPoisson.Sample(candidates.Count, config.NoiseLeakCountLambda, random);

@@ -1,6 +1,7 @@
 using ExpoTheExplorer.Core;
 using ExpoTheExplorer.Data;
 using UnityEditor;
+using UnityEngine;
 
 namespace ExpoTheExplorer.Editor
 {
@@ -33,10 +34,15 @@ namespace ExpoTheExplorer.Editor
                 "Preview: upcoming tickets in queue",
                 previewUpcomingTicketCount, 0, MaxPreviewUpcomingTicketCount);
 
-            var n = previewUpcomingTicketCount;
+            // LeakDepth caps how many of those upcoming tickets are actually
+            // eligible as leak sources — mirrors BoardDistributor.LeakNoiseItems'
+            // Take(LeakDepth) windowing exactly, so the preview matches runtime.
+            var n = Mathf.Min(previewUpcomingTicketCount, config.LeakDepth);
+            EditorGUILayout.LabelField("Eligible tickets (after LeakDepth)", n.ToString());
+
             if (n == 0)
             {
-                EditorGUILayout.LabelField("0 leaks: 100% (no upcoming tickets)");
+                EditorGUILayout.LabelField("0 leaks: 100% (no eligible upcoming tickets)");
                 return;
             }
 

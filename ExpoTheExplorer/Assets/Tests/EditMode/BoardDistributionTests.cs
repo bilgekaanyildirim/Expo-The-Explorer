@@ -55,7 +55,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             return modConfig;
         }
 
-        private BoardDistributionConfig CreateDistributionConfig(float noiseLeakCountLambda, int guaranteedTicketCount = 1)
+        private BoardDistributionConfig CreateDistributionConfig(float noiseLeakCountLambda, int guaranteedTicketCount = 1, int leakDepth = 10)
         {
             var config = ScriptableObject.CreateInstance<BoardDistributionConfig>();
             spawnedAssets.Add(config);
@@ -63,6 +63,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             var serialized = new SerializedObject(config);
             serialized.FindProperty("noiseLeakCountLambda").floatValue = noiseLeakCountLambda;
             serialized.FindProperty("guaranteedTicketCount").intValue = guaranteedTicketCount;
+            serialized.FindProperty("leakDepth").intValue = leakDepth;
             serialized.ApplyModifiedPropertiesWithoutUndo();
 
             return config;
@@ -314,6 +315,57 @@ namespace ExpoTheExplorer.Tests.EditMode
             Assert.AreEqual(1, CountMatchingItemsOnBoard(state.Board, mainA, ticketA.Modifications));
             Assert.AreEqual(1, CountMatchingItemsOnBoard(state.Board, mainB, ticketB.Modifications));
             Assert.AreEqual(1, CountMatchingItemsOnBoard(state.Board, mainC, ticketC.Modifications));
+        }
+
+        [Test]
+        public void OnOrderPlaced_LeakDepth_LimitsCandidatesToNearestUpcomingTickets()
+        {
+            var state = new GameState(gameConfig);
+            var mainNear0 = CreateFoodItem();
+            var mainNear1 = CreateFoodItem();
+            var mainFar0 = CreateFoodItem();
+            var mainFar1 = CreateFoodItem();
+            // upcomingTickets[0] is the front of the FIFO queue (arrives soonest);
+            // leakDepth: 2 should only ever consider indices 0 and 1 as candidates.
+            var ticketNear0 = CreateTicket(new List<FoodItemConfig> { mainNear0 }, arrivalSequence: 100);
+            var ticketNear1 = CreateTicket(new List<FoodItemConfig> { mainNear1 }, arrivalSequence: 101);
+            var ticketFar0 = CreateTicket(new List<FoodItemConfig> { mainFar0 }, arrivalSequence: 102);
+            var ticketFar1 = CreateTicket(new List<FoodItemConfig> { mainFar1 }, arrivalSequence: 103);
+            // See comment in OnOrderPlaced_LambdaZero_NeverLeaks above.
+            var activeTicket = CreateTicket(new List<FoodItemConfig> { CreateFoodItem() }, arrivalSequence: 0);
+            var distributor = new BoardDistributor(state, CreateDistributionConfig(ExtremeLambda, leakDepth: 2));
+
+            for (var i = 0; i < 10; i++)
+            {
+                distributor.OnOrderPlaced(
+                    new[] { activeTicket },
+                    new[] { ticketNear0, ticketNear1, ticketFar0, ticketFar1 });
+            }
+
+            Assert.AreEqual(1, CountMatchingItemsOnBoard(state.Board, mainNear0, ticketNear0.Modifications));
+            Assert.AreEqual(1, CountMatchingItemsOnBoard(state.Board, mainNear1, ticketNear1.Modifications));
+            Assert.AreEqual(0, CountMatchingItemsOnBoard(state.Board, mainFar0, ticketFar0.Modifications));
+            Assert.AreEqual(0, CountMatchingItemsOnBoard(state.Board, mainFar1, ticketFar1.Modifications));
+        }
+
+        [Test]
+        public void OnOrderPlaced_SerializedLeakDepthIsZero_StillLeaksFromNearestTicket()
+        {
+            // Regression test: a BoardDistributionConfig asset that predates the
+            // leakDepth field can deserialize it at the raw CLR default (0) instead
+            // of running the declared `= 10` initializer, which would silently
+            // disable noise leaking entirely (Take(0) is always empty). LeakDepth
+            // must clamp this back up to 1 — same rationale as GuaranteedTicketCount.
+            var state = new GameState(gameConfig);
+            var main = CreateFoodItem();
+            var upcoming = CreateTicket(new List<FoodItemConfig> { main }, arrivalSequence: 100);
+            // See comment in OnOrderPlaced_LambdaZero_NeverLeaks above.
+            var activeTicket = CreateTicket(new List<FoodItemConfig> { CreateFoodItem() }, arrivalSequence: 0);
+            var distributor = new BoardDistributor(state, CreateDistributionConfig(ExtremeLambda, leakDepth: 0));
+
+            distributor.OnOrderPlaced(new[] { activeTicket }, new[] { upcoming });
+
+            Assert.AreEqual(1, CountMatchingItemsOnBoard(state.Board, main, upcoming.Modifications));
         }
 
         [Test]
