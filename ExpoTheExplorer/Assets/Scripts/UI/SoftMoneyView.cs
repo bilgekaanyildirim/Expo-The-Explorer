@@ -19,10 +19,17 @@ namespace ExpoTheExplorer.UI
 
         private bool isValid;
 
+        // Deliberately does NOT call Refresh() here -- Unity's Awake() order
+        // across different GameObjects is unspecified, and GameManager.Awake
+        // (which sets State) may not have run yet, throwing a
+        // NullReferenceException on gameManager.State. Update() is always
+        // safe: Unity runs every object's Awake() before any object's
+        // Update() in a given frame, so GameManager.State is guaranteed set
+        // by then (same reason TicketCardView/TrayFillCounterView only ever
+        // touch gameManager.State from Update, never from Awake/Initialize).
         private void Awake()
         {
             isValid = ValidateReferences();
-            if (isValid) Refresh();
         }
 
         private void Update()
