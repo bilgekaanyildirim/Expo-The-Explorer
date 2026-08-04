@@ -59,4 +59,5 @@
   <Project Path="ExpoTheExplorer.Systems.BoardDistribution.csproj" />
   <Project Path="Unity.Collections.Editor.csproj" />
   <Project Path="ExpoTheExplorer.Systems.TicketSystem.csproj" />
+  <Project Path="ExpoTheExplorer.Systems.LivesSystem.csproj" />
 </Solution>
