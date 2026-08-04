@@ -1,45 +1,45 @@
 using System.Collections.Generic;
 using ExpoTheExplorer.Bootstrap;
+using ExpoTheExplorer.Core;
 using TMPro;
 using UnityEngine;
 
 namespace ExpoTheExplorer.UI
 {
     // Top HUD readout for GameState.SoftMoney (GDD Section 10 — earned per
-    // delivery). Polls every frame and always rewrites the text, same
-    // poll-without-diffing idiom as TrayFillCounterView: SoftMoney has no
-    // dedicated EventBus (only GameManager.OnTicketDelivered's tip currently
-    // changes it), and restringifying one int every frame is cheap enough
-    // that adding a change-notification API for it isn't worth the extra
-    // moving part.
+    // delivery). Reactive, not polled: binds to GameState.SoftMoneyChanged
+    // (fired by the property setter on every actual change, e.g.
+    // GameManager's tip payout) instead of re-stringifying every frame.
     public class SoftMoneyView : MonoBehaviour
     {
         [SerializeField] private GameManager gameManager;
         [SerializeField] private TMP_Text softMoneyText;
 
-        private bool isValid;
+        private GameState state;
 
-        // Deliberately does NOT call Refresh() here -- Unity's Awake() order
-        // across different GameObjects is unspecified, and GameManager.Awake
-        // (which sets State) may not have run yet, throwing a
-        // NullReferenceException on gameManager.State. Update() is always
-        // safe: Unity runs every object's Awake() before any object's
-        // Update() in a given frame, so GameManager.State is guaranteed set
-        // by then (same reason TicketCardView/TrayFillCounterView only ever
-        // touch gameManager.State from Update, never from Awake/Initialize).
-        private void Awake()
+        // Subscribes from Start(), not Awake() -- Unity's Awake() order across
+        // different GameObjects is unspecified, and GameManager.Awake (which
+        // sets State) may not have run yet, throwing a NullReferenceException
+        // on gameManager.State. Start() is always safe: Unity runs every
+        // object's Awake() before any object's Start() in a given frame (same
+        // reason BoardView only ever touches gameManager.State from Start).
+        private void Start()
         {
-            isValid = ValidateReferences();
+            if (!ValidateReferences()) return;
+
+            state = gameManager.State;
+            state.SoftMoneyChanged.Subscribe(Refresh);
+            Refresh(state.SoftMoney);
         }
 
-        private void Update()
+        private void OnDestroy()
         {
-            if (isValid) Refresh();
+            state?.SoftMoneyChanged.Unsubscribe(Refresh);
         }
 
-        private void Refresh()
+        private void Refresh(int softMoney)
         {
-            softMoneyText.text = gameManager.State.SoftMoney.ToString();
+            softMoneyText.text = softMoney.ToString();
         }
 
         // Every field here is wired by hand in the Editor — a missing one
