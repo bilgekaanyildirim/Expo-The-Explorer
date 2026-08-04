@@ -12,6 +12,7 @@ namespace ExpoTheExplorer.Core
         public Ticket[] TicketSlots { get; } = new Ticket[TicketSlotCount];
 
         private int lives;
+        private int maxLives;
         private int softMoney;
 
         // Setters publish on every actual change (LivesManager.LoseLife/TryContinue,
@@ -25,6 +26,23 @@ namespace ExpoTheExplorer.Core
                 if (lives == value) return;
                 lives = value;
                 LivesChanged.Publish(lives);
+            }
+        }
+
+        // The "out of" half of the X/Y lives HUD. Deliberately NOT derived from
+        // GameConfig.StartingLives at read time -- LivesManager.TryContinue can
+        // refill Lives to a different amount (LivesConfig.ContinueRefillAmount is
+        // intentionally a separate knob), so MaxLives is instead set explicitly
+        // by whoever grants a full refill (GameState's constructor for day start,
+        // LivesManager.TryContinue for a paid continue) and otherwise just holds.
+        public int MaxLives
+        {
+            get => maxLives;
+            set
+            {
+                if (maxLives == value) return;
+                maxLives = value;
+                MaxLivesChanged.Publish(maxLives);
             }
         }
 
@@ -44,6 +62,7 @@ namespace ExpoTheExplorer.Core
         public int Level { get; set; }
 
         public EventBus<int> LivesChanged { get; } = new();
+        public EventBus<int> MaxLivesChanged { get; } = new();
         public EventBus<int> SoftMoneyChanged { get; } = new();
 
         // Set by LivesManager.LoseLife the instant Lives hits 0, cleared again by
@@ -91,6 +110,7 @@ namespace ExpoTheExplorer.Core
         public GameState(GameConfig config)
         {
             Lives = config.StartingLives;
+            MaxLives = config.StartingLives;
             SoftMoney = config.StartingSoftMoney;
             Gems = config.StartingGems;
             Board = new BoardGrid(config);

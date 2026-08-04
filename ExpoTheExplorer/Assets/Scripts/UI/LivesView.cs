@@ -6,11 +6,12 @@ using UnityEngine;
 
 namespace ExpoTheExplorer.UI
 {
-    // Top HUD readout for GameState.Lives (GDD Section 3/6 — Lives System).
-    // Reactive, not polled: binds to GameState.LivesChanged (fired by the
-    // property setter on every actual change -- LivesManager.LoseLife or
-    // TryContinue) instead of re-stringifying every frame. Distinct from
-    // LivesDepleted, which only fires once, the instant Lives hits 0.
+    // Top HUD readout for GameState.Lives, shown as "current/max" (e.g. "3/3").
+    // Reactive, not polled: binds to LivesChanged and MaxLivesChanged (both
+    // fired by their property setters on every actual change -- LoseLife only
+    // moves Lives, TryContinue can move both) instead of re-stringifying every
+    // frame. Distinct from LivesDepleted, which only fires once, the instant
+    // Lives hits 0.
     public class LivesView : MonoBehaviour
     {
         [SerializeField] private GameManager gameManager;
@@ -30,17 +31,22 @@ namespace ExpoTheExplorer.UI
 
             state = gameManager.State;
             state.LivesChanged.Subscribe(Refresh);
+            state.MaxLivesChanged.Subscribe(Refresh);
             Refresh(state.Lives);
         }
 
         private void OnDestroy()
         {
-            state?.LivesChanged.Unsubscribe(Refresh);
+            if (state == null) return;
+            state.LivesChanged.Unsubscribe(Refresh);
+            state.MaxLivesChanged.Unsubscribe(Refresh);
         }
 
-        private void Refresh(int lives)
+        // Payload is ignored -- whichever half changed, the label always
+        // needs both current values to re-render "current/max".
+        private void Refresh(int _)
         {
-            livesText.text = lives.ToString();
+            livesText.text = $"{state.Lives}/{state.MaxLives}";
         }
 
         // Every field here is wired by hand in the Editor — a missing one
