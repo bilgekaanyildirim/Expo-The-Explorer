@@ -10,7 +10,7 @@ namespace ExpoTheExplorer.Data
     [CreateAssetMenu(fileName = "BoardDistributionConfig", menuName = "ExpoTheExplorer/Data/Board Distribution Config")]
     public class BoardDistributionConfig : ScriptableObject
     {
-        [Tooltip("Expected average number of items leaked from the upcoming (not-yet-active) ticket queue each time an order is placed. Poisson-distributed and truncated/renormalized to the number of upcoming tickets that haven't leaked yet — see the preview below.")]
+        [Tooltip("Expected average number of items leaked from the upcoming (not-yet-active) ticket queue each time an order is placed. Poisson-distributed and truncated/renormalized to MaxLeakCount — see the preview below.")]
         [SerializeField, Range(0f, 10f)] private float noiseLeakCountLambda = 0.5f;
 
         [Tooltip("How many of the earliest-arrived tickets (active slots first, then the upcoming queue once this exceeds 3) must always have their full required-item content present on the board.")]
@@ -18,6 +18,9 @@ namespace ExpoTheExplorer.Data
 
         [Tooltip("How many of the nearest upcoming (not-yet-active) tickets the noise-leak system looks at. Tickets further back in the queue than this are never eligible as leak sources, even if they haven't leaked yet.")]
         [SerializeField, Range(1, 10)] private int leakDepth = 10;
+
+        [Tooltip("Maximum number of items that can leak from a single OnOrderPlaced call — the truncation ceiling for the Poisson(NoiseLeakCountLambda) distribution, independent of LeakDepth. The actual leak count may still be capped lower than this by how many un-leaked tickets are currently available within LeakDepth.")]
+        [SerializeField, Range(1, 10)] private int maxLeakCount = 10;
 
         public float NoiseLeakCountLambda => noiseLeakCountLambda;
 
@@ -30,11 +33,15 @@ namespace ExpoTheExplorer.Data
         // Same defensive-clamp rationale as GuaranteedTicketCount.
         public int LeakDepth => Mathf.Clamp(leakDepth, 1, 10);
 
+        // Same defensive-clamp rationale as GuaranteedTicketCount.
+        public int MaxLeakCount => Mathf.Clamp(maxLeakCount, 1, 10);
+
 #if UNITY_EDITOR
         private void OnValidate()
         {
             guaranteedTicketCount = Mathf.Clamp(guaranteedTicketCount, 1, 4);
             leakDepth = Mathf.Clamp(leakDepth, 1, 10);
+            maxLeakCount = Mathf.Clamp(maxLeakCount, 1, 10);
         }
 #endif
     }

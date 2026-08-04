@@ -15,3 +15,4 @@ MonoBehaviour:
   noiseLeakCountLambda: 2.71
   guaranteedTicketCount: 4
   leakDepth: 10
+  maxLeakCount: 10
