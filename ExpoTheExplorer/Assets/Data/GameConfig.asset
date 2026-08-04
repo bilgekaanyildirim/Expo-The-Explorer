@@ -11,9 +11,9 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d12d580e8689341e4ae28219f57833a2, type: 3}
   m_Name: GameConfig
-  m_EditorClassIdentifier:
+  m_EditorClassIdentifier: 
   boardWidth: 6
   boardHeight: 5
-  startingLives: 3
+  startingLives: 5
   startingSoftMoney: 0
   startingGems: 0

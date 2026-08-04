@@ -556,6 +556,7 @@ GameObject:
   - component: {fileID: 372252947}
   - component: {fileID: 372252949}
   - component: {fileID: 372252948}
+  - component: {fileID: 372252950}
   m_Layer: 5
   m_Name: HealthUI
   m_TagString: Untagged
@@ -622,6 +623,20 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 372252946}
   m_CullTransparentMesh: 1
+--- !u!114 &372252950
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 372252946}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a6afd76306d764985bdc3492472860e0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ExpoTheExplorer.UI.LivesView
+  gameManager: {fileID: 800000002}
+  livesText: {fileID: 462763820}
 --- !u!1 &450734683
 GameObject:
   m_ObjectHideFlags: 0
