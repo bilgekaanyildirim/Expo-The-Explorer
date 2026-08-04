@@ -1,6 +1,8 @@
 using ExpoTheExplorer.Core;
 using ExpoTheExplorer.Data;
 using ExpoTheExplorer.Systems.BoardDistribution;
+using ExpoTheExplorer.Systems.EconomySystem;
+using ExpoTheExplorer.Systems.LivesSystem;
 using ExpoTheExplorer.Systems.TicketSystem;
 using ExpoTheExplorer.Systems.TraySystem;
 using UnityEngine;
@@ -18,13 +20,17 @@ namespace ExpoTheExplorer.Bootstrap
         [SerializeField] private TicketGenerationConfig ticketGenerationConfig;
         [SerializeField] private FoodCatalog foodCatalog;
         [SerializeField] private BoardDistributionConfig boardDistributionConfig;
+        [SerializeField] private EconomyConfig economyConfig;
+        [SerializeField] private LivesConfig livesConfig;
 
         public GameState State { get; private set; }
         public TicketSlotManager TicketSlotManager { get; private set; }
         public TrayManager TrayManager { get; private set; }
+        public LivesManager LivesManager { get; private set; }
 
         private TicketFactory ticketFactory;
         private BoardDistributor boardDistributor;
+        private EconomyCalculator economyCalculator;
 
         private void Awake()
         {
@@ -32,23 +38,34 @@ namespace ExpoTheExplorer.Bootstrap
 
             State = new GameState(gameConfig);
             ticketFactory = new TicketFactory(ticketGenerationConfig);
-            TicketSlotManager = new TicketSlotManager(State, CreateNextTicket, ticketGenerationConfig.UpcomingQueueSize);
+            LivesManager = new LivesManager(State, livesConfig);
+            TicketSlotManager = new TicketSlotManager(State, CreateNextTicket, LivesManager.LoseLife, ticketGenerationConfig.UpcomingQueueSize);
             boardDistributor = new BoardDistributor(State, boardDistributionConfig);
-            TrayManager = new TrayManager(State, slotIndex => TicketSlotManager.DeliverTicket(slotIndex));
+            TrayManager = new TrayManager(State, slotIndex => TicketSlotManager.DeliverTicket(slotIndex), LivesManager.LoseLife);
+            economyCalculator = new EconomyCalculator(economyConfig);
 
             // Subscribe before the initial fill so the first 3 tickets trigger
             // board distribution too, not just later deliveries/cancellations.
             State.TicketAssigned.Subscribe(OnTicketAssigned);
+            State.TicketDelivered.Subscribe(OnTicketDelivered);
             TicketSlotManager.FillEmptySlots();
         }
 
         private void OnDestroy()
         {
             State.TicketAssigned.Unsubscribe(OnTicketAssigned);
+            State.TicketDelivered.Unsubscribe(OnTicketDelivered);
         }
 
+        // Paused while awaiting Continue (GDD Section 6 — Lives depleted, day
+        // over) so a frozen ticket countdown can't keep cancelling tickets and
+        // requesting further life loss from LivesManager, which is already a
+        // no-op at 0 Lives but would otherwise mask the pause with silent
+        // no-ops instead of actually holding time still.
         private void Update()
         {
+            if (State.IsAwaitingContinue) return;
+
             TicketSlotManager.Tick(Time.deltaTime);
         }
 
@@ -61,6 +78,16 @@ namespace ExpoTheExplorer.Bootstrap
         {
             boardDistributor.OnOrderPlaced(State.TicketSlots, TicketSlotManager.UpcomingTickets);
             TrayManager.OnTicketAssigned(assignment.SlotIndex);
+        }
+
+        // Applies the Economy Module's tip formula (GDD Section 9) to SoftMoney
+        // the instant a ticket is delivered — TicketDelivered fires with the
+        // ticket that just left, still holding its final RemainingSeconds, so
+        // elapsed delivery time is read from that same instance.
+        private void OnTicketDelivered((int SlotIndex, Ticket Ticket) delivery)
+        {
+            var tip = economyCalculator.CalculateTip(delivery.Ticket).TotalTip;
+            State.SoftMoney += Mathf.RoundToInt(tip);
         }
 
         private Ticket CreateNextTicket()

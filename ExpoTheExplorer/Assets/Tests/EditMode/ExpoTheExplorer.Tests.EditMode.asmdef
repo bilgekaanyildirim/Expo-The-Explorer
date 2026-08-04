@@ -7,6 +7,8 @@
         "ExpoTheExplorer.Systems.TicketSystem",
         "ExpoTheExplorer.Systems.BoardDistribution",
         "ExpoTheExplorer.Systems.TraySystem",
+        "ExpoTheExplorer.Systems.EconomySystem",
+        "ExpoTheExplorer.Systems.LivesSystem",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

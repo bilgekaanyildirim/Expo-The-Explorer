@@ -17,6 +17,13 @@ namespace ExpoTheExplorer.Core
         public int Xp { get; set; }
         public int Level { get; set; }
 
+        // Set by LivesManager.LoseLife the instant Lives hits 0, cleared again by
+        // LivesManager.TryContinue (GDD Section 6 — day ends, Gems refill lives
+        // to continue). GameManager reads this to pause TicketSlotManager.Tick
+        // so a frozen countdown can't keep depleting Lives further while the
+        // player is looking at whatever "continue?" UI reacts to LivesDepleted.
+        public bool IsAwaitingContinue { get; set; }
+
         // Carries the slot index alongside the ticket — WorldTrayView needs it
         // to tell whether a just-resolved batch on ITS OWN slot was a delivery
         // (plays the delivery-success lift/fade) as opposed to a wrong-order
@@ -43,6 +50,12 @@ namespace ExpoTheExplorer.Core
         // should use these, not TicketAssigned.
         public EventBus<int> TraySlotScatterBegin { get; } = new();
         public EventBus<int> TraySlotScatterEnd { get; } = new();
+
+        // Fires exactly once, the moment Lives crosses from >0 to 0 (never on
+        // every subsequent life-loss attempt afterward) — payload is the
+        // player's current Gems, so a "continue?" UI can immediately show
+        // whether they can afford it without needing its own GameState poll.
+        public EventBus<int> LivesDepleted { get; } = new();
 
         public BoardGrid Board { get; }
 

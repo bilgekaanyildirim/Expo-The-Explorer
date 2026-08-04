@@ -1,0 +1,17 @@
+{
+    "name": "ExpoTheExplorer.Systems.EconomySystem",
+    "rootNamespace": "ExpoTheExplorer.Systems.EconomySystem",
+    "references": [
+        "ExpoTheExplorer.Core",
+        "ExpoTheExplorer.Data"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

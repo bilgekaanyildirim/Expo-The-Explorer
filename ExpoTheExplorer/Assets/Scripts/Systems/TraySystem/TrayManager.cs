@@ -9,20 +9,28 @@ namespace ExpoTheExplorer.Systems.TraySystem
     // rule (GDD Section 3/5): correct items AND correct modifications -> auto
     // deliver; anything wrong -> lose a life, scatter the tray back onto the
     // board. Plain C#, no MonoBehaviour dependency (CLAUDE.md Section 5) — takes
-    // a delegate for delivery instead of a TicketSlotManager reference, so this
-    // only depends on Core, not Systems.TicketSystem (same pattern as
+    // delegates for delivery and life loss instead of TicketSlotManager/
+    // LivesManager references, so this only depends on Core, not
+    // Systems.TicketSystem or Systems.LivesSystem (same pattern as
     // BoardDistributor).
     public class TrayManager
     {
         private readonly GameState state;
         private readonly Action<int> deliverTicket;
+        private readonly Action loseLife;
         private readonly System.Random random;
         private readonly TraySlot[] slots;
 
-        public TrayManager(GameState state, Action<int> deliverTicket, System.Random random = null)
+        // Takes a loseLife delegate (LivesManager.LoseLife in practice), same
+        // rationale as deliverTicket: keeps this decoupled from a concrete
+        // Systems.LivesSystem reference while still centralizing life loss in
+        // one place shared with TicketSlotManager's timeout case (CLAUDE.md
+        // Section 5 — Lives System).
+        public TrayManager(GameState state, Action<int> deliverTicket, Action loseLife, System.Random random = null)
         {
             this.state = state;
             this.deliverTicket = deliverTicket;
+            this.loseLife = loseLife;
             this.random = random ?? new System.Random();
 
             slots = new TraySlot[GameState.TicketSlotCount];
@@ -76,7 +84,7 @@ namespace ExpoTheExplorer.Systems.TraySystem
                 else
                 {
                     Debug.Log($"[Tray] Slot {slotIndex}: wrong order for {ticket.CustomerName} — losing a life and scattering items back to the board.");
-                    state.Lives--;
+                    loseLife();
                     ScatterBackToBoard(slotIndex, slot);
                     slot.Clear();
                 }

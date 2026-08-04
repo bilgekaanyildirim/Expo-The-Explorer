@@ -18,15 +18,22 @@ namespace ExpoTheExplorer.Systems.TicketSystem
     {
         private readonly GameState state;
         private readonly Func<Ticket> nextTicketProvider;
+        private readonly Action loseLife;
         private readonly int lookaheadCount;
         private readonly List<Ticket> upcomingTickets = new();
 
         public IReadOnlyList<Ticket> UpcomingTickets => upcomingTickets;
 
-        public TicketSlotManager(GameState state, Func<Ticket> nextTicketProvider, int lookaheadCount = 10)
+        // Takes a loseLife delegate (LivesManager.LoseLife in practice) rather
+        // than mutating GameState.Lives directly — keeps life-loss centralized
+        // in one place shared with TrayManager's wrong-delivery case, instead
+        // of two systems separately decrementing the same field (GDD Section
+        // 3/6, CLAUDE.md Section 5 — Lives System).
+        public TicketSlotManager(GameState state, Func<Ticket> nextTicketProvider, Action loseLife, int lookaheadCount = 10)
         {
             this.state = state;
             this.nextTicketProvider = nextTicketProvider;
+            this.loseLife = loseLife;
             this.lookaheadCount = Math.Max(GameState.TicketSlotCount, lookaheadCount);
         }
 
@@ -102,7 +109,7 @@ namespace ExpoTheExplorer.Systems.TicketSystem
                 ticket.RemainingSeconds = Math.Max(0f, ticket.RemainingSeconds - deltaSeconds);
                 if (ticket.RemainingSeconds <= 0f)
                 {
-                    state.Lives--;
+                    loseLife();
                     CancelTicket(i);
                 }
             }

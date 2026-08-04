@@ -42,9 +42,14 @@ namespace ExpoTheExplorer.Tests.EditMode
                 timeLimitSeconds);
         }
 
+        // Stands in for LivesManager.LoseLife -- this suite tests
+        // TicketSlotManager's OWN behavior (does it request a life loss and
+        // cancel on timeout), not LivesSystem, so a plain state.Lives--
+        // keeps existing assertions on state.Lives valid without depending
+        // on the real LivesManager implementation.
         private TicketSlotManager CreateManager(GameState state, Func<Ticket> provider = null, int lookaheadCount = 10)
         {
-            return new TicketSlotManager(state, provider ?? (() => CreateSimpleTicket()), lookaheadCount);
+            return new TicketSlotManager(state, provider ?? (() => CreateSimpleTicket()), () => state.Lives--, lookaheadCount);
         }
 
         private FoodItemConfig CreateFoodItem(FoodCategory category, List<ModificationConfig> availableModifications = null)
