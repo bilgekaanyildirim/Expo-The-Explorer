@@ -49,6 +49,11 @@ namespace ExpoTheExplorer.Systems.LivesSystem
 
             state.Gems -= config.ContinueGemCost;
             state.Lives = config.ContinueRefillAmount;
+            // ContinueRefillAmount is a deliberately separate knob from
+            // GameConfig.StartingLives -- MaxLives (the X/Y HUD's "out of" half)
+            // has to follow it here so a Continue-granted amount different from
+            // the day's starting Lives still reads as a full bar, not a partial one.
+            state.MaxLives = config.ContinueRefillAmount;
             state.IsAwaitingContinue = false;
             return true;
         }

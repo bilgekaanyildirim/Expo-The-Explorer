@@ -36,6 +36,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             var state = new GameState(config);
 
             Assert.AreEqual(config.StartingLives, state.Lives);
+            Assert.AreEqual(config.StartingLives, state.MaxLives);
             Assert.AreEqual(config.StartingSoftMoney, state.SoftMoney);
             Assert.AreEqual(config.StartingGems, state.Gems);
         }

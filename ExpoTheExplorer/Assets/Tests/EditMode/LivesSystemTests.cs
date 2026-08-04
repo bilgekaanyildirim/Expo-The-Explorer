@@ -114,6 +114,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             Assert.IsTrue(result);
             Assert.AreEqual(5, state.Gems);
             Assert.AreEqual(3, state.Lives);
+            Assert.AreEqual(3, state.MaxLives);
             Assert.IsFalse(state.IsAwaitingContinue);
         }
 
