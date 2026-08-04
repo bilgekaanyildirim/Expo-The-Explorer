@@ -47,6 +47,7 @@ namespace ExpoTheExplorer.Systems.BoardDistribution
         private void SpawnMissingRequiredItems(IReadOnlyList<Ticket> activeTickets, IReadOnlyList<Ticket> upcomingTickets)
         {
             var guaranteedTickets = SelectGuaranteedTickets(activeTickets, upcomingTickets);
+            UnityEngine.Debug.Log($"[BoardDistributor] GuaranteedTicketCount={config.GuaranteedTicketCount}, active={activeTickets.Count(t => t != null && t.State == TicketState.Active)}, guaranteed={string.Join(" | ", guaranteedTickets.Select(t => $"{t.CustomerName}(seq={t.ArrivalSequence}, items=[{string.Join(",", t.RequiredItems.Select(f => $"{f.Category}:{f.DisplayName}"))}])"))}");
             if (guaranteedTickets.Count == 0) return;
 
             var neededCounts = new Dictionary<RequiredItemKey, int>();
@@ -60,14 +61,17 @@ namespace ExpoTheExplorer.Systems.BoardDistribution
                     neededCounts[key] = count + 1;
                 }
             }
+            UnityEngine.Debug.Log($"[BoardDistributor] neededCounts={string.Join(" | ", neededCounts.Select(kv => $"{kv.Key.Food.DisplayName}(mods={kv.Key.Modifications.Count})={kv.Value}"))}");
 
             var presentCounts = CountItemsOnBoard();
+            UnityEngine.Debug.Log($"[BoardDistributor] presentCounts={string.Join(" | ", presentCounts.Select(kv => $"{kv.Key.Food.DisplayName}(mods={kv.Key.Modifications.Count})={kv.Value}"))}");
 
             foreach (var (key, neededCount) in neededCounts)
             {
                 presentCounts.TryGetValue(key, out var presentCount);
                 for (var i = presentCount; i < neededCount; i++)
                 {
+                    UnityEngine.Debug.Log($"[BoardDistributor] Spawning {key.Food.DisplayName} (mods={key.Modifications.Count}) — present={presentCount}, needed={neededCount}");
                     state.Board.RequestSpawn(new BoardItem(key.Food, key.Modifications), random);
                 }
             }
@@ -127,6 +131,7 @@ namespace ExpoTheExplorer.Systems.BoardDistribution
             var food = sourceTicket.RequiredItems[random.Next(sourceTicket.RequiredItems.Count)];
             var mods = food.Category == FoodCategory.Main ? sourceTicket.Modifications : Array.Empty<Modification>();
 
+            UnityEngine.Debug.Log($"[BoardDistributor] Noise-leaking {food.Category}:{food.DisplayName} from {sourceTicket.CustomerName}(seq={sourceTicket.ArrivalSequence})");
             state.Board.RequestSpawn(new BoardItem(food, mods), random);
             leakedTickets.Add(sourceTicket);
         }
