@@ -34,7 +34,7 @@ namespace ExpoTheExplorer.Systems.BoardDistribution
         {
             // Required pool always spawns before noise (GDD Section 4).
             SpawnMissingRequiredItems(activeTickets, upcomingTickets);
-            TryLeakNoiseItem(upcomingTickets);
+            LeakNoiseItems(upcomingTickets);
         }
 
         // Guarantees the GuaranteedTicketCount earliest-arrived tickets are
@@ -113,22 +113,31 @@ namespace ExpoTheExplorer.Systems.BoardDistribution
         // Pruning against the current upcomingTickets list also means a ticket
         // that got dequeued into an active slot stops being tracked, and the
         // fresh ticket that replaces it in the queue is immediately eligible.
-        // Rolled once per order placed (NoiseLeakChance), not on a timer.
-        private void TryLeakNoiseItem(IReadOnlyList<Ticket> upcomingTickets)
+        // How many items leak is Poisson-sampled once per order placed
+        // (NoiseLeakCountLambda), truncated to the number of not-yet-leaked
+        // candidates — the same pattern TicketFactory uses for modification
+        // count, so more than one item can leak from a single OnOrderPlaced call.
+        private void LeakNoiseItems(IReadOnlyList<Ticket> upcomingTickets)
         {
             leakedTickets.IntersectWith(upcomingTickets);
-
-            if (random.NextDouble() >= config.NoiseLeakChance) return;
 
             var candidates = upcomingTickets.Where(t => !leakedTickets.Contains(t)).ToList();
             if (candidates.Count == 0) return;
 
-            var sourceTicket = candidates[random.Next(candidates.Count)];
-            var food = sourceTicket.RequiredItems[random.Next(sourceTicket.RequiredItems.Count)];
-            var mods = food.Category == FoodCategory.Main ? sourceTicket.Modifications : Array.Empty<Modification>();
+            var leakCount = TruncatedPoisson.Sample(candidates.Count, config.NoiseLeakCountLambda, random);
 
-            state.Board.RequestSpawn(new BoardItem(food, mods), random);
-            leakedTickets.Add(sourceTicket);
+            for (var i = 0; i < leakCount; i++)
+            {
+                var index = random.Next(candidates.Count);
+                var sourceTicket = candidates[index];
+                candidates.RemoveAt(index);
+
+                var food = sourceTicket.RequiredItems[random.Next(sourceTicket.RequiredItems.Count)];
+                var mods = food.Category == FoodCategory.Main ? sourceTicket.Modifications : Array.Empty<Modification>();
+
+                state.Board.RequestSpawn(new BoardItem(food, mods), random);
+                leakedTickets.Add(sourceTicket);
+            }
         }
     }
 }

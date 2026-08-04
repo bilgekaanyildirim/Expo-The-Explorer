@@ -52,7 +52,7 @@ namespace ExpoTheExplorer.Systems.TicketSystem
             TryAddRandomItem(pool, FoodCategory.Drink, config.DrinkInclusionChance, requiredItems);
 
             var lambda = ResolveModificationCountLambda(main);
-            var modificationCount = PickModificationCount(main.AvailableModifications.Count, lambda);
+            var modificationCount = TruncatedPoisson.Sample(main.AvailableModifications.Count, lambda, random);
             var chosenMods = ChooseModifications(main.AvailableModifications, modificationCount);
             var modifications = chosenMods.Select(CreateModification).ToList();
 
@@ -119,39 +119,6 @@ namespace ExpoTheExplorer.Systems.TicketSystem
             }
 
             return config.ModificationCountLambda;
-        }
-
-        // How many modifications this ticket gets, drawn from a Poisson(lambda)
-        // distribution truncated to k = 0..n and renormalized (the un-truncated
-        // Poisson has no upper bound, but a dish only has n possible mods).
-        // Uses the unnormalized term ratio lambda^k/k! directly — the e^-lambda
-        // factor of the true Poisson pmf cancels out once we divide by the sum
-        // of these n+1 terms, so it's never computed. term(0) is always exactly
-        // 1, so the total is always >= 1 — no divide-by-zero risk, unlike
-        // PickWeightedMain's weight sum (which a designer could zero out).
-        private int PickModificationCount(int n, float lambda)
-        {
-            if (n == 0) return 0;
-
-            var terms = new double[n + 1];
-            terms[0] = 1d;
-            for (var k = 1; k <= n; k++)
-            {
-                terms[k] = terms[k - 1] * lambda / k;
-            }
-
-            var total = 0d;
-            foreach (var term in terms) total += term;
-
-            var roll = random.NextDouble() * total;
-            var cumulative = 0d;
-            for (var k = 0; k <= n; k++)
-            {
-                cumulative += terms[k];
-                if (roll < cumulative) return k;
-            }
-
-            return n;
         }
 
         // Uniform random subset without replacement, via a partial Fisher-Yates

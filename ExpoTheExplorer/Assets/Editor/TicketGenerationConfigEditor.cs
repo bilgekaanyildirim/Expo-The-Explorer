@@ -1,4 +1,5 @@
 using System;
+using ExpoTheExplorer.Core;
 using ExpoTheExplorer.Data;
 using UnityEditor;
 
@@ -78,34 +79,13 @@ namespace ExpoTheExplorer.Editor
                 return;
             }
 
-            var probabilities = PoissonProbabilities(n, lambda);
+            var probabilities = TruncatedPoisson.Probabilities(n, lambda);
             for (var k = 0; k <= n; k++)
             {
                 var probabilityPercent = probabilities[k] * 100d;
                 var label = k == 1 ? "1 mod" : $"{k} mods";
                 EditorGUILayout.LabelField($"{label}: {probabilityPercent.ToString($"F{PercentDecimalPlaces}")}%");
             }
-        }
-
-        // Presentation-only math for this preview — mirrors
-        // TicketFactory.PickModificationCount exactly (Poisson pmf truncated to
-        // k = 0..n and renormalized; the e^-lambda factor cancels out of the
-        // normalization so it's never computed) and isn't consulted by any
-        // gameplay code itself.
-        private static double[] PoissonProbabilities(int n, float lambda)
-        {
-            var terms = new double[n + 1];
-            terms[0] = 1d;
-            for (var k = 1; k <= n; k++)
-            {
-                terms[k] = terms[k - 1] * lambda / k;
-            }
-
-            var total = 0d;
-            foreach (var term in terms) total += term;
-
-            for (var k = 0; k <= n; k++) terms[k] /= total;
-            return terms;
         }
     }
 }

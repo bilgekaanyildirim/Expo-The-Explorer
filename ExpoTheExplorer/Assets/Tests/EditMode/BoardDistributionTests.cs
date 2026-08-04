@@ -11,6 +11,11 @@ namespace ExpoTheExplorer.Tests.EditMode
 {
     public class BoardDistributionTests
     {
+        // Mirrors TicketSystemTests.ExtremeLambda — large enough that
+        // TruncatedPoisson.Sample deterministically returns n (all available
+        // candidates), used wherever the old chance=1f meant "always leaks".
+        private const float ExtremeLambda = 1_000_000f;
+
         private GameConfig gameConfig;
         private readonly List<UnityEngine.Object> spawnedAssets = new();
 
@@ -50,13 +55,13 @@ namespace ExpoTheExplorer.Tests.EditMode
             return modConfig;
         }
 
-        private BoardDistributionConfig CreateDistributionConfig(float noiseLeakChance, int guaranteedTicketCount = 1)
+        private BoardDistributionConfig CreateDistributionConfig(float noiseLeakCountLambda, int guaranteedTicketCount = 1)
         {
             var config = ScriptableObject.CreateInstance<BoardDistributionConfig>();
             spawnedAssets.Add(config);
 
             var serialized = new SerializedObject(config);
-            serialized.FindProperty("noiseLeakChance").floatValue = noiseLeakChance;
+            serialized.FindProperty("noiseLeakCountLambda").floatValue = noiseLeakCountLambda;
             serialized.FindProperty("guaranteedTicketCount").intValue = guaranteedTicketCount;
             serialized.ApplyModifiedPropertiesWithoutUndo();
 
@@ -210,7 +215,7 @@ namespace ExpoTheExplorer.Tests.EditMode
         }
 
         [Test]
-        public void OnOrderPlaced_NoiseLeakChanceZero_NeverLeaks()
+        public void OnOrderPlaced_LambdaZero_NeverLeaks()
         {
             var state = new GameState(gameConfig);
             var main = CreateFoodItem();
@@ -229,14 +234,14 @@ namespace ExpoTheExplorer.Tests.EditMode
         }
 
         [Test]
-        public void OnOrderPlaced_NoiseLeakChanceOne_LeaksFromUpcomingQueue()
+        public void OnOrderPlaced_ExtremeLambda_LeaksFromUpcomingQueue()
         {
             var state = new GameState(gameConfig);
             var main = CreateFoodItem();
             var upcoming = CreateTicket(new List<FoodItemConfig> { main }, arrivalSequence: 100);
-            // See comment in OnOrderPlaced_NoiseLeakChanceZero_NeverLeaks above.
+            // See comment in OnOrderPlaced_LambdaZero_NeverLeaks above.
             var activeTicket = CreateTicket(new List<FoodItemConfig> { CreateFoodItem() }, arrivalSequence: 0);
-            var distributor = new BoardDistributor(state, CreateDistributionConfig(1f));
+            var distributor = new BoardDistributor(state, CreateDistributionConfig(ExtremeLambda));
 
             distributor.OnOrderPlaced(new[] { activeTicket }, new[] { upcoming });
 
@@ -247,7 +252,7 @@ namespace ExpoTheExplorer.Tests.EditMode
         public void OnOrderPlaced_NoUpcomingTickets_SkipsNoiseSpawnWithoutThrowing()
         {
             var state = new GameState(gameConfig);
-            var distributor = new BoardDistributor(state, CreateDistributionConfig(1f));
+            var distributor = new BoardDistributor(state, CreateDistributionConfig(ExtremeLambda));
 
             Assert.DoesNotThrow(() => distributor.OnOrderPlaced(Array.Empty<Ticket>(), Array.Empty<Ticket>()));
             Assert.AreEqual(0, state.Board.OccupiedCellCount);
@@ -259,9 +264,9 @@ namespace ExpoTheExplorer.Tests.EditMode
             var state = new GameState(gameConfig);
             var main = CreateFoodItem();
             var upcoming = CreateTicket(new List<FoodItemConfig> { main }, arrivalSequence: 100);
-            // See comment in OnOrderPlaced_NoiseLeakChanceZero_NeverLeaks above.
+            // See comment in OnOrderPlaced_LambdaZero_NeverLeaks above.
             var activeTicket = CreateTicket(new List<FoodItemConfig> { CreateFoodItem() }, arrivalSequence: 0);
-            var distributor = new BoardDistributor(state, CreateDistributionConfig(1f));
+            var distributor = new BoardDistributor(state, CreateDistributionConfig(ExtremeLambda));
 
             for (var i = 0; i < 10; i++)
             {
@@ -279,15 +284,67 @@ namespace ExpoTheExplorer.Tests.EditMode
             var mainB = CreateFoodItem();
             var ticketA = CreateTicket(new List<FoodItemConfig> { mainA }, arrivalSequence: 100);
             var ticketB = CreateTicket(new List<FoodItemConfig> { mainB }, arrivalSequence: 101);
-            // See comment in OnOrderPlaced_NoiseLeakChanceZero_NeverLeaks above.
+            // See comment in OnOrderPlaced_LambdaZero_NeverLeaks above.
             var activeTicket = CreateTicket(new List<FoodItemConfig> { CreateFoodItem() }, arrivalSequence: 0);
-            var distributor = new BoardDistributor(state, CreateDistributionConfig(1f));
+            var distributor = new BoardDistributor(state, CreateDistributionConfig(ExtremeLambda));
 
             distributor.OnOrderPlaced(new[] { activeTicket }, new[] { ticketA });
             distributor.OnOrderPlaced(new[] { activeTicket }, new[] { ticketB });
 
             Assert.AreEqual(1, CountMatchingItemsOnBoard(state.Board, mainA, ticketA.Modifications));
             Assert.AreEqual(1, CountMatchingItemsOnBoard(state.Board, mainB, ticketB.Modifications));
+        }
+
+        [Test]
+        public void OnOrderPlaced_ExtremeLambda_MultipleUpcomingTickets_LeaksFromEveryCandidateInOneCall()
+        {
+            var state = new GameState(gameConfig);
+            var mainA = CreateFoodItem();
+            var mainB = CreateFoodItem();
+            var mainC = CreateFoodItem();
+            var ticketA = CreateTicket(new List<FoodItemConfig> { mainA }, arrivalSequence: 100);
+            var ticketB = CreateTicket(new List<FoodItemConfig> { mainB }, arrivalSequence: 101);
+            var ticketC = CreateTicket(new List<FoodItemConfig> { mainC }, arrivalSequence: 102);
+            // See comment in OnOrderPlaced_LambdaZero_NeverLeaks above.
+            var activeTicket = CreateTicket(new List<FoodItemConfig> { CreateFoodItem() }, arrivalSequence: 0);
+            var distributor = new BoardDistributor(state, CreateDistributionConfig(ExtremeLambda));
+
+            distributor.OnOrderPlaced(new[] { activeTicket }, new[] { ticketA, ticketB, ticketC });
+
+            Assert.AreEqual(1, CountMatchingItemsOnBoard(state.Board, mainA, ticketA.Modifications));
+            Assert.AreEqual(1, CountMatchingItemsOnBoard(state.Board, mainB, ticketB.Modifications));
+            Assert.AreEqual(1, CountMatchingItemsOnBoard(state.Board, mainC, ticketC.Modifications));
+        }
+
+        [Test]
+        public void OnOrderPlaced_ModerateLambda_SometimesLeaksMoreThanOneItemPerCall()
+        {
+            var moderateLambda = 3f;
+            var upcomingCount = 5;
+            var trialsWithMultipleLeaks = 0;
+
+            for (var trial = 0; trial < 40; trial++)
+            {
+                var state = new GameState(gameConfig);
+                var upcomingTickets = new List<Ticket>();
+                for (var i = 0; i < upcomingCount; i++)
+                {
+                    upcomingTickets.Add(CreateTicket(new List<FoodItemConfig> { CreateFoodItem() }, arrivalSequence: 100 + i));
+                }
+
+                // guaranteedTicketCount defaults to 1, so one required-pool item
+                // always spawns from the earliest-arrived upcoming ticket before
+                // the leak step runs — baseline occupied count is exactly 1. Two
+                // or more leaked cells beyond that (total > 2) is the signal that
+                // a single OnOrderPlaced call leaked more than one item.
+                var distributor = new BoardDistributor(state, CreateDistributionConfig(moderateLambda));
+                distributor.OnOrderPlaced(Array.Empty<Ticket>(), upcomingTickets);
+
+                if (state.Board.OccupiedCellCount > 2) trialsWithMultipleLeaks++;
+            }
+
+            Assert.Greater(trialsWithMultipleLeaks, 0,
+                "Expected at least one trial to leak more than one item from a single OnOrderPlaced call.");
         }
 
         [Test]
