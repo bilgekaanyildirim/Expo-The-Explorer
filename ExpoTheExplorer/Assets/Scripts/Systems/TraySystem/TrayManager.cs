@@ -53,7 +53,20 @@ namespace ExpoTheExplorer.Systems.TraySystem
         // as an invalid drop (snap back to the board). Reaching the required
         // count triggers the batch check immediately and always clears the tray
         // afterward, win or lose.
-        public bool TryAddItem(int slotIndex, BoardItem item)
+        //
+        // onAccepted fires the instant acceptance is confirmed, before the
+        // batch check below — the caller (BoardItemDragHandler, via
+        // WorldTrayView) uses it to detach this item from the board's data
+        // model right then. If that detach instead waited until after this
+        // call returns (as it used to), a delivery on THIS exact call cascades
+        // synchronously into BoardDistributor's required-pool re-check
+        // (deliverTicket -> AssignTicket -> OnOrderPlaced) while the item is
+        // still sitting in its old board cell, so a food/modification combo
+        // shared with another active ticket (e.g. a plain Side/Drink with no
+        // modifications) reads as "already present" and never gets
+        // replenished — leaving that other ticket permanently short once this
+        // item is actually removed a moment later.
+        public bool TryAddItem(int slotIndex, BoardItem item, Action onAccepted = null)
         {
             var ticket = state.TicketSlots[slotIndex];
             if (ticket == null || ticket.State != TicketState.Active) return false;
@@ -61,6 +74,7 @@ namespace ExpoTheExplorer.Systems.TraySystem
             var slot = slots[slotIndex];
             if (slot.IsFull(ticket)) return false;
 
+            onAccepted?.Invoke();
             slot.Add(item);
 
             if (slot.IsFull(ticket))

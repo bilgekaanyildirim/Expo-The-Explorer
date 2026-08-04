@@ -74,6 +74,42 @@ namespace ExpoTheExplorer.Tests.EditMode
         }
 
         [Test]
+        public void TryAddItem_OnAcceptedCallback_FiresBeforeDeliverTicketCascade()
+        {
+            // Regression test: onAccepted must fire before the batch check
+            // (and the deliverTicket cascade it can trigger) runs — a caller
+            // uses it to detach the item from the board's data model right
+            // away, so a required-pool re-check that cascade triggers
+            // (BoardDistributor, via GameManager) sees an accurate board
+            // instead of this item still occupying its old cell.
+            var state = new GameState(gameConfig);
+            var main = CreateFoodItem();
+            var ticket = CreateTicket(new List<FoodItemConfig> { main });
+            state.TicketSlots[0] = ticket;
+
+            var callOrder = new List<string>();
+            var manager = new TrayManager(state, _ => callOrder.Add("delivered"), () => { });
+
+            manager.TryAddItem(0, new BoardItem(main, ticket.Modifications), () => callOrder.Add("detached"));
+
+            Assert.AreEqual(new List<string> { "detached", "delivered" }, callOrder);
+        }
+
+        [Test]
+        public void TryAddItem_RejectedDrop_OnAcceptedCallbackNeverFires()
+        {
+            var state = new GameState(gameConfig);
+            var main = CreateFoodItem();
+            var manager = new TrayManager(state, _ => { }, () => state.Lives--);
+
+            var onAcceptedCalled = false;
+            var accepted = manager.TryAddItem(0, new BoardItem(main, new List<Modification>()), () => onAcceptedCalled = true);
+
+            Assert.IsFalse(accepted);
+            Assert.IsFalse(onAcceptedCalled);
+        }
+
+        [Test]
         public void TryAddItem_WrongItem_LosesLifeAndScattersToBoardAndClearsTray()
         {
             var state = new GameState(gameConfig);

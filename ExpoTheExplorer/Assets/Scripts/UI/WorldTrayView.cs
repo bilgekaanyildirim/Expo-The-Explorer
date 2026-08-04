@@ -179,7 +179,7 @@ namespace ExpoTheExplorer.UI
             // a manual drop rather than a timeout, so it knows to delay the
             // board-side pop-in to match the shake below.
             inDropCall = true;
-            var accepted = gameManager.TrayManager.TryAddItem(slotIndex, item);
+            var accepted = gameManager.TrayManager.TryAddItem(slotIndex, item, dragHandler.DetachFromBoard);
             inDropCall = false;
 
             dragHandler.WasAcceptedByTray = accepted;

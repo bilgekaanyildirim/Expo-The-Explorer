@@ -291,13 +291,11 @@ namespace ExpoTheExplorer.UI
             if (WasAcceptedByTray)
             {
                 // WorldTrayView.OnDrop already reparented/destroyed this
-                // object as needed — only the board side (if any) still owns
-                // a pooled cell that needs releasing.
-                if (wasOnBoard)
-                {
-                    boardView.ReleaseContainer(cellX, cellY);
-                    board.RemoveItem(cellX, cellY);
-                }
+                // object as needed. The board side (if any) was already
+                // detached too — DetachFromBoard ran synchronously inside
+                // TrayManager.TryAddItem, before its own batch check, so a
+                // delivery that call triggers sees an accurate board state
+                // instead of this item still sitting in its old cell.
                 return;
             }
 
@@ -343,20 +341,34 @@ namespace ExpoTheExplorer.UI
             }
         }
 
+        // Called by TrayManager.TryAddItem (via WorldTrayView.TryAcceptDrop)
+        // the instant this item is accepted into a tray slot — before that
+        // same call's own batch check, which a full tray resolves
+        // synchronously (delivered, or scattered) and, on a delivery,
+        // cascades into BoardDistributor's required-pool re-check. Detaching
+        // here rather than later (this used to happen back in OnEndDrag,
+        // after TryAcceptDrop had already returned) means that re-check sees
+        // an accurate board — not this item still occupying its old cell —
+        // so a food/modification combo another active ticket also needs
+        // doesn't wrongly read as "already present" and go unreplenished.
+        // A no-op if this item came from another tray slot rather than the
+        // board (nothing to detach there).
+        public void DetachFromBoard()
+        {
+            if (pickupSourceTraySlotIndex.HasValue) return;
+
+            boardView.ReleaseContainer(cellX, cellY);
+            board.RemoveItem(cellX, cellY);
+        }
+
         // Called by WorldTrayView.OnDrop once TrayManager has accepted this
         // item and the tray still needs it displayed (batch not yet
-        // resolved). Releases this container from BoardView's per-cell pool
-        // first if it came from the board — otherwise the next item spawned
-        // into that exact cell would find its "empty" pooled container
-        // already reparented into the tray and rip it back out.
+        // resolved). DetachFromBoard above already released this cell's
+        // pooled container (if it came from the board) before TryAddItem's
+        // batch check ran, so there's nothing left to release here.
         public void PlaceInSlot(Transform slotTransform, int slotIndex)
         {
             if (slotTransform == null) return;
-
-            if (!pickupSourceTraySlotIndex.HasValue)
-            {
-                boardView.ReleaseContainer(cellX, cellY);
-            }
 
             currentTraySlotIndex = slotIndex;
 
@@ -373,29 +385,24 @@ namespace ExpoTheExplorer.UI
 
         // Called by WorldTrayView.OnDrop when this exact drop just resolved
         // the tray's batch check (delivered, or scattered along with the rest
-        // of the tray) — if it came from the board it still owns that cell's
-        // pooled container and must release it before being destroyed, same
-        // as PlaceInSlot does for items that DO end up sitting in a slot.
+        // of the tray) — DetachFromBoard already released this cell's pooled
+        // container (if it came from the board) before that batch check ran,
+        // so this is just cleanup of the GameObject itself.
         public void ReleaseAndDestroy()
         {
-            if (!pickupSourceTraySlotIndex.HasValue)
-            {
-                boardView.ReleaseContainer(cellX, cellY);
-            }
-
             Destroy(gameObject);
         }
 
         // Called by WorldTrayView.TryAcceptDrop instead of ReleaseAndDestroy
         // when this exact drop was the one that completed a successful
         // delivery — this item was never placed into a slot, so it's still
-        // sitting wherever the drag left it. Grows then lifts-and-fades in
-        // sync with the tray's own delivery animation (WorldTrayView.
-        // PlayDeliverySuccess) instead of just vanishing. OnEndDrag's own
-        // scale reset / collider re-enable check deliverySuccessInProgress
-        // and stay hands-off for the rest of this object's short remaining
-        // lifetime; board-side pool release still happens the normal way
-        // back in OnEndDrag once this returns.
+        // sitting wherever the drag left it (DetachFromBoard already
+        // released its board-side pooled container, before TryAddItem's
+        // batch check ran). Grows then lifts-and-fades in sync with the
+        // tray's own delivery animation (WorldTrayView.PlayDeliverySuccess)
+        // instead of just vanishing. OnEndDrag's own scale reset / collider
+        // re-enable check deliverySuccessInProgress and stay hands-off for
+        // the rest of this object's short remaining lifetime.
         public void PlayDeliverySuccessAndDestroy(BoardAnimationConfig config)
         {
             deliverySuccessInProgress = true;
