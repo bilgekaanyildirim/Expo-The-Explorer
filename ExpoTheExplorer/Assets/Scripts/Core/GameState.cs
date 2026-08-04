@@ -11,11 +11,40 @@ namespace ExpoTheExplorer.Core
 
         public Ticket[] TicketSlots { get; } = new Ticket[TicketSlotCount];
 
-        public int Lives { get; set; }
-        public int SoftMoney { get; set; }
+        private int lives;
+        private int softMoney;
+
+        // Setters publish on every actual change (LivesManager.LoseLife/TryContinue,
+        // GameManager's tip payout) so HUD views (LivesView, SoftMoneyView) can bind
+        // via LivesChanged/SoftMoneyChanged instead of polling GameState in Update.
+        public int Lives
+        {
+            get => lives;
+            set
+            {
+                if (lives == value) return;
+                lives = value;
+                LivesChanged.Publish(lives);
+            }
+        }
+
+        public int SoftMoney
+        {
+            get => softMoney;
+            set
+            {
+                if (softMoney == value) return;
+                softMoney = value;
+                SoftMoneyChanged.Publish(softMoney);
+            }
+        }
+
         public int Gems { get; set; }
         public int Xp { get; set; }
         public int Level { get; set; }
+
+        public EventBus<int> LivesChanged { get; } = new();
+        public EventBus<int> SoftMoneyChanged { get; } = new();
 
         // Set by LivesManager.LoseLife the instant Lives hits 0, cleared again by
         // LivesManager.TryContinue (GDD Section 6 — day ends, Gems refill lives

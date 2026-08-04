@@ -1,44 +1,46 @@
 using System.Collections.Generic;
 using ExpoTheExplorer.Bootstrap;
+using ExpoTheExplorer.Core;
 using TMPro;
 using UnityEngine;
 
 namespace ExpoTheExplorer.UI
 {
     // Top HUD readout for GameState.Lives (GDD Section 3/6 — Lives System).
-    // Polls every frame and always rewrites the text, same poll-without-diffing
-    // idiom as SoftMoneyView: Lives has no dedicated EventBus (LivesDepleted
-    // only fires once, the instant it hits 0 — not on every decrement), and
-    // restringifying one int every frame is cheap enough that adding a
-    // change-notification API for it isn't worth the extra moving part.
+    // Reactive, not polled: binds to GameState.LivesChanged (fired by the
+    // property setter on every actual change -- LivesManager.LoseLife or
+    // TryContinue) instead of re-stringifying every frame. Distinct from
+    // LivesDepleted, which only fires once, the instant Lives hits 0.
     public class LivesView : MonoBehaviour
     {
         [SerializeField] private GameManager gameManager;
         [SerializeField] private TMP_Text livesText;
 
-        private bool isValid;
+        private GameState state;
 
-        // Deliberately does NOT call Refresh() here -- Unity's Awake() order
-        // across different GameObjects is unspecified, and GameManager.Awake
-        // (which sets State) may not have run yet, throwing a
-        // NullReferenceException on gameManager.State. Update() is always
-        // safe: Unity runs every object's Awake() before any object's
-        // Update() in a given frame, so GameManager.State is guaranteed set
-        // by then (same reason SoftMoneyView only ever touches
-        // gameManager.State from Update, never from Awake/Initialize).
-        private void Awake()
+        // Subscribes from Start(), not Awake() -- Unity's Awake() order across
+        // different GameObjects is unspecified, and GameManager.Awake (which
+        // sets State) may not have run yet, throwing a NullReferenceException
+        // on gameManager.State. Start() is always safe: Unity runs every
+        // object's Awake() before any object's Start() in a given frame (same
+        // reason BoardView only ever touches gameManager.State from Start).
+        private void Start()
         {
-            isValid = ValidateReferences();
+            if (!ValidateReferences()) return;
+
+            state = gameManager.State;
+            state.LivesChanged.Subscribe(Refresh);
+            Refresh(state.Lives);
         }
 
-        private void Update()
+        private void OnDestroy()
         {
-            if (isValid) Refresh();
+            state?.LivesChanged.Unsubscribe(Refresh);
         }
 
-        private void Refresh()
+        private void Refresh(int lives)
         {
-            livesText.text = gameManager.State.Lives.ToString();
+            livesText.text = lives.ToString();
         }
 
         // Every field here is wired by hand in the Editor — a missing one
