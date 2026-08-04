@@ -16,6 +16,9 @@ namespace ExpoTheExplorer.Data
         [Tooltip("How many of the earliest-arrived tickets (active slots first, then the upcoming queue once this exceeds 3) must always have their full required-item content present on the board.")]
         [SerializeField, Range(1, 4)] private int guaranteedTicketCount = 1;
 
+        [Tooltip("How many of the nearest upcoming (not-yet-active) tickets the noise-leak system looks at. Tickets further back in the queue than this are never eligible as leak sources, even if they haven't leaked yet.")]
+        [SerializeField, Range(1, 10)] private int leakDepth = 10;
+
         public float NoiseLeakCountLambda => noiseLeakCountLambda;
 
         // Clamped defensively rather than trusting the serialized value outright —
@@ -24,10 +27,14 @@ namespace ExpoTheExplorer.Data
         // would silently disable the required-pool guarantee entirely.
         public int GuaranteedTicketCount => Mathf.Clamp(guaranteedTicketCount, 1, 4);
 
+        // Same defensive-clamp rationale as GuaranteedTicketCount.
+        public int LeakDepth => Mathf.Clamp(leakDepth, 1, 10);
+
 #if UNITY_EDITOR
         private void OnValidate()
         {
             guaranteedTicketCount = Mathf.Clamp(guaranteedTicketCount, 1, 4);
+            leakDepth = Mathf.Clamp(leakDepth, 1, 10);
         }
 #endif
     }
