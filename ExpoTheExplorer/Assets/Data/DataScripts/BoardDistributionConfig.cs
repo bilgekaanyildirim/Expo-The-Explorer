@@ -17,6 +17,18 @@ namespace ExpoTheExplorer.Data
         [SerializeField, Range(1, 4)] private int guaranteedTicketCount = 1;
 
         public float NoiseLeakChance => noiseLeakChance;
-        public int GuaranteedTicketCount => guaranteedTicketCount;
+
+        // Clamped defensively rather than trusting the serialized value outright —
+        // a pre-existing asset that predates this field can deserialize it at the
+        // raw CLR default (0) instead of running the declared initializer, which
+        // would silently disable the required-pool guarantee entirely.
+        public int GuaranteedTicketCount => Mathf.Clamp(guaranteedTicketCount, 1, 4);
+
+#if UNITY_EDITOR
+        private void OnValidate()
+        {
+            guaranteedTicketCount = Mathf.Clamp(guaranteedTicketCount, 1, 4);
+        }
+#endif
     }
 }

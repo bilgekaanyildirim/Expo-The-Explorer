@@ -98,6 +98,24 @@ namespace ExpoTheExplorer.Tests.EditMode
         }
 
         [Test]
+        public void OnOrderPlaced_SerializedGuaranteedCountIsZero_StillGuaranteesOneTicket()
+        {
+            // Regression test: a BoardDistributionConfig asset that predates the
+            // guaranteedTicketCount field can deserialize it at the raw CLR default
+            // (0) instead of running the declared `= 1` initializer, which used to
+            // silently disable the required-pool guarantee entirely (no ticket ever
+            // completable). GuaranteedTicketCount must clamp this back up to 1.
+            var state = new GameState(gameConfig);
+            var main = CreateFoodItem();
+            var ticket = CreateTicket(new List<FoodItemConfig> { main });
+            var distributor = new BoardDistributor(state, CreateDistributionConfig(0f, guaranteedTicketCount: 0));
+
+            distributor.OnOrderPlaced(new[] { ticket }, Array.Empty<Ticket>());
+
+            Assert.AreEqual(1, CountMatchingItemsOnBoard(state.Board, main, ticket.Modifications));
+        }
+
+        [Test]
         public void OnOrderPlaced_RequiredItemAlreadyOnBoard_DoesNotSpawnDuplicate()
         {
             var state = new GameState(gameConfig);
@@ -196,15 +214,18 @@ namespace ExpoTheExplorer.Tests.EditMode
         {
             var state = new GameState(gameConfig);
             var main = CreateFoodItem();
-            var upcoming = CreateTicket(new List<FoodItemConfig> { main });
-            // guaranteedTicketCount: 0 isolates this test to noise-leak behavior only —
-            // otherwise the required-pool guarantee would reach into upcomingTickets
-            // (there are no active tickets here) and spawn main's item on its own.
-            var distributor = new BoardDistributor(state, CreateDistributionConfig(0f, guaranteedTicketCount: 0));
+            var upcoming = CreateTicket(new List<FoodItemConfig> { main }, arrivalSequence: 100);
+            // An unrelated, earlier-arrived active ticket satisfies the (now-mandatory,
+            // minimum 1) required-pool guarantee with a distinct food, so its spawn
+            // can't be confused with a noise leak of `main` — this test only cares
+            // whether `main` (the noise-source food) shows up. arrivalSequence: 100 on
+            // the noise ticket makes sure it's never the one required-pool picks.
+            var activeTicket = CreateTicket(new List<FoodItemConfig> { CreateFoodItem() }, arrivalSequence: 0);
+            var distributor = new BoardDistributor(state, CreateDistributionConfig(0f));
 
-            distributor.OnOrderPlaced(Array.Empty<Ticket>(), new[] { upcoming });
+            distributor.OnOrderPlaced(new[] { activeTicket }, new[] { upcoming });
 
-            Assert.AreEqual(0, state.Board.OccupiedCellCount);
+            Assert.AreEqual(0, CountMatchingItemsOnBoard(state.Board, main, upcoming.Modifications));
         }
 
         [Test]
@@ -212,14 +233,14 @@ namespace ExpoTheExplorer.Tests.EditMode
         {
             var state = new GameState(gameConfig);
             var main = CreateFoodItem();
-            var upcoming = CreateTicket(new List<FoodItemConfig> { main });
-            // guaranteedTicketCount: 0 isolates this test to noise-leak behavior only —
-            // see comment in OnOrderPlaced_NoiseLeakChanceZero_NeverLeaks above.
-            var distributor = new BoardDistributor(state, CreateDistributionConfig(1f, guaranteedTicketCount: 0));
+            var upcoming = CreateTicket(new List<FoodItemConfig> { main }, arrivalSequence: 100);
+            // See comment in OnOrderPlaced_NoiseLeakChanceZero_NeverLeaks above.
+            var activeTicket = CreateTicket(new List<FoodItemConfig> { CreateFoodItem() }, arrivalSequence: 0);
+            var distributor = new BoardDistributor(state, CreateDistributionConfig(1f));
 
-            distributor.OnOrderPlaced(Array.Empty<Ticket>(), new[] { upcoming });
+            distributor.OnOrderPlaced(new[] { activeTicket }, new[] { upcoming });
 
-            Assert.AreEqual(1, state.Board.OccupiedCellCount);
+            Assert.AreEqual(1, CountMatchingItemsOnBoard(state.Board, main, upcoming.Modifications));
         }
 
         [Test]
@@ -237,17 +258,17 @@ namespace ExpoTheExplorer.Tests.EditMode
         {
             var state = new GameState(gameConfig);
             var main = CreateFoodItem();
-            var upcoming = CreateTicket(new List<FoodItemConfig> { main });
-            // guaranteedTicketCount: 0 isolates this test to noise-leak behavior only —
-            // see comment in OnOrderPlaced_NoiseLeakChanceZero_NeverLeaks above.
-            var distributor = new BoardDistributor(state, CreateDistributionConfig(1f, guaranteedTicketCount: 0));
+            var upcoming = CreateTicket(new List<FoodItemConfig> { main }, arrivalSequence: 100);
+            // See comment in OnOrderPlaced_NoiseLeakChanceZero_NeverLeaks above.
+            var activeTicket = CreateTicket(new List<FoodItemConfig> { CreateFoodItem() }, arrivalSequence: 0);
+            var distributor = new BoardDistributor(state, CreateDistributionConfig(1f));
 
             for (var i = 0; i < 10; i++)
             {
-                distributor.OnOrderPlaced(Array.Empty<Ticket>(), new[] { upcoming });
+                distributor.OnOrderPlaced(new[] { activeTicket }, new[] { upcoming });
             }
 
-            Assert.AreEqual(1, state.Board.OccupiedCellCount);
+            Assert.AreEqual(1, CountMatchingItemsOnBoard(state.Board, main, upcoming.Modifications));
         }
 
         [Test]
@@ -256,16 +277,17 @@ namespace ExpoTheExplorer.Tests.EditMode
             var state = new GameState(gameConfig);
             var mainA = CreateFoodItem();
             var mainB = CreateFoodItem();
-            var ticketA = CreateTicket(new List<FoodItemConfig> { mainA });
-            var ticketB = CreateTicket(new List<FoodItemConfig> { mainB });
-            // guaranteedTicketCount: 0 isolates this test to noise-leak behavior only —
-            // see comment in OnOrderPlaced_NoiseLeakChanceZero_NeverLeaks above.
-            var distributor = new BoardDistributor(state, CreateDistributionConfig(1f, guaranteedTicketCount: 0));
+            var ticketA = CreateTicket(new List<FoodItemConfig> { mainA }, arrivalSequence: 100);
+            var ticketB = CreateTicket(new List<FoodItemConfig> { mainB }, arrivalSequence: 101);
+            // See comment in OnOrderPlaced_NoiseLeakChanceZero_NeverLeaks above.
+            var activeTicket = CreateTicket(new List<FoodItemConfig> { CreateFoodItem() }, arrivalSequence: 0);
+            var distributor = new BoardDistributor(state, CreateDistributionConfig(1f));
 
-            distributor.OnOrderPlaced(Array.Empty<Ticket>(), new[] { ticketA });
-            distributor.OnOrderPlaced(Array.Empty<Ticket>(), new[] { ticketB });
+            distributor.OnOrderPlaced(new[] { activeTicket }, new[] { ticketA });
+            distributor.OnOrderPlaced(new[] { activeTicket }, new[] { ticketB });
 
-            Assert.AreEqual(2, state.Board.OccupiedCellCount);
+            Assert.AreEqual(1, CountMatchingItemsOnBoard(state.Board, mainA, ticketA.Modifications));
+            Assert.AreEqual(1, CountMatchingItemsOnBoard(state.Board, mainB, ticketB.Modifications));
         }
 
         [Test]
