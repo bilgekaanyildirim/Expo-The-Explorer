@@ -2015,7 +2015,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.EventSystems.EventSystem
   m_FirstSelected: {fileID: 0}
   m_sendNavigationEvents: 1
-  m_DragThreshold: 3
+  m_DragThreshold: 10
 --- !u!4 &854780252
 Transform:
   m_ObjectHideFlags: 0
@@ -2667,7 +2667,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 260}
+  m_AnchoredPosition: {x: 0, y: 217}
   m_SizeDelta: {x: 0, y: -520}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &1657470697

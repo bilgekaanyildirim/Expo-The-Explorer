@@ -12,9 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 547cf60a50cc144da9f17b7b7807cbdc, type: 3}
   m_Name: DragFeelConfig
   m_EditorClassIdentifier: ExpoTheExplorer.Data::ExpoTheExplorer.Data.DragFeelConfig
-  offsetFraction: 0.55
+  offsetFraction: 1
   followMultiplierUp: 1.2
   followMultiplierDown: 1.2
   followMultiplierHorizontal: 1.2
-  pickupScaleMultiplier: 1.15
+  pickupScaleMultiplier: 1.25
   pickupScaleDuration: 0.15
