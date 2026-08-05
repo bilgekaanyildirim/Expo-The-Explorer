@@ -19,7 +19,7 @@ namespace ExpoTheExplorer.UI
     // drop) — this avoids fighting BoardView's own reactive CellChanged/
     // RefreshCell cycle, which would otherwise immediately hide this exact
     // container the moment the model changed underneath it.
-    public class BoardItemDragHandler : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler
+    public class BoardItemDragHandler : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, IBeginDragHandler, IDragHandler, IEndDragHandler
     {
         // Resolved (world-unit) drag-feel tuning, computed once by BoardView
         // from its own cellSize-relative Inspector fields and handed down
@@ -103,6 +103,63 @@ namespace ExpoTheExplorer.UI
             currentTraySlotIndex = null;
         }
 
+        // Fires the instant the finger/cursor presses down on the item —
+        // this is where all the pickup feedback (scale pop, snap-to-finger,
+        // collider disable, sorting boost, tray-hover check) now lives, so
+        // the player sees a reaction on touch rather than only once UGUI's
+        // drag threshold is crossed. OnBeginDrag below always fires after
+        // this for the same gesture (UGUI captures pointerPress before ever
+        // considering a drag candidate), so there's nothing to guard here.
+        public void OnPointerDown(PointerEventData eventData)
+        {
+            if (CurrentItem == null) return;
+
+            ApplyPickupVisuals(eventData);
+        }
+
+        // A blanket kill here is safe (and intended) — grabbing the item is
+        // a deliberate takeover of anything currently animating it (a
+        // leftover pop-in, snap-back, or tray-settle tween), unlike
+        // OnEndDrag below where a targeted kill is needed instead.
+        private void ApplyPickupVisuals(PointerEventData eventData)
+        {
+            homePosition = transform.position;
+            homeScale = transform.localScale;
+
+            transform.DOKill();
+            scaleTween = transform.DOScale(homeScale * dragFeel.pickupScaleMultiplier, dragFeel.pickupScaleDuration).SetEase(Ease.OutBack);
+
+            // Snap straight to the resting hover position (finger + offset)
+            // the moment it's picked up, and remember the finger's starting
+            // height so OnDrag's very first call has a real previous-frame
+            // value to diff against instead of a spurious huge jump.
+            if (dragCamera != null)
+            {
+                var fingerWorldPos = ComputeFingerWorldPos(eventData.position);
+                lastFingerX = fingerWorldPos.x;
+                lastFingerY = fingerWorldPos.y;
+                transform.position = new Vector3(fingerWorldPos.x, fingerWorldPos.y + dragFeel.offsetDistance, fingerWorldPos.z);
+                UpdateHoveredTray();
+            }
+
+            // Disabled from the moment it's picked up — this item's own
+            // collider follows the pointer exactly, so left enabled it would
+            // sit directly on top of whatever drop target is underneath and
+            // "steal" the raycast hit (Physics2DRaycaster only checks the
+            // nearest hit's hierarchy for IDropHandler, not every overlapping
+            // collider), making every drop silently fail.
+            if (ownCollider == null) ownCollider = GetComponent<Collider2D>();
+            if (ownCollider != null) ownCollider.enabled = false;
+
+            layerRenderers = GetComponentsInChildren<SpriteRenderer>();
+            homeSortingOrders = new int[layerRenderers.Length];
+            for (var i = 0; i < layerRenderers.Length; i++)
+            {
+                homeSortingOrders[i] = layerRenderers[i].sortingOrder;
+                layerRenderers[i].sortingOrder += DragSortingBoost;
+            }
+        }
+
         public void OnBeginDrag(PointerEventData eventData)
         {
             if (CurrentItem == null) return;
@@ -120,45 +177,6 @@ namespace ExpoTheExplorer.UI
             }
 
             WasAcceptedByTray = false;
-            homePosition = transform.position;
-            homeScale = transform.localScale;
-
-            // A blanket kill here is safe (and intended) — grabbing the item
-            // is a deliberate takeover of anything currently animating it
-            // (a leftover pop-in, snap-back, or tray-settle tween), unlike
-            // OnEndDrag below where a targeted kill is needed instead.
-            transform.DOKill();
-            scaleTween = transform.DOScale(homeScale * dragFeel.pickupScaleMultiplier, dragFeel.pickupScaleDuration).SetEase(Ease.OutBack);
-
-            // Snap straight to the resting hover position (finger + offset)
-            // the moment it's picked up, and remember the finger's starting
-            // height so OnDrag's very first call has a real previous-frame
-            // value to diff against instead of a spurious huge jump.
-            if (dragCamera != null)
-            {
-                var fingerWorldPos = ComputeFingerWorldPos(eventData.position);
-                lastFingerX = fingerWorldPos.x;
-                lastFingerY = fingerWorldPos.y;
-                transform.position = new Vector3(fingerWorldPos.x, fingerWorldPos.y + dragFeel.offsetDistance, fingerWorldPos.z);
-                UpdateHoveredTray();
-            }
-
-            // Disabled for the duration of the drag — this item's own
-            // collider follows the pointer exactly, so left enabled it would
-            // sit directly on top of whatever drop target is underneath and
-            // "steal" the raycast hit (Physics2DRaycaster only checks the
-            // nearest hit's hierarchy for IDropHandler, not every overlapping
-            // collider), making every drop silently fail.
-            if (ownCollider == null) ownCollider = GetComponent<Collider2D>();
-            if (ownCollider != null) ownCollider.enabled = false;
-
-            layerRenderers = GetComponentsInChildren<SpriteRenderer>();
-            homeSortingOrders = new int[layerRenderers.Length];
-            for (var i = 0; i < layerRenderers.Length; i++)
-            {
-                homeSortingOrders[i] = layerRenderers[i].sortingOrder;
-                layerRenderers[i].sortingOrder += DragSortingBoost;
-            }
         }
 
         public void OnDrag(PointerEventData eventData)
@@ -234,6 +252,39 @@ namespace ExpoTheExplorer.UI
             if (hoveredTray != null) hoveredTray.SetHighlighted(false);
             hoveredTray = tray;
             if (hoveredTray != null) hoveredTray.SetHighlighted(true);
+        }
+
+        // Fires when the finger/cursor lifts. If OnBeginDrag never fired for
+        // this gesture (a tap that never crossed the drag threshold),
+        // IsDragging is still false here — undo the pickup visuals
+        // OnPointerDown applied and let the item settle back down, same feel
+        // as an invalid drop. If a real drag did happen, OnEndDrag (which
+        // UGUI calls for the same release) already owns the full teardown,
+        // so there's nothing left to do here.
+        public void OnPointerUp(PointerEventData eventData)
+        {
+            if (CurrentItem == null || IsDragging) return;
+
+            scaleTween?.Kill();
+            transform.localScale = homeScale;
+
+            if (ownCollider != null) ownCollider.enabled = true;
+
+            if (layerRenderers != null)
+            {
+                for (var i = 0; i < layerRenderers.Length; i++)
+                {
+                    layerRenderers[i].sortingOrder = homeSortingOrders[i];
+                }
+            }
+
+            if (hoveredTray != null)
+            {
+                hoveredTray.SetHighlighted(false);
+                hoveredTray = null;
+            }
+
+            positionTween = transform.DOMove(homePosition, animConfig.SnapBackDuration).SetEase(Ease.OutQuad);
         }
 
         public void OnEndDrag(PointerEventData eventData)
