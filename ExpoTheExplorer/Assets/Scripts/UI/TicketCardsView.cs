@@ -24,6 +24,11 @@ namespace ExpoTheExplorer.UI
         [SerializeField] private Sprite impatientTicketSprite;
         [SerializeField] private Sprite patientTicketSprite;
 
+        [Tooltip("Modification row box tint per patience type — matches the card border above.")]
+        [SerializeField] private Color normalModificationBoxColor = new Color(1f, 0.7921569f, 0.5254902f);
+        [SerializeField] private Color impatientModificationBoxColor = new Color(1f, 0.6039216f, 0.6039216f);
+        [SerializeField] private Color patientModificationBoxColor = new Color(0.6980392f, 0.9137255f, 0.6980392f);
+
         [Tooltip("Shared icons for a modification row's direction — same two sprites for every ingredient.")]
         [SerializeField] private Sprite additionSprite;
         [SerializeField] private Sprite removalSprite;
@@ -33,6 +38,13 @@ namespace ExpoTheExplorer.UI
             PatienceType.Impatient => impatientTicketSprite,
             PatienceType.Patient => patientTicketSprite,
             _ => normalTicketSprite,
+        };
+
+        public Color ModificationBoxColorFor(PatienceType patienceType) => patienceType switch
+        {
+            PatienceType.Impatient => impatientModificationBoxColor,
+            PatienceType.Patient => patientModificationBoxColor,
+            _ => normalModificationBoxColor,
         };
 
         public Sprite DirectionSpriteFor(bool isAddition) => isAddition ? additionSprite : removalSprite;

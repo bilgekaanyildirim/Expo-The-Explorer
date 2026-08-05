@@ -11,11 +11,14 @@ namespace ExpoTheExplorer.UI
     {
         [SerializeField] private Image ingredientImage;
         [SerializeField] private Image directionImage;
+        [Tooltip("This row's own box background — tinted per-ticket to match the card's patience-type color.")]
+        [SerializeField] private Image background;
 
-        public void SetModification(Sprite ingredientSprite, Sprite directionSprite)
+        public void SetModification(Sprite ingredientSprite, Sprite directionSprite, Color boxColor)
         {
             ingredientImage.sprite = ingredientSprite;
             directionImage.sprite = directionSprite;
+            background.color = boxColor;
         }
     }
 }

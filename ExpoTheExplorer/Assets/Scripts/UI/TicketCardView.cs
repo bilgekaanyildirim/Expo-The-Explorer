@@ -206,7 +206,7 @@ namespace ExpoTheExplorer.UI
             {
                 var row = Instantiate(modificationRowTemplate, modificationsListParent);
                 row.gameObject.SetActive(true);
-                row.SetModification(modification.Config.Icon, owner.DirectionSpriteFor(modification.IsAddition));
+                row.SetModification(modification.Config.Icon, owner.DirectionSpriteFor(modification.IsAddition), owner.ModificationBoxColorFor(ticket.PatienceType));
                 modificationRows.Add(row);
             }
 

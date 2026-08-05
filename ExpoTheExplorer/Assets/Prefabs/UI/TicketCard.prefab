@@ -212,6 +212,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ExpoTheExplorer.UI.ModificationSlotView
   ingredientImage: {fileID: 3465650851686515368}
   directionImage: {fileID: 5049590943690267471}
+  background: {fileID: 7532200022277422729}
 --- !u!114 &7532200022277422729
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -918,6 +919,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ExpoTheExplorer.UI.ModificationSlotView
   ingredientImage: {fileID: 1232022376443102905}
   directionImage: {fileID: 8272355116811840135}
+  background: {fileID: 924896205094192629}
 --- !u!114 &924896205094192629
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1010,6 +1012,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ExpoTheExplorer.UI.ModificationSlotView
   ingredientImage: {fileID: 7615933043703725429}
   directionImage: {fileID: 3246752858849726193}
+  background: {fileID: 8128942430388726059}
 --- !u!114 &8128942430388726059
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1314,6 +1317,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ExpoTheExplorer.UI.ModificationSlotView
   ingredientImage: {fileID: 8946333544859953182}
   directionImage: {fileID: 1702541812600292393}
+  background: {fileID: 970948134236115420}
 --- !u!114 &970948134236115420
 MonoBehaviour:
   m_ObjectHideFlags: 0
