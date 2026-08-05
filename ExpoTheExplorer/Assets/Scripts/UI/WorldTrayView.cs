@@ -145,6 +145,41 @@ namespace ExpoTheExplorer.UI
             _ => null,
         };
 
+        // Where a second item of the same category should overflow to when
+        // its own slot is already occupied (e.g. a wrong-order drop landing
+        // a second Drink before the tray's batch check resolves) — picked
+        // by hand per category rather than a generic rotation, so it's not
+        // symmetric (every category prefers Side first, then whichever of
+        // Main/Drink isn't itself).
+        private static readonly Dictionary<FoodCategory, FoodCategory[]> OverflowOrder = new()
+        {
+            { FoodCategory.Side, new[] { FoodCategory.Drink, FoodCategory.Main } },
+            { FoodCategory.Drink, new[] { FoodCategory.Side, FoodCategory.Main } },
+            { FoodCategory.Main, new[] { FoodCategory.Side, FoodCategory.Drink } },
+        };
+
+        // Prefers the item's own category slot; if it's already occupied,
+        // falls back through OverflowOrder to the next empty slot so two
+        // items dropped into the tray before it's full never render stacked
+        // on top of each other. At most 3 items ever sit in a tray before
+        // TrayManager's batch check clears it (RequiredItems.Count maxes at
+        // 3, matching the 3 physical slots), so an empty slot is always
+        // found before this needs to fall back to the (occupied) preferred
+        // slot as a last resort.
+        private Transform ResolvePlacementSlot(FoodCategory category)
+        {
+            var preferred = SlotFor(category);
+            if (preferred != null && preferred.childCount == 0) return preferred;
+
+            foreach (var fallback in OverflowOrder[category])
+            {
+                var slot = SlotFor(fallback);
+                if (slot != null && slot.childCount == 0) return slot;
+            }
+
+            return preferred;
+        }
+
         public void OnDrop(PointerEventData eventData)
         {
             if (!isValid) return;
@@ -211,7 +246,7 @@ namespace ExpoTheExplorer.UI
             }
             else
             {
-                dragHandler.PlaceInSlot(SlotFor(item.Config.Category), slotIndex);
+                dragHandler.PlaceInSlot(ResolvePlacementSlot(item.Config.Category), slotIndex);
             }
 
             lastKnownCount = newCount;
