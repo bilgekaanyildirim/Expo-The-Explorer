@@ -23,6 +23,7 @@ MonoBehaviour:
   - food: {fileID: 11400000, guid: 42176f966e5b42f9a88679094dea6ece, type: 2}
     weight: 1
     modificationCountLambda: 10
+  namesDatabase: {fileID: 4900000, guid: 1c64065cf806c4c5493057a797fe8dfb, type: 3}
   customerNames:
   - Alice
   - Bob

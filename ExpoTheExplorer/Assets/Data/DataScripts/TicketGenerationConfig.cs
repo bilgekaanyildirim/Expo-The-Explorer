@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace ExpoTheExplorer.Data
@@ -56,8 +57,14 @@ namespace ExpoTheExplorer.Data
         [SerializeField] private List<MainDishWeight> mainDishWeights = new();
 
         [Header("Customer Names")]
-        [Tooltip("Pool of names randomly assigned to generated tickets.")]
+        [Tooltip("Optional {id, name, gender} JSON array (see Assets/Database/names.json). When assigned, its names " +
+                 "replace Customer Names below as the pool TicketFactory draws from.")]
+        [SerializeField] private TextAsset namesDatabase;
+
+        [Tooltip("Pool of names randomly assigned to generated tickets. Ignored while Names Database above is assigned.")]
         [SerializeField] private string[] customerNames = { "Alice", "Bob", "Charlie", "Diana", "Ethan" };
+
+        private IReadOnlyList<string> namesFromDatabase;
 
         [Header("Lookahead — placeholder, not balanced")]
         [Tooltip("How many tickets are pre-generated and held in a lookahead queue ahead of the 3 active slots. BoardDistributor's noise pool leaks items from these not-yet-active tickets (GDD Section 4). Must be at least 3 (TicketSlotManager clamps it).")]
@@ -71,7 +78,43 @@ namespace ExpoTheExplorer.Data
         public float ModificationCountLambda => modificationCountLambda;
         public float ModificationAdditionChance => modificationAdditionChance;
         public IReadOnlyList<MainDishWeight> MainDishWeights => mainDishWeights;
-        public IReadOnlyList<string> CustomerNames => customerNames;
+        public IReadOnlyList<string> CustomerNames => namesFromDatabase ?? customerNames;
         public int UpcomingQueueSize => upcomingQueueSize;
+
+        private void OnEnable()
+        {
+            namesFromDatabase = ParseNamesDatabase();
+        }
+
+        // names.json is a raw JSON array ({id, name, gender} per GDD's Database asset), but
+        // JsonUtility only parses object roots — wrapping it in a single-field object is the
+        // standard workaround rather than pulling in a JSON library for one file.
+        private List<string> ParseNamesDatabase()
+        {
+            if (namesDatabase == null) return null;
+
+            var wrapped = "{\"entries\":" + namesDatabase.text + "}";
+            var parsed = JsonUtility.FromJson<NameEntryList>(wrapped);
+            var names = parsed?.entries?
+                .Select(entry => entry.name)
+                .Where(name => !string.IsNullOrEmpty(name))
+                .ToList();
+
+            return names is { Count: > 0 } ? names : null;
+        }
+
+        [Serializable]
+        private class NameEntry
+        {
+            public int id;
+            public string name;
+            public string gender;
+        }
+
+        [Serializable]
+        private class NameEntryList
+        {
+            public List<NameEntry> entries;
+        }
     }
 }
