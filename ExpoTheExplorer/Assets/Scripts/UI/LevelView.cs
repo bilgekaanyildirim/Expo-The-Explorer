@@ -33,7 +33,7 @@ namespace ExpoTheExplorer.UI
 
         private void Refresh(int level)
         {
-            levelText.text = $"Lv. {level}";
+            levelText.text = $"LVL\n{level}";
         }
 
         // Every field here is wired by hand in the Editor -- a missing one
