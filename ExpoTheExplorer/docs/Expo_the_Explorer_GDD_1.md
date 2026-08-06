@@ -3,6 +3,7 @@
 
 *v0.5: Powerup 3 (Gürültü Temizleme) onaylandı; powerup kazanım/kullanım kuralları netleşti (meta-ilerleme + Gem).*
 *v0.6: Etkileşim yöntemi netleşti — Drag & Drop birincil etkileşim olarak onaylandı (bkz. Bölüm 5).*
+*v0.7: Powerup sistemi geliştirme kapsamı dışına alındı (ertelendi, tasarım saklanıyor). Sonsuz Mod tasarımdan kaldırıldı — tek mod Günlük Hedef Modu. Can bitip gün yeniden oynanınca o günde kazanılan Level XP'sinin kaybedildiği netleşti (bkz. Bölüm 6, 10).*
 
 ---
 
@@ -118,6 +119,8 @@ Kontrol **tepsi dolduğunda** (yani gerekli ürün sayısına ulaşıldığında
 
 ### 5.2 Powerup Sistemi
 
+**⚠️ Geliştirme kapsamı dışında (ertelendi):** Powerup sistemi şu anki geliştirme fazında **kodlanmayacak**. Tasarım aşağıda referans olarak saklanıyor; ne zaman geliştirileceğine dair bir tarih/faz henüz belirlenmedi. Bu bölümdeki açık soru (kazanım miktarı/Gem maliyeti) da bu yüzden şimdilik ele alınmıyor — sistem tekrar kapsama alındığında netleştirilecek.
+
 Prototipte, alt kısımda görülen **3 gri daire ikonu** aslında bir **powerup sistemidir** (önceki sürümde işlevi bilinmiyordu, bkz. Bölüm 14):
 
 1. **Powerup 1 — Oto-Toplama:** Board'daki zorunlu havuz ürünlerini (aktif biletler için gereken ürünleri) otomatik olarak ilgili tepsilere yerleştirir.
@@ -134,8 +137,8 @@ Powerup'lar iki yoldan elde edilir:
 
 *(Bu, powerup'ların sınırsız bir kaynak olmadığını, hem ilerlemeyle kazanılan hem de Gem ile desteklenen bir "stok" sistemi olduğunu gösteriyor.)*
 
-### Açık soru:
-Meta-ilerleme yoluyla verilen powerup miktarı ne kadar (örn. her level atlayışta 1 tane mi)? Hangi etkinlikler powerup ödüllendiriyor? Gem maliyeti ne kadar olacak? Powerup'ların bir kullanım limiti/cooldown'u var mı (örn. gün başına X kullanım)?
+### Ertelendi (açık soru değil, kapsam dışı):
+Meta-ilerleme yoluyla verilen powerup miktarı, hangi etkinliklerin ödüllendirdiği, Gem maliyeti ve kullanım limiti/cooldown soruları — powerup sistemi geliştirmeye alınmadığı için şimdilik yanıtlanmıyor.
 
 ---
 
@@ -147,6 +150,10 @@ Meta-ilerleme yoluyla verilen powerup miktarı ne kadar (örn. her level atlayı
 ### ✅ Çözüldü — Can Sıfırlanınca
 
 Can sıfırlanınca **o gün biter** ve oyuncu o günü **yeniden oynamak zorunda kalır**. Ancak tekrar denemede **zorluk biraz düşürülür** (örn. daha az gürültü, biraz daha uzun süreler) — amaç, oyuncunun şevkinin tamamen kırılmaması. Ayrıca oyuncu **Gem harcayarak canını doldurup mevcut günde devam edebilir** ("continue" mekaniği, bkz. Bölüm 10).
+
+### ✅ Çözüldü — Retry'da XP Kaybı
+
+Can sıfırlanıp gün yeniden oynanacağı zaman: **o gün içinde kazanılmış olan Level XP'si kaybedilir** (kalıcı hale gelmez) ve gün/bölüm baştan oynanır. Yani XP, sadece gün **başarıyla tamamlandığında** oyuncunun kalıcı profiline işlenir (bkz. Bölüm 10) — başarısız bir gün denemesi, o denemede kazanılan XP'yi geri almaz, hiç kazandırmamış gibi davranır. Bu, "continue" mekaniğiyle karıştırılmamalı: Gem ile devam etmek günü **bitirmeden** sürdürmeyi sağlar (bu durumda gün hâlâ tamamlanabilir ve XP kazanılabilir); can tamamen tükenip gün **retry** olduğunda ise o denemenin XP'si silinir.
 
 ### Açık soru:
 Zorluk düşürme tam olarak nasıl uygulanacak — hangi parametre (gürültü oranı, süre, bilet sıklığı) ne kadar düşürülecek? Bu, dengeleme (balancing) aşamasında somutlaştırılmalı.
@@ -220,7 +227,7 @@ Kademe eşikleri **dinamiktir** — sabit bir yüzde/saniye değeri değil, bile
   1. **Powerup satın almak/doldurmak** (bkz. Bölüm 5.2)
   2. **"Devam et" (continue):** Can bitip gün başarısız olduğunda, Gem harcayarak canı doldurup mevcut günde devam etmek (bkz. Bölüm 6)
 - **Deneyim Puanı (XP):** Her başarılı teslimatta kazanılır, oyuncu **level**ını yükseltir.
-- **Level:** XP eşikleri aşıldıkça artar. **İlerleme tek bir oyuncu profili üzerinden kalıcıdır** — oyun **meta-progression'lı** bir yapıya sahiptir (oturum/gün bazlı sıfırlanmaz). Level'ın etkisi netleştirilmeli — öneriler:
+- **Level:** XP eşikleri aşıldıkça artar. **İlerleme tek bir oyuncu profili üzerinden kalıcıdır** — oyun **meta-progression'lı** bir yapıya sahiptir (oturum/gün bazlı sıfırlanmaz). **Ancak bu kalıcılık, günün başarıyla tamamlanmasına bağlıdır:** can bitip gün retry olduğunda, o denemede kazanılan XP kalıcı profile hiç işlenmemiş sayılır ve kaybedilir (bkz. Bölüm 6 — Retry'da XP Kaybı). Level'ın etkisi netleştirilmeli — öneriler:
   - Zorluk eğrisinin kilit açması (yeni yemek/modifikasyon tipleri, daha karmaşık biletler)
   - Kozmetik ödüller (restoran/karakter görünümü)
   - Meta-oyun sistemine erişim (bkz. Bölüm 12)
@@ -229,13 +236,11 @@ Kademe eşikleri **dinamiktir** — sabit bir yüzde/saniye değeri değil, bile
 
 ## 11. Bölüm / Oturum Yapısı
 
-İki mod öneriliyor (ikisi de düşünülebilir, birbirini dışlamaz):
+### ✅ Çözüldü — Tek Mod: Günlük Hedef Modu
 
-1. **Günlük Hedef Modu:** Her "gün" belirli sayıda sipariş tamamlanması gerekir; hedefe ulaşınca gün biter, sonuç ekranı (skor, bahşiş toplamı, XP) gösterilir. Can biterse gün başarısız sayılır ve yeniden oynanır — bkz. Bölüm 6.
-2. **Sonsuz Mod:** Sipariş akışı hiç durmaz, zorluk kademeli olarak artar (bilet sıklığı ↑, gürültü havuzu oranı ↑, süre sınırları ↓), oyuncu ne kadar dayanabildiğiyle skor yapar.
+Oyunda **tek bir mod** vardır: **Günlük Hedef Modu.** Her "gün" belirli sayıda sipariş tamamlanması gerekir; hedefe ulaşınca gün biter, sonuç ekranı (skor, bahşiş toplamı, XP) gösterilir. Can biterse gün başarısız sayılır ve yeniden oynanır — bkz. Bölüm 6.
 
-### Açık soru:
-Günlük hedef modu ile sonsuz mod aynı save/progression'ı mı paylaşıyor, yoksa ayrı skor tabloları mı olacak? Zorluk artışının somut parametreleri (hangi değişken, hangi hızda artıyor) prototipleme sırasında belirlenmeli.
+*(v0.7: Önceki sürümde önerilen "Sonsuz Mod" tasarımdan tamamen kaldırıldı — böyle bir mod geliştirilmeyecek. Bu karar, sonsuz mod'a bağlı zorluk artışı ve mod-arası progression paylaşımı sorularını da geçersiz kılıyor.)*
 
 ---
 
@@ -279,7 +284,7 @@ Uzun vadeli oynanabilirlik için düşünülen ek katman:
 
 ## 14. Açık Tasarım Soruları — Özet Liste
 
-*(v0.5: kullanıcıyla netleşen maddeler işaretlendi; powerup 3 onaylandı ve kazanım kuralları netleşti)*
+*(v0.7: Sonsuz Mod tasarımdan kaldırıldığı için ona bağlı sorular listeden silindi; powerup sistemi ertelendiği için ilgili madde "kapsam dışı" olarak işaretlendi; retry'da XP kaybı netleşti.)*
 
 1. ~~Modifikasyonlar tepsi sayacında ayrı öğe mi, yoksa ana yemeğin durumu mu?~~ **Çözüldü.** (bkz. Bölüm 3)
 2. ~~Board'daki yemek sayısına üst sınır var mı?~~ **Öneri sunuldu: üst sınır = grid kapasitesi.** (bkz. Bölüm 4)
@@ -288,18 +293,16 @@ Uzun vadeli oynanabilirlik için düşünülen ek katman:
 5. ~~Süre bilet bazlı mı, süre dolunca ne oluyor?~~ **Çözüldü: bilet bazlı; can azalır + bilet iptal edilir.** (bkz. Bölüm 7)
 6. ~~Sabır tipi görsel gösterimi + bahşiş azalma eğrisi?~~ **Çözüldü: sabit kenar rengi; eğri kademeli, eşikler dinamik.** (bkz. Bölüm 8)
 7. ~~Hız kademesi eşikleri sabit mi, dinamik mi?~~ **Çözüldü: dinamik.** (bkz. Bölüm 9)
-8. ~~Level ilerlemesi kalıcı mı?~~ **Çözüldü: kalıcı, meta-progression'lı.** (bkz. Bölüm 10)
-9. Günlük hedef modu ile sonsuz mod aynı progression'ı mı paylaşıyor, yoksa ayrı skor tabloları mı olacak?
-10. Zorluk artış parametreleri (sonsuz modda) somut olarak neler?
-11. Tepsi doluluk sayacı (`x/y`) nihai UI'da nerede gösterilecek — özelliğin var olacağı kesin, konumu üretim sırasında belirlenecek.
-12. ~~Tamamlanmış tepsi önizleme kutusundan sonra teslimat otomatik mi?~~ **Bu soru artık geçersiz: "önizleme kutusu" kavramı yanlıştı, o alan tepsinin kendisi. Otomatik kontrol/gönderim çözümü geçerliliğini koruyor.** (bkz. Bölüm 5, 5.1)
-13. ~~Gem, Soft Money'den farklı ne amaçla kullanılacak?~~ **Çözüldü: powerup satın alma + "devam et" (continue) mekaniği.** (bkz. Bölüm 10)
-14. Board grid boyutu (6×5) başlangıç noktası — kesin sayı üretim sırasında görsel/mekaniksel test sonrası netleşecek.
-15. ~~Prototipteki 3 gri daire ikonunun işlevi nedir?~~ **Çözüldü: powerup'lar.** (bkz. Bölüm 5.2)
-16. ~~Powerup 3'ün içeriği ne olacak?~~ **Çözüldü: Gürültü Temizleme onaylandı.** (bkz. Bölüm 5.2)
-17. ~~Powerup kazanım/kullanım kuralları?~~ **Çözüldü: meta-ilerleme (etkinlik/level atlama) ile belli miktarda verilir + Gem ile satın alınabilir.** Kesin miktar/maliyet sayıları hâlâ belirlenmedi. (bkz. Bölüm 5.2)
-18. Can biterse uygulanacak zorluk düşürme somut olarak neye karşılık geliyor (hangi parametre ne kadar düşüyor)?
-19. Powerup miktar/maliyet somut sayıları: level başına kaç powerup verilir, hangi etkinlikler ödüllendirir, Gem maliyeti ne kadar, kullanım limiti/cooldown var mı?
+8. ~~Level ilerlemesi kalıcı mı?~~ **Çözüldü: kalıcı, meta-progression'lı — ama sadece gün başarıyla tamamlanınca.** (bkz. Bölüm 10)
+9. ~~Can bitip retry olduğunda o günün XP'sine ne oluyor?~~ **Çözüldü: kaybedilir, kalıcı profile işlenmez, gün baştan oynanır.** (bkz. Bölüm 6, 10)
+10. Tepsi doluluk sayacı (`x/y`) nihai UI'da nerede gösterilecek — özelliğin var olacağı kesin, konumu üretim sırasında belirlenecek.
+11. ~~Tamamlanmış tepsi önizleme kutusundan sonra teslimat otomatik mi?~~ **Bu soru artık geçersiz: "önizleme kutusu" kavramı yanlıştı, o alan tepsinin kendisi. Otomatik kontrol/gönderim çözümü geçerliliğini koruyor.** (bkz. Bölüm 5, 5.1)
+12. ~~Gem, Soft Money'den farklı ne amaçla kullanılacak?~~ **Çözüldü: powerup satın alma + "devam et" (continue) mekaniği.** (bkz. Bölüm 10)
+13. Board grid boyutu (6×5) başlangıç noktası — kesin sayı üretim sırasında görsel/mekaniksel test sonrası netleşecek.
+14. ~~Prototipteki 3 gri daire ikonunun işlevi nedir?~~ **Çözüldü: powerup'lar.** (bkz. Bölüm 5.2)
+15. ~~Powerup 3'ün içeriği ne olacak?~~ **Çözüldü: Gürültü Temizleme onaylandı.** (bkz. Bölüm 5.2)
+16. ~~Powerup kazanım/kullanım kuralları + miktar/maliyet sayıları?~~ **Kapsam dışı (ertelendi):** Powerup sistemi şu anki fazda geliştirilmeyecek; bu soru geliştirme tekrar kapsama alındığında ele alınacak. (bkz. Bölüm 5.2)
+17. Can biterse uygulanacak zorluk düşürme somut olarak neye karşılık geliyor (hangi parametre ne kadar düşüyor)?
 
 ---
 

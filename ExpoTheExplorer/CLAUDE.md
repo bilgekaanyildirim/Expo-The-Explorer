@@ -55,6 +55,7 @@ These are fixed design decisions — don't second-guess them during implementati
 - A wrong delivery or a ticket timing out reduces lives.
 - When lives run out: **the day ends**, the player replays the day, but difficulty is scaled down slightly on retry (exact parameters not yet locked — see Open Questions).
 - Players can spend Gems to refill lives and continue the current day ("continue" mechanic).
+- **On retry, XP earned during that day attempt is lost:** any Level XP gained in the failed day is discarded (never committed to the persistent profile) and the day is replayed from the start. This is distinct from the Gem "continue" mechanic — continuing keeps the day alive (so XP earned still counts once the day completes successfully); only a full life-loss retry wipes that attempt's XP. See Progression below.
 
 ### Time Limit
 - Time is **per-ticket**, each ticket has its own countdown.
@@ -72,19 +73,20 @@ These are fixed design decisions — don't second-guess them during implementati
 
 ### Progression
 - 3 resources: **Soft Money** (earned per delivery), **Gem** (hard currency — powerup purchases + continue), **XP/Level** (persistent, meta-progression, does not reset per session).
+- Persistence is **conditional on successfully completing the day**: XP earned during a day only commits to the player's permanent profile once that day is completed. If the day ends in a life-loss retry, that attempt's XP is discarded (see Lives System above) — it never touches the persistent total.
+- **Only one game mode exists: Daily Goal Mode.** There is no Endless Mode — a prior design draft mentioned one; it has been removed from scope entirely. Do not build, reference, or leave hooks for an endless/survival mode.
 
-### Powerup System
+### Powerup System — DEFERRED, NOT CURRENTLY BEING BUILT
+- Design is locked (kept below for reference) but implementation is **out of scope for the current development phase**. Do not create PowerupSystem code, UI, or wiring unless the user explicitly reopens this scope.
 - 3 fixed powerups: (1) Auto-Collect — auto-places required-pool items into the correct trays, (2) Time Reset — refreshes active ticket timers, (3) Noise Clear — temporarily fades noise items / highlights required-pool items.
-- Earned via: meta-progression (level-up/event rewards) + Gem purchases. Exact numbers not yet locked (see Open Questions).
+- Earned via: meta-progression (level-up/event rewards) + Gem purchases. Exact numbers not locked — moot for now since this system isn't being built yet.
 
 ## 4. Open Questions — Ask Before Touching These
 
 These parameters aren't locked yet. If an implementation needs one of these values, write it as a **placeholder/config value** (don't embed a magic number) and flag it to the user rather than guessing:
 
 - Difficulty scale-down on life loss: which parameter (noise ratio / time / ticket frequency) drops by how much?
-- Powerup economy: how many powerups per level-up, which events reward them, Gem cost, daily use cap?
-- Do Daily Goal Mode and Endless Mode share progression, or do they have separate leaderboards?
-- Endless mode difficulty ramp: which variables scale up, at what rate?
+- Powerup economy: how many powerups per level-up, which events reward them, Gem cost, daily use cap. **Deferred, not a current blocker** — Powerup System isn't being implemented right now (see Section 3), so this only needs an answer whenever that scope reopens.
 - Where does the tray fill counter (x/y) sit in the final UI?
 - Board grid size (6x5 is a starting point, not locked — **keep this parametric/serializable**, don't hardcode it).
 
