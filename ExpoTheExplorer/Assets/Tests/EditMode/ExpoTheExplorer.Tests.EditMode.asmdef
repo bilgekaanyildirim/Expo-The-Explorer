@@ -9,6 +9,7 @@
         "ExpoTheExplorer.Systems.TraySystem",
         "ExpoTheExplorer.Systems.EconomySystem",
         "ExpoTheExplorer.Systems.LivesSystem",
+        "ExpoTheExplorer.Systems.ProgressionSystem",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

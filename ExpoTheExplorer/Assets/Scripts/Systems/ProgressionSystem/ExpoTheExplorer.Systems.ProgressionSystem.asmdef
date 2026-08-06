@@ -1,0 +1,17 @@
+{
+    "name": "ExpoTheExplorer.Systems.ProgressionSystem",
+    "rootNamespace": "ExpoTheExplorer.Systems.ProgressionSystem",
+    "references": [
+        "ExpoTheExplorer.Core",
+        "ExpoTheExplorer.Data"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

@@ -1,8 +1,10 @@
+using System.IO;
 using ExpoTheExplorer.Core;
 using ExpoTheExplorer.Data;
 using ExpoTheExplorer.Systems.BoardDistribution;
 using ExpoTheExplorer.Systems.EconomySystem;
 using ExpoTheExplorer.Systems.LivesSystem;
+using ExpoTheExplorer.Systems.ProgressionSystem;
 using ExpoTheExplorer.Systems.TicketSystem;
 using ExpoTheExplorer.Systems.TraySystem;
 using UnityEngine;
@@ -27,6 +29,7 @@ namespace ExpoTheExplorer.Bootstrap
         public TicketSlotManager TicketSlotManager { get; private set; }
         public TrayManager TrayManager { get; private set; }
         public LivesManager LivesManager { get; private set; }
+        public PlayerProfileStore PlayerProfileStore { get; private set; }
 
         private TicketFactory ticketFactory;
         private BoardDistributor boardDistributor;
@@ -37,6 +40,15 @@ namespace ExpoTheExplorer.Bootstrap
             EnsurePhysics2DRaycaster();
 
             State = new GameState(gameConfig);
+
+            // Loads whatever was last committed to disk. Nothing calls Save() yet --
+            // the real commit trigger (day completed successfully) doesn't exist in
+            // the game yet and is wired up in a later PR.
+            PlayerProfileStore = new PlayerProfileStore(Path.Combine(Application.persistentDataPath, "player_profile.json"));
+            var profile = PlayerProfileStore.Load();
+            State.Xp = profile.Xp;
+            State.Level = profile.Level;
+
             ticketFactory = new TicketFactory(ticketGenerationConfig);
             LivesManager = new LivesManager(State, livesConfig);
             TicketSlotManager = new TicketSlotManager(State, CreateNextTicket, LivesManager.LoseLife, ticketGenerationConfig.UpcomingQueueSize);
