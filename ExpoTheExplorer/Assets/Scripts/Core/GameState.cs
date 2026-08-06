@@ -15,6 +15,8 @@ namespace ExpoTheExplorer.Core
         private int maxLives;
         private int softMoney;
         private int gems;
+        private int xp;
+        private int level;
 
         // Setters publish on every actual change (LivesManager.LoseLife/TryContinue,
         // GameManager's tip payout) so HUD views (LivesView, SoftMoneyView, GemsView)
@@ -70,13 +72,38 @@ namespace ExpoTheExplorer.Core
             }
         }
 
-        public int Xp { get; set; }
-        public int Level { get; set; }
+        // Level only ever increases in this game (constructor seed and the
+        // profile-load overwrite in GameManager.Awake both assign a stored
+        // value, no code path decrements it), so LevelChanged firing already
+        // IS the "leveled up" signal -- no separate LevelUp event needed.
+        public int Xp
+        {
+            get => xp;
+            set
+            {
+                if (xp == value) return;
+                xp = value;
+                XpChanged.Publish(xp);
+            }
+        }
+
+        public int Level
+        {
+            get => level;
+            set
+            {
+                if (level == value) return;
+                level = value;
+                LevelChanged.Publish(level);
+            }
+        }
 
         public EventBus<int> LivesChanged { get; } = new();
         public EventBus<int> MaxLivesChanged { get; } = new();
         public EventBus<int> SoftMoneyChanged { get; } = new();
         public EventBus<int> GemsChanged { get; } = new();
+        public EventBus<int> XpChanged { get; } = new();
+        public EventBus<int> LevelChanged { get; } = new();
 
         // Set by LivesManager.LoseLife the instant Lives hits 0, cleared again by
         // LivesManager.TryContinue (GDD Section 6 — day ends, Gems refill lives
@@ -126,6 +153,8 @@ namespace ExpoTheExplorer.Core
             MaxLives = config.StartingLives;
             SoftMoney = config.StartingSoftMoney;
             Gems = config.StartingGems;
+            Xp = config.StartingXp;
+            Level = config.StartingLevel;
             Board = new BoardGrid(config);
         }
     }

@@ -64,6 +64,42 @@ namespace ExpoTheExplorer.Tests.EditMode
         }
 
         [Test]
+        public void Load_WhenFileDoesNotExist_WithFallback_ReturnsFallback()
+        {
+            var store = new PlayerProfileStore(testFilePath);
+
+            var profile = store.Load(new PlayerProfile { Xp = 120, Level = 4 });
+
+            Assert.AreEqual(120, profile.Xp);
+            Assert.AreEqual(4, profile.Level);
+        }
+
+        [Test]
+        public void Load_WhenFileIsEmpty_WithFallback_ReturnsFallback()
+        {
+            File.WriteAllText(testFilePath, string.Empty);
+            var store = new PlayerProfileStore(testFilePath);
+
+            var profile = store.Load(new PlayerProfile { Xp = 33, Level = 1 });
+
+            Assert.AreEqual(33, profile.Xp);
+            Assert.AreEqual(1, profile.Level);
+        }
+
+        [Test]
+        public void Load_WhenFileIsCorruptedJson_WithFallback_ReturnsFallbackNotHardcodedZeros()
+        {
+            File.WriteAllText(testFilePath, "{ not valid json");
+            var store = new PlayerProfileStore(testFilePath);
+
+            LogAssert.Expect(LogType.Error, new System.Text.RegularExpressions.Regex("Failed to load player profile"));
+            var profile = store.Load(new PlayerProfile { Xp = 77, Level = 2 });
+
+            Assert.AreEqual(77, profile.Xp);
+            Assert.AreEqual(2, profile.Level);
+        }
+
+        [Test]
         public void Save_ThenLoad_RoundTripsXpAndLevel()
         {
             var store = new PlayerProfileStore(testFilePath);

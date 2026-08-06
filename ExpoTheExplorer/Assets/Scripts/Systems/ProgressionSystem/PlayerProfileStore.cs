@@ -19,24 +19,24 @@ namespace ExpoTheExplorer.Systems.ProgressionSystem
             this.filePath = filePath;
         }
 
-        public PlayerProfile Load()
+        public PlayerProfile Load(PlayerProfile fallback = null)
         {
             if (!File.Exists(filePath))
             {
                 Debug.Log($"No player profile found at {filePath}; using defaults.");
-                return new PlayerProfile();
+                return fallback ?? new PlayerProfile();
             }
 
             try
             {
                 var json = File.ReadAllText(filePath);
                 var profile = JsonUtility.FromJson<PlayerProfile>(json);
-                return profile ?? new PlayerProfile();
+                return profile ?? fallback ?? new PlayerProfile();
             }
             catch (Exception e)
             {
                 Debug.LogError($"Failed to load player profile at {filePath}: {e.Message}");
-                return new PlayerProfile();
+                return fallback ?? new PlayerProfile();
             }
         }
 

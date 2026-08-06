@@ -14,11 +14,15 @@ namespace ExpoTheExplorer.Data
         [SerializeField] private int startingLives = 3;
         [SerializeField] private int startingSoftMoney = 0;
         [SerializeField] private int startingGems = 0;
+        [SerializeField] private int startingXp = 0;
+        [SerializeField] private int startingLevel = 0;
 
         public int BoardWidth => boardWidth;
         public int BoardHeight => boardHeight;
         public int StartingLives => startingLives;
         public int StartingSoftMoney => startingSoftMoney;
         public int StartingGems => startingGems;
+        public int StartingXp => startingXp;
+        public int StartingLevel => startingLevel;
     }
 }

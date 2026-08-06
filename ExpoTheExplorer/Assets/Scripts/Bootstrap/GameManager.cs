@@ -41,11 +41,15 @@ namespace ExpoTheExplorer.Bootstrap
 
             State = new GameState(gameConfig);
 
-            // Loads whatever was last committed to disk. Nothing calls Save() yet --
-            // the real commit trigger (day completed successfully) doesn't exist in
-            // the game yet and is wired up in a later PR.
+            // Loads whatever was last committed to disk, falling back to this
+            // session's config-seeded Xp/Level (not hardcoded 0/0) when there's no
+            // save yet -- so GameConfig.StartingXp/StartingLevel round-trips
+            // correctly even once a designer sets StartingLevel to a nonzero value.
+            // Nothing calls Save() yet -- the real commit trigger (day completed
+            // successfully) doesn't exist in the game yet and is wired up in a
+            // later PR.
             PlayerProfileStore = new PlayerProfileStore(Path.Combine(Application.persistentDataPath, "player_profile.json"));
-            var profile = PlayerProfileStore.Load();
+            var profile = PlayerProfileStore.Load(new PlayerProfile { Xp = State.Xp, Level = State.Level });
             State.Xp = profile.Xp;
             State.Level = profile.Level;
 

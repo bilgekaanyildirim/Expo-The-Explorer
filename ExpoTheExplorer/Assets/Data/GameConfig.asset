@@ -17,3 +17,5 @@ MonoBehaviour:
   startingLives: 5
   startingSoftMoney: 250
   startingGems: 100
+  startingXp: 0
+  startingLevel: 0
