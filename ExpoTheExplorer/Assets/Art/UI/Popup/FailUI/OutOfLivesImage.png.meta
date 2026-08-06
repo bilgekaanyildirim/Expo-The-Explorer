@@ -1,0 +1,832 @@
+fileFormatVersion: 2
+guid: 8d8b85b8faaef41709d6307844ec0fe2
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 1117763793330659465
+    second: OutOfLivesImage_0
+  - first:
+      213: -6091090763117079774
+    second: OutOfLivesImage_1
+  - first:
+      213: 504136179240371423
+    second: OutOfLivesImage_2
+  - first:
+      213: 1368769501677542178
+    second: OutOfLivesImage_3
+  - first:
+      213: 6661163683100876430
+    second: OutOfLivesImage_4
+  - first:
+      213: 6880499360262081457
+    second: OutOfLivesImage_5
+  - first:
+      213: -7524450641492285605
+    second: OutOfLivesImage_6
+  - first:
+      213: -2580983340817809733
+    second: OutOfLivesImage_7
+  - first:
+      213: 1633188837204408050
+    second: OutOfLivesImage_8
+  - first:
+      213: -3750109826922209480
+    second: OutOfLivesImage_9
+  - first:
+      213: 2487054443930428238
+    second: OutOfLivesImage_10
+  - first:
+      213: -2978296668879308054
+    second: OutOfLivesImage_11
+  - first:
+      213: -170860141361582624
+    second: OutOfLivesImage_12
+  - first:
+      213: 6669743499176467659
+    second: OutOfLivesImage_13
+  - first:
+      213: 9084473695959037993
+    second: OutOfLivesImage_14
+  - first:
+      213: 7809157186651632827
+    second: OutOfLivesImage_15
+  - first:
+      213: -5023877377169343933
+    second: OutOfLivesImage_16
+  - first:
+      213: 3874157853899102306
+    second: OutOfLivesImage_17
+  - first:
+      213: -5264508332233737943
+    second: OutOfLivesImage_18
+  - first:
+      213: 5742258007057706746
+    second: OutOfLivesImage_19
+  - first:
+      213: 6255420810641096942
+    second: OutOfLivesImage_20
+  - first:
+      213: 7730178995023954395
+    second: OutOfLivesImage_21
+  - first:
+      213: -3985184103705248357
+    second: OutOfLivesImage_22
+  - first:
+      213: -6474450605882744243
+    second: OutOfLivesImage_23
+  - first:
+      213: 9218066074084635776
+    second: OutOfLivesImage_24
+  - first:
+      213: 896460923624690230
+    second: OutOfLivesImage_25
+  - first:
+      213: 922452451260704046
+    second: OutOfLivesImage_26
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: iOS
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: OutOfLivesImage_0
+      rect:
+        serializedVersion: 2
+        x: 1
+        y: 1
+        width: 140
+        height: 158
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 98064447f38138f00800000000000000
+      internalID: 1117763793330659465
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: OutOfLivesImage_1
+      rect:
+        serializedVersion: 2
+        x: 31
+        y: 155
+        width: 6
+        height: 5
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2235eb11939187ba0800000000000000
+      internalID: -6091090763117079774
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: OutOfLivesImage_2
+      rect:
+        serializedVersion: 2
+        x: 143
+        y: 155
+        width: 6
+        height: 5
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fd48b0a1f2d0ff600800000000000000
+      internalID: 504136179240371423
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: OutOfLivesImage_3
+      rect:
+        serializedVersion: 2
+        x: 143
+        y: 0
+        width: 130
+        height: 157
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 22bd0e61c98def210800000000000000
+      internalID: 1368769501677542178
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: OutOfLivesImage_4
+      rect:
+        serializedVersion: 2
+        x: 231
+        y: 155
+        width: 6
+        height: 5
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e8ed5f1d315317c50800000000000000
+      internalID: 6661163683100876430
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: OutOfLivesImage_5
+      rect:
+        serializedVersion: 2
+        x: 275
+        y: 1
+        width: 126
+        height: 156
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1bb49b5b6b17c7f50800000000000000
+      internalID: 6880499360262081457
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: OutOfLivesImage_6
+      rect:
+        serializedVersion: 2
+        x: 279
+        y: 155
+        width: 6
+        height: 5
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b5764eff108c39790800000000000000
+      internalID: -7524450641492285605
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: OutOfLivesImage_7
+      rect:
+        serializedVersion: 2
+        x: 447
+        y: 1
+        width: 140
+        height: 158
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bbe7a5f73518e2cd0800000000000000
+      internalID: -2580983340817809733
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: OutOfLivesImage_8
+      rect:
+        serializedVersion: 2
+        x: 479
+        y: 155
+        width: 6
+        height: 5
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2f6b3bc28904aa610800000000000000
+      internalID: 1633188837204408050
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: OutOfLivesImage_9
+      rect:
+        serializedVersion: 2
+        x: 587
+        y: 1
+        width: 116
+        height: 156
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 83f99993bfee4fbc0800000000000000
+      internalID: -3750109826922209480
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: OutOfLivesImage_10
+      rect:
+        serializedVersion: 2
+        x: 591
+        y: 155
+        width: 6
+        height: 5
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e43a78bf6dac38220800000000000000
+      internalID: 2487054443930428238
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: OutOfLivesImage_11
+      rect:
+        serializedVersion: 2
+        x: 751
+        y: 155
+        width: 6
+        height: 5
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: aea38b795f6faa6d0800000000000000
+      internalID: -2978296668879308054
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: OutOfLivesImage_12
+      rect:
+        serializedVersion: 2
+        x: 751
+        y: 1
+        width: 116
+        height: 156
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0edaedf4b9bf0adf0800000000000000
+      internalID: -170860141361582624
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: OutOfLivesImage_13
+      rect:
+        serializedVersion: 2
+        x: 863
+        y: 1
+        width: 64
+        height: 156
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bcc526bef50bf8c50800000000000000
+      internalID: 6669743499176467659
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: OutOfLivesImage_14
+      rect:
+        serializedVersion: 2
+        x: 871
+        y: 155
+        width: 6
+        height: 5
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 928b403e1b8821e70800000000000000
+      internalID: 9084473695959037993
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: OutOfLivesImage_15
+      rect:
+        serializedVersion: 2
+        x: 921
+        y: 1
+        width: 254
+        height: 156
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bb43f892613bf5c60800000000000000
+      internalID: 7809157186651632827
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: OutOfLivesImage_16
+      rect:
+        serializedVersion: 2
+        x: 927
+        y: 155
+        width: 6
+        height: 5
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 34a33b2a42a974ab0800000000000000
+      internalID: -5023877377169343933
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: OutOfLivesImage_17
+      rect:
+        serializedVersion: 2
+        x: 1015
+        y: 155
+        width: 6
+        height: 5
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 268127dba06c3c530800000000000000
+      internalID: 3874157853899102306
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: OutOfLivesImage_18
+      rect:
+        serializedVersion: 2
+        x: 1055
+        y: 155
+        width: 6
+        height: 5
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 929bf1c7095b0f6b0800000000000000
+      internalID: -5264508332233737943
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: OutOfLivesImage_19
+      rect:
+        serializedVersion: 2
+        x: 1177
+        y: 1
+        width: 113
+        height: 158
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: afe215fcb3990bf40800000000000000
+      internalID: 5742258007057706746
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: OutOfLivesImage_20
+      rect:
+        serializedVersion: 2
+        x: 1199
+        y: 155
+        width: 6
+        height: 5
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ee049daa518bfc650800000000000000
+      internalID: 6255420810641096942
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: OutOfLivesImage_21
+      rect:
+        serializedVersion: 2
+        x: 583
+        y: 147
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bd1c698f6dc174b60800000000000000
+      internalID: 7730178995023954395
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: OutOfLivesImage_22
+      rect:
+        serializedVersion: 2
+        x: 743
+        y: 147
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b9d7d1e0c28c1b8c0800000000000000
+      internalID: -3985184103705248357
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: OutOfLivesImage_23
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 115
+        width: 5
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d42eb802a712626a0800000000000000
+      internalID: -6474450605882744243
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: OutOfLivesImage_24
+      rect:
+        serializedVersion: 2
+        x: 139
+        y: 105
+        width: 12
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 084f4e541462def70800000000000000
+      internalID: 9218066074084635776
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: OutOfLivesImage_25
+      rect:
+        serializedVersion: 2
+        x: 439
+        y: 99
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6321babd57ed07c00800000000000000
+      internalID: 896460923624690230
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: OutOfLivesImage_26
+      rect:
+        serializedVersion: 2
+        x: 1175
+        y: 51
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e252597fd953dcc00800000000000000
+      internalID: 922452451260704046
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      OutOfLivesImage_0: 1117763793330659465
+      OutOfLivesImage_1: -6091090763117079774
+      OutOfLivesImage_10: 2487054443930428238
+      OutOfLivesImage_11: -2978296668879308054
+      OutOfLivesImage_12: -170860141361582624
+      OutOfLivesImage_13: 6669743499176467659
+      OutOfLivesImage_14: 9084473695959037993
+      OutOfLivesImage_15: 7809157186651632827
+      OutOfLivesImage_16: -5023877377169343933
+      OutOfLivesImage_17: 3874157853899102306
+      OutOfLivesImage_18: -5264508332233737943
+      OutOfLivesImage_19: 5742258007057706746
+      OutOfLivesImage_2: 504136179240371423
+      OutOfLivesImage_20: 6255420810641096942
+      OutOfLivesImage_21: 7730178995023954395
+      OutOfLivesImage_22: -3985184103705248357
+      OutOfLivesImage_23: -6474450605882744243
+      OutOfLivesImage_24: 9218066074084635776
+      OutOfLivesImage_25: 896460923624690230
+      OutOfLivesImage_26: 922452451260704046
+      OutOfLivesImage_3: 1368769501677542178
+      OutOfLivesImage_4: 6661163683100876430
+      OutOfLivesImage_5: 6880499360262081457
+      OutOfLivesImage_6: -7524450641492285605
+      OutOfLivesImage_7: -2580983340817809733
+      OutOfLivesImage_8: 1633188837204408050
+      OutOfLivesImage_9: -3750109826922209480
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
