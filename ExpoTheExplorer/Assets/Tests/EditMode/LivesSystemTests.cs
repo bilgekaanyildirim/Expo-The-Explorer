@@ -26,11 +26,11 @@ namespace ExpoTheExplorer.Tests.EditMode
             Object.DestroyImmediate(livesConfig);
         }
 
-        private void SetLivesConfig(int continueGemCost, int continueRefillAmount)
+        private void SetLivesConfig(int continueGemCost, int continueSoftMoneyCost)
         {
             var serialized = new SerializedObject(livesConfig);
             serialized.FindProperty("continueGemCost").intValue = continueGemCost;
-            serialized.FindProperty("continueRefillAmount").intValue = continueRefillAmount;
+            serialized.FindProperty("continueSoftMoneyCost").intValue = continueSoftMoneyCost;
             serialized.ApplyModifiedPropertiesWithoutUndo();
         }
 
@@ -100,38 +100,75 @@ namespace ExpoTheExplorer.Tests.EditMode
         }
 
         [Test]
-        public void TryContinue_WithEnoughGems_SpendsGemsAndRefillsLives_AndClearsIsAwaitingContinue()
+        public void TryContinueWithGems_WithEnoughGems_SpendsGemsAndRefillsLivesToMaxLives_AndClearsIsAwaitingContinue()
         {
-            SetLivesConfig(continueGemCost: 5, continueRefillAmount: 3);
+            SetLivesConfig(continueGemCost: 5, continueSoftMoneyCost: 250);
             var state = new GameState(gameConfig);
+            state.MaxLives = 3;
             state.Lives = 0;
             state.IsAwaitingContinue = true;
             state.Gems = 10;
             var manager = new LivesManager(state, livesConfig);
 
-            var result = manager.TryContinue();
+            var result = manager.TryContinueWithGems();
 
             Assert.IsTrue(result);
             Assert.AreEqual(5, state.Gems);
-            Assert.AreEqual(3, state.Lives);
-            Assert.AreEqual(3, state.MaxLives);
+            Assert.AreEqual(state.MaxLives, state.Lives);
             Assert.IsFalse(state.IsAwaitingContinue);
         }
 
         [Test]
-        public void TryContinue_WithoutEnoughGems_ReturnsFalse_AndSpendsNothing_AndLeavesLivesAtZero()
+        public void TryContinueWithGems_WithoutEnoughGems_ReturnsFalse_AndSpendsNothing_AndLeavesLivesAtZero()
         {
-            SetLivesConfig(continueGemCost: 5, continueRefillAmount: 3);
+            SetLivesConfig(continueGemCost: 5, continueSoftMoneyCost: 250);
             var state = new GameState(gameConfig);
             state.Lives = 0;
             state.IsAwaitingContinue = true;
             state.Gems = 4;
             var manager = new LivesManager(state, livesConfig);
 
-            var result = manager.TryContinue();
+            var result = manager.TryContinueWithGems();
 
             Assert.IsFalse(result);
             Assert.AreEqual(4, state.Gems);
+            Assert.AreEqual(0, state.Lives);
+            Assert.IsTrue(state.IsAwaitingContinue);
+        }
+
+        [Test]
+        public void TryContinueWithSoftMoney_WithEnoughSoftMoney_SpendsSoftMoneyAndRefillsLivesToMaxLives_AndClearsIsAwaitingContinue()
+        {
+            SetLivesConfig(continueGemCost: 5, continueSoftMoneyCost: 250);
+            var state = new GameState(gameConfig);
+            state.MaxLives = 3;
+            state.Lives = 0;
+            state.IsAwaitingContinue = true;
+            state.SoftMoney = 500;
+            var manager = new LivesManager(state, livesConfig);
+
+            var result = manager.TryContinueWithSoftMoney();
+
+            Assert.IsTrue(result);
+            Assert.AreEqual(250, state.SoftMoney);
+            Assert.AreEqual(state.MaxLives, state.Lives);
+            Assert.IsFalse(state.IsAwaitingContinue);
+        }
+
+        [Test]
+        public void TryContinueWithSoftMoney_WithoutEnoughSoftMoney_ReturnsFalse_AndSpendsNothing_AndLeavesLivesAtZero()
+        {
+            SetLivesConfig(continueGemCost: 5, continueSoftMoneyCost: 250);
+            var state = new GameState(gameConfig);
+            state.Lives = 0;
+            state.IsAwaitingContinue = true;
+            state.SoftMoney = 100;
+            var manager = new LivesManager(state, livesConfig);
+
+            var result = manager.TryContinueWithSoftMoney();
+
+            Assert.IsFalse(result);
+            Assert.AreEqual(100, state.SoftMoney);
             Assert.AreEqual(0, state.Lives);
             Assert.IsTrue(state.IsAwaitingContinue);
         }

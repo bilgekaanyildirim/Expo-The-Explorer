@@ -12,5 +12,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6f09abfc49444e7db387e196b8b39a32, type: 3}
   m_Name: LivesConfig
   m_EditorClassIdentifier:
-  continueGemCost: 5
-  continueRefillAmount: 3
+  continueGemCost: 10
+  continueSoftMoneyCost: 250

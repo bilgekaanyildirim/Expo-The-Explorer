@@ -110,9 +110,14 @@ namespace ExpoTheExplorer.UI
         // drag threshold is crossed. OnBeginDrag below always fires after
         // this for the same gesture (UGUI captures pointerPress before ever
         // considering a drag candidate), so there's nothing to guard here.
+        // The IsAwaitingContinue check is the single gate for the whole
+        // gesture lifecycle: a gesture never picked up here never sets
+        // IsDragging, so OnBeginDrag/OnDrag/OnEndDrag no-op via their own
+        // existing CurrentItem checks -- this is the one place a Game
+        // Over/Continue popup needs to block board input from.
         public void OnPointerDown(PointerEventData eventData)
         {
-            if (CurrentItem == null) return;
+            if (CurrentItem == null || gameManager.State.IsAwaitingContinue) return;
 
             ApplyPickupVisuals(eventData);
         }
