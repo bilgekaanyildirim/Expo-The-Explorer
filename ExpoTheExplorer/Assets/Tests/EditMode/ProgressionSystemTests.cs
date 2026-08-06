@@ -282,6 +282,44 @@ namespace ExpoTheExplorer.Tests.EditMode
         }
 
         [Test]
+        public void GetXpProgressRatio_PartiallyThroughLevel_ReturnsCorrectFraction()
+        {
+            var config = CreateLevelProgressionConfig();
+            SetXpToNextLevel(config, 100);
+            var state = new GameState(gameConfig);
+            var manager = new LevelManager(state, config);
+
+            manager.AddXp(25);
+
+            Assert.AreEqual(0.25f, manager.GetXpProgressRatio(), 0.0001f);
+        }
+
+        [Test]
+        public void GetXpProgressRatio_AtZeroXp_ReturnsZero()
+        {
+            var config = CreateLevelProgressionConfig();
+            SetXpToNextLevel(config, 100);
+            var state = new GameState(gameConfig);
+            var manager = new LevelManager(state, config);
+
+            Assert.AreEqual(0f, manager.GetXpProgressRatio(), 0.0001f);
+        }
+
+        [Test]
+        public void GetXpProgressRatio_AtMaxAuthoredLevel_ReturnsOne()
+        {
+            var config = CreateLevelProgressionConfig();
+            SetXpToNextLevel(config, 100);
+            var state = new GameState(gameConfig);
+            var manager = new LevelManager(state, config);
+
+            manager.AddXp(100);
+            manager.AddXp(500);
+
+            Assert.AreEqual(1f, manager.GetXpProgressRatio(), 0.0001f);
+        }
+
+        [Test]
         public void DiscardToLastCommitted_DoesNotWriteToProfileStore()
         {
             var config = CreateLevelProgressionConfig();

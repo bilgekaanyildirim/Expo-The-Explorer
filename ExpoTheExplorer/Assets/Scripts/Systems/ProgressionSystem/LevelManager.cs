@@ -78,6 +78,16 @@ namespace ExpoTheExplorer.Systems.ProgressionSystem
             }
         }
 
+        // UI-facing helper for an XP progress bar. Max level reached (Level
+        // has caught up with the authored table's length) returns 1f (full)
+        // -- GDD doesn't specify max-level bar behavior, "full" is the least
+        // confusing placeholder versus a bar stuck empty forever.
+        public float GetXpProgressRatio()
+        {
+            if (state.Level >= config.XpToNextLevel.Count) return 1f;
+            return (float)state.Xp / config.XpToNextLevel[state.Level];
+        }
+
         public DeliveryXpResult CalculateXp(Ticket ticket)
         {
             var itemCount = ticket.RequiredItems.Count;
