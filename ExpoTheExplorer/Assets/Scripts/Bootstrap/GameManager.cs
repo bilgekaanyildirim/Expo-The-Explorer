@@ -64,12 +64,14 @@ namespace ExpoTheExplorer.Bootstrap
             TrayManager = new TrayManager(State, slotIndex => TicketSlotManager.DeliverTicket(slotIndex), LivesManager.LoseLife);
             economyCalculator = new EconomyCalculator(economyConfig);
             dayLifecycleManager = new DayLifecycleManager(State, gameConfig);
-            levelManager = new LevelManager(State, levelProgressionConfig);
+            levelManager = new LevelManager(State, levelProgressionConfig, PlayerProfileStore, profile);
 
             // Subscribe before the initial fill so the first 3 tickets trigger
             // board distribution too, not just later deliveries/cancellations.
             State.TicketAssigned.Subscribe(OnTicketAssigned);
             State.TicketDelivered.Subscribe(OnTicketDelivered);
+            State.DayCompleted.Subscribe(OnDayCompleted);
+            State.DayRetried.Subscribe(OnDayRetried);
             TicketSlotManager.FillEmptySlots();
         }
 
@@ -77,6 +79,8 @@ namespace ExpoTheExplorer.Bootstrap
         {
             State.TicketAssigned.Unsubscribe(OnTicketAssigned);
             State.TicketDelivered.Unsubscribe(OnTicketDelivered);
+            State.DayCompleted.Unsubscribe(OnDayCompleted);
+            State.DayRetried.Unsubscribe(OnDayRetried);
         }
 
         // Paused while awaiting Continue (GDD Section 6 — Lives depleted, day
@@ -114,6 +118,22 @@ namespace ExpoTheExplorer.Bootstrap
 
             var xpResult = levelManager.CalculateXp(delivery.Ticket);
             levelManager.AddXp(Mathf.RoundToInt(xpResult.TotalXp));
+        }
+
+        // The day's Xp/Level gains become permanent the instant the daily goal
+        // is reached (GDD Section 10/11) -- Continue never fires DayCompleted
+        // or DayRetried, only a real Retry does, so currency-continue
+        // correctly leaves earned XP untouched either way.
+        private void OnDayCompleted(int _)
+        {
+            levelManager.CommitProgress();
+        }
+
+        // Wipes this attempt's Xp/Level gains back to the last commit (CLAUDE.md
+        // Section 3 -- Progression/Lives System: retry discards the day's XP).
+        private void OnDayRetried(int _)
+        {
+            levelManager.DiscardToLastCommitted();
         }
 
         // Free alternative to the paid Continue flow (GameOverPopupView) --

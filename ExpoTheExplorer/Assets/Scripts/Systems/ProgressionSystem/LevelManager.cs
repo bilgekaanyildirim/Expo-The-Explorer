@@ -21,11 +21,43 @@ namespace ExpoTheExplorer.Systems.ProgressionSystem
     {
         private readonly GameState state;
         private readonly LevelProgressionConfig config;
+        private readonly PlayerProfileStore profileStore;
+        private PlayerProfile lastCommittedProfile;
 
+        // Calculation-only usage (existing tests) -- never touches persistence.
+        // Commit/Discard are only ever called on an instance built with the
+        // constructor below (GameManager always uses that one).
         public LevelManager(GameState state, LevelProgressionConfig config)
+            : this(state, config, null, new PlayerProfile())
+        {
+        }
+
+        public LevelManager(GameState state, LevelProgressionConfig config, PlayerProfileStore profileStore, PlayerProfile initialProfile)
         {
             this.state = state;
             this.config = config;
+            this.profileStore = profileStore;
+            lastCommittedProfile = initialProfile;
+        }
+
+        // Wired to GameState.DayCompleted (GameManager) -- whatever Xp/Level the
+        // player is currently sitting on becomes permanent and is written to
+        // disk. A later Discard rolls back to THIS point, not the profile that
+        // was loaded at session start.
+        public void CommitProgress()
+        {
+            lastCommittedProfile = new PlayerProfile { Xp = state.Xp, Level = state.Level };
+            profileStore.Save(lastCommittedProfile);
+        }
+
+        // Wired to GameState.DayRetried (GameManager) -- discards whatever Xp/
+        // Level was gained during the abandoned attempt, rolling back to the
+        // last commit (or the session's initial profile, if nothing has been
+        // committed yet). Pure in-memory rollback -- never touches disk.
+        public void DiscardToLastCommitted()
+        {
+            state.Xp = lastCommittedProfile.Xp;
+            state.Level = lastCommittedProfile.Level;
         }
 
         // Xp += amount happens once; the loop only transfers Xp into Level while

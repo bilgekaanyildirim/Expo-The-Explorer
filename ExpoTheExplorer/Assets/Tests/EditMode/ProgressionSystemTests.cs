@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.IO;
 using ExpoTheExplorer.Core;
 using ExpoTheExplorer.Data;
 using ExpoTheExplorer.Systems.ProgressionSystem;
@@ -10,7 +12,8 @@ namespace ExpoTheExplorer.Tests.EditMode
 {
     public class ProgressionSystemTests
     {
-        private readonly List<Object> spawnedAssets = new();
+        private readonly List<UnityEngine.Object> spawnedAssets = new();
+        private readonly List<string> tempProfilePaths = new();
         private GameConfig gameConfig;
 
         [SetUp]
@@ -25,9 +28,22 @@ namespace ExpoTheExplorer.Tests.EditMode
         {
             foreach (var asset in spawnedAssets)
             {
-                Object.DestroyImmediate(asset);
+                UnityEngine.Object.DestroyImmediate(asset);
             }
             spawnedAssets.Clear();
+
+            foreach (var path in tempProfilePaths)
+            {
+                if (File.Exists(path)) File.Delete(path);
+            }
+            tempProfilePaths.Clear();
+        }
+
+        private PlayerProfileStore CreateTempProfileStore()
+        {
+            var path = Path.Combine(Application.temporaryCachePath, $"leveltest_profile_{Guid.NewGuid()}.json");
+            tempProfilePaths.Add(path);
+            return new PlayerProfileStore(path);
         }
 
         private LevelProgressionConfig CreateLevelProgressionConfig(
@@ -209,6 +225,77 @@ namespace ExpoTheExplorer.Tests.EditMode
             Assert.AreEqual(15f, result.BaseXp, 0.0001f);
             Assert.AreEqual(2f, result.PatienceMultiplier, 0.0001f);
             Assert.AreEqual(15f * 2f, result.TotalXp, 0.0001f);
+        }
+
+        [Test]
+        public void CommitProgress_SavesCurrentXpAndLevel_ViaProfileStore()
+        {
+            var config = CreateLevelProgressionConfig();
+            SetXpToNextLevel(config, 100);
+            var state = new GameState(gameConfig);
+            var path = Path.Combine(Application.temporaryCachePath, $"leveltest_profile_{Guid.NewGuid()}.json");
+            tempProfilePaths.Add(path);
+            var store = new PlayerProfileStore(path);
+            var manager = new LevelManager(state, config, store, new PlayerProfile());
+
+            manager.AddXp(130);
+            manager.CommitProgress();
+
+            var reloaded = new PlayerProfileStore(path).Load();
+
+            Assert.AreEqual(30, reloaded.Xp);
+            Assert.AreEqual(1, reloaded.Level);
+        }
+
+        [Test]
+        public void DiscardToLastCommitted_RollsBackToInitialProfile_WhenNeverCommitted()
+        {
+            var config = CreateLevelProgressionConfig();
+            SetXpToNextLevel(config, 100);
+            var state = new GameState(gameConfig);
+            var initialProfile = new PlayerProfile { Xp = 20, Level = 3 };
+            var manager = new LevelManager(state, config, CreateTempProfileStore(), initialProfile);
+
+            manager.AddXp(50);
+            manager.DiscardToLastCommitted();
+
+            Assert.AreEqual(20, state.Xp);
+            Assert.AreEqual(3, state.Level);
+        }
+
+        [Test]
+        public void CommitProgress_UpdatesBaseline_SoLaterDiscardRollsBackToNewestCommit()
+        {
+            var config = CreateLevelProgressionConfig();
+            SetXpToNextLevel(config, 100, 100, 100);
+            var state = new GameState(gameConfig);
+            var manager = new LevelManager(state, config, CreateTempProfileStore(), new PlayerProfile());
+
+            manager.AddXp(50);
+            manager.CommitProgress();
+            manager.AddXp(30);
+
+            manager.DiscardToLastCommitted();
+
+            Assert.AreEqual(50, state.Xp);
+            Assert.AreEqual(0, state.Level);
+        }
+
+        [Test]
+        public void DiscardToLastCommitted_DoesNotWriteToProfileStore()
+        {
+            var config = CreateLevelProgressionConfig();
+            SetXpToNextLevel(config, 100);
+            var state = new GameState(gameConfig);
+            var path = Path.Combine(Application.temporaryCachePath, $"leveltest_profile_{Guid.NewGuid()}.json");
+            tempProfilePaths.Add(path);
+            var store = new PlayerProfileStore(path);
+            var manager = new LevelManager(state, config, store, new PlayerProfile());
+
+            manager.AddXp(50);
+            manager.DiscardToLastCommitted();
+
+            Assert.IsFalse(File.Exists(path));
         }
     }
 }
