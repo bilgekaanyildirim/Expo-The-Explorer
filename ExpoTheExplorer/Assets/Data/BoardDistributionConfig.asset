@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 460458788cfb425c901de1f1fbdbf316, type: 3}
   m_Name: BoardDistributionConfig
   m_EditorClassIdentifier: 
-  noiseLeakCountLambda: 0
+  noiseLeakCountLambda: 10
   guaranteedTicketCount: 1
   leakDepth: 3
   maxLeakCount: 6
