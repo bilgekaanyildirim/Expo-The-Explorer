@@ -2110,6 +2110,7 @@ MonoBehaviour:
   boardDistributionConfig: {fileID: 11400000, guid: 3fa806689133430484752431865908bc, type: 2}
   economyConfig: {fileID: 11400000, guid: d5c7c037e3d34a2688bd965f8c9c9027, type: 2}
   livesConfig: {fileID: 11400000, guid: 8765708d339246eea03445eb371deb4e, type: 2}
+  levelProgressionConfig: {fileID: 11400000, guid: a7578397665a74aa8a8ebb6e92eec0da, type: 2}
 --- !u!4 &800000003
 Transform:
   m_ObjectHideFlags: 0

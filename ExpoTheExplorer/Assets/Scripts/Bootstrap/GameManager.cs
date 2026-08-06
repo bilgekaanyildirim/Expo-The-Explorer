@@ -25,6 +25,7 @@ namespace ExpoTheExplorer.Bootstrap
         [SerializeField] private BoardDistributionConfig boardDistributionConfig;
         [SerializeField] private EconomyConfig economyConfig;
         [SerializeField] private LivesConfig livesConfig;
+        [SerializeField] private LevelProgressionConfig levelProgressionConfig;
 
         public GameState State { get; private set; }
         public TicketSlotManager TicketSlotManager { get; private set; }
@@ -36,6 +37,7 @@ namespace ExpoTheExplorer.Bootstrap
         private BoardDistributor boardDistributor;
         private EconomyCalculator economyCalculator;
         private DayLifecycleManager dayLifecycleManager;
+        private LevelManager levelManager;
 
         private void Awake()
         {
@@ -62,6 +64,7 @@ namespace ExpoTheExplorer.Bootstrap
             TrayManager = new TrayManager(State, slotIndex => TicketSlotManager.DeliverTicket(slotIndex), LivesManager.LoseLife);
             economyCalculator = new EconomyCalculator(economyConfig);
             dayLifecycleManager = new DayLifecycleManager(State, gameConfig);
+            levelManager = new LevelManager(State, levelProgressionConfig);
 
             // Subscribe before the initial fill so the first 3 tickets trigger
             // board distribution too, not just later deliveries/cancellations.
@@ -108,6 +111,9 @@ namespace ExpoTheExplorer.Bootstrap
             var tip = economyCalculator.CalculateTip(delivery.Ticket).TotalTip;
             State.SoftMoney += Mathf.RoundToInt(tip);
             dayLifecycleManager.RecordDelivery();
+
+            var xpResult = levelManager.CalculateXp(delivery.Ticket);
+            levelManager.AddXp(Mathf.RoundToInt(xpResult.TotalXp));
         }
 
         // Free alternative to the paid Continue flow (GameOverPopupView) --
