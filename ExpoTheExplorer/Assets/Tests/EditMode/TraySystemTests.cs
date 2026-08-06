@@ -226,6 +226,30 @@ namespace ExpoTheExplorer.Tests.EditMode
         }
 
         [Test]
+        public void DiscardAllForNewDay_ClearsAllSlotsWithoutScattering()
+        {
+            var state = new GameState(gameConfig);
+            var main = CreateFoodItem();
+            var side = CreateFoodItem(FoodCategory.Side);
+            var ticketA = CreateTicket(new List<FoodItemConfig> { main, side });
+            var ticketB = CreateTicket(new List<FoodItemConfig> { main, side });
+            state.TicketSlots[0] = ticketA;
+            state.TicketSlots[1] = ticketB;
+
+            var manager = new TrayManager(state, _ => { }, () => state.Lives--);
+            manager.TryAddItem(0, new BoardItem(main, ticketA.Modifications));
+            manager.TryAddItem(1, new BoardItem(main, ticketB.Modifications));
+
+            manager.DiscardAllForNewDay();
+
+            for (var i = 0; i < GameState.TicketSlotCount; i++)
+            {
+                Assert.AreEqual(0, manager.GetContents(i).Count);
+            }
+            Assert.AreEqual(0, state.Board.OccupiedCellCount);
+        }
+
+        [Test]
         public void TryAddItem_BoardFullOnScatter_RequestSpawnQueuesWithoutThrowing()
         {
             var state = new GameState(gameConfig);

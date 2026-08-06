@@ -344,6 +344,49 @@ namespace ExpoTheExplorer.Tests.EditMode
         }
 
         [Test]
+        public void ResetSlotsForNewDay_AllThreeSlotsGetNewTickets_PublishesTicketAssignedThreeTimes_NeverPublishesTicketCancelled()
+        {
+            var state = new GameState(gameConfig);
+            var manager = CreateManager(state);
+            manager.FillEmptySlots();
+            var oldTickets = new List<Ticket>(state.TicketSlots);
+
+            var assignedCount = 0;
+            state.TicketAssigned.Subscribe(_ => assignedCount++);
+            var cancelledCount = 0;
+            state.TicketCancelled.Subscribe(_ => cancelledCount++);
+
+            manager.ResetSlotsForNewDay();
+
+            Assert.AreEqual(GameState.TicketSlotCount, assignedCount);
+            Assert.AreEqual(0, cancelledCount);
+            Assert.IsTrue(state.TicketSlots.All(t => t != null));
+            Assert.IsTrue(state.TicketSlots.All(t => !oldTickets.Contains(t)));
+        }
+
+        [Test]
+        public void ResetSlotsForNewDay_NullsAllSlotsBeforeReassigning_NoStaleTicketVisibleDuringAnyPublish()
+        {
+            var state = new GameState(gameConfig);
+            var manager = CreateManager(state);
+            manager.FillEmptySlots();
+            var oldTickets = new HashSet<Ticket>(state.TicketSlots);
+
+            var sawStaleTicket = false;
+            state.TicketAssigned.Subscribe(_ =>
+            {
+                foreach (var t in state.TicketSlots)
+                {
+                    if (t != null && oldTickets.Contains(t)) sawStaleTicket = true;
+                }
+            });
+
+            manager.ResetSlotsForNewDay();
+
+            Assert.IsFalse(sawStaleTicket);
+        }
+
+        [Test]
         public void TicketFactory_Create_OnlyUsesItemsFromSuppliedPool_AndProducesPlausibleItemCount()
         {
             var modA = CreateModification();

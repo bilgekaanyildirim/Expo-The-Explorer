@@ -19,3 +19,4 @@ MonoBehaviour:
   startingGems: 100
   startingXp: 0
   startingLevel: 0
+  ticketsRequiredPerDay: 10

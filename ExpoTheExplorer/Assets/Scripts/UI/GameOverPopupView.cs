@@ -26,6 +26,7 @@ namespace ExpoTheExplorer.UI
         [SerializeField] private TMP_Text livesRefillText;
         [SerializeField] private Button softMoneyButton;
         [SerializeField] private Button gemButton;
+        [SerializeField] private Button retryButton;
         [SerializeField] private Button mainMenuButton;
 
         private GameState state;
@@ -41,6 +42,7 @@ namespace ExpoTheExplorer.UI
 
             softMoneyButton.onClick.AddListener(OnSoftMoneyClicked);
             gemButton.onClick.AddListener(OnGemClicked);
+            retryButton.onClick.AddListener(OnRetryClicked);
 
             // TODO: wire once a Main Menu scene exists.
             mainMenuButton.interactable = false;
@@ -52,6 +54,7 @@ namespace ExpoTheExplorer.UI
 
             softMoneyButton.onClick.RemoveListener(OnSoftMoneyClicked);
             gemButton.onClick.RemoveListener(OnGemClicked);
+            retryButton.onClick.RemoveListener(OnRetryClicked);
         }
 
         private void Show(int _)
@@ -62,6 +65,7 @@ namespace ExpoTheExplorer.UI
             livesRefillText.text = state.MaxLives.ToString();
             softMoneyButton.interactable = state.SoftMoney >= config.ContinueSoftMoneyCost;
             gemButton.interactable = state.Gems >= config.ContinueGemCost;
+            retryButton.interactable = true;
         }
 
         private void Hide()
@@ -79,6 +83,12 @@ namespace ExpoTheExplorer.UI
             if (gameManager.LivesManager.TryContinueWithGems()) Hide();
         }
 
+        private void OnRetryClicked()
+        {
+            gameManager.RetryDay();
+            Hide();
+        }
+
         // Every field here is wired by hand in the Editor -- a missing one
         // should fail loudly with a clear pointer to which field, not a bare
         // NullReferenceException.
@@ -90,6 +100,7 @@ namespace ExpoTheExplorer.UI
             if (livesRefillText == null) missing.Add(nameof(livesRefillText));
             if (softMoneyButton == null) missing.Add(nameof(softMoneyButton));
             if (gemButton == null) missing.Add(nameof(gemButton));
+            if (retryButton == null) missing.Add(nameof(retryButton));
             if (mainMenuButton == null) missing.Add(nameof(mainMenuButton));
 
             if (missing.Count == 0) return true;

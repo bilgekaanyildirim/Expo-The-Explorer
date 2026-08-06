@@ -107,6 +107,22 @@ namespace ExpoTheExplorer.Systems.TraySystem
             return true;
         }
 
+        // Full day-reset primitive (GameManager.RetryDay). Clears every slot's
+        // tray WITHOUT scattering the contents onto the board -- the board is
+        // already being wiped by BoardGrid.Clear() in the same reset, so
+        // scattering here would just reintroduce items onto what's supposed
+        // to end up as an empty board. Must run before
+        // TicketSlotManager.ResetSlotsForNewDay(), so that reset's
+        // TicketAssigned cascade into OnTicketAssigned below finds already-
+        // empty trays and no-ops instead of scattering.
+        public void DiscardAllForNewDay()
+        {
+            foreach (var slot in slots)
+            {
+                slot.Clear();
+            }
+        }
+
         // Called when a slot's ticket changes for any reason (delivered,
         // cancelled/timed out). Only actually does something for the timeout
         // case — a delivered tray is already emptied by TryAddItem above, so

@@ -100,6 +100,25 @@ namespace ExpoTheExplorer.Tests.EditMode
         }
 
         [Test]
+        public void RetryDay_RefillsLivesToMaxLives_ClearsIsAwaitingContinue_NoCurrencyCheck()
+        {
+            var state = new GameState(gameConfig);
+            state.MaxLives = 3;
+            state.Lives = 0;
+            state.IsAwaitingContinue = true;
+            state.SoftMoney = 0;
+            state.Gems = 0;
+            var manager = new LivesManager(state, livesConfig);
+
+            manager.RetryDay();
+
+            Assert.AreEqual(state.MaxLives, state.Lives);
+            Assert.IsFalse(state.IsAwaitingContinue);
+            Assert.AreEqual(0, state.SoftMoney);
+            Assert.AreEqual(0, state.Gems);
+        }
+
+        [Test]
         public void TryContinueWithGems_WithEnoughGems_SpendsGemsAndRefillsLivesToMaxLives_AndClearsIsAwaitingContinue()
         {
             SetLivesConfig(continueGemCost: 5, continueSoftMoneyCost: 250);

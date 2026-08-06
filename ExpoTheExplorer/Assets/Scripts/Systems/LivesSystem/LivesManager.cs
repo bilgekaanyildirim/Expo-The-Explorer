@@ -68,6 +68,11 @@ namespace ExpoTheExplorer.Systems.LivesSystem
             return true;
         }
 
+        // Free day-reset primitive (GameManager.RetryDay) -- refills Lives the
+        // same way a paid Continue does, just with no affordability check
+        // since abandoning the day and starting over doesn't cost anything.
+        public void RetryDay() => RefillLivesAndResume();
+
         // Refills Lives back to MaxLives -- MaxLives already holds whatever
         // GameConfig.StartingLives the day began with (nothing else mutates
         // it), so Continue reads as a full bar without needing its own

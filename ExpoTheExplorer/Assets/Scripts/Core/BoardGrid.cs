@@ -107,6 +107,29 @@ namespace ExpoTheExplorer.Core
             return true;
         }
 
+        // Full day-reset primitive (GameManager.RetryDay). Drains pendingSpawns
+        // FIRST -- RemoveItem backfills the cell it just emptied from that
+        // queue the instant it's non-empty, so clearing it after the loop
+        // instead would let cells silently refill mid-loop and this would
+        // never actually empty the board. Reuses RemoveItem per cell (rather
+        // than a direct array reset) so CellChanged still fires per cell for
+        // any board-rendering view to stay in sync.
+        public void Clear()
+        {
+            pendingSpawns.Clear();
+
+            for (var x = 0; x < Width; x++)
+            {
+                for (var y = 0; y < Height; y++)
+                {
+                    if (cells[x, y] != null)
+                    {
+                        RemoveItem(x, y);
+                    }
+                }
+            }
+        }
+
         public BoardItem RemoveItem(int x, int y)
         {
             if (!IsInBounds(x, y)) return null;

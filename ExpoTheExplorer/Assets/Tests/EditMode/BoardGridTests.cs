@@ -190,6 +190,38 @@ namespace ExpoTheExplorer.Tests.EditMode
             Assert.AreEqual((1, 1), published);
         }
 
+        [Test]
+        public void Clear_EmptiesAllOccupiedCells_ResetsOccupiedCountToZero()
+        {
+            var grid = new BoardGrid(config);
+            FillGrid(grid);
+
+            grid.Clear();
+
+            Assert.AreEqual(0, grid.OccupiedCellCount);
+            for (var y = 0; y < grid.Height; y++)
+            {
+                for (var x = 0; x < grid.Width; x++)
+                {
+                    Assert.IsTrue(grid.IsCellEmpty(x, y));
+                }
+            }
+        }
+
+        [Test]
+        public void Clear_DrainsPendingSpawns_TheyDoNotBackfillAfterClear()
+        {
+            var grid = new BoardGrid(config);
+            FillGrid(grid);
+            grid.RequestSpawn(CreateItem()); // grid is full -> queues instead of placing
+            Assert.AreEqual(1, grid.PendingSpawnCount);
+
+            grid.Clear();
+
+            Assert.AreEqual(0, grid.PendingSpawnCount);
+            Assert.AreEqual(0, grid.OccupiedCellCount);
+        }
+
         private void FillGrid(BoardGrid grid)
         {
             for (var y = 0; y < grid.Height; y++)

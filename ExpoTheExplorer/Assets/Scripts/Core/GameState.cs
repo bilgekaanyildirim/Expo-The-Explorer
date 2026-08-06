@@ -145,6 +145,21 @@ namespace ExpoTheExplorer.Core
         // whether they can afford it without needing its own GameState poll.
         public EventBus<int> LivesDepleted { get; } = new();
 
+        // Plain int, no event -- mirrors IsAwaitingContinue, nothing consumes
+        // this reactively yet (unlike Lives/SoftMoney/Gems/Xp/Level, which each
+        // have a real HUD view or LevelManager consumer today).
+        public int TicketsDeliveredToday { get; set; }
+
+        // Fires exactly once per day, the moment TicketsDeliveredToday reaches
+        // GameConfig.TicketsRequiredPerDay (GDD Section 11 -- Daily Goal Mode).
+        // Payload is the final count that triggered it.
+        public EventBus<int> DayCompleted { get; } = new();
+
+        // Fires when the player abandons the current day attempt via the free
+        // Retry action (GameManager.RetryDay) rather than paying to continue.
+        // Payload is TicketsDeliveredToday as it stood right before the reset.
+        public EventBus<int> DayRetried { get; } = new();
+
         public BoardGrid Board { get; }
 
         public GameState(GameConfig config)

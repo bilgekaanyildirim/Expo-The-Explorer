@@ -2,6 +2,7 @@ using System.IO;
 using ExpoTheExplorer.Core;
 using ExpoTheExplorer.Data;
 using ExpoTheExplorer.Systems.BoardDistribution;
+using ExpoTheExplorer.Systems.DayLifecycle;
 using ExpoTheExplorer.Systems.EconomySystem;
 using ExpoTheExplorer.Systems.LivesSystem;
 using ExpoTheExplorer.Systems.ProgressionSystem;
@@ -34,6 +35,7 @@ namespace ExpoTheExplorer.Bootstrap
         private TicketFactory ticketFactory;
         private BoardDistributor boardDistributor;
         private EconomyCalculator economyCalculator;
+        private DayLifecycleManager dayLifecycleManager;
 
         private void Awake()
         {
@@ -59,6 +61,7 @@ namespace ExpoTheExplorer.Bootstrap
             boardDistributor = new BoardDistributor(State, boardDistributionConfig);
             TrayManager = new TrayManager(State, slotIndex => TicketSlotManager.DeliverTicket(slotIndex), LivesManager.LoseLife);
             economyCalculator = new EconomyCalculator(economyConfig);
+            dayLifecycleManager = new DayLifecycleManager(State, gameConfig);
 
             // Subscribe before the initial fill so the first 3 tickets trigger
             // board distribution too, not just later deliveries/cancellations.
@@ -104,6 +107,31 @@ namespace ExpoTheExplorer.Bootstrap
         {
             var tip = economyCalculator.CalculateTip(delivery.Ticket).TotalTip;
             State.SoftMoney += Mathf.RoundToInt(tip);
+            dayLifecycleManager.RecordDelivery();
+        }
+
+        // Free alternative to the paid Continue flow (GameOverPopupView) --
+        // abandons the current day attempt and restarts it at the same
+        // difficulty (difficulty scale-down on retry is a still-open GDD
+        // question, CLAUDE.md Section 4, deliberately not addressed here).
+        // Order matters for the first three calls: Board.Clear() ->
+        // TrayManager.DiscardAllForNewDay() -> TicketSlotManager.
+        // ResetSlotsForNewDay() are coupled through OnTicketAssigned's
+        // existing cascade into boardDistributor/TrayManager above, and
+        // running them in a different order reintroduces stale items onto
+        // the board. LivesManager/dayLifecycleManager are independent of
+        // those three and of each other.
+        public void RetryDay()
+        {
+            var ticketsBeforeRetry = State.TicketsDeliveredToday;
+
+            State.Board.Clear();
+            TrayManager.DiscardAllForNewDay();
+            TicketSlotManager.ResetSlotsForNewDay();
+            LivesManager.RetryDay();
+            dayLifecycleManager.ResetForNewDay();
+
+            State.DayRetried.Publish(ticketsBeforeRetry);
         }
 
         private Ticket CreateNextTicket()

@@ -71,6 +71,31 @@ namespace ExpoTheExplorer.Systems.TicketSystem
             AssignTicket(slotIndex);
         }
 
+        // Free day-reset primitive (GameManager.RetryDay) -- deliberately NOT
+        // built on CancelTicket, which would publish 3 spurious TicketCancelled
+        // events for tickets that weren't really cancelled, just discarded.
+        // Nulls every slot FIRST, then assigns all three in a second pass --
+        // NOT combined into one loop iteration, because AssignTicket's
+        // TicketAssigned publish cascades synchronously into
+        // GameManager.OnTicketAssigned -> BoardDistributor.OnOrderPlaced,
+        // which reads the WHOLE TicketSlots array on every call. A combined
+        // single-pass loop would let that call see a mix of already-reset and
+        // still-stale Active tickets in not-yet-processed slots, and
+        // BoardDistributor would spawn required-pool items for tickets that
+        // are about to be discarded anyway.
+        public void ResetSlotsForNewDay()
+        {
+            for (var i = 0; i < GameState.TicketSlotCount; i++)
+            {
+                state.TicketSlots[i] = null;
+            }
+
+            for (var i = 0; i < GameState.TicketSlotCount; i++)
+            {
+                AssignTicket(i);
+            }
+        }
+
         // Publishes TicketAssigned with the slot index + NEW ticket — this is
         // what lets BoardDistributor spawn that order's required items and
         // TrayManager clear that slot's tray, right when the order arrives,
