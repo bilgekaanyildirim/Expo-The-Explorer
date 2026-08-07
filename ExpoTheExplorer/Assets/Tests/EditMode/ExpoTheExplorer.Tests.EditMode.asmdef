@@ -11,6 +11,7 @@
         "ExpoTheExplorer.Systems.LivesSystem",
         "ExpoTheExplorer.Systems.ProgressionSystem",
         "ExpoTheExplorer.Systems.DayLifecycle",
+        "ExpoTheExplorer.Systems.DaySystem",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

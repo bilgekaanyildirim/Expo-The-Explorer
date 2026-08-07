@@ -79,7 +79,8 @@ Hem ticket-generation override'ları (`sideInclusionChance` vb.) hem de board-di
     public int ticketsRequiredForDay;
     public TicketEntryJson[] ticketSequence;          // tam olarak ticketsRequiredForDay uzunluğunda olmalı (DayValidator zorlar)
     public BoardSpawnEntryJson[] boardTimeline;        // triggerStepIndex'e göre sıralı, deterministik oynatım listesi
-    public DayJson retryVariant;                       // null olabilir — Day'in kendi retry zorluğu (Q3); kendi runtime+editorMeta çiftini taşır
+    public bool hasRetryVariant;                        // JsonUtility null'u nested class için asla gerçek null olarak round-trip etmiyor (bkz. Risk 8) — bu yüzden "var mı" sorusu bu sentinel ile sorulur
+    public DayJson retryVariant;                        // hasRetryVariant=false ise içeriği anlamsız/yok sayılır; true ise Day'in kendi retry zorluğu (Q3), kendi runtime+editorMeta çiftini taşır
 }
 [Serializable] public class DayEditorMetaJson
 {
@@ -308,3 +309,4 @@ PR-1 diğer her şeyi bloke ediyor. PR-2/3/4 sıralı (Day döngüsünün çekir
 5. **Id çözümleme hataları sessiz kalmamalı** — typo/eksik id, Day yüklemesinde açık hata logu + Editor'da görsel uyarı (aynı `DayValidator` akışına dahil edilebilir).
 6. **`triggerStepIndex` tutarlılığı** — bir `TicketEntryJson` silinir/reorder edilirse, ona bağlı `triggerStepIndex`'li board girdileri de kayabilir/anlamsızlaşabilir. Day Editor (PR-7), bilet silme/reorder işlemlerinde bağlı `boardTimeline` girdilerini otomatik güncellemeli ya da en azından `DayValidator` üzerinden bunu yakalamalı.
 7. **`DayContentGenerator`'ın simülasyonu potansiyel olarak ağır bir işlem** (tüm ticket dizisini adım adım simüle ediyor) — büyük Day'lerde (uzun `ticketSequence`) performans PR-6.5 sırasında ölçülmeli. `DayValidator`'ın canlı çalışması da benzer şekilde debounce'lu/odak-kaybında tetiklenmeli (PR-7).
+8. **`JsonUtility` nested-class null kısıtı — PR-1'de gerçek testle doğrulandı.** `JsonUtility`, bir nested `[Serializable]` class field'ının `null` değerini asla gerçek `null` olarak round-trip etmiyor — her zaman default-constructed bir instance'a dönüştürüyor. Bu, `DayRuntimeJson.retryVariant`'a saf bir null-check koymayı imkânsız kılıyor (her zaman "var" gibi görünür). Çözüm: `hasRetryVariant` (bool) sentinel eklendi — mevcut `hasBoardDistributionOverride`/`hasTicketGenerationOverride` desenine tutarlı. **Bundan sonra eklenecek her "opsiyonel nested object" alanı için aynı sentinel deseni kullanılmalı**, saf null-check'e güvenilmemeli.
