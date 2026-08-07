@@ -1,17 +1,17 @@
+using System;
 using ExpoTheExplorer.Core;
-using ExpoTheExplorer.Data;
 
 namespace ExpoTheExplorer.Systems.DayLifecycle
 {
     public class DayLifecycleManager
     {
         private readonly GameState state;
-        private readonly GameConfig config;
+        private readonly Func<int> getTicketsRequiredForDay;
 
-        public DayLifecycleManager(GameState state, GameConfig config)
+        public DayLifecycleManager(GameState state, Func<int> getTicketsRequiredForDay)
         {
             this.state = state;
-            this.config = config;
+            this.getTicketsRequiredForDay = getTicketsRequiredForDay;
         }
 
         // == not >=: TicketsDeliveredToday only ever increments by exactly 1,
@@ -22,7 +22,7 @@ namespace ExpoTheExplorer.Systems.DayLifecycle
         public void RecordDelivery()
         {
             state.TicketsDeliveredToday++;
-            if (state.TicketsDeliveredToday == config.TicketsRequiredPerDay)
+            if (state.TicketsDeliveredToday == getTicketsRequiredForDay())
             {
                 state.DayCompleted.Publish(state.TicketsDeliveredToday);
             }

@@ -1,8 +1,10 @@
+using System.Collections.Generic;
 using System.IO;
 using ExpoTheExplorer.Core;
 using ExpoTheExplorer.Data;
 using ExpoTheExplorer.Systems.BoardDistribution;
 using ExpoTheExplorer.Systems.DayLifecycle;
+using ExpoTheExplorer.Systems.DaySystem;
 using ExpoTheExplorer.Systems.EconomySystem;
 using ExpoTheExplorer.Systems.LivesSystem;
 using ExpoTheExplorer.Systems.ProgressionSystem;
@@ -38,6 +40,12 @@ namespace ExpoTheExplorer.Bootstrap
         private BoardDistributor boardDistributor;
         private EconomyCalculator economyCalculator;
         private DayLifecycleManager dayLifecycleManager;
+        private IReadOnlyList<DayDefinition> dayCatalog;
+
+        // Position in dayCatalog, not a Day's JSON dayIndex (that only decides
+        // sort order) -- null until a Day catalog exists (PR-7), so every
+        // consumer falls back to the pre-Day-system GameConfig behavior.
+        private DayDefinition CurrentDay => DayCatalogNavigator.GetDayAt(dayCatalog, State.CurrentDayIndex);
 
         private void Awake()
         {
@@ -63,7 +71,8 @@ namespace ExpoTheExplorer.Bootstrap
             boardDistributor = new BoardDistributor(State, boardDistributionConfig);
             TrayManager = new TrayManager(State, slotIndex => TicketSlotManager.DeliverTicket(slotIndex), LivesManager.LoseLife);
             economyCalculator = new EconomyCalculator(economyConfig);
-            dayLifecycleManager = new DayLifecycleManager(State, gameConfig);
+            dayCatalog = DayCatalogParser.ParseAll(new DayJsonSource().LoadAll(), foodCatalog);
+            dayLifecycleManager = new DayLifecycleManager(State, () => CurrentDay?.TicketsRequiredForDay ?? gameConfig.TicketsRequiredPerDay);
             LevelManager = new LevelManager(State, levelProgressionConfig, PlayerProfileStore, profile);
 
             // Subscribe before the initial fill so the first 3 tickets trigger

@@ -35,7 +35,7 @@ namespace ExpoTheExplorer.Tests.EditMode
         {
             SetTicketsRequiredPerDay(3);
             var state = new GameState(gameConfig);
-            var manager = new DayLifecycleManager(state, gameConfig);
+            var manager = new DayLifecycleManager(state, () => gameConfig.TicketsRequiredPerDay);
 
             var published = false;
             state.DayCompleted.Subscribe(_ => published = true);
@@ -52,7 +52,7 @@ namespace ExpoTheExplorer.Tests.EditMode
         {
             SetTicketsRequiredPerDay(3);
             var state = new GameState(gameConfig);
-            var manager = new DayLifecycleManager(state, gameConfig);
+            var manager = new DayLifecycleManager(state, () => gameConfig.TicketsRequiredPerDay);
 
             int? published = null;
             state.DayCompleted.Subscribe(count => published = count);
@@ -69,7 +69,7 @@ namespace ExpoTheExplorer.Tests.EditMode
         {
             SetTicketsRequiredPerDay(1);
             var state = new GameState(gameConfig);
-            var manager = new DayLifecycleManager(state, gameConfig);
+            var manager = new DayLifecycleManager(state, () => gameConfig.TicketsRequiredPerDay);
 
             var publishCount = 0;
             state.DayCompleted.Subscribe(_ => publishCount++);
@@ -82,10 +82,28 @@ namespace ExpoTheExplorer.Tests.EditMode
         }
 
         [Test]
+        public void RecordDelivery_UsesInjectedDelegate_IndependentOfGameConfig()
+        {
+            // gameConfig defaults ticketsRequiredPerDay to 10 -- deliberately left
+            // untouched here to prove the delegate, not GameConfig, drives the goal.
+            var state = new GameState(gameConfig);
+            var manager = new DayLifecycleManager(state, () => 2);
+
+            int? published = null;
+            state.DayCompleted.Subscribe(count => published = count);
+
+            manager.RecordDelivery();
+            Assert.IsNull(published);
+            manager.RecordDelivery();
+
+            Assert.AreEqual(2, published);
+        }
+
+        [Test]
         public void ResetForNewDay_ResetsCounterToZero()
         {
             var state = new GameState(gameConfig);
-            var manager = new DayLifecycleManager(state, gameConfig);
+            var manager = new DayLifecycleManager(state, () => gameConfig.TicketsRequiredPerDay);
             manager.RecordDelivery();
             manager.RecordDelivery();
 

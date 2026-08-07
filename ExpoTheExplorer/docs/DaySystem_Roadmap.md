@@ -150,16 +150,18 @@ Tasarımcı elle düzenlerken Day'i oynanamaz hale getirebilir — bu **canlı**
 
 ---
 
-## PR-2 — Day İlerleme Çekirdeği
+## PR-2 — Day İlerleme Çekirdeği ✅ Uygulandı
 
-**Kapsam:**
-- `DayLifecycleManager` genişletilir: artık tek bir global hedef değil, **aktif `DayDefinition`**'dan `ticketsRequiredForDay` okuyor.
-- `GameState`'e `CurrentDayIndex` alanı eklenir (custom setter → event publish, mevcut `Lives`/`SoftMoney` kalıbıyla aynı).
-- `GameManager.Awake()`, PR-1'in `DayCatalogParser`'ından çözümlenmiş Day listesini alıp `CurrentDayIndex`'teki `DayDefinition`'ı seçer.
+**Kapsam (gerçekleşen implementasyon):**
+- `GameState`'e `CurrentDayIndex` eklendi — `Lives`/`Level` kalıbının birebir kopyası (backing field + guard'lı setter + `CurrentDayIndexChanged` event). `TicketsDeliveredToday`/`DayCompleted`'in yanına, "gün" state'iyle gruplandı. Varsayılan `0` (kalıcılık PR-8'de).
+- `DayLifecycleManager`, `GameConfig` yerine **`Func<int> getTicketsRequiredForDay` enjeksiyonu** kullanacak şekilde değişti — `TicketSlotManager`'ın `Func<Ticket> nextTicketProvider` deseniyle birebir aynı yaklaşım. Bu, `DayLifecycleManager`'ın `DaySystem` tipini hiç bilmesine gerek kalmadan (asmdef referansı eklemeden) Day-özel değeri okuyabilmesini sağlıyor.
+- Yeni `DayCatalogNavigator` (plain C#, `DaySystem` modülünde, `Assets/Scripts/Systems/DaySystem/DayCatalogNavigator.cs`): `GetDayAt(catalog, index)` — sınır-güvenli Day seçimi. PR-4'ün Day geçişi mantığı buraya eklenecek.
+- `GameManager.Awake()`: `dayCatalog = DayCatalogParser.ParseAll(new DayJsonSource().LoadAll(), foodCatalog)` çağrılıyor, `CurrentDay` private property'si `DayCatalogNavigator.GetDayAt(dayCatalog, State.CurrentDayIndex)` ile hesaplanıyor. **Not:** `Assets/Scripts/Bootstrap/`'ın hiç asmdef'i yok (`Assembly-CSharp`'a derleniyor) — `DaySystem`'i kullanmak için hiçbir asmdef düzenlemesi gerekmedi.
+- **Bootstrapping fallback (roadmap'te yazılı olmayan ama zorunlu bir karar):** `dayLifecycleManager = new DayLifecycleManager(State, () => CurrentDay?.TicketsRequiredForDay ?? gameConfig.TicketsRequiredPerDay);` — Day Editor (PR-7) henüz yokken `Assets/Resources/Days/` boş olacağı için `CurrentDay` `null` olur; bu durumda eski global `GameConfig.TicketsRequiredPerDay` davranışına düşülüyor. Bu sayede oyun PR-7'den önce de tamamen çalışır durumda kalıyor — PR-2/3/4/5/6 art arda test edilebilir.
 
 **Bağımlılık:** PR-1.
 
-**Kabul kriteri:** Farklı `ticketsRequiredForDay` değerleriyle `DayCompleted`'in doğru sayıda teslimatta tetiklendiği unit testle doğrulanmış.
+**Kabul kriteri:** ✅ `DayLifecycleManagerTests.RecordDelivery_UsesInjectedDelegate_IndependentOfGameConfig` — `GameConfig`'in varsayılan `10`'unu görmezden gelen `() => 2` delegate'iyle `DayCompleted`'in tam 2. teslimatta tetiklendiği doğrulandı. `DayCatalogNavigatorTests` (5 test: geçerli/negatif/sınır/boş/null index) eklendi. Unity EditMode test suite'i (161 test) çalıştırıldı — sadece önceden var olan bağımsız flaky `TraySystemTests` testi hariç hepsi geçti.
 
 ---
 

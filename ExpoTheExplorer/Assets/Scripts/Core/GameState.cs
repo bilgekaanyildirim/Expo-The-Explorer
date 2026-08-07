@@ -17,6 +17,7 @@ namespace ExpoTheExplorer.Core
         private int gems;
         private int xp;
         private int level;
+        private int currentDayIndex;
 
         // Setters publish on every actual change (LivesManager.LoseLife/TryContinue,
         // GameManager's tip payout) so HUD views (LivesView, SoftMoneyView, GemsView)
@@ -149,6 +150,22 @@ namespace ExpoTheExplorer.Core
         // this reactively yet (unlike Lives/SoftMoney/Gems/Xp/Level, which each
         // have a real HUD view or LevelManager consumer today).
         public int TicketsDeliveredToday { get; set; }
+
+        // Which authored Day (position in GameManager's resolved Day catalog,
+        // not the JSON dayIndex used only for sort order) the player is
+        // currently on. Defaults to 0 -- persistence lands in a later PR.
+        public int CurrentDayIndex
+        {
+            get => currentDayIndex;
+            set
+            {
+                if (currentDayIndex == value) return;
+                currentDayIndex = value;
+                CurrentDayIndexChanged.Publish(currentDayIndex);
+            }
+        }
+
+        public EventBus<int> CurrentDayIndexChanged { get; } = new();
 
         // Fires exactly once per day, the moment TicketsDeliveredToday reaches
         // GameConfig.TicketsRequiredPerDay (GDD Section 11 -- Daily Goal Mode).
