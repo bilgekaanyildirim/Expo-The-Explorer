@@ -136,6 +136,7 @@ namespace ExpoTheExplorer.Bootstrap
         private void OnDayCompleted(int _)
         {
             LevelManager.CommitProgress();
+            TicketSlotManager.PauseForDayComplete();
         }
 
         // Wipes this attempt's Xp/Level gains back to the last commit (CLAUDE.md

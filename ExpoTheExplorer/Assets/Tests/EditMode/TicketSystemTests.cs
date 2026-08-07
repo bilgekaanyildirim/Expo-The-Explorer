@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using ExpoTheExplorer.Core;
 using ExpoTheExplorer.Data;
+using ExpoTheExplorer.Systems.DayLifecycle;
 using ExpoTheExplorer.Systems.TicketSystem;
 using NUnit.Framework;
 using UnityEditor;
@@ -389,6 +390,79 @@ namespace ExpoTheExplorer.Tests.EditMode
             manager.ResetSlotsForNewDay();
 
             Assert.IsFalse(sawStaleTicket);
+        }
+
+        [Test]
+        public void AssignTicket_AfterPauseForDayComplete_DoesNotRefillSlot()
+        {
+            var state = new GameState(gameConfig);
+            var manager = CreateManager(state);
+            manager.FillEmptySlots();
+            var original = state.TicketSlots[0];
+
+            manager.PauseForDayComplete();
+
+            var assignedAgain = false;
+            state.TicketAssigned.Subscribe(_ => assignedAgain = true);
+
+            manager.DeliverTicket(0);
+
+            Assert.IsFalse(assignedAgain);
+            Assert.AreSame(original, state.TicketSlots[0]);
+            Assert.AreEqual(TicketState.Delivered, original.State);
+        }
+
+        [Test]
+        public void Tick_AfterPauseForDayComplete_DoesNotDecrementRemainingSecondsOrLoseLife()
+        {
+            var state = new GameState(gameConfig);
+            var manager = CreateManager(state);
+            var ticket = CreateSimpleTicket(1f);
+            state.TicketSlots[0] = ticket;
+            var initialLives = state.Lives;
+
+            manager.PauseForDayComplete();
+            manager.Tick(5f);
+
+            Assert.AreEqual(1f, ticket.RemainingSeconds, 0.0001f);
+            Assert.AreEqual(initialLives, state.Lives);
+            Assert.AreEqual(TicketState.Active, ticket.State);
+        }
+
+        [Test]
+        public void ResetSlotsForNewDay_ClearsIsDayComplete_SubsequentAssignTicketWorksAgain()
+        {
+            var state = new GameState(gameConfig);
+            var manager = CreateManager(state);
+            manager.FillEmptySlots();
+            manager.PauseForDayComplete();
+
+            manager.ResetSlotsForNewDay();
+
+            Assert.IsFalse(manager.IsDayComplete);
+            Assert.IsTrue(state.TicketSlots.All(t => t != null));
+        }
+
+        [Test]
+        public void DeliverTicket_WhenDayCompletedEventFires_StopsRefillingThatSlot()
+        {
+            var state = new GameState(gameConfig);
+            var manager = CreateManager(state);
+            manager.FillEmptySlots();
+            var original = state.TicketSlots[0];
+
+            var dayLifecycle = new DayLifecycleManager(state, () => 1);
+            state.TicketDelivered.Subscribe(_ => dayLifecycle.RecordDelivery());
+            state.DayCompleted.Subscribe(_ => manager.PauseForDayComplete());
+
+            var assignedCount = 0;
+            state.TicketAssigned.Subscribe(_ => assignedCount++);
+
+            manager.DeliverTicket(0);
+
+            Assert.IsTrue(manager.IsDayComplete);
+            Assert.AreEqual(0, assignedCount);
+            Assert.AreSame(original, state.TicketSlots[0]);
         }
 
         [Test]
