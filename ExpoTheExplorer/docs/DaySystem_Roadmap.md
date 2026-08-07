@@ -2,7 +2,7 @@
 
 Bu doküman, sınırsız/sonsuz devam eden bilet üretimini **elle tasarlanmış, art arda gelen Day'ler** haline getirmek ve bu Day'leri düzenlemek için bir **Day Editor** (Unity Editor tooling) inşa etmek amacıyla PR-PR planı tanımlar. **Bu dosya sadece planlama amaçlıdır — henüz hiçbir koda dokunulmamıştır.**
 
-Bu roadmap, 2026-08-07 tarihli kod tabanı incelemesine ve sonrasında yapılan tasarım oturumuna dayanıyor. CLAUDE.md Section 3/4/5 ile GDD ile çelişen hiçbir karar burada alınmadı; açık kalan noktalar ayrıca işaretlendi.
+Bu roadmap, 2026-08-07 tarihli kod tabanı incelemesine ve sonrasında yapılan birkaç tasarım oturumuna dayanıyor. CLAUDE.md Section 3/4/5 ile GDD ile çelişen hiçbir karar burada alınmadı; açık kalan noktalar ayrıca işaretlendi.
 
 ## Terminoloji Kararı
 
@@ -18,7 +18,7 @@ Bu roadmap, 2026-08-07 tarihli kod tabanı incelemesine ve sonrasında yapılan 
 - Tüm balancing config'leri (`GameConfig`, `TicketGenerationConfig`, `BoardDistributionConfig`, `EconomyConfig`, `LivesConfig`) tekil, global, `GameManager`'a bir kere bağlanmış ScriptableObject asset'ler — Day başına farklı config seçimi yok.
 - Zorluk düşürme (retry sonrası) kasıtlı olarak boş bırakılmış (`GameManager.RetryDay()` içinde açık yorum var) — CLAUDE.md Section 4 açık soru.
 - `Assets/Editor/` altında sadece `[CustomEditor]` ile tek asset'in Inspector'ını genişleten scriptler var (`BoardDistributionConfigEditor`, `TicketGenerationConfigEditor`, `EconomyConfigEditor`, `FoodItemConfigEditor`). Day dizisini düzenleyecek bağımsız bir `EditorWindow` hiç yok.
-- **Projede JSON tabanlı persistence zaten var:** `Assets/Scripts/Systems/ProgressionSystem/PlayerProfile.cs` + `PlayerProfileStore.cs`, `File.ReadAllText`/`WriteAllText` + `UnityEngine.JsonUtility.FromJson`/`ToJson` kalıbıyla. Projede Newtonsoft.Json **yok** (`Packages/manifest.json`'da sadece yerleşik `com.unity.modules.jsonserialize`) — yeni bağımlılık eklenmeyecek, `JsonUtility` kullanılacak.
+- **Projede JSON tabanlı persistence zaten var:** `Assets/Scripts/Systems/ProgressionSystem/PlayerProfile.cs` + `PlayerProfileStore.cs`, `File.ReadAllText`/`WriteAllText` + `UnityEngine.JsonUtility.FromJson`/`ToJson` kalıbıyla. Projede Newtonsoft.Json **yok** (`Packages/manifest.json`'da sadece yerleşik `com.unity.modules.jsonserialize`) — **Newtonsoft eklenmeyecek**, `JsonUtility` kullanılacak (kullanıcı onayı: şema tamamen düz array'lerden oluştuğu için `JsonUtility`'nin kısıtlarına takılmıyoruz).
 - **Kritik `JsonUtility` kısıtı** (kod yorumunda açıkça yazılı, `PlayerProfile.cs`): `JsonUtility` sadece **public field**'ları (ya da `[SerializeField]` private field'ları) serileştirir — auto-property'ler sessizce `{}` olarak round-trip eder, hata vermez. Yeni Day JSON DTO'ları bu yüzden public field'lı plain class olacak.
 - `FoodItemConfig`/`ModificationConfig`'in zaten bir `id` (`string`) alanı var ama **hiçbir id→asset lookup metodu yok** (`FoodCatalog` sadece ham `Items` listesi). JSON tabanlı Day verisi bu id'leri referans alacağı için bu lookup eklenmeli.
 
@@ -31,7 +31,7 @@ Bu roadmap, 2026-08-07 tarihli kod tabanı incelemesine ve sonrasında yapılan 
 
 ## Açık Sorular — Cevaplandı
 
-- **Q1 — Manuel bilet/board yapılandırma kapsamı → CEVAPLANDI: Hibrit model.** Manuel yapılandırma sadece bilet içeriğini değil, **board'a hangi item'ların spawn olacağını** da kapsar. Bir Day içinde **Auto** (mevcut random `TicketFactory`/`BoardDistributor` mantığı, Day'e özel config override'larıyla) ve **Authored** (tam elle yazılmış) girdiler **serbestçe iç içe geçebilir** — sıra kısıtı yok. Ayrıca bir Day'i önce otomatik **üretip**, sonucu elle **düzenleyip** ("bake" akışı) ince ayar yapılabilmesi gerekiyor — bkz. PR-6/PR-6.5.
+- **Q1 — Manuel bilet/board yapılandırma kapsamı → CEVAPLANDI: "Generate → elle düzenle" tek akışı.** Bu bir hibrit/dual-mode sistem **değil**. Akış: (1) tasarımcı Day için ticket-generation/board-distribution benzeri ayarları girer, (2) **"Generate"** butonuna basar — gerçek `TicketFactory`/`BoardDistributor` mantığı bu ayarlarla çalışıp Day'in somut bilet dizisini ve board spawn'larını üretir, (3) tasarımcı bunun üzerine **istediği kadar elle oynar**: ekstra bilet ekler, üretilmiş biletleri değiştirir/siler, board item'larının yerini değiştirir — sıfırdan da elle oluşturabilir. Üretilmiş ile elle yazılmış bilet arasında **hiçbir veri/tip farkı yok** — ikisi de aynı `TicketEntryJson` şeklini kullanır. Runtime'da ayrı bir "Auto modu" da yok — Day'in `ticketSequence`'i sabit, tam sayıda (`ticketsRequiredForDay`) bir listedir; bunu Editor save-time'da bir **Day Doğrulayıcı** zorlar (bkz. aşağıda). Board tarafında ise `BoardDistributor` Day boyunca **otomatik çalışmaya devam eder** (bu, kullanıcı tarafından özellikle onaylandı — board üretimi mevcut sistemde olduğu gibi kalıyor), tasarımcı bunun üstüne authored spawn'lar ekleyip düzenleyebilir; oynanamaz Day riski de aynı Doğrulayıcı ile canlı yakalanır.
 - **Q2 — Son authored Day'den sonra ne olur → CEVAPLANDI.** Şu an ne main menu ne de gün-sonu popup'ı var. Kararlaştırılan davranış: gün-sonu popup'ındaki "Continue" butonu, son Day tamamlandığında **devre dışı** kalır — sadece "Main Menu" seçeneği aktif olur. Main menu normalde "Continue Day X" yazısı gösterir; tüm authored Day'ler bitmişse bu yazı **"End of Days"** olur. Bkz. yeni **PR-9**.
 - **Q3 — Retry zorluk düşürme nereye oturacak → CEVAPLANDI.** Her Day'in kendi authored **"retry variant"ı** olacak — tasarımcı Day başına retry zorluğunu elle ayarlar (ayrı global bir `DifficultyScaler` değil).
 - **Q4 — Day ilerlemesi kalıcı mı → CEVAPLANDI: Evet.** `CurrentDayIndex`, mevcut `PlayerProfile` JSON'una (XP/Level'ın yanına) eklenecek.
@@ -44,10 +44,11 @@ Bu roadmap, 2026-08-07 tarihli kod tabanı incelemesine ve sonrasında yapılan 
 
 1. Day terminolojisi kullanılacak, "Level" kullanılmayacak.
 2. **Day verisi ScriptableObject değil, JSON dosyaları olarak saklanacak** (kategori B, yukarıda) ve bir **Editor tab'i** (`EditorWindow`) üzerinden düzenlenecek — SO Inspector'ı yok, çünkü SO asset'i yok.
-3. Bilet üretimi ve board spawn'ları Day başına **Auto + Authored hibrit** olacak, serbestçe interleave edilebilir.
+3. Bilet üretimi ve board spawn'ları **"Generate → elle düzenle" tek akışıyla** çalışacak — ayrı bir runtime Auto/Authored modu yok (Q1).
 4. Bir Day tamamlandığında bilet üretimi **gerçekten durmalı** — şu anki "hedefin üstünde saymaya devam et" davranışı kapatılacak.
 5. Day dizisi sıralı ilerler: Day N tamamlanınca Day N+1'e geçilir. Retry, aynı Day'i (kendi authored retry variant'ıyla) tekrar başlatır — Day ilerlemesini geri almaz.
-6. Mevcut mimari prensipler korunacak: Day çözümleme/hibrit içerik mantığı MonoBehaviour'dan bağımsız, unit-testable plain C# olacak; UI reaktif kalacak.
+6. Mevcut mimari prensipler korunacak: Day çözümleme/içerik mantığı MonoBehaviour'dan bağımsız, unit-testable plain C# olacak; UI reaktif kalacak.
+7. **Oynanamaz Day riski, tasarımdan kaçınmakla değil, canlı bir doğrulama sistemiyle (`DayValidator`) kapatılıyor** — tasarımcı elle her şeyi değiştirebilir, ama Editor kaydetmeyi engelleyerek bunu güvenli tutar.
 
 ---
 
@@ -57,10 +58,18 @@ Bu roadmap, 2026-08-07 tarihli kod tabanı incelemesine ve sonrasında yapılan 
 - `Assets/Resources/Days/day_XX.json` — her Day kendi dosyasında. `Resources` altında olması, runtime'da platformdan bağımsız `Resources.LoadAll<TextAsset>("Days")` ile okunabilmesi için (Android'de `StreamingAssets` okuma sorunlarından bilerek kaçınılıyor).
 - Day Editor, bu klasördeki dosyaları `File.ReadAllText`/`WriteAllText` ile doğrudan okuyup yazar, sonra `AssetDatabase.Refresh()` çağırır.
 
-### DTO şekli (plain `[Serializable]` class, **public field**, enum'lar okunabilirlik için **string** — `JsonUtility`'nin varsayılan int-enum serileştirmesi yerine; dönüşüm resolver'da yapılır)
+### Runtime/Editor ayrımı — tek dosya, iki bölüm
+`hasTicketGenerationOverride`/`sideInclusionChanceOverride`/`drinkInclusionChanceOverride`/`modificationCountLambdaOverride` gibi alanlar **sadece Day Editor'daki "Generate" butonunu besler** — runtime'da hiçbir fallback/otomatik bilet üretimi olmadığı için (`TicketFactory` oyun sırasında hiç çağrılmaz) oyun bunları hiç okumaz. Board override alanları (`hasBoardDistributionOverride` ve altındakiler) ise **farklı** — `BoardDistributor` Day boyunca canlı çalışmaya devam ettiği için bunlar runtime'da da gereklidir. Bu yüzden `DayJson` **iki bölüme** ayrılır: `runtime` (oyunun okuduğu her şey) ve `editorMeta` (sadece Day Editor'ın kullandığı, oyunun asla bakmadığı üretim ayarları). Day başına **tek dosya** kalır.
+
+### DTO şekli (plain `[Serializable]` class, **public field**, enum'lar okunabilirlik için **string** — dönüşüm resolver'da yapılır)
 
 ```csharp
 [Serializable] public class DayJson
+{
+    public DayRuntimeJson runtime;
+    public DayEditorMetaJson editorMeta;    // DayCatalogParser/runtime bunu HİÇ okumaz — sadece Day Editor kullanır
+}
+[Serializable] public class DayRuntimeJson
 {
     public int dayIndex;
     public int ticketsRequiredForDay;
@@ -69,27 +78,34 @@ Bu roadmap, 2026-08-07 tarihli kod tabanı incelemesine ve sonrasında yapılan 
     public int guaranteedTicketCountOverride;
     public int leakDepthOverride;
     public int maxLeakCountOverride;
-    public string boardSpawnMode;                 // "AutoOnly" | "AuthoredOnly" | "AuthoredThenAuto"
-    public DayTicketEntryJson[] ticketSequence;    // ARRAY, List<T> değil (JsonUtility kısıtı)
-    public AuthoredBoardSpawnJson[] authoredBoardSpawns;
-    public DayJson retryVariant;                   // null olabilir — Day'in kendi retry zorluğu (Q3)
+    public TicketEntryJson[] ticketSequence;         // tam olarak ticketsRequiredForDay uzunluğunda olmalı (DayValidator zorlar)
+    public BoardSpawnEntryJson[] authoredBoardSpawns; // Day başında bir kere uygulanan pre-seed
+    public DayJson retryVariant;                      // null olabilir — Day'in kendi retry zorluğu (Q3); kendi runtime+editorMeta çiftini taşır
 }
-[Serializable] public class DayTicketEntryJson { public string mode; public AuthoredTicketEntryJson authored; }
-[Serializable] public class AuthoredTicketEntryJson
+[Serializable] public class DayEditorMetaJson
+{
+    public bool hasTicketGenerationOverride;
+    public float sideInclusionChanceOverride;
+    public float drinkInclusionChanceOverride;
+    public float modificationCountLambdaOverride;
+}
+[Serializable] public class TicketEntryJson
 {
     public string mainItemId; public string sideItemId; public string drinkItemId;
-    public AuthoredModificationJson[] modifications;
-    public string patienceType;                    // "Impatient" | "Normal" | "Patient"
-    public string customerNameOverride;             // boş = random
-    public float timeLimitSecondsOverride;          // <=0 = config default
+    public ModificationEntryJson[] modifications;
+    public string patienceType;                   // "Impatient" | "Normal" | "Patient"
+    public string customerNameOverride;           // boş = random
+    public float timeLimitSecondsOverride;         // <=0 = config default
 }
-[Serializable] public class AuthoredModificationJson { public string modificationId; public bool isAddition; }
-[Serializable] public class AuthoredBoardSpawnJson
+[Serializable] public class ModificationEntryJson { public string modificationId; public bool isAddition; }
+[Serializable] public class BoardSpawnEntryJson
 {
-    public string itemId; public AuthoredModificationJson[] modifications;
+    public string itemId; public ModificationEntryJson[] modifications;
     public bool useExactCell; public int x; public int y;
 }
 ```
+
+**İsimlendirme notu:** "Authored" ön eki kullanılmıyor — generate edilmiş de elle yazılmış da bilet aynı `TicketEntryJson` şeklini kullanır, ikisi arasında hiçbir tip/alan farkı yok.
 
 **Config override kararı:** `BoardDistributionConfig`/`TicketGenerationConfig` override'ları ayrı bir SO asset'e referans vermek yerine **doğrudan Day JSON'una gömülü sayısal alanlar** olarak tutulur — tamamen JSON-native, SO-referans-by-name çözümlemesi gibi ek bir dolaylılık gerekmiyor.
 
@@ -97,33 +113,39 @@ Bu roadmap, 2026-08-07 tarihli kod tabanı incelemesine ve sonrasında yapılan 
 - **`FoodCatalog.GetById(string id) : FoodItemConfig`** — yeni, basit LINQ lookup.
 - **Modification id lookup** — `FoodCatalog.Items[*].AvailableModifications`'ı tarayıp `Dictionary<string, ModificationConfig>` inşa eden küçük bir yardımcı (yeni bir master `ModificationCatalog` asset'i icat etmeden).
 - **`DayJsonSource`** (Unity'ye bağımlı ince katman): `Resources.LoadAll<TextAsset>("Days")` → ham JSON string listesi.
-- **`DayCatalogParser`/`DayDefinitionResolver`** (plain C#, Unity'siz, **unit-testable**): ham JSON string'leri `JsonUtility.FromJson<DayJson>` ile parse eder, id'leri `FoodCatalog`/modification lookup üzerinden gerçek SO referanslarına çözer, `dayIndex`'e göre sıralar, runtime `DayDefinition` nesnelerini üretir. Testler, gerçek `Resources` klasörüne dokunmadan sabit JSON string fixture'larıyla çalışır.
-- Çözülemeyen bir id (typo vb.) **sessizce yutulmaz** — yükleme sırasında `Debug.LogError` (dosya adı + hatalı id) ve Day Editor'da görsel uyarı.
+- **`DayCatalogParser`/`DayDefinitionResolver`** (plain C#, Unity'siz, **unit-testable**): ham JSON string'leri `JsonUtility.FromJson<DayJson>` ile parse eder, **sadece `.runtime`'ı** okur, id'leri `FoodCatalog`/modification lookup üzerinden gerçek SO referanslarına çözer, `dayIndex`'e göre sıralar, runtime `DayDefinition` nesnelerini üretir. Testler, gerçek `Resources` klasörüne dokunmadan sabit JSON string fixture'larıyla çalışır.
+- Çözülemeyen bir id (typo vb.) **sessizce yutulmaz** — yükleme sırasında `Debug.LogError` (dosya adı + hatalı id) ve Day Editor'da görsel uyarı (aynı `DayValidator` akışına dahil).
 
-### Hibrit ticket/board authoring mantığı
-- `DayTicketSequenceProvider` — `ticketSequence`'i sırayla okur; `Auto` girdilerde `TicketFactory`'ye düşer (yeni 4-parametreli `Create(pool, name, patience, arrivalSequence)` overload'uyla — **tek arrival-sequence otoritesi kendisinde**, bkz. Risk 1); liste tükenince tamamen Auto fallback. `Authored` girdilerde `AuthoredTicketFactory.Create(resolved entry, ...)`.
-- `DayBoardSpawnOrchestrator.ApplyAuthoredSpawns(board, spawns, random)` — mevcut `BoardGrid.TryPlaceItem`/`RequestSpawn` primitiflerini kullanır.
-- `BoardSpawnMode`'a göre `GameManager.OnTicketAssigned`'da tek koşul: `AuthoredOnly` ise `boardDistributor.OnOrderPlaced` atlanır; `AutoOnly`/`AuthoredThenAuto`'da normal çalışır.
-- **"Bake" akışı** (`DayContentGenerator`, plain C#, seedable `Random` parametresiyle): gerçek `TicketFactory`/`BoardDistributor` mantığını (izole bir `GameState`/`BoardGrid` üzerinde) çalıştırıp sonucu JSON DTO'ya (id'ler `.Id` ile çıkarılarak) donduran dönüştürücü. Day Editor'daki "Auto-Generate" butonu bunu çağırır — **gerçek runtime mantığını tekrar kullanır, kendi kopyasını çıkarmaz** (mevcut `FoodItemConfigEditor` preview deseniyle tutarlı).
+### İçerik oynatım/üretim mantığı
+- `DayTicketSequenceProvider` — `ticketSequence`'i sırayla `Ticket`'a çevirip verir. **Hiçbir fallback/otomatik üretim dalı yok** — `ticketSequence.Length == ticketsRequiredForDay` bir **veri garantisi** olarak kabul edilir (Editor save-time'da zorlanır). Tek, basit bir sayaç (liste index'i) — çakışma riski yok.
+- `DayBoardSpawnOrchestrator.ApplyAuthoredSpawns(board, spawns, random)` — `authoredBoardSpawns`'ı Day başında (`Clear()` sonrası, slotlar dolmadan önce) bir kere uygular; ardından **`BoardDistributor` politikası, Day'in board override'larıyla, normal şekilde çalışmaya devam eder** (her ticket atamasında required-pool + noise leak) — bugünkü davranışın aynısı, sadece Day-scoped config'le. Ayrı bir "AuthoredOnly" modu yok.
+- **`DayContentGenerator`** (plain C#, seedable `Random`, **sadece Editor-time çağrılır**, runtime bu sınıfı hiç bilmez): gerçek `TicketFactory`/`BoardDistributor` mantığını (izole bir `GameState`/`BoardGrid` üzerinde) çalıştırıp sonucu `TicketEntryJson[]`/`BoardSpawnEntryJson[]`'a dönüştürür. İki çağıran: Editor'daki "Generate" (Day'i ilk kez doldurmak) ve "bir tane daha ekle" butonları. Girdi olarak bilet üretimi için `editorMeta`'daki override'ları, board üretimi için `runtime`'daki board override'larını okur (board override'ları zaten runtime'da da canlı kullanılan değerler — tutarlılık otomatik).
+
+### Day Doğrulama Sistemi (`DayValidator`)
+Tasarımcı elle düzenlerken Day'i oynanamaz hale getirebilir — bu **canlı** (her değişiklikte), save-time'ı beklemeden yakalanmalı.
+- **`DayValidator`** (plain C#, Unity'siz, unit-testable, gerçek runtime mantığını simüle eder — kopyalamaz) iki kontrol yapar:
+  1. **Bilet sayısı kontrolü:** `ticketSequence.Length == ticketsRequiredForDay` mi? Değilse **hata** ("12 bilet authored ama 15 gerekiyor").
+  2. **Oynanabilirlik simülasyonu:** Day'in çözümlenmiş içeriği (ticketSequence + authoredBoardSpawns + config override'ları) izole bir `GameState`/`BoardGrid` üzerinde gerçek `BoardDistributor` mantığıyla adım adım oynatılır — sekansın **her noktasında** en az bir aktif biletin tamamlanabilir olduğu doğrulanır. Bozulursa **hata**, hangi adımda bozulduğu belirtilerek.
+- Day Editor bu doğrulamayı her değişiklikte (debounce'lu) çalıştırır, durum çubuğunda gösterir (✓/✗ + hata listesi), **doğrulama başarısız olduğunda "Save" butonunu devre dışı bırakır.**
 
 ---
 
 ## PR-1 — Day JSON Veri Modeli + Çözümleme (kategori B)
 
 **Kapsam:**
-- Yukarıdaki DTO'lar (`DayJson` ve alt tipleri), `FoodCatalog.GetById`, modification id lookup, `DayJsonSource`, `DayCatalogParser`/`DayDefinitionResolver`, `DayDefinition` runtime tipi.
+- Yukarıdaki DTO'lar (`DayJson`, `DayRuntimeJson`, `DayEditorMetaJson`, `TicketEntryJson`, `ModificationEntryJson`, `BoardSpawnEntryJson`), `FoodCatalog.GetById`, modification id lookup, `DayJsonSource`, `DayCatalogParser`/`DayDefinitionResolver` (sadece `.runtime`'ı okur), `DayDefinition` runtime tipi.
 - **Davranış değişikliği yok** — sadece veri okuma/çözümleme altyapısı, hiçbir sistem henüz bunu kullanmıyor.
 
 **Bağımlılık:** Yok (paralel başlanabilir).
 
-**Kabul kriteri:** Sabit JSON fixture string'i → doğru `DayDefinition` çözümlemesi; bilinmeyen id → `Debug.LogError` + dosya adı; EditMode testleriyle doğrulanmış.
+**Kabul kriteri:** Sabit JSON fixture string'i → doğru `DayDefinition` çözümlemesi; bilinmeyen id → `Debug.LogError` + dosya adı; `editorMeta` alanları çözümlemeyi etkilemiyor; EditMode testleriyle doğrulanmış.
 
 ---
 
 ## PR-2 — Day İlerleme Çekirdeği
 
 **Kapsam:**
-- `DayLifecycleManager` genişletilir (ya da yanına bir sıralama sınıfı eklenir): artık tek bir global hedef değil, **aktif `DayDefinition`**'dan `ticketsRequiredForDay` okuyor.
+- `DayLifecycleManager` genişletilir: artık tek bir global hedef değil, **aktif `DayDefinition`**'dan `ticketsRequiredForDay` okuyor.
 - `GameState`'e `CurrentDayIndex` alanı eklenir (custom setter → event publish, mevcut `Lives`/`SoftMoney` kalıbıyla aynı).
 - `GameManager.Awake()`, PR-1'in `DayCatalogParser`'ından çözümlenmiş Day listesini alıp `CurrentDayIndex`'teki `DayDefinition`'ı seçer.
 
@@ -166,8 +188,8 @@ Bu roadmap, 2026-08-07 tarihli kod tabanı incelemesine ve sonrasında yapılan 
 ## PR-5 — Day Başına Config Override Enjeksiyonu
 
 **Kapsam:**
-- `GameManager`, `BoardDistributor`/`TicketFactory` kurulumunu artık sabit `[SerializeField]` asset yerine **aktif `DayDefinition`'ın gömülü JSON override alanları (varsa) + global default (yoksa)** ile yapar.
-- `TicketGenerationConfig`'e `TimeLimitSecondsFor(PatienceType) : float` public helper'ı eklenir (şu an `TicketFactory.Create` içinde private switch olarak duran mantığın tek-kaynak haline getirilmesi) — authored ticket mapper'ın aynı GDD kuralına (Impatient < Normal < Patient) bağlı kalması için.
+- `GameManager`, `BoardDistributor` kurulumunu artık sabit `[SerializeField]` asset yerine **aktif `DayDefinition`'ın `runtime` bölümündeki board override alanları (varsa) + global default (yoksa)** ile yapar.
+- `TicketGenerationConfig`'e `TimeLimitSecondsFor(PatienceType) : float` public helper'ı eklenir (şu an `TicketFactory.Create` içinde private switch olarak duran mantığın tek-kaynak haline getirilmesi) — ticket mapper'ın aynı GDD kuralına (Impatient < Normal < Patient) bağlı kalması için.
 
 **Bağımlılık:** PR-1, PR-2.
 
@@ -175,44 +197,56 @@ Bu roadmap, 2026-08-07 tarihli kod tabanı incelemesine ve sonrasında yapılan 
 
 ---
 
-## PR-6 — Hibrit Day İçeriği (Authored Ticket + Authored Board Spawn)
+## PR-6 — Day İçerik Oynatımı
 
 **Kapsam:**
-- `AuthoredTicketFactory.Create(entry, config, ticketFactory, arrivalSequence)` — authored JSON girdisini (id'leri çözülmüş haliyle) `Ticket`'a çevirir.
-- `DayTicketSequenceProvider` — `TicketSlotManager`'ın `Func<Ticket> nextTicketProvider` seam'ine bağlanan, `ticketSequence`'i sırayla okuyan sağlayıcı (yukarıda detaylandırıldı). **`TicketSlotManager`'a hiç dokunulmuyor.**
-- `DayBoardSpawnOrchestrator.ApplyAuthoredSpawns(...)` — authored board girdilerini `BoardGrid.TryPlaceItem`/`RequestSpawn` ile uygular; `State.Board.Clear()` sonrası, `TicketSlotManager` slot doldurmadan **önce** çağrılır (`BoardDistributor`'ın "required pool önce" kuralıyla çakışmaması için sıra önemli).
-- `TicketFactory.Create`'e 4. parametre (`arrivalSequence`) alan ek overload — eski 3-parametreli çağrılar bozulmaz.
+- `TicketEntryFactory.Create(entry, config, arrivalSequence)` — JSON girdisini (id'leri çözülmüş haliyle) `Ticket`'a çevirir; generate edilmiş de elle yazılmış da aynı yoldan geçer.
+- `DayTicketSequenceProvider` — `TicketSlotManager`'ın `Func<Ticket> nextTicketProvider` seam'ine bağlanan, `ticketSequence`'i sırayla okuyan sağlayıcı. **Fallback/otomatik üretim dalı yok.** **`TicketSlotManager`'a hiç dokunulmuyor.**
+- `DayBoardSpawnOrchestrator.ApplyAuthoredSpawns(...)` — authored board girdilerini `BoardGrid.TryPlaceItem`/`RequestSpawn` ile uygular; `State.Board.Clear()` sonrası, `TicketSlotManager` slot doldurmadan **önce** çağrılır (`BoardDistributor`'ın "required pool önce" kuralıyla çakışmaması için sıra önemli); ardından `BoardDistributor` normal çalışmaya devam eder.
 
 **Bağımlılık:** PR-1, PR-5.
 
-**Kabul kriteri:** Authored + Auto karışık bir `ticketSequence` verilen bir Day'de, atanan biletlerin sırası/içeriği authored girdilerle tam eşleşiyor; `ArrivalSequence` değerleri hiç çakışmıyor (Risk 1).
+**Kabul kriteri:** Bir Day'de atanan biletlerin sırası/içeriği `ticketSequence`'le tam eşleşiyor; `ArrivalSequence` değerleri (tek sayaç olduğu için) çakışmıyor.
 
 ---
 
-## PR-6.5 — Day İçerik "Bake" (Üret-ve-Dondur) Akışı
+## PR-6.5 — Day İçerik Üretici (`DayContentGenerator`)
 
 **Kapsam:**
-- `DayContentGenerator` (plain C#, Editor'a bağımlı değil, EditMode test edilebilir, seedable `Random`): `GenerateAuthoredTickets(...)` gerçek `TicketFactory.Create` mantığını çalıştırıp sonucu `AuthoredTicketEntryJson`'a dondurur; `GenerateAuthoredBoardSpawns(...)` izole bir `GameState`/`BoardGrid` üzerinde gerçek `BoardDistributor` mantığını çalıştırıp sonucu `AuthoredBoardSpawnJson`'a okur.
-- **Kritik prensip:** gerçek runtime mantığı tekrar kullanılır, kopyalanmaz — Day Editor'daki "Auto-Generate" butonu asla gerçek oyun davranışından sapmaz.
+- `DayContentGenerator` (plain C#, Editor'a bağımlı değil, EditMode test edilebilir, seedable `Random`): gerçek `TicketFactory.Create`/`BoardDistributor` mantığını çalıştırıp sonucu `TicketEntryJson[]`/`BoardSpawnEntryJson[]`'a dönüştürür.
+- **Kritik prensip:** gerçek runtime mantığı tekrar kullanılır, kopyalanmaz. **Sadece Editor-time çağrılır** — runtime bu sınıfı hiç bilmez.
+- Girdi config'i iki yerden okunur: bilet üretimi için `editorMeta`, board üretimi için `runtime`'daki board override'ları.
 
-**Bağımlılık:** PR-6 (authored veri tipleri/mapper'lar olmalı).
+**Bağımlılık:** PR-6 (veri tipleri/mapper'lar olmalı).
 
 **Kabul kriteri:** Sabit seed ile `DayContentGenerator` üretimi, aynı seed'le `TicketFactory.Create`/`BoardDistributor` üretimiyle aynı sonucu veriyor (testle doğrulanmış).
+
+---
+
+## PR-6.6 — Day Doğrulayıcı (`DayValidator`)
+
+**Kapsam:**
+- `DayValidator` (plain C#, Unity'siz, unit-testable): (1) bilet-sayısı kontrolü (`ticketSequence.Length == ticketsRequiredForDay`), (2) oynanabilirlik simülasyonu — Day'in çözümlenmiş içeriğini izole bir `GameState` üzerinde gerçek `BoardDistributor` mantığıyla adım adım oynatıp sekansın her noktasında en az bir aktif biletin tamamlanabilir olduğunu doğrular.
+- Gerçek runtime mantığını simüle eder, kopyalamaz.
+
+**Bağımlılık:** PR-6, PR-6.5 (veri şekli + generator).
+
+**Kabul kriteri:** Kasıtlı olarak bozuk bir Day (eksik bilet sayısı ya da tamamlanamaz bir adım) testte doğru hata mesajıyla yakalanıyor; geçerli bir Day sorunsuz geçiyor.
 
 ---
 
 ## PR-7 — Day Editor (`EditorWindow`) — JSON'un biricik düzenleme arayüzü
 
 **Kapsam:**
-- Yeni `Assets/Editor/DayEditorWindow.cs`: `Assets/Resources/Days/*.json` dosyalarını listeler, oluşturur/kopyalar/siler, `dayIndex`'e göre sıralar (SO Inspector'ı yok, çünkü artık SO asset'i yok — bu pencere biricik düzenleme arayüzü).
-- Seçili Day için: `ticketsRequiredForDay`, config override alanları (PR-5), `ticketSequence` editörü (her girdi için Auto/Authored toggle + authored alanlarında `FoodItemConfig`/`ModificationConfig` için Unity `ObjectField`'lar — dahili olarak seçilen asset'in `.Id`'si JSON'a yazılır), board-spawn listesi editörü (basit grid hücre seçici, `GameConfig.BoardWidth/Height`'a göre), `retryVariant` alt-editörü.
-- "Auto-Generate Tickets/Board" butonları PR-6.5'i çağırır, sonucu ilgili alanlara yazar (kullanıcı sonra elle düzenleyebilir).
+- Yeni `Assets/Editor/DayEditorWindow.cs`: `Assets/Resources/Days/*.json` dosyalarını listeler, oluşturur/kopyalar/siler, `dayIndex`'e göre sıralar.
+- Seçili Day için `runtime` alanları (ticketsRequiredForDay, board override'ları, ticketSequence editörü, board-spawn listesi editörü, `retryVariant` alt-editörü) **ve** `editorMeta` alanları (ticket-generation override'ları) aynı pencerede düzenlenir — tasarımcı için tek arayüz, dosyadaki iki-bölüm ayrımı UI'da görünmez.
+- "Generate" (config'e göre N bilet + board üret) ve "Add Manually" (main/side/drink/mod `ObjectField`'larıyla boş girdi ekle) butonları PR-6.5'i çağırır.
+- **`DayValidator`'ı (PR-6.6) her değişiklikte (debounce'lu) canlı çalıştırır**, sonucu bir durum çubuğunda gösterir (✓/✗ + hata listesi), **doğrulama başarısız olduğunda "Save" butonunu devre dışı bırakır.**
 - Kaydet: `File.WriteAllText` (ilgili `Assets/Resources/Days/day_XX.json`) + `AssetDatabase.Refresh()`.
-- Doğrulama/uyarı paneli: çözülemeyen id'ler ve `AuthoredOnly` board modunda Day'in en az bir biletinin tamamlanabilir olup olmadığı (gerçek eşleşme mantığıyla) kontrol edilip `HelpBox` ile gösterilir — GDD'nin "en az bir bilet her zaman tamamlanabilir olmalı" kuralı için oynanamaz Day riskine karşı.
 
-**Bağımlılık:** PR-1 (minimum). PR-5/PR-6/PR-6.5 tamamlanmışsa editör onları da kullanabilir; erken başlayıp diğer PR'larla paralel/iteratif genişleyebilir.
+**Bağımlılık:** PR-1 (minimum). PR-5/PR-6/PR-6.5/PR-6.6 tamamlanmışsa editör onları da kullanabilir; erken başlayıp diğer PR'larla paralel/iteratif genişleyebilir.
 
-**Kabul kriteri:** Bir tasarımcı, koda dokunmadan yeni bir Day JSON'u oluşturup sırasını/parametrelerini ayarlayabiliyor, otomatik üretip elle düzenleyebiliyor, kaydettiğinde dosya diskte doğru JSON olarak duruyor.
+**Kabul kriteri:** Bir tasarımcı, koda dokunmadan yeni bir Day JSON'u oluşturup sırasını/parametrelerini ayarlayabiliyor, otomatik üretip elle düzenleyebiliyor, geçersiz bir Day'i kaydedemiyor, geçerli olduğunda dosya diskte doğru JSON olarak duruyor.
 
 ---
 
@@ -246,20 +280,20 @@ Bu roadmap, 2026-08-07 tarihli kod tabanı incelemesine ve sonrasında yapılan 
 ## Sıra Özeti
 
 ```
-PR-1 (JSON DTO + parser/resolver + FoodCatalog.GetById) ─┬─→ PR-2 → PR-3 → PR-4 (+ retry variant, + lookahead-queue fix)
-                                                          ├─→ PR-5 (gömülü override enjeksiyonu) → PR-6 (hibrit içerik) → PR-6.5 (bake)
-                                                          └─→ PR-7 (Day Editor — JSON'un biricik düzenleme arayüzü, erken başlar, paralel genişler)
+PR-1 (JSON DTO [runtime+editorMeta] + parser/resolver + FoodCatalog.GetById) ─┬─→ PR-2 → PR-3 → PR-4 (+ retry variant, + lookahead-queue fix)
+                                                                              ├─→ PR-5 (board override enjeksiyonu) → PR-6 (oynatım, fallback yok) → PR-6.5 (generator) → PR-6.6 (validator)
+                                                                              └─→ PR-7 (Day Editor — Generate + Add Manually + canlı doğrulama, PR-6.5/6.6'ya bağlı)
 
 PR-4 → PR-8 (Day ilerlemesi kalıcılığı, kategori A) → PR-9 (Main Menu + End of Days UI)
 ```
 
-PR-1 diğer her şeyi bloke ediyor. PR-2/3/4 sıralı (Day döngüsünün çekirdeği). PR-5/6/6.5 (config/içerik) PR-2'den sonra bağımsız ilerleyebilir. PR-7 (Day Editor) PR-1'den sonra erken başlayıp diğer PR'larla birlikte genişletilebilir — tasarımcının elinde çalışan bir araç olması için önceliklendirilebilir. PR-9, PR-4 ve PR-8'i bekler.
+PR-1 diğer her şeyi bloke ediyor. PR-2/3/4 sıralı (Day döngüsünün çekirdeği). PR-5/6/6.5/6.6 (config/içerik/doğrulama) PR-2'den sonra bağımsız ilerleyebilir. PR-7 (Day Editor) PR-1'den sonra erken başlayıp diğer PR'larla birlikte genişletilebilir. PR-9, PR-4 ve PR-8'i bekler.
 
 ## Risk/Not Bölümü
 
-1. **Arrival-sequence çakışması** — Auto/Authored karışık girdilerde tek sayaç otoritesi şart; `DayTicketSequenceProvider` bu otoriteyi kendinde tutmalı, `TicketFactory`'nin kendi private sayacına asla bağımsız düşülmemeli (PR-6 sert gereksinim).
-2. **Stale lookahead queue** — Day geçişinde önceki Day'in kuyruğu sızabilir (PR-4'e not, `TicketSlotManager.ClearUpcomingQueue()` gerekli).
-3. **`AuthoredOnly` board modunda oynanamaz Day riski** — Day Editor'da doğrulama uyarısı (PR-7).
-4. **`JsonUtility` kısıtları** — public field zorunlu (property çalışmaz, sessizce boş döner); iç içe class array'leri (`T[]`) sorunsuz ama `List<T>` yerine array kullanılmalı; enum'lar okunabilirlik için string olarak tutulup resolver'da çevrilecek.
-5. **Id çözümleme hataları sessiz kalmamalı** — typo/eksik id, Day yüklemesinde açık hata logu + Editor'da görsel uyarı üretmeli.
-6. **Bake sonrası "dondurulmuş" veri config rebalance'larını yansıtmaz** — Day Editor'da Authored/Auto rozeti ile görsel ayrım önerilir; bu bilinçli bir tasarım, hata değil.
+1. **Arrival-sequence çakışması — risk değil.** Tek liste + tek sayaç (`DayTicketSequenceProvider`), fallback dalı yok — çakışma imkânsız.
+2. **Stale lookahead queue** — hâlâ geçerli risk (PR-4): Day geçişinde önceki Day'in kuyruğu sızabilir, `TicketSlotManager.ClearUpcomingQueue()` gerekli.
+3. **Oynanamaz Day riski — `DayValidator` (PR-6.6) ile canlı yakalanıyor.** Board'da `BoardDistributor` otomatik çalışmaya devam ediyor (kullanıcı onaylı karar) ama tasarımcının elle yaptığı değişiklikler yine de bir Day'i teorik olarak oynanamaz hale getirebilir — bu artık "tasarımla imkânsız" değil, "her değişiklikte simülasyonla denetleniyor ve kaydetme engelleniyor" ile kapatılıyor.
+4. **`JsonUtility` kısıtları** — public field zorunlu (property çalışmaz, sessizce boş döner); iç içe class array'leri (`T[]`) sorunsuz ama `List<T>` yerine array kullanılmalı; enum'lar okunabilirlik için string olarak tutulup resolver'da çevrilecek. **Newtonsoft.Json eklenmeyecek** (kullanıcı onayı).
+5. **Id çözümleme hataları sessiz kalmamalı** — typo/eksik id, Day yüklemesinde açık hata logu + Editor'da görsel uyarı (aynı `DayValidator` akışına dahil edilebilir).
+6. **`DayValidator`'ın oynanabilirlik simülasyonu potansiyel olarak ağır bir işlem** — PR-7'de her tuş vuruşunda değil, debounce'lu/odak-kaybında tetiklenmeli; büyük Day'lerde performans PR-6.6 sırasında ölçülmeli.
