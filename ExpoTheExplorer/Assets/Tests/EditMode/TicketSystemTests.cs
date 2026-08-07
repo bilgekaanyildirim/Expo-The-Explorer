@@ -99,9 +99,14 @@ namespace ExpoTheExplorer.Tests.EditMode
             var genConfig = ScriptableObject.CreateInstance<TicketGenerationConfig>();
             spawnedAssets.Add(genConfig);
 
+            var namesDatabase = new TextAsset(
+                "[{\"id\":1,\"name\":\"Alice\",\"gender\":\"f\"},{\"id\":2,\"name\":\"Bob\",\"gender\":\"m\"}]");
+            spawnedAssets.Add(namesDatabase);
+
             var serialized = new SerializedObject(genConfig);
             serialized.FindProperty("modificationCountLambda").floatValue = modificationCountLambda;
             serialized.FindProperty("modificationAdditionChance").floatValue = modificationAdditionChance;
+            serialized.FindProperty("namesDatabase").objectReferenceValue = namesDatabase;
             serialized.ApplyModifiedPropertiesWithoutUndo();
 
             return genConfig;
@@ -451,8 +456,7 @@ namespace ExpoTheExplorer.Tests.EditMode
         [Test]
         public void TicketFactory_PickRandomCustomerName_ReturnsNameFromConfigPool()
         {
-            var genConfig = ScriptableObject.CreateInstance<TicketGenerationConfig>();
-            spawnedAssets.Add(genConfig);
+            var genConfig = CreateGenerationConfig(modificationCountLambda: 0f);
 
             var factory = new TicketFactory(genConfig, new System.Random(12345));
             var name = factory.PickRandomCustomerName();

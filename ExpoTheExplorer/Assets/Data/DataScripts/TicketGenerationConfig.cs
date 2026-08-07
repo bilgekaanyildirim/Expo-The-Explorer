@@ -57,12 +57,8 @@ namespace ExpoTheExplorer.Data
         [SerializeField] private List<MainDishWeight> mainDishWeights = new();
 
         [Header("Customer Names")]
-        [Tooltip("Optional {id, name, gender} JSON array (see Assets/Database/names.json). When assigned, its names " +
-                 "replace Customer Names below as the pool TicketFactory draws from.")]
+        [Tooltip("{id, name, gender} JSON array (see Assets/Database/names.json) TicketFactory draws customer names from.")]
         [SerializeField] private TextAsset namesDatabase;
-
-        [Tooltip("Pool of names randomly assigned to generated tickets. Ignored while Names Database above is assigned.")]
-        [SerializeField] private string[] customerNames = { "Alice", "Bob", "Charlie", "Diana", "Ethan" };
 
         private IReadOnlyList<string> namesFromDatabase;
 
@@ -78,13 +74,10 @@ namespace ExpoTheExplorer.Data
         public float ModificationCountLambda => modificationCountLambda;
         public float ModificationAdditionChance => modificationAdditionChance;
         public IReadOnlyList<MainDishWeight> MainDishWeights => mainDishWeights;
-        public IReadOnlyList<string> CustomerNames => namesFromDatabase ?? customerNames;
+        public IReadOnlyList<string> CustomerNames =>
+            namesFromDatabase ??= ParseNamesDatabase() ?? throw new InvalidOperationException(
+                $"{name}: Names Database is not assigned or contains no valid entries (see Assets/Database/names.json).");
         public int UpcomingQueueSize => upcomingQueueSize;
-
-        private void OnEnable()
-        {
-            namesFromDatabase = ParseNamesDatabase();
-        }
 
         // names.json is a raw JSON array ({id, name, gender} per GDD's Database asset), but
         // JsonUtility only parses object roots — wrapping it in a single-field object is the
