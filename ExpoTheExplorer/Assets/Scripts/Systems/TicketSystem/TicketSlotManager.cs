@@ -94,9 +94,18 @@ namespace ExpoTheExplorer.Systems.TicketSystem
         // still-stale Active tickets in not-yet-processed slots, and
         // BoardDistributor would spawn required-pool items for tickets that
         // are about to be discarded anyway.
+        // Empties the pre-generated lookahead queue -- without this, a Day
+        // transition would keep dequeuing the PREVIOUS Day's already-queued
+        // tickets into the freshly reset slots before generating anything new.
+        public void ClearUpcomingQueue()
+        {
+            upcomingTickets.Clear();
+        }
+
         public void ResetSlotsForNewDay()
         {
             IsDayComplete = false;
+            ClearUpcomingQueue();
 
             for (var i = 0; i < GameState.TicketSlotCount; i++)
             {

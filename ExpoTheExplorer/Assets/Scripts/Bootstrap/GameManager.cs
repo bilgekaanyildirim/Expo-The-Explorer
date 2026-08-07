@@ -42,10 +42,17 @@ namespace ExpoTheExplorer.Bootstrap
         private DayLifecycleManager dayLifecycleManager;
         private IReadOnlyList<DayDefinition> dayCatalog;
 
+        // Set by RetryDay, cleared by AdvanceToNextDay -- stays true across
+        // repeated retries of the SAME Day, not just the first one, so
+        // CurrentDay keeps resolving to that Day's RetryVariant (if it has
+        // one) for as long as the player is retrying it.
+        private bool isRetryAttempt;
+
         // Position in dayCatalog, not a Day's JSON dayIndex (that only decides
         // sort order) -- null until a Day catalog exists (PR-7), so every
         // consumer falls back to the pre-Day-system GameConfig behavior.
-        private DayDefinition CurrentDay => DayCatalogNavigator.GetDayAt(dayCatalog, State.CurrentDayIndex);
+        private DayDefinition CurrentDay =>
+            DayCatalogNavigator.GetEffectiveDay(DayCatalogNavigator.GetDayAt(dayCatalog, State.CurrentDayIndex), isRetryAttempt);
 
         private void Awake()
         {
@@ -160,6 +167,7 @@ namespace ExpoTheExplorer.Bootstrap
         public void RetryDay()
         {
             var ticketsBeforeRetry = State.TicketsDeliveredToday;
+            isRetryAttempt = true;
 
             State.Board.Clear();
             TrayManager.DiscardAllForNewDay();
@@ -168,6 +176,30 @@ namespace ExpoTheExplorer.Bootstrap
             dayLifecycleManager.ResetForNewDay();
 
             State.DayRetried.Publish(ticketsBeforeRetry);
+        }
+
+        // Free-win path: the day's goal was hit (GameManager.OnDayCompleted
+        // already paused ticket production). Mirrors RetryDay's reset order
+        // but deliberately skips LivesManager -- Lives/Xp are NOT reset on a
+        // successful advance, only a failed retry pays that cost (CLAUDE.md
+        // Section 3) -- and never publishes DayRetried.
+        public bool AdvanceToNextDay()
+        {
+            var nextIndex = State.CurrentDayIndex + 1;
+            if (dayCatalog == null || nextIndex >= dayCatalog.Count)
+            {
+                return false; // last authored Day -- PR-9 decides what the UI shows
+            }
+
+            State.CurrentDayIndex = nextIndex;
+            isRetryAttempt = false;
+
+            State.Board.Clear();
+            TrayManager.DiscardAllForNewDay();
+            TicketSlotManager.ResetSlotsForNewDay();
+            dayLifecycleManager.ResetForNewDay();
+
+            return true;
         }
 
         private Ticket CreateNextTicket()

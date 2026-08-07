@@ -182,18 +182,18 @@ Tasarımcı elle düzenlerken Day'i oynanamaz hale getirebilir — bu **canlı**
 
 ---
 
-## PR-4 — Day Geçişi (Day N → Day N+1, Retry Davranışı)
+## PR-4 — Day Geçişi (Day N → Day N+1, Retry Davranışı) ✅ Uygulandı
 
-**Kapsam:**
-- PR-3'teki "durduruldu" durumundan çıkış: bir tetikleyici `CurrentDayIndex`'i artırır, sıradaki `DayDefinition`'ı yükler, board/tray/ticket slot'ları sıfırlar (can/XP'yi sıfırlamadan — Day başarıyla bitti, ceza yok).
-- `GameManager.RetryDay()`: **aynı** `CurrentDayIndex`'i tekrar yükler ama Day'in `retryVariant` JSON verisi varsa onu kullanır (Q3 — Day'in kendi authored retry zorluğu).
-- Son Day'den sonrasının davranışı (Q2) burada uygulanır: `CurrentDayIndex`, Day listesinin sonuna geldiğinde artık artmaz; "Continue" akışı PR-9'daki UI kararına göre devre dışı kalır.
-
-**Risk — stale lookahead queue:** `TicketSlotManager.ResetSlotsForNewDay()` şu an `upcomingTickets` lookahead listesini temizlemiyor. Day geçişinde/retry'da önceki Day'in kuyruktaki biletleri yeni Day'e sızabilir — bu PR'a `TicketSlotManager.ClearUpcomingQueue()` (ya da `ResetSlotsForNewDay`'in bunu içermesi) eklenmesi gerekiyor.
+**Kapsam (gerçekleşen implementasyon):**
+- Yeni `GameManager.AdvanceToNextDay() : bool` — `State.CurrentDayIndex`'i artırır, `isRetryAttempt`'i temizler, board/tray/ticket slot'ları `RetryDay()`'le aynı sırayla sıfırlar (`Board.Clear() → TrayManager.DiscardAllForNewDay() → TicketSlotManager.ResetSlotsForNewDay()`) **ama `LivesManager`'ı hiç çağırmaz** — can/XP Day ilerlerken sıfırlanmıyor, sadece başarısız retry'de sıfırlanıyor. Son Day'de (`nextIndex >= dayCatalog.Count`) `false` döner, ilerlemez (Q2) — henüz hiçbir UI bunu tüketmiyor, `bool` dönüşü PR-9'un "Continue butonu son Day'de devre dışı" kararının üzerine ineceği sinyal.
+- `GameManager.RetryDay()`'e `isRetryAttempt = true;` eklendi. Yeni `DayCatalogNavigator.GetEffectiveDay(baseDay, isRetryAttempt)`: retry değilse `baseDay`, retry'deyse `baseDay.RetryVariant ?? baseDay`. `CurrentDay` artık `GetEffectiveDay` üzerinden çözülüyor. `isRetryAttempt`, sadece ilk retry'de değil, **`AdvanceToNextDay()` çağrılana kadar** true kalıyor — yani o Day'i art arda retry etmek her seferinde `RetryVariant`'ı kullanıyor.
+- **Scope notu (önceden belirtilmişti, implementasyonda doğrulandı):** `DayDefinition.TicketSequence`/`BoardTimeline` PR-6'ya kadar hiçbir runtime sisteme bağlı değil — `RetryVariant`'ın şu an tek somut etkisi `TicketsRequiredForDay` (PR-2'de zaten bağlıydı). Authored içerik farkı PR-6'dan sonra görünür olacak.
+- **Stale lookahead queue düzeltildi:** Yeni `TicketSlotManager.ClearUpcomingQueue()`, `ResetSlotsForNewDay()`'in en başına eklendi — hem `RetryDay()` hem `AdvanceToNextDay()` bunu otomatik miras alıyor.
+- **Manuel test için debug tuşları:** `DebugTicketDeliveryController.cs`'ye `N` (→ `AdvanceToNextDay()`) ve `R` (→ `RetryDay()`) eklendi — PR-9'dan önce Play mode'da elle test edilebilmesi için (dosyanın kendi "dev-only, silinebilir" açıklamasıyla tutarlı).
 
 **Bağımlılık:** PR-2, PR-3.
 
-**Kabul kriteri:** Day 1 tamamlanınca Day 2'nin verisi devreye giriyor; retry, Day'in `retryVariant`'ını (varsa) yüklüyor; ilerleme geri gitmiyor; Day 2'nin ilk atanan biletleri Day 1'in kuyruğundan sızıntı içermiyor.
+**Kabul kriteri:** ✅ `DayCatalogNavigatorTests`'e 3 yeni test (`GetEffectiveDay_NotRetrying_ReturnsBaseDay`, `GetEffectiveDay_RetryingWithVariant_ReturnsVariant`, `GetEffectiveDay_RetryingWithoutVariant_FallsBackToBaseDay`), `TicketSystemTests`'e 2 yeni test (`ClearUpcomingQueue_EmptiesTheQueue`, `ResetSlotsForNewDay_ClearsUpcomingQueue_OldQueuedTicketsDoNotReappear` — düzeltme olmadan gerçekten fail ettiği izole testte doğrulandı). Unity EditMode suite (170 test) çalıştırıldı — sadece bilinen bağımsız flaky `TraySystemTests` testi hariç hepsi geçti.
 
 ---
 

@@ -393,6 +393,31 @@ namespace ExpoTheExplorer.Tests.EditMode
         }
 
         [Test]
+        public void ClearUpcomingQueue_EmptiesTheQueue()
+        {
+            var state = new GameState(gameConfig);
+            var manager = CreateManager(state, lookaheadCount: 5);
+            manager.FillEmptySlots();
+
+            manager.ClearUpcomingQueue();
+
+            Assert.AreEqual(0, manager.UpcomingTickets.Count);
+        }
+
+        [Test]
+        public void ResetSlotsForNewDay_ClearsUpcomingQueue_OldQueuedTicketsDoNotReappear()
+        {
+            var state = new GameState(gameConfig);
+            var manager = CreateManager(state, lookaheadCount: 5);
+            manager.FillEmptySlots();
+            var oldQueue = new List<Ticket>(manager.UpcomingTickets);
+
+            manager.ResetSlotsForNewDay();
+
+            Assert.IsTrue(oldQueue.All(t => !manager.UpcomingTickets.Contains(t)));
+        }
+
+        [Test]
         public void AssignTicket_AfterPauseForDayComplete_DoesNotRefillSlot()
         {
             var state = new GameState(gameConfig);
