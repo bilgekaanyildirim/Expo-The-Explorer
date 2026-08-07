@@ -24,6 +24,17 @@ namespace ExpoTheExplorer.Systems.TicketSystem
 
         public IReadOnlyList<Ticket> UpcomingTickets => upcomingTickets;
 
+        // Set once the day's delivery goal is hit (GameManager.OnDayCompleted)
+        // so no further ticket ever gets assigned into a slot and Tick stops
+        // counting down the ones still active -- cleared again by
+        // ResetSlotsForNewDay, the existing retry entry point.
+        public bool IsDayComplete { get; private set; }
+
+        public void PauseForDayComplete()
+        {
+            IsDayComplete = true;
+        }
+
         // Takes a loseLife delegate (LivesManager.LoseLife in practice) rather
         // than mutating GameState.Lives directly — keeps life-loss centralized
         // in one place shared with TrayManager's wrong-delivery case, instead
@@ -85,6 +96,8 @@ namespace ExpoTheExplorer.Systems.TicketSystem
         // are about to be discarded anyway.
         public void ResetSlotsForNewDay()
         {
+            IsDayComplete = false;
+
             for (var i = 0; i < GameState.TicketSlotCount; i++)
             {
                 state.TicketSlots[i] = null;
@@ -102,6 +115,8 @@ namespace ExpoTheExplorer.Systems.TicketSystem
         // rather than polling every frame.
         private void AssignTicket(int slotIndex)
         {
+            if (IsDayComplete) return;
+
             var ticket = DequeueNextTicket();
             state.TicketSlots[slotIndex] = ticket;
             state.TicketAssigned.Publish((slotIndex, ticket));
@@ -126,6 +141,8 @@ namespace ExpoTheExplorer.Systems.TicketSystem
 
         public void Tick(float deltaSeconds)
         {
+            if (IsDayComplete) return;
+
             for (var i = 0; i < GameState.TicketSlotCount; i++)
             {
                 var ticket = state.TicketSlots[i];

@@ -165,18 +165,20 @@ Tasarımcı elle düzenlerken Day'i oynanamaz hale getirebilir — bu **canlı**
 
 ---
 
-## PR-3 — Day Tamamlanınca Üretimi Gerçekten Durdur
+## PR-3 — Day Tamamlanınca Üretimi Gerçekten Durdur ✅ Uygulandı
 
 **Neden ayrı PR:** Tespit edilen en kritik davranış boşluğu — şu an `DayCompleted` sadece XP commit'i tetikliyor, üretimi durdurmuyor.
 
-**Kapsam:**
-- `TicketSlotManager`'a bir "durdurulmuş" durumu eklenir (mevcut `IsAwaitingContinue` desenine benzer): `DayCompleted` geldiğinde `AssignTicket` çağrıları duraklar, aktif slotlardaki `Tick` sayaçları durur.
-- `GameManager.OnDayCompleted` genişletilir: `LevelManager.CommitProgress()` çağrısına ek olarak üretimi durdurma + "Day tamamlandı" sinyalini UI'ya iletme (Day-Complete popup'ı PR-9'da).
-- **Dikkat:** `LevelManager`'ın `DayCompleted`/`DayRetried` subscribe'ları bozulmaz — event imzaları/publish noktaları değişmez.
+**Kapsam (gerçekleşen implementasyon):**
+- `TicketSlotManager`'a `IsDayComplete` (bool, `private set`) + `PauseForDayComplete()` eklendi. `AssignTicket` (private, `FillEmptySlots`/`DeliverTicket`/`CancelTicket`/`ResetSlotsForNewDay`'in **hepsinin** ortak darboğazı) ve `Tick`'in en başına `if (IsDayComplete) return;` guard'ı eklendi — tek noktadan tüm üretim yolları kapatılıyor.
+- `ResetSlotsForNewDay()` artık en başta `IsDayComplete = false;` set ediyor — yeni bir "Resume" metodu icat edilmedi, mevcut retry akışı (`GameManager.RetryDay()`) otomatik olarak "resume" oluyor.
+- `GameManager.OnDayCompleted`'e tek satır eklendi: `TicketSlotManager.PauseForDayComplete();`. Yeni bir UI event'i eklenmedi — `State.DayCompleted` zaten sinyalin kendisi, PR-9'daki popup ona subscribe olacak.
+- **Önemli davranış notu (testle keşfedildi):** Guard, `AssignTicket`'i durdurduğunda slot **`null` olmaz** — `DeliverTicket`, slotu asla açıkça `null`'lamıyor, yeni bilet atanmasına güveniyordu. Yani Day tamamlandığında son teslim edilen bilet, `TicketState.Delivered` işaretiyle slotta **görsel olarak kalıyor** (yeni atama olmuyor, ama eski referans duruyor). Bu, roadmap'in "yeni bilet atanmıyor" kriterini karşılıyor; slotun görsel temizliği (varsa) PR-9'un Day-Complete popup'ının kapsamı.
+- `LevelManager`'ın `DayCompleted`/`DayRetried` subscribe'larına dokunulmadı.
 
 **Bağımlılık:** PR-2.
 
-**Kabul kriteri:** Hedef teslimat sayısına ulaşıldıktan sonra `TicketSlotManager` yeni bilet atamıyor; `LevelManager` hâlâ doğru XP commit ediyor.
+**Kabul kriteri:** ✅ 4 yeni test (`TicketSystemTests.cs`): `AssignTicket_AfterPauseForDayComplete_DoesNotRefillSlot`, `Tick_AfterPauseForDayComplete_DoesNotDecrementRemainingSecondsOrLoseLife`, `ResetSlotsForNewDay_ClearsIsDayComplete_SubsequentAssignTicketWorksAgain`, ve gerçek event cascade'ini kuran `DeliverTicket_WhenDayCompletedEventFires_StopsRefillingThatSlot` (tek `DeliverTicket` çağrısının `TicketDelivered → RecordDelivery → DayCompleted → PauseForDayComplete` zincirini tetikleyip slotu doğru şekilde durdurduğunu doğruluyor). Unity EditMode suite (165 test) çalıştırıldı — sadece bilinen bağımsız flaky `TraySystemTests` testi hariç hepsi geçti.
 
 ---
 
