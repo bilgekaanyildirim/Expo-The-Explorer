@@ -56,12 +56,7 @@ namespace ExpoTheExplorer.Systems.TicketSystem
             var chosenMods = ChooseModifications(main.AvailableModifications, modificationCount);
             var modifications = chosenMods.Select(CreateModification).ToList();
 
-            var timeLimitSeconds = patienceType switch
-            {
-                PatienceType.Impatient => config.ImpatientTimeLimitSeconds,
-                PatienceType.Patient => config.PatientTimeLimitSeconds,
-                _ => config.NormalTimeLimitSeconds,
-            };
+            var timeLimitSeconds = config.TimeLimitSecondsFor(patienceType);
 
             return new Ticket(customerName, patienceType, requiredItems, modifications, timeLimitSeconds, nextArrivalSequence++);
         }

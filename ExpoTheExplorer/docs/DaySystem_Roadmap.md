@@ -197,16 +197,18 @@ Tasarımcı elle düzenlerken Day'i oynanamaz hale getirebilir — bu **canlı**
 
 ---
 
-## PR-5 — `TimeLimitSecondsFor` Helper
+## PR-5 — `TimeLimitSecondsFor` Helper ✅ Uygulandı
 
-**Kapsam:**
-- `TicketGenerationConfig`'e `TimeLimitSecondsFor(PatienceType) : float` public helper'ı eklenir (şu an `TicketFactory.Create` içinde private switch olarak duran mantığın tek-kaynak haline getirilmesi) — `TicketEntryFactory`'nin (PR-6) `timeLimitSecondsOverride <= 0` fallback'i bu global helper'ı çağırır, GDD'nin Impatient < Normal < Patient kuralına bağlı kalır.
+**Kapsam (gerçekleşen implementasyon):**
+- `TimeLimitSecondsFor(PatienceType) : float` eklendi — ama roadmap'in yazdığı gibi `TicketGenerationConfig`'e literal bir instance metodu **olarak değil**. **Mimari bulgu:** `TicketGenerationConfig`, `ExpoTheExplorer.Data` assembly'sinde, ve `Data.asmdef`'in `references` dizisi tamamen boş — `PatienceType` ise `ExpoTheExplorer.Core`'da, ve `Core.asmdef` zaten `Data`'ya referans veriyor (`Core → Data`). Helper'ı `TicketGenerationConfig`'e literal eklemek `Data`'nın da `Core`'a referans vermesini gerektirirdi — bu döngüsel assembly referansı (`Core → Data → Core`) yaratır, Unity derlemez.
+- **Çözüm:** Yeni `Assets/Scripts/Core/TicketGenerationConfigExtensions.cs` — `Core`'da tanımlı bir **extension method** (`public static float TimeLimitSecondsFor(this TicketGenerationConfig config, PatienceType patienceType)`). `Core` zaten hem `PatienceType`'ı hem `Data.TicketGenerationConfig`'i görebildiği için döngü oluşmuyor. Çağıran kod tarafında (`config.TimeLimitSecondsFor(patienceType)`) **hiçbir fark yok** — extension method sözdizimi instance metoduyla birebir aynı görünüyor, sadece fiziksel olarak nerede tanımlandığı değişti.
+- `TicketFactory.Create`'teki private switch tek satıra indi: `var timeLimitSeconds = config.TimeLimitSecondsFor(patienceType);`
 
-**Not:** Bu PR'ın kapsamı daralmıştır — board-override enjeksiyonu artık gerekmiyor, çünkü `BoardDistributor` runtime'da hiç çalışmıyor (Q1 revizyonu). Küçüklüğü nedeniyle PR-6'ya katılabilir; ayrı tutuluyorsa bağımsız/paralel başlanabilir.
+**Not:** Bu PR'ın kapsamı daralmıştı — board-override enjeksiyonu artık gerekmiyor, çünkü `BoardDistributor` runtime'da hiç çalışmıyor (Q1 revizyonu).
 
 **Bağımlılık:** Yok.
 
-**Kabul kriteri:** `TimeLimitSecondsFor` her `PatienceType` için config'teki doğru değeri döndürüyor; `TicketFactory.Create` bu helper'ı kullanacak şekilde refactor edilmiş (davranış değişmedi).
+**Kabul kriteri:** ✅ `TicketGenerationConfigExtensionsTests.cs` — 3 yeni test, her `PatienceType` için doğru değeri doğruluyor. Mevcut `TicketSystemTests.TicketFactory_Create_OnlyUsesItemsFromSuppliedPool_AndProducesPlausibleItemCount` (Normal süresini doğrudan kontrol ediyor) yeşil kaldı — `TicketFactory.Create`'in davranışı değişmedi. Unity EditMode suite (173 test) çalıştırıldı — sadece bilinen bağımsız flaky `TraySystemTests` testi hariç hepsi geçti.
 
 ---
 
