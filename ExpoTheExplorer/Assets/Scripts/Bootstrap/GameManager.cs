@@ -1,8 +1,8 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using ExpoTheExplorer.Core;
 using ExpoTheExplorer.Data;
-using ExpoTheExplorer.Systems.BoardDistribution;
 using ExpoTheExplorer.Systems.DayLifecycle;
 using ExpoTheExplorer.Systems.DaySystem;
 using ExpoTheExplorer.Systems.EconomySystem;
@@ -24,7 +24,6 @@ namespace ExpoTheExplorer.Bootstrap
         [SerializeField] private GameConfig gameConfig;
         [SerializeField] private TicketGenerationConfig ticketGenerationConfig;
         [SerializeField] private FoodCatalog foodCatalog;
-        [SerializeField] private BoardDistributionConfig boardDistributionConfig;
         [SerializeField] private EconomyConfig economyConfig;
         [SerializeField] private LivesConfig livesConfig;
         [SerializeField] private LevelProgressionConfig levelProgressionConfig;
@@ -37,10 +36,10 @@ namespace ExpoTheExplorer.Bootstrap
         public LevelManager LevelManager { get; private set; }
 
         private TicketFactory ticketFactory;
-        private BoardDistributor boardDistributor;
         private EconomyCalculator economyCalculator;
         private DayLifecycleManager dayLifecycleManager;
         private IReadOnlyList<DayDefinition> dayCatalog;
+        private DayTicketSequenceProvider dayTicketSequenceProvider;
 
         // Set by RetryDay, cleared by AdvanceToNextDay -- stays true across
         // repeated retries of the SAME Day, not just the first one, so
@@ -75,19 +74,20 @@ namespace ExpoTheExplorer.Bootstrap
             ticketFactory = new TicketFactory(ticketGenerationConfig);
             LivesManager = new LivesManager(State, livesConfig);
             TicketSlotManager = new TicketSlotManager(State, CreateNextTicket, LivesManager.LoseLife, ticketGenerationConfig.UpcomingQueueSize);
-            boardDistributor = new BoardDistributor(State, boardDistributionConfig);
             TrayManager = new TrayManager(State, slotIndex => TicketSlotManager.DeliverTicket(slotIndex), LivesManager.LoseLife);
             economyCalculator = new EconomyCalculator(economyConfig);
             dayCatalog = DayCatalogParser.ParseAll(new DayJsonSource().LoadAll(), foodCatalog);
             dayLifecycleManager = new DayLifecycleManager(State, () => CurrentDay?.TicketsRequiredForDay ?? gameConfig.TicketsRequiredPerDay);
+            RefreshDayTicketSequenceProvider();
             LevelManager = new LevelManager(State, levelProgressionConfig, PlayerProfileStore, profile);
 
             // Subscribe before the initial fill so the first 3 tickets trigger
-            // board distribution too, not just later deliveries/cancellations.
+            // board playback too, not just later deliveries/cancellations.
             State.TicketAssigned.Subscribe(OnTicketAssigned);
             State.TicketDelivered.Subscribe(OnTicketDelivered);
             State.DayCompleted.Subscribe(OnDayCompleted);
             State.DayRetried.Subscribe(OnDayRetried);
+            ApplyDayStartBoardPreSeed();
             TicketSlotManager.FillEmptySlots();
         }
 
@@ -112,13 +112,20 @@ namespace ExpoTheExplorer.Bootstrap
         }
 
         // Production is order-triggered (GDD Section 4), not a continuous poll —
-        // every time a new ticket enters a slot, the board gets a chance to spawn
-        // its required items and leak a noise item from the upcoming queue, and
-        // that slot's tray (if a timeout left it holding orphaned items) is
-        // cleared back onto the board.
+        // every time a new ticket enters a slot, the Day's authored board
+        // timeline plays back whatever step corresponds to that exact ticket
+        // (ArrivalSequence == its position in DayDefinition.TicketSequence),
+        // and that slot's tray (if a timeout left it holding orphaned items)
+        // is cleared back onto the board. No fallback: an authored Day is
+        // required (PR-7).
         private void OnTicketAssigned((int SlotIndex, Ticket Ticket) assignment)
         {
-            boardDistributor.OnOrderPlaced(State.TicketSlots, TicketSlotManager.UpcomingTickets);
+            if (CurrentDay == null)
+            {
+                throw new InvalidOperationException("No Day loaded -- board playback requires an authored Day (PR-7).");
+            }
+
+            DayBoardTimelinePlayer.ApplyForStep(State.Board, CurrentDay.BoardTimeline, assignment.Ticket.ArrivalSequence);
             TrayManager.OnTicketAssigned(assignment.SlotIndex);
         }
 
@@ -156,20 +163,24 @@ namespace ExpoTheExplorer.Bootstrap
         // Free alternative to the paid Continue flow (GameOverPopupView) --
         // abandons the current day attempt and restarts it at the same
         // difficulty (difficulty scale-down on retry is a still-open GDD
-        // question, CLAUDE.md Section 4, deliberately not addressed here).
-        // Order matters for the first three calls: Board.Clear() ->
+        // question, CLAUDE.md Section 4, deliberately not addressed here) --
+        // or, if the Day has its own authored RetryVariant, that instead
+        // (isRetryAttempt flips CurrentDay over to it). Order matters for the
+        // first three calls: Board.Clear() -> ApplyDayStartBoardPreSeed() ->
         // TrayManager.DiscardAllForNewDay() -> TicketSlotManager.
-        // ResetSlotsForNewDay() are coupled through OnTicketAssigned's
-        // existing cascade into boardDistributor/TrayManager above, and
-        // running them in a different order reintroduces stale items onto
-        // the board. LivesManager/dayLifecycleManager are independent of
-        // those three and of each other.
+        // ResetSlotsForNewDay() -- the pre-seed must land on the freshly
+        // cleared board before slots start refilling and cascading into
+        // OnTicketAssigned's own board playback, or a different order
+        // reintroduces stale items. LivesManager/dayLifecycleManager are
+        // independent of those and of each other.
         public void RetryDay()
         {
             var ticketsBeforeRetry = State.TicketsDeliveredToday;
             isRetryAttempt = true;
+            RefreshDayTicketSequenceProvider();
 
             State.Board.Clear();
+            ApplyDayStartBoardPreSeed();
             TrayManager.DiscardAllForNewDay();
             TicketSlotManager.ResetSlotsForNewDay();
             LivesManager.RetryDay();
@@ -193,8 +204,10 @@ namespace ExpoTheExplorer.Bootstrap
 
             State.CurrentDayIndex = nextIndex;
             isRetryAttempt = false;
+            RefreshDayTicketSequenceProvider();
 
             State.Board.Clear();
+            ApplyDayStartBoardPreSeed();
             TrayManager.DiscardAllForNewDay();
             TicketSlotManager.ResetSlotsForNewDay();
             dayLifecycleManager.ResetForNewDay();
@@ -202,11 +215,38 @@ namespace ExpoTheExplorer.Bootstrap
             return true;
         }
 
+        // No fallback: an authored Day is required (PR-7) -- until then this
+        // throws instead of silently falling back to the old procedural
+        // TicketFactory.Create path (removed; TicketFactory itself stays,
+        // just for PickRandomCustomerName's cosmetic reuse inside
+        // TicketEntryFactory).
         private Ticket CreateNextTicket()
         {
-            var patienceType = ticketFactory.PickRandomPatienceType();
-            var customerName = ticketFactory.PickRandomCustomerName();
-            return ticketFactory.Create(foodCatalog.Items, customerName, patienceType);
+            if (dayTicketSequenceProvider == null)
+            {
+                throw new InvalidOperationException("No Day loaded -- ticket generation requires an authored Day (PR-7).");
+            }
+            return dayTicketSequenceProvider.NextTicket();
+        }
+
+        // Re-pointed every time CurrentDay could have changed (Awake, RetryDay,
+        // AdvanceToNextDay) -- a fresh provider per Day/retry-variant, cursor
+        // reset to 0, rather than resetting a single long-lived instance.
+        private void RefreshDayTicketSequenceProvider()
+        {
+            dayTicketSequenceProvider = CurrentDay != null
+                ? new DayTicketSequenceProvider(CurrentDay.TicketSequence, ticketGenerationConfig, ticketFactory)
+                : null;
+        }
+
+        // Applies the Day's triggerStepIndex == -1 board entries once, right
+        // after the board is cleared and before any ticket gets assigned into
+        // a slot -- everything after this point plays back per-ticket via
+        // OnTicketAssigned instead.
+        private void ApplyDayStartBoardPreSeed()
+        {
+            if (CurrentDay == null) return;
+            DayBoardTimelinePlayer.ApplyForStep(State.Board, CurrentDay.BoardTimeline, -1);
         }
 
         // Lets the same EventSystem that already drives the UGUI Canvas

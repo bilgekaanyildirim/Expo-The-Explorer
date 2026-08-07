@@ -3,7 +3,8 @@
     "rootNamespace": "ExpoTheExplorer.Systems.DaySystem",
     "references": [
         "ExpoTheExplorer.Core",
-        "ExpoTheExplorer.Data"
+        "ExpoTheExplorer.Data",
+        "ExpoTheExplorer.Systems.TicketSystem"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
