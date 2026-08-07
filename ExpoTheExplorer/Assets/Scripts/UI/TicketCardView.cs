@@ -42,8 +42,25 @@ namespace ExpoTheExplorer.UI
         private Ticket cachedTicket;
         private bool isValid;
         private bool transitionInProgress;
+        private bool trayAnimating;
         private RectTransform rectTransform;
         private readonly List<ModificationSlotView> modificationRows = new();
+
+        // True while either this card's own delivery transition or its
+        // paired WorldTrayView's delivery/scatter animation is playing —
+        // TrayFillCounterView reads this to hide the "x/y" readout for the
+        // whole window instead of just this card's own slide/fade.
+        public bool IsAnimating => transitionInProgress || trayAnimating;
+
+        // Called by WorldTrayView at the start/end of its own tray
+        // animations (delivery grow/lift/reentry, wrong-order shake/scatter,
+        // timeout scatter) — this card has no way to observe those on its
+        // own since they're driven entirely from the sibling world-space
+        // tray object, not from any GameState event.
+        public void SetTrayAnimating(bool animating)
+        {
+            trayAnimating = animating;
+        }
 
         public void Initialize(GameManager gameManager, int slotIndex, TicketCardsView owner, BoardAnimationConfig animConfig)
         {

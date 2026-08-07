@@ -71,7 +71,7 @@ namespace ExpoTheExplorer.UI
                 cards.Add(card);
 
                 var fillCounter = card.GetComponentInChildren<TrayFillCounterView>(true);
-                if (fillCounter != null) fillCounter.Initialize(gameManager, i);
+                if (fillCounter != null) fillCounter.Initialize(gameManager, i, card);
             }
         }
 

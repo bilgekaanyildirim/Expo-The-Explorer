@@ -266,6 +266,7 @@ namespace ExpoTheExplorer.UI
         {
             var renderers = GetComponentsInChildren<SpriteRenderer>(true);
 
+            ticketCardView.SetTrayAnimating(true);
             transform.DOKill();
             var sequence = DOTween.Sequence();
             sequence.Append(transform.DOScale(restScale * animConfig.DeliveryGrowScale, animConfig.DeliveryGrowDuration).SetEase(Ease.OutQuad));
@@ -303,7 +304,8 @@ namespace ExpoTheExplorer.UI
                     renderer.color = color;
                 }
 
-                transform.DOScale(restScale, animConfig.DeliveryReentryDuration).SetEase(Ease.OutBack);
+                transform.DOScale(restScale, animConfig.DeliveryReentryDuration).SetEase(Ease.OutBack)
+                    .OnComplete(() => ticketCardView.SetTrayAnimating(false));
                 foreach (var renderer in remainingRenderers)
                 {
                     renderer.DOFade(1f, animConfig.DeliveryReentryDuration);
@@ -323,6 +325,7 @@ namespace ExpoTheExplorer.UI
         // on the board until this shake finishes and hands off to it.
         private void PlayWrongOrderShakeThenScatter(BoardItemDragHandler finalItem)
         {
+            ticketCardView.SetTrayAnimating(true);
             transform.DOKill();
             finalItem.transform.DOKill();
             if (wrongVisual != null) wrongVisual.SetActive(true);
@@ -370,6 +373,13 @@ namespace ExpoTheExplorer.UI
                     if (wrongVisual != null) wrongVisual.SetActive(false);
                     ClearAllSlotVisuals();
                     finalItem.ReleaseAndDestroy();
+
+                    // ClearAllSlotVisuals' own scale-to-zero tweens still run
+                    // for animConfig.SlotClearDuration after this point — every
+                    // slot uses the same fixed duration, so a single delayed
+                    // call here covers all of them without needing to track
+                    // each one's own OnComplete.
+                    DOVirtual.DelayedCall(animConfig.SlotClearDuration, () => ticketCardView.SetTrayAnimating(false));
                 });
         }
 
@@ -425,7 +435,12 @@ namespace ExpoTheExplorer.UI
             var currentCount = gameManager.TrayManager.GetContents(slotIndex).Count;
             if (currentCount == lastKnownCount) return;
 
-            if (currentCount == 0) ClearAllSlotVisuals();
+            if (currentCount == 0)
+            {
+                ticketCardView.SetTrayAnimating(true);
+                ClearAllSlotVisuals();
+                DOVirtual.DelayedCall(animConfig.SlotClearDuration, () => ticketCardView.SetTrayAnimating(false));
+            }
 
             lastKnownCount = currentCount;
         }
