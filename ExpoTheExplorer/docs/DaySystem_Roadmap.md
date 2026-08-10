@@ -234,7 +234,7 @@ Tasarımcı elle düzenlerken Day'i oynanamaz hale getirebilir — bu **canlı**
 
 ---
 
-## PR-6.5 — Day İçerik Üretici (`DayContentGenerator`)
+## PR-6.5 — Day İçerik Üretici (`DayContentGenerator`) ✅ Uygulandı
 
 **Kapsam:**
 - `DayContentGenerator` (plain C#, Editor'a bağımlı değil, EditMode test edilebilir, seedable `Random`): `editorMeta`'daki override'ları kullanarak (a) `TicketFactory.Create` ile bilet dizisini üretir, (b) izole bir `GameState`/`BoardGrid` üzerinde üretilen bilet dizisini adım adım simüle edip her adımda gerçek `BoardDistributor.OnOrderPlaced`'i çalıştırarak, ortaya çıkan yeni item'ları o adımın `triggerStepIndex`'iyle damgalayıp `boardTimeline`'a yazar.
@@ -244,6 +244,15 @@ Tasarımcı elle düzenlerken Day'i oynanamaz hale getirebilir — bu **canlı**
 **Bağımlılık:** PR-6 (veri tipleri/mapper'lar olmalı).
 
 **Kabul kriteri:** Sabit seed ile üretilen `boardTimeline`, aynı seed'le adım adım çalıştırılan gerçek `TicketFactory`/`BoardDistributor` çağrılarıyla üretilen sonuçla birebir eşleşiyor (testle doğrulanmış).
+
+**Implementasyon notları:**
+- **Kullanıcı onaylı karar: teslimat/silme simülasyonu eklendi (roadmap'in yazılı kapsamının ötesinde).** Sadece `OnOrderPlaced`'i çalıştıran en basit model, hiçbir şeyi board'dan silmediği için uzun Day'lerde `BoardGrid`'in pending-spawn kuyruğunda required item'ların sonsuza dek beklemesine (kapasite açlığı) yol açabiliyordu. Bunun yerine generator, 3 aktif slotu round-robin döndürüp "bu slottaki önceki bilet artık teslim edildi" varsayımıyla o biletin required item'larını (`RequiredItemKey` eşleşmesiyle, `BoardDistributor`'ın kendi kuralıyla birebir) board'dan kaldırıyor (`BoardGrid.RemoveItem`), `BoardGrid`'in kendi pending-queue-backfill mekanizmasını tetikleyerek. Bu sadece **üretim zamanı** kapasite gerçekçiliği için var — runtime'da hiç karşılığı yok (`DayBoardTimelinePlayer` hâlâ hiçbir şeyi silmiyor, sadece ekliyor; gerçek silme oyuncunun sürükle-bırakıyla olur) ve replay doğruluğunu etkilemiyor (`triggerStepIndex` her zaman `ticketSequence` sırasıyla ateşlenir, oyuncu hızından bağımsız).
+- **`TicketGenerationConfig.CloneWithOverrides`/`BoardDistributionConfig.CloneWithOverrides` eklendi** (Data assembly) — `editorMeta` override'larını `Object.Instantiate` ile klonlanan bir kopyaya uygular, base asset'i hiç mutasyona uğratmaz, `UnityEditor`/`SerializedObject` kullanmaz (bu sınıflar Editor'a bağımlı kalmıyor). Nullable-primitive parametreler sayesinde `DayEditorMetaJson`'ı hiç bilmiyorlar.
+- **`useExactCell = true`, her üretilen board spawn'ı için, istisnasız** — donmuş `(x,y)`, generator'ın önizlemesiyle gerçek oynanıştaki yerleşimin birebir örtüşmesi için.
+- **Simülasyon-içi müşteri adı sabit bir placeholder** (`ticketFactory.PickRandomCustomerName()` hiç çağrılmıyor), `customerNameOverride`/`timeLimitSecondsOverride` üretilen JSON'da boş bırakılıyor — gerçek oynanış bunları kendi rastgele/config-varsayılan mantığıyla dolduruyor.
+- **`DayContentGenerationResult.Warnings`** (best-effort, throw yok) — teslimat-silme sırasında beklenen bir required item board'da bulunamazsa (teorik olarak nadir) burada birikir; sert doğrulama `DayValidator`'ın (PR-6.6) işi.
+- `ExpoTheExplorer.Systems.BoardDistribution` referansı `DaySystem` asmdef'ine eklendi (`BoardDistributor` sınıfı orada yaşıyor).
+- Test doğrulaması: `TicketGenerationConfigCloneWithOverridesTests` (3), `BoardDistributionConfigCloneWithOverridesTests` (3), `DayContentGeneratorTests` (6 — determinism, override wiring, kapasite-açlığı-önleme ve tam round-trip: generate → `JsonUtility.ToJson` → `DayCatalogParser.ParseAll` → `DayTicketSequenceProvider`/`DayBoardTimelinePlayer` ile playback → board/bilet içeriği karşılaştırması). Tam EditMode suite (198 test) yeşil, tek istisna bilinen bağımsız flaky `TraySystemTests` testi.
 
 ---
 
