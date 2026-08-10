@@ -108,7 +108,94 @@ namespace ExpoTheExplorer.Systems.DaySystem
                 ticketEntries.Add(ToTicketEntryJson(newTicket));
             }
 
-            return new DayContentGenerationResult(ticketEntries.ToArray(), boardSpawnEntries.ToArray(), warnings);
+            // OnOrderPlaced above only ever tops up the CURRENTLY guaranteed ticket(s)
+            // (GuaranteedTicketCount, default 1) -- it has no notion of "how many more
+            // tickets, later in this finite Day, will also need a plain/fungible item like
+            // this side or drink". A required item with no modifications (or two tickets
+            // that happen to need the exact same modification combo) shares one
+            // RequiredItemKey, so once one copy is sitting on the board, presentCount
+            // already satisfies the per-call check and no more get spawned -- even though
+            // several MORE tickets later in the sequence need their own copy. This pass
+            // guarantees the Day is solvable end-to-end regardless (see
+            // DaySolvabilityChecker), without changing the difficulty knobs above.
+            var resolvedTickets = ticketEntries.Select(entry => ToResolvedTicketEntry(entry, catalog)).ToList();
+            var resolvedBoardTimeline = boardSpawnEntries.Select(entry => ToResolvedBoardSpawnEntry(entry, catalog)).ToList();
+            EnsureSolvable(resolvedTickets, resolvedBoardTimeline, gameConfig, warnings);
+
+            var finalBoardTimeline = resolvedBoardTimeline.Select(ToBoardSpawnEntryJson).ToArray();
+            return new DayContentGenerationResult(ticketEntries.ToArray(), finalBoardTimeline, warnings);
+        }
+
+        // Iterates until DaySolvabilityChecker reports no more shortfalls, patching the
+        // earliest one at a time by adding a spawn at the exact step the affected ticket
+        // itself arrives (guaranteeing availability for its whole active window). Terminates
+        // by construction: each patch closes exactly one shortfall out of a finite total.
+        private static void EnsureSolvable(List<ResolvedTicketEntry> ticketSequence, List<ResolvedBoardSpawnEntry> boardTimeline, GameConfig gameConfig, List<string> warnings)
+        {
+            while (true)
+            {
+                var shortfalls = DaySolvabilityChecker.FindShortfalls(ticketSequence, boardTimeline);
+                if (shortfalls.Count == 0)
+                {
+                    return;
+                }
+
+                var target = shortfalls[0];
+                var cell = FindFirstEmptyCellAtStep(gameConfig, boardTimeline, target.TicketIndex);
+                if (cell == null)
+                {
+                    warnings.Add($"Could not guarantee required item '{target.MissingKey.Food.Id}' for ticket {target.TicketIndex} -- board is full at that point.");
+                    return;
+                }
+
+                boardTimeline.Add(new ResolvedBoardSpawnEntry(target.TicketIndex, target.MissingKey.Food, target.MissingKey.Modifications, useExactCell: true, cell.Value.X, cell.Value.Y));
+            }
+        }
+
+        // Replays the additive-only (never-shrinking) board exactly as DayBoardTimelinePlayer
+        // would at runtime, up to and including upToStepInclusive, to find where a new patch
+        // spawn would actually land -- reuses the same primitives real playback uses, no new
+        // engine behavior.
+        private static (int X, int Y)? FindFirstEmptyCellAtStep(GameConfig gameConfig, IReadOnlyList<ResolvedBoardSpawnEntry> boardTimeline, int upToStepInclusive)
+        {
+            var board = new BoardGrid(gameConfig);
+            DayBoardTimelinePlayer.ApplyForStep(board, boardTimeline, -1);
+            for (var step = 0; step <= upToStepInclusive; step++)
+            {
+                DayBoardTimelinePlayer.ApplyForStep(board, boardTimeline, step);
+            }
+
+            return board.TryGetFirstEmptyCell(out var x, out var y) ? (x, y) : null;
+        }
+
+        private static ResolvedTicketEntry ToResolvedTicketEntry(TicketEntryJson json, FoodCatalog catalog)
+        {
+            var main = catalog.GetById(json.mainItemId);
+            var side = string.IsNullOrEmpty(json.sideItemId) ? null : catalog.GetById(json.sideItemId);
+            var drink = string.IsNullOrEmpty(json.drinkItemId) ? null : catalog.GetById(json.drinkItemId);
+            var modifications = json.modifications.Select(m => new Modification(catalog.GetModificationById(m.modificationId), m.isAddition)).ToList();
+            Enum.TryParse<PatienceType>(json.patienceType, out var patienceType);
+            return new ResolvedTicketEntry(main, side, drink, modifications, patienceType, json.customerNameOverride, json.timeLimitSecondsOverride);
+        }
+
+        private static ResolvedBoardSpawnEntry ToResolvedBoardSpawnEntry(BoardSpawnEntryJson json, FoodCatalog catalog)
+        {
+            var item = catalog.GetById(json.itemId);
+            var modifications = json.modifications.Select(m => new Modification(catalog.GetModificationById(m.modificationId), m.isAddition)).ToList();
+            return new ResolvedBoardSpawnEntry(json.triggerStepIndex, item, modifications, json.useExactCell, json.x, json.y);
+        }
+
+        private static BoardSpawnEntryJson ToBoardSpawnEntryJson(ResolvedBoardSpawnEntry entry)
+        {
+            return new BoardSpawnEntryJson
+            {
+                triggerStepIndex = entry.TriggerStepIndex,
+                itemId = entry.Item.Id,
+                modifications = entry.Modifications.Select(ToModificationEntryJson).ToArray(),
+                useExactCell = entry.UseExactCell,
+                x = entry.X,
+                y = entry.Y,
+            };
         }
 
         // Mirrors TicketSlotManager.EnsureQueueFilled exactly -- there's no live

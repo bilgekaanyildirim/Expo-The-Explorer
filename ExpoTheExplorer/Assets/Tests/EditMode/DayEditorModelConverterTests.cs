@@ -118,8 +118,6 @@ namespace ExpoTheExplorer.Tests.EditMode
         [Test]
         public void ToDayDefinition_FeedsDayValidatorWithoutError()
         {
-            var gameConfig = CreateGameConfig();
-
             var model = new DayEditorModel
             {
                 DayIndex = 0,
@@ -131,7 +129,7 @@ namespace ExpoTheExplorer.Tests.EditMode
                 model.BoardTimeline.Add(new DayEditorBoardSpawnEntry { TriggerStepIndex = step, Item = main, UseExactCell = true, X = step % 6, Y = step / 6 });
             }
 
-            var result = DayValidator.Validate(model.ToDayDefinition(), gameConfig);
+            var result = DayValidator.Validate(model.ToDayDefinition());
 
             CollectionAssert.IsEmpty(result.Errors);
         }
@@ -208,25 +206,6 @@ namespace ExpoTheExplorer.Tests.EditMode
                 property.GetArrayElementAtIndex(i).objectReferenceValue = values[i];
             }
             serialized.ApplyModifiedPropertiesWithoutUndo();
-        }
-
-        private GameConfig CreateGameConfig()
-        {
-            var config = ScriptableObject.CreateInstance<GameConfig>();
-            spawned.Add(config);
-            return config;
-        }
-
-        private TicketGenerationConfig CreateTicketGenerationConfig(int upcomingQueueSize)
-        {
-            var config = ScriptableObject.CreateInstance<TicketGenerationConfig>();
-            spawned.Add(config);
-
-            var serialized = new SerializedObject(config);
-            serialized.FindProperty("upcomingQueueSize").intValue = upcomingQueueSize;
-            serialized.ApplyModifiedPropertiesWithoutUndo();
-
-            return config;
         }
     }
 }

@@ -38,7 +38,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             var boardTimeline = CreateBoardTimelineCoveringEachStep(3);
             var day = new DayDefinition(0, ticketsRequiredForDay: 5, ticketSequence, boardTimeline, retryVariant: null);
 
-            var result = DayValidator.Validate(day, gameConfig);
+            var result = DayValidator.Validate(day);
 
             Assert.IsFalse(result.IsValid);
             Assert.IsTrue(HasErrorContaining(result, "ticketsRequiredForDay is 5"));
@@ -50,7 +50,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             var ticketSequence = new List<ResolvedTicketEntry> { CreateEntry(), CreateEntry(), CreateEntry() };
             var day = new DayDefinition(0, ticketsRequiredForDay: 3, ticketSequence, new List<ResolvedBoardSpawnEntry>(), retryVariant: null);
 
-            var result = DayValidator.Validate(day, gameConfig);
+            var result = DayValidator.Validate(day);
 
             Assert.IsFalse(result.IsValid);
             Assert.IsTrue(HasErrorContaining(result, "Step 0:"));
@@ -63,7 +63,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             var boardTimeline = CreateBoardTimelineCoveringEachStep(3);
             var day = new DayDefinition(0, ticketsRequiredForDay: 3, ticketSequence, boardTimeline, retryVariant: null);
 
-            var result = DayValidator.Validate(day, gameConfig);
+            var result = DayValidator.Validate(day);
 
             CollectionAssert.IsEmpty(result.Errors);
             Assert.IsTrue(result.IsValid);
@@ -97,7 +97,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             var parsed = DayCatalogParser.ParseAll(new[] { new DayJsonFile("test", json) }, catalog);
             var day = parsed[0];
 
-            var validation = DayValidator.Validate(day, gameConfig);
+            var validation = DayValidator.Validate(day);
 
             CollectionAssert.IsEmpty(validation.Errors);
         }
@@ -111,10 +111,41 @@ namespace ExpoTheExplorer.Tests.EditMode
             var brokenVariant = new DayDefinition(0, ticketsRequiredForDay: 3, validSequence, new List<ResolvedBoardSpawnEntry>(), retryVariant: null);
             var day = new DayDefinition(0, ticketsRequiredForDay: 3, validSequence, validTimeline, retryVariant: brokenVariant);
 
-            var result = DayValidator.Validate(day, gameConfig);
+            var result = DayValidator.Validate(day);
 
             Assert.IsFalse(result.IsValid);
             Assert.IsTrue(HasErrorContaining(result, "RetryVariant: Step 0:"));
+        }
+
+        // Regression test for the field bug: 5 tickets all need a shared, plain (no
+        // modification) side item, but only 3 units of it are ever spawned across the whole
+        // Day -- mirrors the exact ratio found in the user's real day_00.json (9 demanders,
+        // 6 supply units), scaled down. The old "board never shrinks" playability model
+        // missed this entirely since it never accounted for cumulative demand on a fungible
+        // RequiredItemKey; DaySolvabilityChecker must now report it.
+        [Test]
+        public void Validate_FungibleItemUndersupply_ReportsShortfallForLaterTickets()
+        {
+            var side = CreateFoodItem("side");
+            var ticketSequence = new List<ResolvedTicketEntry>();
+            for (var i = 0; i < 5; i++)
+            {
+                ticketSequence.Add(new ResolvedTicketEntry(main, side, null, new List<Modification>(), PatienceType.Normal, null, 0f));
+            }
+
+            var boardTimeline = CreateBoardTimelineCoveringEachStep(5);
+            boardTimeline.Add(new ResolvedBoardSpawnEntry(0, side, new List<Modification>(), useExactCell: true, x: 0, y: 0));
+            boardTimeline.Add(new ResolvedBoardSpawnEntry(1, side, new List<Modification>(), useExactCell: true, x: 0, y: 0));
+            boardTimeline.Add(new ResolvedBoardSpawnEntry(2, side, new List<Modification>(), useExactCell: true, x: 0, y: 0));
+
+            var day = new DayDefinition(0, ticketsRequiredForDay: 5, ticketSequence, boardTimeline, retryVariant: null);
+
+            var result = DayValidator.Validate(day);
+
+            Assert.IsFalse(result.IsValid);
+            Assert.IsTrue(HasErrorContaining(result, "Step 3:"));
+            Assert.IsTrue(HasErrorContaining(result, "Step 4:"));
+            Assert.IsTrue(HasErrorContaining(result, "'side'"));
         }
 
         [Test]
@@ -123,7 +154,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             var ticketSequence = new List<ResolvedTicketEntry> { CreateEntry(), CreateEntry(), CreateEntry() };
             var day = new DayDefinition(0, ticketsRequiredForDay: 5, ticketSequence, new List<ResolvedBoardSpawnEntry>(), retryVariant: null);
 
-            var result = DayValidator.Validate(day, gameConfig);
+            var result = DayValidator.Validate(day);
 
             Assert.IsTrue(HasErrorContaining(result, "ticketsRequiredForDay is 5"));
             Assert.IsTrue(HasErrorContaining(result, "Step 0:"));
