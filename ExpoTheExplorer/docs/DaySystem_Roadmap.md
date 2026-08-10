@@ -256,7 +256,7 @@ Tasarımcı elle düzenlerken Day'i oynanamaz hale getirebilir — bu **canlı**
 
 ---
 
-## PR-6.6 — Day Doğrulayıcı (`DayValidator`)
+## PR-6.6 — Day Doğrulayıcı (`DayValidator`) ✅ Uygulandı
 
 **Kapsam:**
 - `DayValidator` (plain C#, Unity'siz, unit-testable, **rastgelelik gerektirmez**): (1) bilet-sayısı kontrolü (`ticketSequence.Length == ticketsRequiredForDay`), (2) oynanabilirlik simülasyonu — `boardTimeline`'ı `DayBoardTimelinePlayer` ile aynı deterministik mantıkla adım adım oynatıp (gerçek `BoardDistributor` çağrılmaz) sekansın her noktasında en az bir aktif biletin tamamlanabilir olduğunu doğrular.
@@ -265,6 +265,14 @@ Tasarımcı elle düzenlerken Day'i oynanamaz hale getirebilir — bu **canlı**
 **Bağımlılık:** PR-6 (veri şekli + `DayBoardTimelinePlayer`).
 
 **Kabul kriteri:** Kasıtlı olarak bozuk bir Day (eksik bilet sayısı ya da tamamlanamaz bir adım) testte doğru hata mesajıyla yakalanıyor; geçerli bir Day sorunsuz geçiyor.
+
+**Implementasyon notları:**
+- **Üçüncü bir kontrol de eklendi (roadmap'in PR-6 notunda zaten işaretlenmişti):** `ticketSequence.Length`, `TicketSlotManager`'ın lookahead kuyruk boyutundan (`Math.Max(GameState.TicketSlotCount, TicketGenerationConfig.UpcomingQueueSize)`) kısa olamaz — kısa olursa `DayTicketSequenceProvider.NextTicket()` day başlar başlamaz throw eder. Bu kontrol için `DayValidator.Validate` bir `TicketGenerationConfig` parametresi de alıyor (yalnızca `UpcomingQueueSize` için — `DayEditorMetaJson`'da bu alan hiç override edilemiyor, her zaman base config'ten okunuyor).
+- **Hiçbir yeni asmdef referansı gerekmedi** — `DayValidator.cs` `BoardDistributor`/`TicketFactory`'yi hiç çağırmıyor, sadece `Core`+`Data`'ya bakıyor (zaten `DaySystem`'in referanslarıydı). `UnityEngine`'e bile bağımlı değil — `BoardDistributor.cs`'in kendi "plain C#" konvansiyonuyla aynı.
+- **Board hiç küçülmüyor (silme simülasyonu yok), round-robin aktif-slot penceresi `DayContentGenerator`'la (PR-6.5) aynı desen** — `DayBoardTimelinePlayer`'ın runtime'daki gerçek (katkısal-only) davranışıyla birebir örtüşüyor; bu, en sıkı/en az affedici zamanlama senaryosu olduğu için (round-robin'de oynanabilirse her zaman oynanabilir) doğru bir yaklaşım. `DayContentGenerator`'ın kendi üretim-zamanı teslimat/silme simülasyonu validator'a taşınmadı (kasıtlı asimetri, gerekçesi ayrı).
+- **`RetryVariant` recursive doğrulanıyor**, hata mesajları `"RetryVariant: ..."` önekiyle ayırt ediliyor; tüm kontroller ilk hatada durmadan bağımsız çalışıp `Errors` listesinde birikiyor.
+- **`DayCatalogParser`'a hiç entegre edilmedi** — tamamen PR-7'nin Editor-time "Save" gate'i, çalışma zamanı davranışı/yükleme akışı değişmedi.
+- Test doğrulaması: `DayValidatorTests` (7) — bilet-sayısı, lookahead-açlığı, oynanamaz adım, geçerli Day, `RetryVariant` önekleme, bağımsız çoklu hata testlerinin yanında **çapraz-tutarlılık testi** (`Validate_GeneratedDayIsAlwaysValid`): PR-6.5'in `DayContentGenerator`'ıyla üretilip gerçek JSON round-trip'inden (`JsonUtility.ToJson` → `DayCatalogParser.ParseAll`) geçirilen bir Day, `DayValidator`'dan hatasız geçiyor — generator'ın çıktısının validator'ın kurallarını hep sağladığını kanıtlıyor. Tam EditMode suite (205 test) yeşil, tek istisna bilinen bağımsız flaky `TraySystemTests` testi.
 
 ---
 
