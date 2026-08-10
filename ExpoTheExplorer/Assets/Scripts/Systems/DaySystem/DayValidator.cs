@@ -25,32 +25,25 @@ namespace ExpoTheExplorer.Systems.DaySystem
     // removal only ever happens via player drag-and-drop, which Day data never models).
     public static class DayValidator
     {
-        public static DayValidationResult Validate(DayDefinition day, GameConfig gameConfig, TicketGenerationConfig ticketGenerationConfig)
+        public static DayValidationResult Validate(DayDefinition day, GameConfig gameConfig)
         {
             var errors = new List<string>();
 
             // Locked invariant since PR-1: an authored Day's ticketSequence must exactly
             // cover ticketsRequiredForDay -- no runtime fallback exists for a mismatch.
+            // (A lookahead-buffer-starvation check briefly lived here too, PR-6.6 --
+            // removed once the root cause turned out to be TicketSlotManager's own
+            // now-deleted lookahead buffer, not authored Day content. See TicketSlotManager.cs.)
             if (day.TicketSequence.Count != day.TicketsRequiredForDay)
             {
                 errors.Add($"ticketSequence has {day.TicketSequence.Count} entries but ticketsRequiredForDay is {day.TicketsRequiredForDay}.");
-            }
-
-            // TicketSlotManager fills its lookahead queue to this size the instant the Day
-            // starts (before any ticket is even assigned to a slot) -- a shorter sequence
-            // makes DayTicketSequenceProvider.NextTicket() throw immediately.
-            var lookaheadCount = Math.Max(GameState.TicketSlotCount, ticketGenerationConfig.UpcomingQueueSize);
-            if (day.TicketSequence.Count < lookaheadCount)
-            {
-                errors.Add(
-                    $"ticketSequence has only {day.TicketSequence.Count} entries, fewer than the lookahead queue size ({lookaheadCount}) -- TicketSlotManager would exhaust it and throw before the Day could start.");
             }
 
             errors.AddRange(ValidatePlayability(day, gameConfig));
 
             if (day.RetryVariant != null)
             {
-                var variantResult = Validate(day.RetryVariant, gameConfig, ticketGenerationConfig);
+                var variantResult = Validate(day.RetryVariant, gameConfig);
                 errors.AddRange(variantResult.Errors.Select(e => $"RetryVariant: {e}"));
             }
 

@@ -103,7 +103,7 @@ namespace ExpoTheExplorer.Editor
                 return new DayValidationResult(new List<string> { "Not configured yet -- assign the config assets above." });
             }
 
-            return DayValidator.Validate(ToDayDefinition(), sharedGameConfig, sharedTicketConfig);
+            return DayValidator.Validate(ToDayDefinition(), sharedGameConfig);
         }
 
         [ShowIf(nameof(IsTopLevel)), Button("Save"), EnableIf(nameof(IsValid)), GUIColor(0.4f, 0.85f, 0.4f, 1f)]

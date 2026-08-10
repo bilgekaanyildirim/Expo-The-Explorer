@@ -38,24 +38,10 @@ namespace ExpoTheExplorer.Tests.EditMode
             var boardTimeline = CreateBoardTimelineCoveringEachStep(3);
             var day = new DayDefinition(0, ticketsRequiredForDay: 5, ticketSequence, boardTimeline, retryVariant: null);
 
-            var result = DayValidator.Validate(day, gameConfig, ticketConfig);
+            var result = DayValidator.Validate(day, gameConfig);
 
             Assert.IsFalse(result.IsValid);
             Assert.IsTrue(HasErrorContaining(result, "ticketsRequiredForDay is 5"));
-        }
-
-        [Test]
-        public void Validate_TicketSequenceShorterThanLookahead_ReportsError()
-        {
-            var longLookaheadConfig = CreateTicketGenerationConfig(upcomingQueueSize: 10);
-            var ticketSequence = new List<ResolvedTicketEntry> { CreateEntry(), CreateEntry() };
-            var boardTimeline = CreateBoardTimelineCoveringEachStep(2);
-            var day = new DayDefinition(0, ticketsRequiredForDay: 2, ticketSequence, boardTimeline, retryVariant: null);
-
-            var result = DayValidator.Validate(day, gameConfig, longLookaheadConfig);
-
-            Assert.IsFalse(result.IsValid);
-            Assert.IsTrue(HasErrorContaining(result, "lookahead queue size"));
         }
 
         [Test]
@@ -64,7 +50,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             var ticketSequence = new List<ResolvedTicketEntry> { CreateEntry(), CreateEntry(), CreateEntry() };
             var day = new DayDefinition(0, ticketsRequiredForDay: 3, ticketSequence, new List<ResolvedBoardSpawnEntry>(), retryVariant: null);
 
-            var result = DayValidator.Validate(day, gameConfig, ticketConfig);
+            var result = DayValidator.Validate(day, gameConfig);
 
             Assert.IsFalse(result.IsValid);
             Assert.IsTrue(HasErrorContaining(result, "Step 0:"));
@@ -77,7 +63,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             var boardTimeline = CreateBoardTimelineCoveringEachStep(3);
             var day = new DayDefinition(0, ticketsRequiredForDay: 3, ticketSequence, boardTimeline, retryVariant: null);
 
-            var result = DayValidator.Validate(day, gameConfig, ticketConfig);
+            var result = DayValidator.Validate(day, gameConfig);
 
             CollectionAssert.IsEmpty(result.Errors);
             Assert.IsTrue(result.IsValid);
@@ -111,7 +97,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             var parsed = DayCatalogParser.ParseAll(new[] { new DayJsonFile("test", json) }, catalog);
             var day = parsed[0];
 
-            var validation = DayValidator.Validate(day, gameConfig, ticketConfig);
+            var validation = DayValidator.Validate(day, gameConfig);
 
             CollectionAssert.IsEmpty(validation.Errors);
         }
@@ -125,7 +111,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             var brokenVariant = new DayDefinition(0, ticketsRequiredForDay: 3, validSequence, new List<ResolvedBoardSpawnEntry>(), retryVariant: null);
             var day = new DayDefinition(0, ticketsRequiredForDay: 3, validSequence, validTimeline, retryVariant: brokenVariant);
 
-            var result = DayValidator.Validate(day, gameConfig, ticketConfig);
+            var result = DayValidator.Validate(day, gameConfig);
 
             Assert.IsFalse(result.IsValid);
             Assert.IsTrue(HasErrorContaining(result, "RetryVariant: Step 0:"));
@@ -137,7 +123,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             var ticketSequence = new List<ResolvedTicketEntry> { CreateEntry(), CreateEntry(), CreateEntry() };
             var day = new DayDefinition(0, ticketsRequiredForDay: 5, ticketSequence, new List<ResolvedBoardSpawnEntry>(), retryVariant: null);
 
-            var result = DayValidator.Validate(day, gameConfig, ticketConfig);
+            var result = DayValidator.Validate(day, gameConfig);
 
             Assert.IsTrue(HasErrorContaining(result, "ticketsRequiredForDay is 5"));
             Assert.IsTrue(HasErrorContaining(result, "Step 0:"));

@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using ExpoTheExplorer.Core;
 
 namespace ExpoTheExplorer.Systems.TicketSystem
@@ -9,20 +8,23 @@ namespace ExpoTheExplorer.Systems.TicketSystem
     // has no reference to BoardGrid — timeout never scatters a tray, only a
     // wrong delivery does (that's the future Tray system's job).
     //
-    // Slots are filled from a pre-generated lookahead queue rather than calling
-    // nextTicketProvider on demand — this is what lets BoardDistributor's noise
-    // pool "leak" items from tickets the player hasn't seen yet (GDD Section 4).
-    // Queued-but-not-yet-active tickets are never touched by Tick (it only walks
-    // TicketSlots), so their timers stay frozen until they're dequeued into a slot.
+    // Pulls exactly one ticket from nextTicketProvider() per slot assignment --
+    // used to pre-buffer a lookahead queue instead (bug: fixed 2026-08), so
+    // BoardDistributor's noise pool could "leak" items from tickets the player
+    // hadn't seen yet (GDD Section 4). That buffer became vestigial once the Day
+    // system (PR-6) removed BoardDistributor from the runtime path entirely --
+    // board content is now pre-authored (DayBoardTimelinePlayer), nothing reads
+    // "upcoming" tickets anymore. Worse, the buffer actively broke the Day system:
+    // it made nextTicketProvider() get called lookaheadCount+N times over a day
+    // needing only N tickets, so a fixed-length authored ticketSequence (length
+    // == N, the locked invariant) always ran out immediately. Removed rather than
+    // resized -- nothing needs a lookahead beyond "the ticket about to fill this
+    // slot" anymore.
     public class TicketSlotManager
     {
         private readonly GameState state;
         private readonly Func<Ticket> nextTicketProvider;
         private readonly Action loseLife;
-        private readonly int lookaheadCount;
-        private readonly List<Ticket> upcomingTickets = new();
-
-        public IReadOnlyList<Ticket> UpcomingTickets => upcomingTickets;
 
         // Set once the day's delivery goal is hit (GameManager.OnDayCompleted)
         // so no further ticket ever gets assigned into a slot and Tick stops
@@ -40,12 +42,11 @@ namespace ExpoTheExplorer.Systems.TicketSystem
         // in one place shared with TrayManager's wrong-delivery case, instead
         // of two systems separately decrementing the same field (GDD Section
         // 3/6, CLAUDE.md Section 5 — Lives System).
-        public TicketSlotManager(GameState state, Func<Ticket> nextTicketProvider, Action loseLife, int lookaheadCount = 10)
+        public TicketSlotManager(GameState state, Func<Ticket> nextTicketProvider, Action loseLife)
         {
             this.state = state;
             this.nextTicketProvider = nextTicketProvider;
             this.loseLife = loseLife;
-            this.lookaheadCount = Math.Max(GameState.TicketSlotCount, lookaheadCount);
         }
 
         public void FillEmptySlots()
@@ -94,18 +95,9 @@ namespace ExpoTheExplorer.Systems.TicketSystem
         // still-stale Active tickets in not-yet-processed slots, and
         // BoardDistributor would spawn required-pool items for tickets that
         // are about to be discarded anyway.
-        // Empties the pre-generated lookahead queue -- without this, a Day
-        // transition would keep dequeuing the PREVIOUS Day's already-queued
-        // tickets into the freshly reset slots before generating anything new.
-        public void ClearUpcomingQueue()
-        {
-            upcomingTickets.Clear();
-        }
-
         public void ResetSlotsForNewDay()
         {
             IsDayComplete = false;
-            ClearUpcomingQueue();
 
             for (var i = 0; i < GameState.TicketSlotCount; i++)
             {
@@ -126,26 +118,9 @@ namespace ExpoTheExplorer.Systems.TicketSystem
         {
             if (IsDayComplete) return;
 
-            var ticket = DequeueNextTicket();
+            var ticket = nextTicketProvider();
             state.TicketSlots[slotIndex] = ticket;
             state.TicketAssigned.Publish((slotIndex, ticket));
-        }
-
-        private void EnsureQueueFilled()
-        {
-            while (upcomingTickets.Count < lookaheadCount)
-            {
-                upcomingTickets.Add(nextTicketProvider());
-            }
-        }
-
-        private Ticket DequeueNextTicket()
-        {
-            EnsureQueueFilled();
-            var next = upcomingTickets[0];
-            upcomingTickets.RemoveAt(0);
-            EnsureQueueFilled();
-            return next;
         }
 
         public void Tick(float deltaSeconds)
