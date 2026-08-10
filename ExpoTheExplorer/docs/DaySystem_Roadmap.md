@@ -317,6 +317,24 @@ Tasarımcı elle düzenlerken Day'i oynanamaz hale getirebilir — bu **canlı**
 
 ---
 
+## 🔧 Bugfix (2026-08) — Bilet dizisi, gün "tamamlandı" sinyalinden önce tükeniyor ve oyun crash oluyordu
+
+**Belirti:** Yukarıdaki fungible-item fix'inden sonra yeniden generate edilen bir Day (`ticketsRequiredForDay = 11`) oynanırken şu hata fırlıyordu: `"Day's authored ticketSequence only has 11 entries but ticket #12 was requested."` — 11. bilet gelmeden, oyun daha bitmeden.
+
+**Kök neden:** `TicketSlotManager.AssignTicket`, `nextTicketProvider()`'ı (`DayTicketSequenceProvider.NextTicket()`) her **slot doldurma/yeniden doldurma** olayında çekiyor: gün başında 3 slot için 3 çekiliş (hiçbiri "teslimat" sayılmıyor), sonra her teslimat/timeout için 1 çekiliş daha. Ama `IsDayComplete` bayrağı — bu çekilişleri durduran tek kontrol — `DayLifecycleManager.RecordDelivery()` içinde `TicketsDeliveredToday == ticketsRequiredForDay` (N) olduğunda set ediliyordu, yani **teslimat sayısına** dayalı bir sinyal. N=11, slot sayısı=3 için: 3 başlangıç çekilişi + ilk 8 teslimattan sonraki 8 refill çekilişi = 11 çekiliş (sıra tam bitiyor) — ama henüz sadece 8 teslimat yapılmış, N (11) değil. 9. teslimat anında `AssignTicket` yine çekmeye çalışıyor, sıra boş, crash. **Bu matematiksel olarak `ticketsRequiredForDay > TicketSlotCount` olan HER Day'de oluyordu** (yani pratikte her zaman) — mevcut kodla bir Day'i gerçekten baştan sona bitirmek zaten mümkün değildi. Ayrıca: bir bilet timeout ile iptal olursa hiçbir zaman "teslim edilmiş" sayılmıyordu, yani `TicketsDeliveredToday` hiçbir timeout'lu günde N'e ulaşamazdı — sıra tükendikten sonra kalan biletler teslim edilse bile gün hiçbir zaman "bitti" sinyalini vermeyecek, oyun boş slotlarla askıda kalacaktı (crash'in kendisi çözülse bile).
+
+**Düzeltme — "gün tamamlandı" sinyali teslimat sayısından bağımsızlaştırıldı, sıra tükenmesine bağlandı:**
+- **`DayTicketSequenceProvider.cs`**: yeni `HasNext` property (`cursor < ticketSequence.Count`) — çağıranlar `NextTicket()`'i çağırmadan önce sıranın bitip bitmediğini sorabiliyor. `NextTicket()`'in kendisi değişmedi, hâlâ throw ediyor (artık sadece "çağıran `HasNext`'i kontrol etmedi" durumunda tetiklenecek bir savunma invariant'ı).
+- **`GameManager.cs`**: `CreateNextTicket()` artık sıra tükendiyse `throw` etmek yerine `null` döndürüyor. `OnTicketAssigned(...)` artık `null` bilet için board timeline oynatımını atlıyor (`TrayManager.OnTicketAssigned` zaten sadece `slotIndex`'e bakıyor, ticket'ı okumuyor — null-safe, değişmedi). `OnDayCompleted`'in `TicketSlotManager.PauseForDayComplete()` çağrısı kalktı — artık `TicketSlotManager` bunu kendi kendine set ediyor.
+- **`TicketSlotManager.cs` — asıl düzeltme**: `AssignTicket`, provider'dan `null` gelirse slotu boş bırakıyor (atama zaten otomatik yapıyor bunu) ve **o an tüm 3 slot da boşsa** günü tamamlanmış ilan ediyor: `IsDayComplete = true` + `state.DayCompleted.Publish(state.TicketsDeliveredToday)`. Bu, hangi sebeple (teslim ya da timeout) slotların boşaldığından bağımsız — sadece "sıra bitti + kimse aktif değil" diye bakıyor.
+- **`DayLifecycleManager.cs`**: artık anlamsızlaşan `getTicketsRequiredForDay` delegate'i ve onu kullanan tamamlanma kontrolü tamamen kaldırıldı (Bug 1'deki presedente göre — vestigial kodu silmek, etrafında dolaşmamak). Sınıf artık sadece `TicketsDeliveredToday` sayacını tutuyor (`RecordDelivery`/`ResetForNewDay`), tamamlanma sinyali vermiyor.
+- Yeni/güncellenen testler: `TicketSystemTests.AssignTicket_ProviderReturnsNull_LeavesSlotEmptyWithoutThrowing`, `DeliverTicket_SequenceExhaustedAndAllSlotsEmpty_SetsIsDayCompleteAndPublishesDayCompleted`, `DeliverTicket_OneTicketTimesOutInsteadOfDelivered_DayStillCompletesOnceSequenceExhausted` (artık geçersiz öncüle dayanan `DeliverTicket_WhenDayCompletedEventFires_StopsRefillingThatSlot` kaldırıldı); `DayTicketSlotManagerIntegrationTests.FullDayLifecycle_AllTicketsDeliveredIncludingFinalSlots_CompletesDayWithoutThrowing` (eski entegrasyon testi sadece `N - TicketSlotCount` teslimat yapıp duruyordu — tam günü hiç bitirmiyordu, bu yanlış güven veriyordu; yeni test gerçek `DayContentGenerator`+`DayLifecycleManager` ile tam N teslimatı uçtan uca sürüyor); `DayLifecycleManagerTests.cs` artık var olmayan goal-tabanlı davranışı test eden 3 testi kaybetti, yerine `RecordDelivery_IncrementsCounter` + `RecordDelivery_NeverPublishesDayCompleted` geldi.
+- Tam EditMode suite (215 test) yeşil, tek istisna bilinen bağımsız flaky `TraySystemTests` testi.
+
+**Not:** Bu fix, `day_00.json`'ın kendisine dokunmuyor (JSON içeriği hâlâ geçerli) — sadece runtime davranışını düzeltiyor. Fungible-item fix'i sonrası regenerate edilmiş olan `day_00.json` artık baştan sona oynanabilir olmalı.
+
+---
+
 ## PR-7 — Day Editor (`EditorWindow`) — JSON'un biricik düzenleme arayüzü ✅ Uygulandı
 
 **Kapsam:**

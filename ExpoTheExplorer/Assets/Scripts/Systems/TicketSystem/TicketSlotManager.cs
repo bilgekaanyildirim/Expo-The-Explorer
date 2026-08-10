@@ -26,10 +26,18 @@ namespace ExpoTheExplorer.Systems.TicketSystem
         private readonly Func<Ticket> nextTicketProvider;
         private readonly Action loseLife;
 
-        // Set once the day's delivery goal is hit (GameManager.OnDayCompleted)
-        // so no further ticket ever gets assigned into a slot and Tick stops
-        // counting down the ones still active -- cleared again by
-        // ResetSlotsForNewDay, the existing retry entry point.
+        // Set once the Day's authored ticket sequence is exhausted AND every
+        // slot it fed has resolved (delivered or cancelled) -- see AssignTicket.
+        // Deliberately NOT keyed to a delivery-count goal (bug: fixed 2026-08):
+        // nextTicketProvider() is asked for one ticket per slot fill (3 at day
+        // start, one more per resolution after that), so the sequence always
+        // runs out a few resolutions before a "deliver N times" goal could ever
+        // be reached, and a timed-out ticket never counts as delivered at all --
+        // keying completion to deliveries made the day literally uncompletable.
+        // Once true, no further ticket ever gets assigned into a slot and Tick
+        // stops counting down the ones still active (there are none, by
+        // construction) -- cleared again by ResetSlotsForNewDay, the existing
+        // retry entry point.
         public bool IsDayComplete { get; private set; }
 
         public void PauseForDayComplete()
@@ -113,7 +121,12 @@ namespace ExpoTheExplorer.Systems.TicketSystem
         // Publishes TicketAssigned with the slot index + NEW ticket — this is
         // what lets BoardDistributor spawn that order's required items and
         // TrayManager clear that slot's tray, right when the order arrives,
-        // rather than polling every frame.
+        // rather than polling every frame. nextTicketProvider() returns null
+        // once the Day's sequence is exhausted (GameManager.CreateNextTicket) --
+        // the slot just stays empty (UI already renders that, TicketCardView.
+        // RebuildContent). The Day is only truly over once that's true for
+        // every slot at once: whichever resolution (delivery or cancellation)
+        // empties the LAST still-active slot is what fires DayCompleted here.
         private void AssignTicket(int slotIndex)
         {
             if (IsDayComplete) return;
@@ -121,6 +134,21 @@ namespace ExpoTheExplorer.Systems.TicketSystem
             var ticket = nextTicketProvider();
             state.TicketSlots[slotIndex] = ticket;
             state.TicketAssigned.Publish((slotIndex, ticket));
+
+            if (ticket == null && AllSlotsEmpty())
+            {
+                IsDayComplete = true;
+                state.DayCompleted.Publish(state.TicketsDeliveredToday);
+            }
+        }
+
+        private bool AllSlotsEmpty()
+        {
+            for (var i = 0; i < GameState.TicketSlotCount; i++)
+            {
+                if (state.TicketSlots[i] != null) return false;
+            }
+            return true;
         }
 
         public void Tick(float deltaSeconds)

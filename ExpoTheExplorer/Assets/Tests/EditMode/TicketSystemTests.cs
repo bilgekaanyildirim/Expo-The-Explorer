@@ -404,25 +404,64 @@ namespace ExpoTheExplorer.Tests.EditMode
         }
 
         [Test]
-        public void DeliverTicket_WhenDayCompletedEventFires_StopsRefillingThatSlot()
+        public void AssignTicket_ProviderReturnsNull_LeavesSlotEmptyWithoutThrowing()
         {
             var state = new GameState(gameConfig);
-            var manager = CreateManager(state);
-            manager.FillEmptySlots();
-            var original = state.TicketSlots[0];
+            var manager = CreateManager(state, () => null);
 
-            var dayLifecycle = new DayLifecycleManager(state, () => 1);
-            state.TicketDelivered.Subscribe(_ => dayLifecycle.RecordDelivery());
-            state.DayCompleted.Subscribe(_ => manager.PauseForDayComplete());
+            Assert.DoesNotThrow(() => manager.FillEmptySlots());
 
-            var assignedCount = 0;
-            state.TicketAssigned.Subscribe(_ => assignedCount++);
+            Assert.IsNull(state.TicketSlots[0]);
+            Assert.IsNull(state.TicketSlots[1]);
+            Assert.IsNull(state.TicketSlots[2]);
+        }
+
+        [Test]
+        public void DeliverTicket_SequenceExhaustedAndAllSlotsEmpty_SetsIsDayCompleteAndPublishesDayCompleted()
+        {
+            var state = new GameState(gameConfig);
+            var callCount = 0;
+            var manager = CreateManager(state, () => callCount++ < GameState.TicketSlotCount ? CreateSimpleTicket() : null);
+            manager.FillEmptySlots(); // consumes all 3 -- provider is now exhausted
+
+            var dayCompletedCount = 0;
+            state.DayCompleted.Subscribe(_ => dayCompletedCount++);
 
             manager.DeliverTicket(0);
+            Assert.IsFalse(manager.IsDayComplete);
+            manager.DeliverTicket(1);
+            Assert.IsFalse(manager.IsDayComplete);
+            manager.DeliverTicket(2); // last active slot resolves -> all empty -> day complete
 
             Assert.IsTrue(manager.IsDayComplete);
-            Assert.AreEqual(0, assignedCount);
-            Assert.AreSame(original, state.TicketSlots[0]);
+            Assert.AreEqual(1, dayCompletedCount);
+            Assert.IsNull(state.TicketSlots[0]);
+            Assert.IsNull(state.TicketSlots[1]);
+            Assert.IsNull(state.TicketSlots[2]);
+        }
+
+        [Test]
+        public void DeliverTicket_OneTicketTimesOutInsteadOfDelivered_DayStillCompletesOnceSequenceExhausted()
+        {
+            var state = new GameState(gameConfig);
+            var callCount = 0;
+            var manager = CreateManager(state, () => callCount++ < GameState.TicketSlotCount ? CreateSimpleTicket() : null);
+            manager.FillEmptySlots(); // consumes all 3 -- provider is now exhausted
+
+            var dayLifecycle = new DayLifecycleManager(state);
+            state.TicketDelivered.Subscribe(_ => dayLifecycle.RecordDelivery());
+
+            var dayCompletedCount = 0;
+            state.DayCompleted.Subscribe(_ => dayCompletedCount++);
+
+            manager.DeliverTicket(0);
+            manager.CancelTicket(1); // e.g. a timeout -- never counted as a delivery
+            Assert.IsFalse(manager.IsDayComplete);
+            manager.DeliverTicket(2);
+
+            Assert.IsTrue(manager.IsDayComplete);
+            Assert.AreEqual(1, dayCompletedCount);
+            Assert.AreEqual(2, state.TicketsDeliveredToday);
         }
 
         [Test]

@@ -20,9 +20,14 @@ namespace ExpoTheExplorer.Systems.DaySystem
             this.ticketFactory = ticketFactory;
         }
 
+        // Callers must check this before calling NextTicket() -- a finite Day's sequence
+        // WILL run out mid-day (TicketSlotManager.AssignTicket relies on this, see its
+        // 2026-08 bugfix notes), that's expected and not an authoring bug.
+        public bool HasNext => cursor < ticketSequence.Count;
+
         // No fallback: ticketSequence.Count must equal the Day's ticketsRequiredForDay
-        // (enforced by DayValidator, PR-6.6, before the Day is ever saved) -- running
-        // past the end means that guarantee was violated, an authoring bug.
+        // (enforced by DayValidator, PR-6.6, before the Day is ever saved). Reaching this
+        // without checking HasNext first is a caller bug, not an authoring one.
         public Ticket NextTicket()
         {
             var index = cursor;

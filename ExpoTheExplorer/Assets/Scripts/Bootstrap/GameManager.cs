@@ -77,7 +77,7 @@ namespace ExpoTheExplorer.Bootstrap
             TrayManager = new TrayManager(State, slotIndex => TicketSlotManager.DeliverTicket(slotIndex), LivesManager.LoseLife);
             economyCalculator = new EconomyCalculator(economyConfig);
             dayCatalog = DayCatalogParser.ParseAll(new DayJsonSource().LoadAll(), foodCatalog);
-            dayLifecycleManager = new DayLifecycleManager(State, () => CurrentDay?.TicketsRequiredForDay ?? gameConfig.TicketsRequiredPerDay);
+            dayLifecycleManager = new DayLifecycleManager(State);
             RefreshDayTicketSequenceProvider();
             LevelManager = new LevelManager(State, levelProgressionConfig, PlayerProfileStore, profile);
 
@@ -125,7 +125,12 @@ namespace ExpoTheExplorer.Bootstrap
                 throw new InvalidOperationException("No Day loaded -- board playback requires an authored Day (PR-7).");
             }
 
-            DayBoardTimelinePlayer.ApplyForStep(State.Board, CurrentDay.BoardTimeline, assignment.Ticket.ArrivalSequence);
+            // Ticket is null once the Day's authored sequence is exhausted -- the slot is
+            // just left empty (TicketSlotManager.AssignTicket), nothing to play back.
+            if (assignment.Ticket != null)
+            {
+                DayBoardTimelinePlayer.ApplyForStep(State.Board, CurrentDay.BoardTimeline, assignment.Ticket.ArrivalSequence);
+            }
             TrayManager.OnTicketAssigned(assignment.SlotIndex);
         }
 
@@ -146,11 +151,12 @@ namespace ExpoTheExplorer.Bootstrap
         // The day's Xp/Level gains become permanent the instant the daily goal
         // is reached (GDD Section 10/11) -- Continue never fires DayCompleted
         // or DayRetried, only a real Retry does, so currency-continue
-        // correctly leaves earned XP untouched either way.
+        // correctly leaves earned XP untouched either way. TicketSlotManager
+        // already set IsDayComplete itself before publishing this (see its
+        // AssignTicket) -- nothing left to pause here.
         private void OnDayCompleted(int _)
         {
             LevelManager.CommitProgress();
-            TicketSlotManager.PauseForDayComplete();
         }
 
         // Wipes this attempt's Xp/Level gains back to the last commit (CLAUDE.md
@@ -226,7 +232,11 @@ namespace ExpoTheExplorer.Bootstrap
             {
                 throw new InvalidOperationException("No Day loaded -- ticket generation requires an authored Day (PR-7).");
             }
-            return dayTicketSequenceProvider.NextTicket();
+
+            // A Day's authored sequence is finite and WILL run out mid-day (see
+            // TicketSlotManager.AssignTicket) -- null tells it to leave that slot empty
+            // instead of trying (and failing) to draw one more.
+            return dayTicketSequenceProvider.HasNext ? dayTicketSequenceProvider.NextTicket() : null;
         }
 
         // Re-pointed every time CurrentDay could have changed (Awake, RetryDay,
