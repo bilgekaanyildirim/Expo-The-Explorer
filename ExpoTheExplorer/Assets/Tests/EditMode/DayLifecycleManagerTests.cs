@@ -2,7 +2,6 @@ using ExpoTheExplorer.Core;
 using ExpoTheExplorer.Data;
 using ExpoTheExplorer.Systems.DayLifecycle;
 using NUnit.Framework;
-using UnityEditor;
 using UnityEngine;
 
 namespace ExpoTheExplorer.Tests.EditMode
@@ -23,87 +22,43 @@ namespace ExpoTheExplorer.Tests.EditMode
             Object.DestroyImmediate(gameConfig);
         }
 
-        private void SetTicketsRequiredPerDay(int count)
+        [Test]
+        public void RecordDelivery_IncrementsCounter()
         {
-            var serialized = new SerializedObject(gameConfig);
-            serialized.FindProperty("ticketsRequiredPerDay").intValue = count;
-            serialized.ApplyModifiedPropertiesWithoutUndo();
+            var state = new GameState(gameConfig);
+            var manager = new DayLifecycleManager(state);
+
+            manager.RecordDelivery();
+            manager.RecordDelivery();
+
+            Assert.AreEqual(2, state.TicketsDeliveredToday);
         }
 
+        // Day completion is now TicketSlotManager's job (sequence exhaustion + all
+        // slots empty, see its AssignTicket) -- a delivery-count goal here would
+        // never fire once a single ticket was lost to a timeout instead of being
+        // delivered (bug: fixed 2026-08).
         [Test]
-        public void RecordDelivery_BelowGoal_IncrementsCounter_DoesNotPublishDayCompleted()
+        public void RecordDelivery_NeverPublishesDayCompleted()
         {
-            SetTicketsRequiredPerDay(3);
             var state = new GameState(gameConfig);
-            var manager = new DayLifecycleManager(state, () => gameConfig.TicketsRequiredPerDay);
+            var manager = new DayLifecycleManager(state);
 
             var published = false;
             state.DayCompleted.Subscribe(_ => published = true);
 
             manager.RecordDelivery();
             manager.RecordDelivery();
+            manager.RecordDelivery();
 
-            Assert.AreEqual(2, state.TicketsDeliveredToday);
             Assert.IsFalse(published);
-        }
-
-        [Test]
-        public void RecordDelivery_ReachesGoalExactly_PublishesDayCompletedWithCount()
-        {
-            SetTicketsRequiredPerDay(3);
-            var state = new GameState(gameConfig);
-            var manager = new DayLifecycleManager(state, () => gameConfig.TicketsRequiredPerDay);
-
-            int? published = null;
-            state.DayCompleted.Subscribe(count => published = count);
-
-            manager.RecordDelivery();
-            manager.RecordDelivery();
-            manager.RecordDelivery();
-
-            Assert.AreEqual(3, published);
-        }
-
-        [Test]
-        public void RecordDelivery_PastGoal_DoesNotPublishDayCompletedAgain()
-        {
-            SetTicketsRequiredPerDay(1);
-            var state = new GameState(gameConfig);
-            var manager = new DayLifecycleManager(state, () => gameConfig.TicketsRequiredPerDay);
-
-            var publishCount = 0;
-            state.DayCompleted.Subscribe(_ => publishCount++);
-
-            manager.RecordDelivery();
-            manager.RecordDelivery();
-            manager.RecordDelivery();
-
-            Assert.AreEqual(1, publishCount);
-        }
-
-        [Test]
-        public void RecordDelivery_UsesInjectedDelegate_IndependentOfGameConfig()
-        {
-            // gameConfig defaults ticketsRequiredPerDay to 10 -- deliberately left
-            // untouched here to prove the delegate, not GameConfig, drives the goal.
-            var state = new GameState(gameConfig);
-            var manager = new DayLifecycleManager(state, () => 2);
-
-            int? published = null;
-            state.DayCompleted.Subscribe(count => published = count);
-
-            manager.RecordDelivery();
-            Assert.IsNull(published);
-            manager.RecordDelivery();
-
-            Assert.AreEqual(2, published);
         }
 
         [Test]
         public void ResetForNewDay_ResetsCounterToZero()
         {
             var state = new GameState(gameConfig);
-            var manager = new DayLifecycleManager(state, () => gameConfig.TicketsRequiredPerDay);
+            var manager = new DayLifecycleManager(state);
             manager.RecordDelivery();
             manager.RecordDelivery();
 

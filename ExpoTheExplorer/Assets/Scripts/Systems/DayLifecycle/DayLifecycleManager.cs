@@ -1,31 +1,23 @@
-using System;
 using ExpoTheExplorer.Core;
 
 namespace ExpoTheExplorer.Systems.DayLifecycle
 {
+    // Delivery bookkeeping only -- "Day complete" itself is decided by
+    // TicketSlotManager (bug: fixed 2026-08), not by a delivery-count goal
+    // here. A timed-out ticket never increments this counter, so a goal-based
+    // check would never fire once even one ticket was lost to a timeout.
     public class DayLifecycleManager
     {
         private readonly GameState state;
-        private readonly Func<int> getTicketsRequiredForDay;
 
-        public DayLifecycleManager(GameState state, Func<int> getTicketsRequiredForDay)
+        public DayLifecycleManager(GameState state)
         {
             this.state = state;
-            this.getTicketsRequiredForDay = getTicketsRequiredForDay;
         }
 
-        // == not >=: TicketsDeliveredToday only ever increments by exactly 1,
-        // from exactly one call site (GameManager.OnTicketDelivered), so it can
-        // never skip past the exact goal value -- this guarantees DayCompleted
-        // fires exactly once per day, not once per delivery for every delivery
-        // at or past the goal.
         public void RecordDelivery()
         {
             state.TicketsDeliveredToday++;
-            if (state.TicketsDeliveredToday == getTicketsRequiredForDay())
-            {
-                state.DayCompleted.Publish(state.TicketsDeliveredToday);
-            }
         }
 
         public void ResetForNewDay()

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using ExpoTheExplorer.Core;
 using ExpoTheExplorer.Data;
+using ExpoTheExplorer.Systems.DayLifecycle;
 using ExpoTheExplorer.Systems.DaySystem;
 using ExpoTheExplorer.Systems.TicketSystem;
 using NUnit.Framework;
@@ -104,6 +105,67 @@ namespace ExpoTheExplorer.Tests.EditMode
             // The authored sequence really does have exactly N entries -- nothing left over,
             // nothing missing.
             Assert.Throws<InvalidOperationException>(() => sequenceProvider.NextTicket());
+        }
+
+        // Regression coverage for a second bug the above test's own narrower scope let slip
+        // through: it never delivered the FINAL 3 tickets sitting in slots, and never wired
+        // DayLifecycleManager, so it never proved a full day (all N tickets resolved) actually
+        // completes. It didn't -- TicketSlotManager.AssignTicket used to gate on a
+        // delivery-count goal that the sequence-exhaustion math could never let it reach (fixed
+        // 2026-08). This test drives every one of the N deliveries, through the same
+        // TicketDelivered -> DayLifecycleManager.RecordDelivery wiring GameManager uses, and
+        // proves the day reaches IsDayComplete/DayCompleted without ever throwing.
+        [Test]
+        public void FullDayLifecycle_AllTicketsDeliveredIncludingFinalSlots_CompletesDayWithoutThrowing()
+        {
+            const int ticketsRequiredForDay = 11;
+
+            var result = DayContentGenerator.Generate(catalog, gameConfig, ticketConfig, boardConfig, null, ticketsRequiredForDay, seed: 1);
+            Assert.AreEqual(ticketsRequiredForDay, result.TicketSequence.Length);
+
+            var dayJson = new DayJson
+            {
+                runtime = new DayRuntimeJson
+                {
+                    dayIndex = 0,
+                    ticketsRequiredForDay = ticketsRequiredForDay,
+                    ticketSequence = result.TicketSequence,
+                    boardTimeline = result.BoardTimeline,
+                    hasRetryVariant = false,
+                    retryVariant = null,
+                },
+            };
+            var json = JsonUtility.ToJson(dayJson);
+            var parsed = DayCatalogParser.ParseAll(new[] { new DayJsonFile("test", json) }, catalog);
+            var day = parsed[0];
+
+            var sequenceProvider = new DayTicketSequenceProvider(day.TicketSequence, ticketConfig, new TicketFactory(ticketConfig, new System.Random(1)));
+            Ticket NextOrNull() => sequenceProvider.HasNext ? sequenceProvider.NextTicket() : null;
+
+            var state = new GameState(gameConfig);
+            var slotManager = new TicketSlotManager(state, NextOrNull, () => { });
+            var dayLifecycle = new DayLifecycleManager(state);
+            state.TicketDelivered.Subscribe(_ => dayLifecycle.RecordDelivery());
+
+            var dayCompletedCount = 0;
+            state.DayCompleted.Subscribe(_ => dayCompletedCount++);
+
+            Assert.DoesNotThrow(() =>
+            {
+                slotManager.FillEmptySlots();
+                for (var i = 0; i < ticketsRequiredForDay; i++)
+                {
+                    slotManager.DeliverTicket(i % GameState.TicketSlotCount);
+                }
+            });
+
+            Assert.IsTrue(slotManager.IsDayComplete);
+            Assert.AreEqual(1, dayCompletedCount);
+            Assert.AreEqual(ticketsRequiredForDay, state.TicketsDeliveredToday);
+            for (var i = 0; i < GameState.TicketSlotCount; i++)
+            {
+                Assert.IsNull(state.TicketSlots[i]);
+            }
         }
 
         private FoodItemConfig CreateFoodItem(string id)
