@@ -3,7 +3,8 @@
     "rootNamespace": "ExpoTheExplorer.Editor",
     "references": [
         "ExpoTheExplorer.Data",
-        "ExpoTheExplorer.Core"
+        "ExpoTheExplorer.Core",
+        "ExpoTheExplorer.Systems.DaySystem"
     ],
     "includePlatforms": [
         "Editor"
