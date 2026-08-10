@@ -11,19 +11,28 @@ namespace ExpoTheExplorer.Systems.DaySystem
         public IReadOnlyList<ResolvedTicketEntry> TicketSequence { get; }
         public IReadOnlyList<ResolvedBoardSpawnEntry> BoardTimeline { get; }
         public DayDefinition RetryVariant { get; }
+        public int Star1Threshold { get; }
+        public int Star2Threshold { get; }
+        public int Star3Threshold { get; }
 
         public DayDefinition(
             int dayIndex,
             int ticketsRequiredForDay,
             IReadOnlyList<ResolvedTicketEntry> ticketSequence,
             IReadOnlyList<ResolvedBoardSpawnEntry> boardTimeline,
-            DayDefinition retryVariant)
+            DayDefinition retryVariant,
+            int star1Threshold = 0,
+            int star2Threshold = 0,
+            int star3Threshold = 0)
         {
             DayIndex = dayIndex;
             TicketsRequiredForDay = ticketsRequiredForDay;
             TicketSequence = ticketSequence;
             BoardTimeline = boardTimeline;
             RetryVariant = retryVariant;
+            Star1Threshold = star1Threshold;
+            Star2Threshold = star2Threshold;
+            Star3Threshold = star3Threshold;
         }
     }
 

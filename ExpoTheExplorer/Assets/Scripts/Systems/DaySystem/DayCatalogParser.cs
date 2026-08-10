@@ -84,7 +84,8 @@ namespace ExpoTheExplorer.Systems.DaySystem
                 retryVariant = ResolveDay(runtime.retryVariant, catalog, $"{fileName} (retryVariant)");
             }
 
-            return new DayDefinition(runtime.dayIndex, runtime.ticketsRequiredForDay, ticketSequence, boardTimeline, retryVariant);
+            return new DayDefinition(runtime.dayIndex, runtime.ticketsRequiredForDay, ticketSequence, boardTimeline, retryVariant,
+                runtime.star1Threshold, runtime.star2Threshold, runtime.star3Threshold);
         }
 
         private static ResolvedTicketEntry ResolveTicketEntry(TicketEntryJson entry, FoodCatalog catalog, string fileName)

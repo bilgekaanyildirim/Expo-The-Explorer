@@ -4,6 +4,7 @@ using ExpoTheExplorer.Core;
 using ExpoTheExplorer.Data;
 using ExpoTheExplorer.Systems.DayLifecycle;
 using ExpoTheExplorer.Systems.DaySystem;
+using ExpoTheExplorer.Systems.EconomySystem;
 using ExpoTheExplorer.Systems.TicketSystem;
 using NUnit.Framework;
 using UnityEditor;
@@ -145,7 +146,8 @@ namespace ExpoTheExplorer.Tests.EditMode
             var state = new GameState(gameConfig);
             var slotManager = new TicketSlotManager(state, NextOrNull, () => { });
             var dayLifecycle = new DayLifecycleManager(state);
-            state.TicketDelivered.Subscribe(_ => dayLifecycle.RecordDelivery());
+            var sampleTip = new DeliveryTipResult(baseTip: 10f, speedTier: SpeedTier.Standard, speedMultiplier: 1f, patienceDecayCoefficient: 1f);
+            state.TicketDelivered.Subscribe(_ => dayLifecycle.RecordDelivery(sampleTip));
 
             var dayCompletedCount = 0;
             state.DayCompleted.Subscribe(_ => dayCompletedCount++);
