@@ -298,6 +298,25 @@ Tasarımcı elle düzenlerken Day'i oynanamaz hale getirebilir — bu **canlı**
 
 ---
 
+## 🔧 Bugfix (2026-08) — Fungible (modifikasyonsuz) itemlar bir Day'in tamamı için yetersiz üretiliyordu
+
+**Belirti:** Day Editor'da "Generate" ile üretilen bir Day (yukarıdaki lookahead-buffer fix'inden sonra artık crash olmadan) oynanabilir hâle geldi, ama ilerleyen bir noktada tıkanıyordu — aktif 3 biletin hiçbiri board'daki mevcut itemlarla tamamlanamıyordu (örn. bütün biletler `extra_patty`+side istiyor ama board'da hiç fries, hiç extra-pattyli burger yok).
+
+**Kök neden:** `DayContentGenerator`'ın ana üretim döngüsü her adımda `BoardDistributor.OnOrderPlaced`'i çağırıyor, bu da sadece **o anda garanti edilen** bilet(ler)in (`GuaranteedTicketCount`, varsayılan 1) ihtiyacını karşılıyor — günün **tamamı** boyunca aynı `RequiredItemKey`'i (aynı item + aynı modifikasyon kombinasyonu — modifikasyonsuz side/drink'ler için bu her zaman aynı key) isteyecek **kaç bilet daha** geleceğinden habersiz. Board'da o key'den zaten bir tane duruyorsa, `presentCount` per-call kontrolünü karşılıyor ve yenisi eklenmiyor — ama gerçek oynanışta o item çoktan başka bir bilet tarafından teslim edilmiş/tüketilmiş oluyor. Sonuç: aynı key'i isteyen ardışık biletler arttıkça arz asla yetişmiyor.
+
+**Bu bug'ın `DayValidator`'da (PR-6.6) hiç yakalanamamasının nedeni:** O zamanki oynanabilirlik kontrolü "board hiç küçülmez" varsayımına dayanıyordu — bu, **en cömert** arz senaryosuydu (gerçek oynanıştaki tüketimi hiç modellemiyordu), en sıkı senaryo değil. Bu yanlış çıkarım yüzünden kontrol, kümülatif talebin arzı aştığı hiçbir durumu tespit edemiyordu.
+
+**Düzeltme:**
+- **Yeni `DaySolvabilityChecker.cs`**: board/hücre simülasyonu gerektirmeyen, sayım-tabanlı bir çözülebilirlik kontrolü. Round-robin teslimat sırası kesinlikle sıralı olduğundan (bilet `i` en geç adım `min(i + TicketSlotCount, N-1)`'de teslim edilir), her `RequiredItemKey`'i isteyen j'inci bilet (varış sırasına göre) için, kendi deadline'ına kadar en az `j+1` birim o key'in üretilmiş olması gerekiyor. `FindShortfalls(ticketSequence, boardTimeline)` bunu ihlal eden her (bilet, key) çiftini döndürüyor.
+- **`DayContentGenerator.cs`**: ana üretim döngüsü (zorluk ayarlarını etkileyen kısım) hiç değişmedi. Döngü bittikten sonra yeni bir onarım geçişi (`EnsureSolvable`) eklendi: `DaySolvabilityChecker.FindShortfalls` boş dönene kadar, en erken shortfall'ı, ilgili biletin kendi varış adımında (`DayBoardTimelinePlayer`/`BoardGrid` primitiflerini kullanarak bulunan ilk boş hücreye) bir `boardTimeline` girdisi ekleyerek kapatıyor. `ticketSequence.Length == ticketsRequiredForDay` invariantı değişmedi — sadece `boardTimeline` büyüyebiliyor. Bu onarım geçişinin hücre bulma mantığı, gerçek teslimat sırasında item'ların kaldırılmasını simüle ETMİYOR (additive-only replay) — bu yüzden çok küçük bir board'da çok uzun bir Day'in sonlarına doğru bir shortfall'ı onaramayabilir; bu durumda sessizce atlamak yerine `Warnings`'e "board is full at that point" mesajı düşüyor (bilinen, kabul edilmiş bir sınır — otomatik büyütme/yer açma bu PR'ın kapsamında değil).
+- **`DayValidator.cs`**: eski "board hiç küçülmez" simülasyonu (`ValidatePlayability`/`IsCompletable`/`BoardHasMatch`) tamamen kaldırıldı, yerine `DaySolvabilityChecker.FindShortfalls` kullanılıyor. `Validate`'in imzası artık sadece `Validate(DayDefinition day)` — `GameConfig` parametresine hiç ihtiyaç kalmadı (board simülasyonu tamamen kalktığı için).
+- Yeni testler: `DaySolvabilityCheckerTests.cs` (4 test — yeterli arz, fungible-undersupply, deadline sınırı, modifikasyonlu Main çakışması) + `DayContentGeneratorTests.Generate_ManyTicketsNeedingSameSideItem_NeverUndersuppliesFungibleItems` + `DayValidatorTests.Validate_FungibleItemUndersupply_ReportsShortfallForLaterTickets`.
+- Tam EditMode suite (214 test) yeşil, tek istisna bilinen bağımsız flaky `TraySystemTests` testi.
+
+**Not:** Bu fix'ten önce üretilmiş herhangi bir Day JSON'u (örn. kullanıcının kendi elle üretip test ettiği `day_00.json`) bu düzeltmeden faydalanmıyor — Day Editor'da tekrar **"Generate"** ile yeniden üretilmesi gerekiyor.
+
+---
+
 ## PR-7 — Day Editor (`EditorWindow`) — JSON'un biricik düzenleme arayüzü ✅ Uygulandı
 
 **Kapsam:**
