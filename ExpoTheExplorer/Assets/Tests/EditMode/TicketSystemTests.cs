@@ -48,9 +48,9 @@ namespace ExpoTheExplorer.Tests.EditMode
         // cancel on timeout), not LivesSystem, so a plain state.Lives--
         // keeps existing assertions on state.Lives valid without depending
         // on the real LivesManager implementation.
-        private TicketSlotManager CreateManager(GameState state, Func<Ticket> provider = null, int lookaheadCount = 10)
+        private TicketSlotManager CreateManager(GameState state, Func<Ticket> provider = null)
         {
-            return new TicketSlotManager(state, provider ?? (() => CreateSimpleTicket()), () => state.Lives--, lookaheadCount);
+            return new TicketSlotManager(state, provider ?? (() => CreateSimpleTicket()), () => state.Lives--);
         }
 
         private FoodItemConfig CreateFoodItem(FoodCategory category, List<ModificationConfig> availableModifications = null)
@@ -160,46 +160,6 @@ namespace ExpoTheExplorer.Tests.EditMode
             manager.FillEmptySlots();
 
             Assert.IsTrue(state.TicketSlots.All(t => t != null));
-        }
-
-        [Test]
-        public void FillEmptySlots_PreGeneratesLookaheadQueue_OfConfiguredSize()
-        {
-            var state = new GameState(gameConfig);
-            var manager = CreateManager(state, lookaheadCount: 5);
-
-            manager.FillEmptySlots();
-
-            Assert.AreEqual(5, manager.UpcomingTickets.Count);
-        }
-
-        [Test]
-        public void DeliverTicket_DequeuesFromLookaheadQueue_AndRefillsBackToConfiguredSize()
-        {
-            var state = new GameState(gameConfig);
-            var manager = CreateManager(state, lookaheadCount: 5);
-            manager.FillEmptySlots();
-            var queuedTicket = manager.UpcomingTickets[0];
-
-            manager.DeliverTicket(0);
-
-            Assert.AreEqual(5, manager.UpcomingTickets.Count);
-            Assert.AreSame(queuedTicket, state.TicketSlots[0]);
-            Assert.IsFalse(manager.UpcomingTickets.Contains(queuedTicket));
-        }
-
-        [Test]
-        public void UpcomingTickets_NeverContainsAnyActiveSlotTicket()
-        {
-            var state = new GameState(gameConfig);
-            var manager = CreateManager(state, lookaheadCount: 5);
-
-            manager.FillEmptySlots();
-
-            foreach (var activeTicket in state.TicketSlots)
-            {
-                Assert.IsFalse(manager.UpcomingTickets.Contains(activeTicket));
-            }
         }
 
         [Test]
@@ -390,31 +350,6 @@ namespace ExpoTheExplorer.Tests.EditMode
             manager.ResetSlotsForNewDay();
 
             Assert.IsFalse(sawStaleTicket);
-        }
-
-        [Test]
-        public void ClearUpcomingQueue_EmptiesTheQueue()
-        {
-            var state = new GameState(gameConfig);
-            var manager = CreateManager(state, lookaheadCount: 5);
-            manager.FillEmptySlots();
-
-            manager.ClearUpcomingQueue();
-
-            Assert.AreEqual(0, manager.UpcomingTickets.Count);
-        }
-
-        [Test]
-        public void ResetSlotsForNewDay_ClearsUpcomingQueue_OldQueuedTicketsDoNotReappear()
-        {
-            var state = new GameState(gameConfig);
-            var manager = CreateManager(state, lookaheadCount: 5);
-            manager.FillEmptySlots();
-            var oldQueue = new List<Ticket>(manager.UpcomingTickets);
-
-            manager.ResetSlotsForNewDay();
-
-            Assert.IsTrue(oldQueue.All(t => !manager.UpcomingTickets.Contains(t)));
         }
 
         [Test]

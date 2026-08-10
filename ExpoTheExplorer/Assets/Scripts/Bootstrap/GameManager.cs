@@ -73,7 +73,7 @@ namespace ExpoTheExplorer.Bootstrap
 
             ticketFactory = new TicketFactory(ticketGenerationConfig);
             LivesManager = new LivesManager(State, livesConfig);
-            TicketSlotManager = new TicketSlotManager(State, CreateNextTicket, LivesManager.LoseLife, ticketGenerationConfig.UpcomingQueueSize);
+            TicketSlotManager = new TicketSlotManager(State, CreateNextTicket, LivesManager.LoseLife);
             TrayManager = new TrayManager(State, slotIndex => TicketSlotManager.DeliverTicket(slotIndex), LivesManager.LoseLife);
             economyCalculator = new EconomyCalculator(economyConfig);
             dayCatalog = DayCatalogParser.ParseAll(new DayJsonSource().LoadAll(), foodCatalog);

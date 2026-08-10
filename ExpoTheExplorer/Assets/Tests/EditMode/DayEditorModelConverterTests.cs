@@ -119,7 +119,6 @@ namespace ExpoTheExplorer.Tests.EditMode
         public void ToDayDefinition_FeedsDayValidatorWithoutError()
         {
             var gameConfig = CreateGameConfig();
-            var ticketConfig = CreateTicketGenerationConfig(upcomingQueueSize: 3);
 
             var model = new DayEditorModel
             {
@@ -132,7 +131,7 @@ namespace ExpoTheExplorer.Tests.EditMode
                 model.BoardTimeline.Add(new DayEditorBoardSpawnEntry { TriggerStepIndex = step, Item = main, UseExactCell = true, X = step % 6, Y = step / 6 });
             }
 
-            var result = DayValidator.Validate(model.ToDayDefinition(), gameConfig, ticketConfig);
+            var result = DayValidator.Validate(model.ToDayDefinition(), gameConfig);
 
             CollectionAssert.IsEmpty(result.Errors);
         }
