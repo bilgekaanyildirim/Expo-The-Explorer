@@ -1,0 +1,629 @@
+{
+    "runtime": {
+        "dayIndex": 0,
+        "ticketsRequiredForDay": 11,
+        "ticketSequence": [
+            {
+                "mainItemId": "burger",
+                "sideItemId": "fries",
+                "drinkItemId": "cola",
+                "modifications": [
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "fries",
+                "drinkItemId": "cola",
+                "modifications": [],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "fries",
+                "drinkItemId": "cola",
+                "modifications": [
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "fries",
+                "drinkItemId": "cola",
+                "modifications": [
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "extra_patty",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "",
+                "drinkItemId": "cola",
+                "modifications": [],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "fries",
+                "drinkItemId": "cola",
+                "modifications": [
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "",
+                "drinkItemId": "cola",
+                "modifications": [
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "extra_patty",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "fries",
+                "drinkItemId": "cola",
+                "modifications": [
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "fries",
+                "drinkItemId": "cola",
+                "modifications": [
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "extra_patty",
+                        "isAddition": true
+                    },
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "fries",
+                "drinkItemId": "cola",
+                "modifications": [
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "",
+                "drinkItemId": "cola",
+                "modifications": [
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            }
+        ],
+        "boardTimeline": [
+            {
+                "triggerStepIndex": 0,
+                "itemId": "burger",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 1,
+                "y": 2
+            },
+            {
+                "triggerStepIndex": 0,
+                "itemId": "fries",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 2,
+                "y": 2
+            },
+            {
+                "triggerStepIndex": 0,
+                "itemId": "burger",
+                "modifications": [
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "extra_patty",
+                        "isAddition": true
+                    }
+                ],
+                "useExactCell": true,
+                "x": 2,
+                "y": 4
+            },
+            {
+                "triggerStepIndex": 0,
+                "itemId": "burger",
+                "modifications": [
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
+                    }
+                ],
+                "useExactCell": true,
+                "x": 3,
+                "y": 0
+            },
+            {
+                "triggerStepIndex": 0,
+                "itemId": "cola",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 4,
+                "y": 1
+            },
+            {
+                "triggerStepIndex": 0,
+                "itemId": "cola",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 4,
+                "y": 4
+            },
+            {
+                "triggerStepIndex": 1,
+                "itemId": "cola",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 0,
+                "y": 2
+            },
+            {
+                "triggerStepIndex": 2,
+                "itemId": "burger",
+                "modifications": [
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
+                    }
+                ],
+                "useExactCell": true,
+                "x": 5,
+                "y": 0
+            },
+            {
+                "triggerStepIndex": 3,
+                "itemId": "fries",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 1,
+                "y": 4
+            },
+            {
+                "triggerStepIndex": 3,
+                "itemId": "burger",
+                "modifications": [
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "extra_patty",
+                        "isAddition": true
+                    }
+                ],
+                "useExactCell": true,
+                "x": 3,
+                "y": 0
+            },
+            {
+                "triggerStepIndex": 4,
+                "itemId": "fries",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 0,
+                "y": 3
+            },
+            {
+                "triggerStepIndex": 4,
+                "itemId": "burger",
+                "modifications": [
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": true
+                    }
+                ],
+                "useExactCell": true,
+                "x": 1,
+                "y": 4
+            },
+            {
+                "triggerStepIndex": 4,
+                "itemId": "fries",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 5,
+                "y": 2
+            },
+            {
+                "triggerStepIndex": 5,
+                "itemId": "cola",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 1,
+                "y": 0
+            },
+            {
+                "triggerStepIndex": 5,
+                "itemId": "cola",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 5,
+                "y": 4
+            },
+            {
+                "triggerStepIndex": 6,
+                "itemId": "burger",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 4,
+                "y": 4
+            },
+            {
+                "triggerStepIndex": 6,
+                "itemId": "fries",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 5,
+                "y": 3
+            },
+            {
+                "triggerStepIndex": 7,
+                "itemId": "cola",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 2,
+                "y": 1
+            },
+            {
+                "triggerStepIndex": 7,
+                "itemId": "burger",
+                "modifications": [
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    }
+                ],
+                "useExactCell": true,
+                "x": 3,
+                "y": 3
+            },
+            {
+                "triggerStepIndex": 8,
+                "itemId": "cola",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 0,
+                "y": 4
+            },
+            {
+                "triggerStepIndex": 8,
+                "itemId": "cola",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 1,
+                "y": 4
+            },
+            {
+                "triggerStepIndex": 9,
+                "itemId": "fries",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 2,
+                "y": 2
+            },
+            {
+                "triggerStepIndex": 9,
+                "itemId": "burger",
+                "modifications": [
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": false
+                    }
+                ],
+                "useExactCell": true,
+                "x": 2,
+                "y": 3
+            },
+            {
+                "triggerStepIndex": 9,
+                "itemId": "fries",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 3,
+                "y": 2
+            },
+            {
+                "triggerStepIndex": 10,
+                "itemId": "cola",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 4,
+                "y": 2
+            },
+            {
+                "triggerStepIndex": 10,
+                "itemId": "burger",
+                "modifications": [
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "extra_patty",
+                        "isAddition": true
+                    },
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    }
+                ],
+                "useExactCell": true,
+                "x": 4,
+                "y": 3
+            },
+            {
+                "triggerStepIndex": 10,
+                "itemId": "cola",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 4,
+                "y": 4
+            },
+            {
+                "triggerStepIndex": 9,
+                "itemId": "fries",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 3,
+                "y": 1
+            },
+            {
+                "triggerStepIndex": 9,
+                "itemId": "burger",
+                "modifications": [
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": true
+                    }
+                ],
+                "useExactCell": true,
+                "x": 5,
+                "y": 1
+            },
+            {
+                "triggerStepIndex": 10,
+                "itemId": "cola",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 3,
+                "y": 4
+            }
+        ],
+        "hasRetryVariant": false,
+        "retryVariant": {
+            "runtime": {
+                "dayIndex": 0,
+                "ticketsRequiredForDay": 0,
+                "ticketSequence": [],
+                "boardTimeline": [],
+                "hasRetryVariant": false,
+                "retryVariant": {
+                    "runtime": {
+                        "dayIndex": 0,
+                        "ticketsRequiredForDay": 0,
+                        "ticketSequence": [],
+                        "boardTimeline": [],
+                        "hasRetryVariant": false,
+                        "retryVariant": {
+                            "runtime": {
+                                "dayIndex": 0,
+                                "ticketsRequiredForDay": 0,
+                                "ticketSequence": [],
+                                "boardTimeline": [],
+                                "hasRetryVariant": false,
+                                "retryVariant": {
+                                    "runtime": {
+                                        "dayIndex": 0,
+                                        "ticketsRequiredForDay": 0,
+                                        "ticketSequence": [],
+                                        "boardTimeline": [],
+                                        "hasRetryVariant": false,
+                                        "retryVariant": {
+                                            "runtime": {
+                                                "dayIndex": 0,
+                                                "ticketsRequiredForDay": 0,
+                                                "hasRetryVariant": false
+                                            },
+                                            "editorMeta": {
+                                                "hasTicketGenerationOverride": false,
+                                                "sideInclusionChanceOverride": 0.0,
+                                                "drinkInclusionChanceOverride": 0.0,
+                                                "modificationCountLambdaOverride": 0.0,
+                                                "hasBoardDistributionOverride": false,
+                                                "noiseLeakCountLambdaOverride": 0.0,
+                                                "guaranteedTicketCountOverride": 0,
+                                                "leakDepthOverride": 0,
+                                                "maxLeakCountOverride": 0
+                                            }
+                                        }
+                                    },
+                                    "editorMeta": {
+                                        "hasTicketGenerationOverride": false,
+                                        "sideInclusionChanceOverride": 0.0,
+                                        "drinkInclusionChanceOverride": 0.0,
+                                        "modificationCountLambdaOverride": 0.0,
+                                        "hasBoardDistributionOverride": false,
+                                        "noiseLeakCountLambdaOverride": 0.0,
+                                        "guaranteedTicketCountOverride": 0,
+                                        "leakDepthOverride": 0,
+                                        "maxLeakCountOverride": 0
+                                    }
+                                }
+                            },
+                            "editorMeta": {
+                                "hasTicketGenerationOverride": false,
+                                "sideInclusionChanceOverride": 0.0,
+                                "drinkInclusionChanceOverride": 0.0,
+                                "modificationCountLambdaOverride": 0.0,
+                                "hasBoardDistributionOverride": false,
+                                "noiseLeakCountLambdaOverride": 0.0,
+                                "guaranteedTicketCountOverride": 0,
+                                "leakDepthOverride": 0,
+                                "maxLeakCountOverride": 0
+                            }
+                        }
+                    },
+                    "editorMeta": {
+                        "hasTicketGenerationOverride": false,
+                        "sideInclusionChanceOverride": 0.0,
+                        "drinkInclusionChanceOverride": 0.0,
+                        "modificationCountLambdaOverride": 0.0,
+                        "hasBoardDistributionOverride": false,
+                        "noiseLeakCountLambdaOverride": 0.0,
+                        "guaranteedTicketCountOverride": 0,
+                        "leakDepthOverride": 0,
+                        "maxLeakCountOverride": 0
+                    }
+                }
+            },
+            "editorMeta": {
+                "hasTicketGenerationOverride": false,
+                "sideInclusionChanceOverride": 0.0,
+                "drinkInclusionChanceOverride": 0.0,
+                "modificationCountLambdaOverride": 0.0,
+                "hasBoardDistributionOverride": false,
+                "noiseLeakCountLambdaOverride": 0.0,
+                "guaranteedTicketCountOverride": 0,
+                "leakDepthOverride": 0,
+                "maxLeakCountOverride": 0
+            }
+        }
+    },
+    "editorMeta": {
+        "hasTicketGenerationOverride": false,
+        "sideInclusionChanceOverride": 0.0,
+        "drinkInclusionChanceOverride": 0.0,
+        "modificationCountLambdaOverride": 0.0,
+        "hasBoardDistributionOverride": false,
+        "noiseLeakCountLambdaOverride": 0.0,
+        "guaranteedTicketCountOverride": 0,
+        "leakDepthOverride": 0,
+        "maxLeakCountOverride": 0
+    }
+}
