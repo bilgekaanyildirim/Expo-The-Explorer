@@ -4,7 +4,8 @@
     "references": [
         "ExpoTheExplorer.Core",
         "ExpoTheExplorer.Data",
-        "ExpoTheExplorer.Systems.TicketSystem"
+        "ExpoTheExplorer.Systems.TicketSystem",
+        "ExpoTheExplorer.Systems.BoardDistribution"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

@@ -36,6 +36,21 @@ namespace ExpoTheExplorer.Data
         // Same defensive-clamp rationale as GuaranteedTicketCount.
         public int MaxLeakCount => Mathf.Clamp(maxLeakCount, 1, 10);
 
+        // Used by DayContentGenerator (PR-6.5) to apply a Day's editorMeta overrides
+        // without mutating the shared base asset -- Instantiate (not SerializedObject)
+        // keeps this class Editor-independent. Values are stored raw (unclamped) since
+        // the public getters above already clamp defensively on read.
+        public BoardDistributionConfig CloneWithOverrides(
+            float? noiseLeakCountLambda = null, int? guaranteedTicketCount = null, int? leakDepth = null, int? maxLeakCount = null)
+        {
+            var clone = Instantiate(this);
+            if (noiseLeakCountLambda.HasValue) clone.noiseLeakCountLambda = noiseLeakCountLambda.Value;
+            if (guaranteedTicketCount.HasValue) clone.guaranteedTicketCount = guaranteedTicketCount.Value;
+            if (leakDepth.HasValue) clone.leakDepth = leakDepth.Value;
+            if (maxLeakCount.HasValue) clone.maxLeakCount = maxLeakCount.Value;
+            return clone;
+        }
+
 #if UNITY_EDITOR
         private void OnValidate()
         {

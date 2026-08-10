@@ -79,6 +79,20 @@ namespace ExpoTheExplorer.Data
                 $"{name}: Names Database is not assigned or contains no valid entries (see Assets/Database/names.json).");
         public int UpcomingQueueSize => upcomingQueueSize;
 
+        // Used by DayContentGenerator (PR-6.5) to apply a Day's editorMeta overrides
+        // without mutating the shared base asset -- Instantiate (not SerializedObject)
+        // keeps this class Editor-independent. Only fields a caller passes a value for
+        // are overwritten; everything else carries over from the base asset unchanged.
+        public TicketGenerationConfig CloneWithOverrides(
+            float? sideInclusionChance = null, float? drinkInclusionChance = null, float? modificationCountLambda = null)
+        {
+            var clone = Instantiate(this);
+            if (sideInclusionChance.HasValue) clone.sideInclusionChance = sideInclusionChance.Value;
+            if (drinkInclusionChance.HasValue) clone.drinkInclusionChance = drinkInclusionChance.Value;
+            if (modificationCountLambda.HasValue) clone.modificationCountLambda = modificationCountLambda.Value;
+            return clone;
+        }
+
         // names.json is a raw JSON array ({id, name, gender} per GDD's Database asset), but
         // JsonUtility only parses object roots — wrapping it in a single-field object is the
         // standard workaround rather than pulling in a JSON library for one file.
