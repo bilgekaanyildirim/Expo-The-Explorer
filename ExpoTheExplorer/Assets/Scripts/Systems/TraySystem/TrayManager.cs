@@ -81,8 +81,6 @@ namespace ExpoTheExplorer.Systems.TraySystem
             {
                 if (slot.Matches(ticket))
                 {
-                    Debug.Log($"[Tray] Slot {slotIndex}: successfully delivered ticket for {ticket.CustomerName}.");
-
                     // Cleared BEFORE deliverTicket, not after — deliverTicket
                     // cascades synchronously into AssignTicket ->
                     // TicketAssigned -> OnTicketAssigned below, which reads
@@ -97,7 +95,6 @@ namespace ExpoTheExplorer.Systems.TraySystem
                 }
                 else
                 {
-                    Debug.Log($"[Tray] Slot {slotIndex}: wrong order for {ticket.CustomerName} — losing a life and scattering items back to the board.");
                     loseLife();
                     ScatterBackToBoard(slotIndex, slot);
                     slot.Clear();
