@@ -276,7 +276,7 @@ Tasarımcı elle düzenlerken Day'i oynanamaz hale getirebilir — bu **canlı**
 
 ---
 
-## PR-7 — Day Editor (`EditorWindow`) — JSON'un biricik düzenleme arayüzü
+## PR-7 — Day Editor (`EditorWindow`) — JSON'un biricik düzenleme arayüzü ✅ Uygulandı
 
 **Kapsam:**
 - Yeni `Assets/Editor/DayEditorWindow.cs`: `Assets/Resources/Days/*.json` dosyalarını listeler, oluşturur/kopyalar/siler, `dayIndex`'e göre sıralar.
@@ -288,6 +288,17 @@ Tasarımcı elle düzenlerken Day'i oynanamaz hale getirebilir — bu **canlı**
 **Bağımlılık:** PR-1 (minimum). PR-5/PR-6/PR-6.5/PR-6.6 tamamlanmışsa editör onları da kullanabilir; erken başlayıp diğer PR'larla paralel/iteratif genişleyebilir.
 
 **Kabul kriteri:** Bir tasarımcı, koda dokunmadan yeni bir Day JSON'u oluşturup sırasını/parametrelerini ayarlayabiliyor, otomatik üretip elle düzenleyebiliyor (bilet + board timeline dahil), geçersiz bir Day'i kaydedemiyor, geçerli olduğunda dosya diskte doğru JSON olarak duruyor.
+
+**Implementasyon notları:**
+- **Kullanıcı onaylı karar: Odin Inspector sadece bu PR için kullanıldı** (proje zaten `Assets/Plugins/Sirenix` altında kuruluydu, precompiled DLL olarak otomatik referanslanıyor) — `OdinMenuEditorWindow` (sol ağaç = Day listesi, sağ panel = seçilenin Odin-çizilen içeriği), `[TableList]`/`[FoldoutGroup]`/`[Button]`/`[ToggleGroup]`/`[ShowIf]`/`[EnableIf]`/`[InfoBox]` kullanıldı. Mevcut config Inspector'ları (`TicketGenerationConfigEditor` vb.) **değiştirilmedi** — kapsam dışı, kullanıcı açıkça sınırladı.
+- **3 yeni dosya, mimari katmanlı:** `DayFileIO.cs` (saf dosya I/O, `UnityEditor`'a bağımlı değil, klasör yolu parametrik — testler `Path.GetTempPath()` kullanıyor, gerçek `Assets/` hiç dokunulmuyor), `DayEditorModel.cs` (editlenebilir, `FoodItemConfig`/`ModificationConfig`'e doğrudan referans tutan Odin-attributed veri modeli + `FromDayJson`/`ToDayJson`/`ToDayDefinition`/`Clone` dönüşümleri + Generate/Add/Save/Duplicate/Delete aksiyonları), `DayEditorWindow.cs` (`OdinMenuEditorWindow`, menü ağacı, config auto-discovery, dosya-seviyesi callback'ler).
+- **`[Button]` aksiyonlarının shared config'leri (catalog/gameConfig/ticketConfig/boardConfig) parametre olarak almaması bilinçli** — Odin, parametreli bir `[Button]` metodunun argümanları için Inspector'da ayrı giriş alanları çiziyor; bunun yerine `DayEditorModel.Configure(...)` ile enjekte edilip private field'larda tutuluyor, `Generate()` parametresiz kalıyor.
+- **Id çözülemezse sessizce `null`/boş `ObjectField`** — `DayCatalogParser`'ın "tüm Day'i düşür" davranışı Editor'da tekrarlanmıyor, `DayEditorModel.FromDayJson` kendi hoşgörülü çözümlemesini yapıyor (`DayCatalogParser`'a hiç bağlanmadan).
+- **`Clone()`, `ToDayJson()`→`FromDayJson()` round-trip'i üzerinden** — ikinci bir deep-clone algoritması yok.
+- **Canlı doğrulama debounce timer'ı olmadan her GUI çiziminde çalışır** — `DayValidator`'ın maliyeti ihmal edilebilir düzeyde (Random yok, `BoardDistributor` yok).
+- **Save, `dayIndex` değişikliğini rename olarak ele alıyor** — `DayEditorModel.LastSavedDayIndex` (yüklendiği/son kaydedildiği index) ile karşılaştırılıp eski dosya silinip yeni `day_XX.json`'a yazılıyor, orphan dosya kalmıyor. İki Day'in aynı `dayIndex`'i paylaşmasına Save aşamasında izin verilmiyor (bu, `DayValidator`'ın tek-Day kapsamının dışında bir kontrol, `DayValidator.cs`'e dokunulmadı).
+- **`RetryVariant` tek seviyeyle sınırlı** — `IsTopLevel=false` olan bir model kendi `RetryVariant` foldout'unu göstermiyor (retry'nin retry'si yok), ama `Generate`/`Add Ticket`/`Add Board Spawn` (içerik-seviyesi aksiyonlar) her seviyede kullanılabilir.
+- Test doğrulaması: `DayFileIOTests` (4 — saf dosya I/O, geçici klasörde), `DayEditorModelConverterTests` (4 — tam alan round-trip dahil `RetryVariant`/override'lar, `DayValidator`'a besleme, `Clone` bağımsızlığı, çözülemeyen id'nin Day'i düşürmemesi). Tam EditMode suite (213 test) yeşil, tek istisna bilinen bağımsız flaky `TraySystemTests` testi. **Pencerenin kendisi (menü ağacı, buton render'ı) otomatik test kapsamına alınmadı** — Unity Editor'da elle açılıp denenmesi gerekiyor (bkz. plan'ın Verification bölümündeki adımlar).
 
 ---
 
