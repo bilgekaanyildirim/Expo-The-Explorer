@@ -58,6 +58,7 @@
   <Project Path="ExpoTheExplorer.Systems.EconomySystem.csproj" />
   <Project Path="ExpoTheExplorer.Systems.LivesSystem.csproj" />
   <Project Path="Unity.InputSystem.DocCodeSamples.csproj" />
+  <Project Path="Sirenix.OdinInspector.Modules.UnityMathematics.csproj" />
   <Project Path="Unity.VisualScripting.DocCodeExamples.csproj" />
   <Project Path="Unity.PlasticSCM.Editor.Entities.csproj" />
   <Project Path="ExpoTheExplorer.Systems.BoardDistribution.csproj" />
