@@ -20,6 +20,13 @@ namespace ExpoTheExplorer.Editor
         [BoxGroup("Day")]
         public int TicketsRequiredForDay = 10;
 
+        [FoldoutGroup("Ticket Sequence"), OnInspectorGUI, PropertyOrder(-1)]
+        private void DrawTicketCardPreview() => DayEditorTicketCardPreview.DrawStrip(TicketSequence, sharedTicketCardVisuals, ref ticketStripScrollPos);
+
+        // Not part of the JSON, not serialized -- same "plain private field" convention as
+        // sharedCatalog etc. below, just scroll-position UI state for the preview above.
+        private UnityEngine.Vector2 ticketStripScrollPos;
+
         [TableList(ShowIndexLabels = true), FoldoutGroup("Ticket Sequence")]
         public List<DayEditorTicketEntry> TicketSequence = new();
 
@@ -124,6 +131,7 @@ namespace ExpoTheExplorer.Editor
         private GameConfig sharedGameConfig;
         private TicketGenerationConfig sharedTicketConfig;
         private BoardDistributionConfig sharedBoardConfig;
+        private TicketCardVisualsConfig sharedTicketCardVisuals;
         private Action<DayEditorModel> onSaveRequested;
         private Action<DayEditorModel> onDuplicateRequested;
         private Action<DayEditorModel> onDeleteRequested;
@@ -133,6 +141,7 @@ namespace ExpoTheExplorer.Editor
             GameConfig gameConfig,
             TicketGenerationConfig ticketConfig,
             BoardDistributionConfig boardConfig,
+            TicketCardVisualsConfig ticketCardVisuals,
             Action<DayEditorModel> onSave,
             Action<DayEditorModel> onDuplicate,
             Action<DayEditorModel> onDelete)
@@ -141,11 +150,12 @@ namespace ExpoTheExplorer.Editor
             sharedGameConfig = gameConfig;
             sharedTicketConfig = ticketConfig;
             sharedBoardConfig = boardConfig;
+            sharedTicketCardVisuals = ticketCardVisuals;
             onSaveRequested = onSave;
             onDuplicateRequested = onDuplicate;
             onDeleteRequested = onDelete;
 
-            RetryVariant?.Configure(catalog, gameConfig, ticketConfig, boardConfig, null, null, null);
+            RetryVariant?.Configure(catalog, gameConfig, ticketConfig, boardConfig, ticketCardVisuals, null, null, null);
         }
 
         public DayJson ToDayJson()

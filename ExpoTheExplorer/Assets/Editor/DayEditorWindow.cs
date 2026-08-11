@@ -23,6 +23,7 @@ namespace ExpoTheExplorer.Editor
         private GameConfig gameConfig;
         private TicketGenerationConfig ticketConfig;
         private BoardDistributionConfig boardConfig;
+        private TicketCardVisualsConfig ticketCardVisuals;
         private string daysFolderPath;
         private List<DayEditorModel> loadedDays;
 
@@ -58,7 +59,7 @@ namespace ExpoTheExplorer.Editor
         {
             foreach (var day in loadedDays)
             {
-                day.Configure(catalog, gameConfig, ticketConfig, boardConfig, OnSaveRequested, OnDuplicateRequested, OnDeleteRequested);
+                day.Configure(catalog, gameConfig, ticketConfig, boardConfig, ticketCardVisuals, OnSaveRequested, OnDuplicateRequested, OnDeleteRequested);
             }
         }
 
@@ -68,6 +69,7 @@ namespace ExpoTheExplorer.Editor
             gameConfig ??= FindFirstAsset<GameConfig>();
             ticketConfig ??= FindFirstAsset<TicketGenerationConfig>();
             boardConfig ??= FindFirstAsset<BoardDistributionConfig>();
+            ticketCardVisuals ??= FindFirstAsset<TicketCardVisualsConfig>();
         }
 
         private static T FindFirstAsset<T>() where T : UnityEngine.Object
@@ -104,14 +106,18 @@ namespace ExpoTheExplorer.Editor
             EditorGUILayout.LabelField("Board Dist", GUILayout.Width(65));
             var newBoardConfig = (BoardDistributionConfig)EditorGUILayout.ObjectField(boardConfig, typeof(BoardDistributionConfig), false, GUILayout.Width(130));
 
+            EditorGUILayout.LabelField("Card Visuals", GUILayout.Width(75));
+            var newTicketCardVisuals = (TicketCardVisualsConfig)EditorGUILayout.ObjectField(ticketCardVisuals, typeof(TicketCardVisualsConfig), false, GUILayout.Width(130));
+
             SirenixEditorGUI.EndHorizontalToolbar();
 
-            if (newCatalog != catalog || newGameConfig != gameConfig || newTicketConfig != ticketConfig || newBoardConfig != boardConfig)
+            if (newCatalog != catalog || newGameConfig != gameConfig || newTicketConfig != ticketConfig || newBoardConfig != boardConfig || newTicketCardVisuals != ticketCardVisuals)
             {
                 catalog = newCatalog;
                 gameConfig = newGameConfig;
                 ticketConfig = newTicketConfig;
                 boardConfig = newBoardConfig;
+                ticketCardVisuals = newTicketCardVisuals;
                 ConfigureAllDays();
             }
         }
@@ -123,7 +129,7 @@ namespace ExpoTheExplorer.Editor
         {
             var nextIndex = loadedDays.Count == 0 ? 0 : loadedDays.Max(d => d.DayIndex) + 1;
             var day = new DayEditorModel { DayIndex = nextIndex };
-            day.Configure(catalog, gameConfig, ticketConfig, boardConfig, OnSaveRequested, OnDuplicateRequested, OnDeleteRequested);
+            day.Configure(catalog, gameConfig, ticketConfig, boardConfig, ticketCardVisuals, OnSaveRequested, OnDuplicateRequested, OnDeleteRequested);
 
             loadedDays.Add(day);
             MenuTree.Add($"Day {day.DayIndex}", day);
@@ -155,7 +161,7 @@ namespace ExpoTheExplorer.Editor
             var nextIndex = loadedDays.Max(d => d.DayIndex) + 1;
             var duplicate = day.Clone(catalog);
             duplicate.DayIndex = nextIndex;
-            duplicate.Configure(catalog, gameConfig, ticketConfig, boardConfig, OnSaveRequested, OnDuplicateRequested, OnDeleteRequested);
+            duplicate.Configure(catalog, gameConfig, ticketConfig, boardConfig, ticketCardVisuals, OnSaveRequested, OnDuplicateRequested, OnDeleteRequested);
 
             loadedDays.Add(duplicate);
             MenuTree.Add($"Day {duplicate.DayIndex}", duplicate);
