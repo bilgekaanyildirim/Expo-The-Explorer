@@ -2552,14 +2552,7 @@ MonoBehaviour:
   cardPrefab: {fileID: 781194306947842142, guid: 0d4914f1d20b14889a399afc1266ed19, type: 3}
   cardsParent: {fileID: 1247087289}
   animConfig: {fileID: 11400000, guid: 836ace345c29845f1b25f60bb6a89488, type: 2}
-  normalTicketSprite: {fileID: 21300000, guid: a8d83f1b8c62d4e91837eb80de08d2fc, type: 3}
-  impatientTicketSprite: {fileID: 21300000, guid: 8e97c027b75b148478a074f860862fb9, type: 3}
-  patientTicketSprite: {fileID: 21300000, guid: fd64e05890b444dc2bd44da698d291d5, type: 3}
-  normalModificationBoxColor: {r: 1, g: 0.7921569, b: 0.5254902, a: 1}
-  impatientModificationBoxColor: {r: 1, g: 0.6039216, b: 0.6039216, a: 1}
-  patientModificationBoxColor: {r: 0.6980392, g: 0.9137255, b: 0.6980392, a: 1}
-  additionSprite: {fileID: 21300000, guid: c7a5200686652421bbd889babac702d3, type: 3}
-  removalSprite: {fileID: 21300000, guid: ff4f5c842c37d435dbf342ca1570aaf8, type: 3}
+  visualsConfig: {fileID: 11400000, guid: d6f0fdeb47b1b4917913cc2f20612be9, type: 2}
 --- !u!4 &842217398
 Transform:
   m_ObjectHideFlags: 0

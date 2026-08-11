@@ -19,35 +19,27 @@ namespace ExpoTheExplorer.UI
         [Tooltip("Shared tuning for board/tray/ticket-card animation durations.")]
         [SerializeField] private BoardAnimationConfig animConfig;
 
-        [Tooltip("Ticket background art per patience type (GDD Section 8): red=impatient, green=patient. Normal uses the yellow background here in place of the GDD's neutral/cream suggestion.")]
-        [SerializeField] private Sprite normalTicketSprite;
-        [SerializeField] private Sprite impatientTicketSprite;
-        [SerializeField] private Sprite patientTicketSprite;
-
-        [Tooltip("Modification row box tint per patience type — matches the card border above.")]
-        [SerializeField] private Color normalModificationBoxColor = new Color(1f, 0.7921569f, 0.5254902f);
-        [SerializeField] private Color impatientModificationBoxColor = new Color(1f, 0.6039216f, 0.6039216f);
-        [SerializeField] private Color patientModificationBoxColor = new Color(0.6980392f, 0.9137255f, 0.6980392f);
-
-        [Tooltip("Shared icons for a modification row's direction — same two sprites for every ingredient.")]
-        [SerializeField] private Sprite additionSprite;
-        [SerializeField] private Sprite removalSprite;
+        // Ticket background art / modification box tints / direction icons per patience
+        // type (GDD Section 8) -- shared with the Day Editor's card preview via the same
+        // asset (Assets/Data/DataScripts/TicketCardVisualsConfig.cs), so both stay in sync
+        // by construction instead of duplicating these values in two places.
+        [SerializeField] private TicketCardVisualsConfig visualsConfig;
 
         public Sprite TicketSpriteFor(PatienceType patienceType) => patienceType switch
         {
-            PatienceType.Impatient => impatientTicketSprite,
-            PatienceType.Patient => patientTicketSprite,
-            _ => normalTicketSprite,
+            PatienceType.Impatient => visualsConfig.ImpatientTicketSprite,
+            PatienceType.Patient => visualsConfig.PatientTicketSprite,
+            _ => visualsConfig.NormalTicketSprite,
         };
 
         public Color ModificationBoxColorFor(PatienceType patienceType) => patienceType switch
         {
-            PatienceType.Impatient => impatientModificationBoxColor,
-            PatienceType.Patient => patientModificationBoxColor,
-            _ => normalModificationBoxColor,
+            PatienceType.Impatient => visualsConfig.ImpatientModificationBoxColor,
+            PatienceType.Patient => visualsConfig.PatientModificationBoxColor,
+            _ => visualsConfig.NormalModificationBoxColor,
         };
 
-        public Sprite DirectionSpriteFor(bool isAddition) => isAddition ? additionSprite : removalSprite;
+        public Sprite DirectionSpriteFor(bool isAddition) => isAddition ? visualsConfig.AdditionSprite : visualsConfig.RemovalSprite;
 
         private readonly List<TicketCardView> cards = new();
 
@@ -85,6 +77,7 @@ namespace ExpoTheExplorer.UI
             if (cardPrefab == null) missing.Add(nameof(cardPrefab));
             if (cardsParent == null) missing.Add(nameof(cardsParent));
             if (animConfig == null) missing.Add(nameof(animConfig));
+            if (visualsConfig == null) missing.Add(nameof(visualsConfig));
 
             if (missing.Count == 0) return true;
 
