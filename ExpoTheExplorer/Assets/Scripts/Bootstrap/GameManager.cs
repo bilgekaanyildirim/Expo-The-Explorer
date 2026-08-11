@@ -52,6 +52,16 @@ namespace ExpoTheExplorer.Bootstrap
         // one) for as long as the player is retrying it.
         private bool isRetryAttempt;
 
+        // Snapshot of SoftMoney/Xp/Level as of the moment the CURRENT day
+        // began (captured in Awake for day 0, re-captured in AdvanceToNextDay
+        // for every day after) -- NOT re-captured by RetryDay, so it still
+        // holds the true pre-day baseline across any number of life-loss
+        // retries of the same day. RetryCompletedDay rolls back to this so a
+        // voluntary "redo for better stars" after a success can't stack
+        // extra income on top of what the day already paid out.
+        private PlayerProfile dayStartProfile;
+        private int dayStartSoftMoney;
+
         // Position in dayCatalog, not a Day's JSON dayIndex (that only decides
         // sort order) -- null until a Day catalog exists (PR-7), so every
         // consumer falls back to the pre-Day-system GameConfig behavior.
@@ -75,6 +85,7 @@ namespace ExpoTheExplorer.Bootstrap
             var profile = PlayerProfileStore.Load(new PlayerProfile { Xp = State.Xp, Level = State.Level });
             State.Xp = profile.Xp;
             State.Level = profile.Level;
+            CaptureDayStartSnapshot();
 
             ticketFactory = new TicketFactory(ticketGenerationConfig);
             LivesManager = new LivesManager(State, livesConfig);
@@ -210,6 +221,31 @@ namespace ExpoTheExplorer.Bootstrap
             State.DayRetried.Publish(ticketsBeforeRetry);
         }
 
+        // Voluntary redo of a day that already succeeded (Day Complete
+        // popup's Retry button, for a better star score) -- distinct from
+        // RetryDay, which is the free life-loss-failure path. Rolls SoftMoney
+        // and the Xp/Level OnDayCompleted already committed to disk back to
+        // dayStartProfile/dayStartSoftMoney, so replaying for stars can't
+        // stack income on top of what the day already paid out. Mirrors
+        // RetryDay's reset order otherwise, including a full Lives refill --
+        // isRetryAttempt is deliberately left untouched, so if the player had
+        // already fallen onto the Day's RetryVariant before this success,
+        // the redo keeps replaying that same variant rather than switching
+        // back to the original.
+        public void RetryCompletedDay()
+        {
+            State.SoftMoney = dayStartSoftMoney;
+            LevelManager.RevertToDayStart(dayStartProfile);
+            RefreshDayTicketSequenceProvider();
+
+            State.Board.Clear();
+            ApplyDayStartBoardPreSeed();
+            TrayManager.DiscardAllForNewDay();
+            TicketSlotManager.ResetSlotsForNewDay();
+            LivesManager.RetryDay();
+            DayLifecycleManager.ResetForNewDay();
+        }
+
         // Free-win path: the day's goal was hit (GameManager.OnDayCompleted
         // already paused ticket production). Mirrors RetryDay's reset order
         // but deliberately skips LivesManager -- Lives/Xp are NOT reset on a
@@ -225,6 +261,7 @@ namespace ExpoTheExplorer.Bootstrap
 
             State.CurrentDayIndex = nextIndex;
             isRetryAttempt = false;
+            CaptureDayStartSnapshot();
             RefreshDayTicketSequenceProvider();
 
             State.Board.Clear();
@@ -234,6 +271,15 @@ namespace ExpoTheExplorer.Bootstrap
             DayLifecycleManager.ResetForNewDay();
 
             return true;
+        }
+
+        // Captured once per day (Awake for day 0, here for every day after)
+        // -- NOT re-captured by RetryDay, so a life-loss retry of the SAME
+        // day doesn't move the baseline RetryCompletedDay rolls back to.
+        private void CaptureDayStartSnapshot()
+        {
+            dayStartProfile = new PlayerProfile { Xp = State.Xp, Level = State.Level };
+            dayStartSoftMoney = State.SoftMoney;
         }
 
         // No fallback: an authored Day is required (PR-7) -- until then this

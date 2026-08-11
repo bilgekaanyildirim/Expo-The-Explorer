@@ -60,6 +60,22 @@ namespace ExpoTheExplorer.Systems.ProgressionSystem
             state.Level = lastCommittedProfile.Level;
         }
 
+        // Wired to the Day Complete popup's post-success Retry action (player
+        // wants a better star score on a day that already completed). Unlike
+        // DiscardToLastCommitted, rolling back to lastCommittedProfile here
+        // would be a no-op -- this day's own success already IS the last
+        // commit. Instead this rewrites the commit itself back to the
+        // day-start snapshot GameManager captured before the attempt, both in
+        // memory and on disk, so a voluntary redo can't double-dip the Xp/
+        // Level this day already paid out.
+        public void RevertToDayStart(PlayerProfile dayStartProfile)
+        {
+            state.Xp = dayStartProfile.Xp;
+            state.Level = dayStartProfile.Level;
+            lastCommittedProfile = dayStartProfile;
+            profileStore.Save(lastCommittedProfile);
+        }
+
         // Xp += amount happens once; the loop only transfers Xp into Level while
         // there's a next authored level AND Xp already covers its threshold.
         // Once Level reaches config.XpToNextLevel.Count, the loop condition is

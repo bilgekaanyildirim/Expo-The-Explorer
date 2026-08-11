@@ -31,6 +31,7 @@ namespace ExpoTheExplorer.UI
         [SerializeField] private GameObject star2Filled;
         [SerializeField] private GameObject star3Filled;
         [SerializeField] private Button nextDayButton;
+        [SerializeField] private Button retryButton;
         [SerializeField] private Button goBackButton;
 
         private GameState state;
@@ -45,6 +46,7 @@ namespace ExpoTheExplorer.UI
             state.DayCompleted.Subscribe(Show);
 
             nextDayButton.onClick.AddListener(OnNextDayClicked);
+            retryButton.onClick.AddListener(OnRetryClicked);
 
             // TODO: wire once a menu/day-select scene exists.
             goBackButton.interactable = false;
@@ -55,6 +57,7 @@ namespace ExpoTheExplorer.UI
             if (state != null) state.DayCompleted.Unsubscribe(Show);
 
             nextDayButton.onClick.RemoveListener(OnNextDayClicked);
+            retryButton.onClick.RemoveListener(OnRetryClicked);
         }
 
         private void Show(int _)
@@ -87,6 +90,15 @@ namespace ExpoTheExplorer.UI
             Hide();
         }
 
+        // Always interactable, even at 3 stars -- a player can want a redo
+        // regardless of score. GameManager.RetryCompletedDay handles rolling
+        // this attempt's SoftMoney/Xp/Level gains back off before replaying.
+        private void OnRetryClicked()
+        {
+            gameManager.RetryCompletedDay();
+            Hide();
+        }
+
         // Every field here is wired by hand in the Editor -- a missing one
         // should fail loudly with a clear pointer to which field, not a bare
         // NullReferenceException.
@@ -105,6 +117,7 @@ namespace ExpoTheExplorer.UI
             if (star2Filled == null) missing.Add(nameof(star2Filled));
             if (star3Filled == null) missing.Add(nameof(star3Filled));
             if (nextDayButton == null) missing.Add(nameof(nextDayButton));
+            if (retryButton == null) missing.Add(nameof(retryButton));
             if (goBackButton == null) missing.Add(nameof(goBackButton));
 
             if (missing.Count == 0) return true;
