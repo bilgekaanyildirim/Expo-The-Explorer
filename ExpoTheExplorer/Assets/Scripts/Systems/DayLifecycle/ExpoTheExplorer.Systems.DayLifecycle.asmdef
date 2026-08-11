@@ -3,7 +3,8 @@
     "rootNamespace": "ExpoTheExplorer.Systems.DayLifecycle",
     "references": [
         "ExpoTheExplorer.Core",
-        "ExpoTheExplorer.Data"
+        "ExpoTheExplorer.Data",
+        "ExpoTheExplorer.Systems.EconomySystem"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
