@@ -54,20 +54,11 @@ namespace ExpoTheExplorer.Editor
             }
             y += 2;
 
-            const float dishSize = 56f;
+            // Info hierarchy matches the real card (CLAUDE.md Section 3): dish -> modification
+            // list -> side/drink.
+            const float dishSize = 40f;
             DrawSpriteFit(new Rect((cardRect.width - dishSize) / 2f, y, dishSize, dishSize), entry.MainItem != null ? entry.MainItem.Sprite : null);
             y += dishSize + 4;
-
-            const float thumbSize = 30f;
-            if (entry.SideItem != null && entry.SideItem.Sprite != null)
-            {
-                DrawSpriteFit(new Rect(cardRect.width / 2f - thumbSize - 2, y, thumbSize, thumbSize), entry.SideItem.Sprite);
-            }
-            if (entry.DrinkItem != null && entry.DrinkItem.Sprite != null)
-            {
-                DrawSpriteFit(new Rect(cardRect.width / 2f + 2, y, thumbSize, thumbSize), entry.DrinkItem.Sprite);
-            }
-            y += thumbSize + 4;
 
             const float modSize = 20f;
             var modX = 4f;
@@ -82,6 +73,17 @@ namespace ExpoTheExplorer.Editor
                 modX += modSize + 2;
             }
             y += modSize + 4;
+
+            const float thumbSize = 30f;
+            if (entry.SideItem != null && entry.SideItem.Sprite != null)
+            {
+                DrawSpriteFit(new Rect(cardRect.width / 2f - thumbSize - 2, y, thumbSize, thumbSize), entry.SideItem.Sprite);
+            }
+            if (entry.DrinkItem != null && entry.DrinkItem.Sprite != null)
+            {
+                DrawSpriteFit(new Rect(cardRect.width / 2f + 2, y, thumbSize, thumbSize), entry.DrinkItem.Sprite);
+            }
+            y += thumbSize + 4;
 
             if (entry.TimeLimitSecondsOverride > 0f)
             {
