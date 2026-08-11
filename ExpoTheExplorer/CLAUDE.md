@@ -76,6 +76,13 @@ These are fixed design decisions — don't second-guess them during implementati
 - Persistence is **conditional on successfully completing the day**: XP earned during a day only commits to the player's permanent profile once that day is completed. If the day ends in a life-loss retry, that attempt's XP is discarded (see Lives System above) — it never touches the persistent total.
 - **Only one game mode exists: Daily Goal Mode.** There is no Endless Mode — a prior design draft mentioned one; it has been removed from scope entirely. Do not build, reference, or leave hooks for an endless/survival mode.
 
+### Day Complete Popup / Star Rating
+- Shown when `GameState.DayCompleted` fires. It's a receipt-style breakdown of the day, not a new currency: "Orders delivered" = the day's summed `BaseTip` (guaranteed per-item value), "Tips" = the summed speed/patience multiplier bonus on top of that (`TotalTip - BaseTip`), "Total" = both combined, which already equals the SoftMoney gained that day.
+- 3-star rating: `Total` compared against the current Day's authored thresholds.
+- Star thresholds are **per-day**, authored in the same Day JSON as `ticketSequence`/`boardTimeline` (`star1Threshold`/`star2Threshold`/`star3Threshold`) — not a single global config — since they're expected to scale with day difficulty.
+- "Orders failed" counts a life loss from either cause (wrong delivery or ticket timeout) via `GameManager.HandleLifeLoss`. It currently carries **no score penalty** — failed orders don't subtract from `Total`. Revisit if/when a penalty formula is designed.
+- "Go Back" has nowhere to navigate yet (single-scene project, no menu system) — left `interactable = false`, same as `GameOverPopupView`'s disabled Main Menu button. Wire it once a menu/day-select scene exists.
+
 ### Powerup System — DEFERRED, NOT CURRENTLY BEING BUILT
 - Design is locked (kept below for reference) but implementation is **out of scope for the current development phase**. Do not create PowerupSystem code, UI, or wiring unless the user explicitly reopens this scope.
 - 3 fixed powerups: (1) Auto-Collect — auto-places required-pool items into the correct trays, (2) Time Reset — refreshes active ticket timers, (3) Noise Clear — temporarily fades noise items / highlights required-pool items.

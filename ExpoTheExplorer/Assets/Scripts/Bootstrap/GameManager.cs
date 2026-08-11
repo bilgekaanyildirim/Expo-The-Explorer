@@ -34,10 +34,15 @@ namespace ExpoTheExplorer.Bootstrap
         public LivesManager LivesManager { get; private set; }
         public PlayerProfileStore PlayerProfileStore { get; private set; }
         public LevelManager LevelManager { get; private set; }
+        public DayLifecycleManager DayLifecycleManager { get; private set; }
+
+        // Day Complete popup reads this against DayLifecycleManager.Total to
+        // decide how many of the day's 3 stars light up.
+        public (int Star1, int Star2, int Star3) CurrentDayStarThresholds =>
+            (CurrentDay.Star1Threshold, CurrentDay.Star2Threshold, CurrentDay.Star3Threshold);
 
         private TicketFactory ticketFactory;
         private EconomyCalculator economyCalculator;
-        private DayLifecycleManager dayLifecycleManager;
         private IReadOnlyList<DayDefinition> dayCatalog;
         private DayTicketSequenceProvider dayTicketSequenceProvider;
 
@@ -73,11 +78,11 @@ namespace ExpoTheExplorer.Bootstrap
 
             ticketFactory = new TicketFactory(ticketGenerationConfig);
             LivesManager = new LivesManager(State, livesConfig);
-            TicketSlotManager = new TicketSlotManager(State, CreateNextTicket, LivesManager.LoseLife);
-            TrayManager = new TrayManager(State, slotIndex => TicketSlotManager.DeliverTicket(slotIndex), LivesManager.LoseLife);
+            DayLifecycleManager = new DayLifecycleManager(State);
+            TicketSlotManager = new TicketSlotManager(State, CreateNextTicket, HandleLifeLoss);
+            TrayManager = new TrayManager(State, slotIndex => TicketSlotManager.DeliverTicket(slotIndex), HandleLifeLoss);
             economyCalculator = new EconomyCalculator(economyConfig);
             dayCatalog = DayCatalogParser.ParseAll(new DayJsonSource().LoadAll(), foodCatalog);
-            dayLifecycleManager = new DayLifecycleManager(State);
             RefreshDayTicketSequenceProvider();
             LevelManager = new LevelManager(State, levelProgressionConfig, PlayerProfileStore, profile);
 
@@ -140,12 +145,22 @@ namespace ExpoTheExplorer.Bootstrap
         // elapsed delivery time is read from that same instance.
         private void OnTicketDelivered((int SlotIndex, Ticket Ticket) delivery)
         {
-            var tip = economyCalculator.CalculateTip(delivery.Ticket).TotalTip;
-            State.SoftMoney += Mathf.RoundToInt(tip);
-            dayLifecycleManager.RecordDelivery();
+            var tipResult = economyCalculator.CalculateTip(delivery.Ticket);
+            State.SoftMoney += Mathf.RoundToInt(tipResult.TotalTip);
+            DayLifecycleManager.RecordDelivery(tipResult);
 
             var xpResult = LevelManager.CalculateXp(delivery.Ticket);
             LevelManager.AddXp(Mathf.RoundToInt(xpResult.TotalXp));
+        }
+
+        // Both life-loss paths (TicketSlotManager's timeout, TrayManager's wrong
+        // delivery) share this single delegate so the Day Complete popup's
+        // "Orders failed" count catches either cause -- there's no other place
+        // both funnel through.
+        private void HandleLifeLoss()
+        {
+            LivesManager.LoseLife();
+            DayLifecycleManager.RecordFailure();
         }
 
         // The day's Xp/Level gains become permanent the instant the daily goal
@@ -177,7 +192,7 @@ namespace ExpoTheExplorer.Bootstrap
         // ResetSlotsForNewDay() -- the pre-seed must land on the freshly
         // cleared board before slots start refilling and cascading into
         // OnTicketAssigned's own board playback, or a different order
-        // reintroduces stale items. LivesManager/dayLifecycleManager are
+        // reintroduces stale items. LivesManager/DayLifecycleManager are
         // independent of those and of each other.
         public void RetryDay()
         {
@@ -190,7 +205,7 @@ namespace ExpoTheExplorer.Bootstrap
             TrayManager.DiscardAllForNewDay();
             TicketSlotManager.ResetSlotsForNewDay();
             LivesManager.RetryDay();
-            dayLifecycleManager.ResetForNewDay();
+            DayLifecycleManager.ResetForNewDay();
 
             State.DayRetried.Publish(ticketsBeforeRetry);
         }
@@ -216,7 +231,7 @@ namespace ExpoTheExplorer.Bootstrap
             ApplyDayStartBoardPreSeed();
             TrayManager.DiscardAllForNewDay();
             TicketSlotManager.ResetSlotsForNewDay();
-            dayLifecycleManager.ResetForNewDay();
+            DayLifecycleManager.ResetForNewDay();
 
             return true;
         }

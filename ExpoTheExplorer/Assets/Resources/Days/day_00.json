@@ -2,6 +2,9 @@
     "runtime": {
         "dayIndex": 0,
         "ticketsRequiredForDay": 11,
+        "star1Threshold": 60,
+        "star2Threshold": 300,
+        "star3Threshold": 460,
         "ticketSequence": [
             {
                 "mainItemId": "burger",

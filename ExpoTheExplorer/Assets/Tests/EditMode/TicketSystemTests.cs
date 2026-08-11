@@ -4,6 +4,7 @@ using System.Linq;
 using ExpoTheExplorer.Core;
 using ExpoTheExplorer.Data;
 using ExpoTheExplorer.Systems.DayLifecycle;
+using ExpoTheExplorer.Systems.EconomySystem;
 using ExpoTheExplorer.Systems.TicketSystem;
 using NUnit.Framework;
 using UnityEditor;
@@ -449,7 +450,8 @@ namespace ExpoTheExplorer.Tests.EditMode
             manager.FillEmptySlots(); // consumes all 3 -- provider is now exhausted
 
             var dayLifecycle = new DayLifecycleManager(state);
-            state.TicketDelivered.Subscribe(_ => dayLifecycle.RecordDelivery());
+            var sampleTip = new DeliveryTipResult(baseTip: 10f, speedTier: SpeedTier.Standard, speedMultiplier: 1f, patienceDecayCoefficient: 1f);
+            state.TicketDelivered.Subscribe(_ => dayLifecycle.RecordDelivery(sampleTip));
 
             var dayCompletedCount = 0;
             state.DayCompleted.Subscribe(_ => dayCompletedCount++);
