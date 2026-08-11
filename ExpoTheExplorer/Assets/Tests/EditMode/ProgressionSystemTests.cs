@@ -335,5 +335,71 @@ namespace ExpoTheExplorer.Tests.EditMode
 
             Assert.IsFalse(File.Exists(path));
         }
+
+        // Day Complete popup's post-success Retry: the day's own completion
+        // already committed a higher Xp/Level to disk, so this needs to
+        // actually rewrite that commit, not just roll back in memory like
+        // DiscardToLastCommitted (which would be a no-op here).
+        [Test]
+        public void RevertToDayStart_RollsBackStateXpAndLevel_ToGivenSnapshot()
+        {
+            var config = CreateLevelProgressionConfig();
+            SetXpToNextLevel(config, 100);
+            var state = new GameState(gameConfig);
+            var manager = new LevelManager(state, config, CreateTempProfileStore(), new PlayerProfile());
+
+            manager.AddXp(130);
+            manager.CommitProgress(); // day succeeds, Xp/Level committed
+            manager.AddXp(20); // player keeps playing after the popup, hypothetically
+
+            manager.RevertToDayStart(new PlayerProfile { Xp = 0, Level = 0 });
+
+            Assert.AreEqual(0, state.Xp);
+            Assert.AreEqual(0, state.Level);
+        }
+
+        [Test]
+        public void RevertToDayStart_UnlikeDiscardToLastCommitted_OverwritesProfileStoreOnDisk()
+        {
+            var config = CreateLevelProgressionConfig();
+            SetXpToNextLevel(config, 100);
+            var state = new GameState(gameConfig);
+            var path = Path.Combine(Application.temporaryCachePath, $"leveltest_profile_{Guid.NewGuid()}.json");
+            tempProfilePaths.Add(path);
+            var store = new PlayerProfileStore(path);
+            var manager = new LevelManager(state, config, store, new PlayerProfile());
+
+            manager.AddXp(130); // commits Xp=30, Level=1 to disk
+            manager.CommitProgress();
+
+            manager.RevertToDayStart(new PlayerProfile { Xp = 0, Level = 0 });
+
+            var reloaded = new PlayerProfileStore(path).Load();
+            Assert.AreEqual(0, reloaded.Xp);
+            Assert.AreEqual(0, reloaded.Level);
+        }
+
+        // Confirms the exploit this method exists to close: without updating
+        // lastCommittedProfile, a life-loss retry of the REPLAYED attempt
+        // would discard back to the original (higher, already-paid-out)
+        // commit instead of the day-start baseline.
+        [Test]
+        public void RevertToDayStart_UpdatesBaseline_SoLaterDiscardRollsBackToRevertedValue()
+        {
+            var config = CreateLevelProgressionConfig();
+            SetXpToNextLevel(config, 100, 100, 100);
+            var state = new GameState(gameConfig);
+            var manager = new LevelManager(state, config, CreateTempProfileStore(), new PlayerProfile());
+
+            manager.AddXp(150); // Xp=50, Level=1
+            manager.CommitProgress();
+            manager.RevertToDayStart(new PlayerProfile { Xp = 0, Level = 0 });
+
+            manager.AddXp(40); // player retries, makes some progress, then fails
+            manager.DiscardToLastCommitted();
+
+            Assert.AreEqual(0, state.Xp);
+            Assert.AreEqual(0, state.Level);
+        }
     }
 }
