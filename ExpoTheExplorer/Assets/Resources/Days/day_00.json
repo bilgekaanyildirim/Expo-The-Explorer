@@ -191,19 +191,11 @@
         "boardTimeline": [
             {
                 "triggerStepIndex": 0,
-                "itemId": "burger",
+                "itemId": "cola",
                 "modifications": [],
                 "useExactCell": true,
-                "x": 1,
-                "y": 2
-            },
-            {
-                "triggerStepIndex": 0,
-                "itemId": "fries",
-                "modifications": [],
-                "useExactCell": true,
-                "x": 2,
-                "y": 2
+                "x": 0,
+                "y": 0
             },
             {
                 "triggerStepIndex": 0,
@@ -223,8 +215,24 @@
                     }
                 ],
                 "useExactCell": true,
-                "x": 2,
+                "x": 0,
                 "y": 4
+            },
+            {
+                "triggerStepIndex": 0,
+                "itemId": "cola",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 1,
+                "y": 2
+            },
+            {
+                "triggerStepIndex": 0,
+                "itemId": "fries",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 1,
+                "y": 3
             },
             {
                 "triggerStepIndex": 0,
@@ -236,23 +244,15 @@
                     }
                 ],
                 "useExactCell": true,
-                "x": 3,
-                "y": 0
+                "x": 2,
+                "y": 2
             },
             {
                 "triggerStepIndex": 0,
                 "itemId": "cola",
                 "modifications": [],
                 "useExactCell": true,
-                "x": 4,
-                "y": 1
-            },
-            {
-                "triggerStepIndex": 0,
-                "itemId": "cola",
-                "modifications": [],
-                "useExactCell": true,
-                "x": 4,
+                "x": 5,
                 "y": 4
             },
             {
@@ -260,8 +260,8 @@
                 "itemId": "cola",
                 "modifications": [],
                 "useExactCell": true,
-                "x": 0,
-                "y": 2
+                "x": 2,
+                "y": 3
             },
             {
                 "triggerStepIndex": 2,
@@ -274,15 +274,15 @@
                 ],
                 "useExactCell": true,
                 "x": 5,
-                "y": 0
+                "y": 1
             },
             {
                 "triggerStepIndex": 3,
-                "itemId": "fries",
+                "itemId": "burger",
                 "modifications": [],
                 "useExactCell": true,
                 "x": 1,
-                "y": 4
+                "y": 1
             },
             {
                 "triggerStepIndex": 3,
@@ -303,15 +303,32 @@
                 ],
                 "useExactCell": true,
                 "x": 3,
-                "y": 0
+                "y": 1
             },
             {
-                "triggerStepIndex": 4,
+                "triggerStepIndex": 3,
                 "itemId": "fries",
                 "modifications": [],
                 "useExactCell": true,
+                "x": 4,
+                "y": 4
+            },
+            {
+                "triggerStepIndex": 4,
+                "itemId": "burger",
+                "modifications": [
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": false
+                    }
+                ],
+                "useExactCell": true,
                 "x": 0,
-                "y": 3
+                "y": 1
             },
             {
                 "triggerStepIndex": 4,
@@ -327,40 +344,48 @@
                     }
                 ],
                 "useExactCell": true,
-                "x": 1,
-                "y": 4
+                "x": 2,
+                "y": 1
             },
             {
                 "triggerStepIndex": 4,
                 "itemId": "fries",
                 "modifications": [],
                 "useExactCell": true,
-                "x": 5,
-                "y": 2
+                "x": 3,
+                "y": 4
             },
             {
                 "triggerStepIndex": 5,
-                "itemId": "cola",
+                "itemId": "fries",
                 "modifications": [],
                 "useExactCell": true,
-                "x": 1,
+                "x": 2,
+                "y": 4
+            },
+            {
+                "triggerStepIndex": 5,
+                "itemId": "fries",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 3,
                 "y": 0
             },
             {
-                "triggerStepIndex": 5,
-                "itemId": "cola",
-                "modifications": [],
-                "useExactCell": true,
-                "x": 5,
-                "y": 4
-            },
-            {
                 "triggerStepIndex": 6,
                 "itemId": "burger",
                 "modifications": [],
                 "useExactCell": true,
-                "x": 4,
-                "y": 4
+                "x": 1,
+                "y": 1
+            },
+            {
+                "triggerStepIndex": 6,
+                "itemId": "cola",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 3,
+                "y": 2
             },
             {
                 "triggerStepIndex": 6,
@@ -368,7 +393,7 @@
                 "modifications": [],
                 "useExactCell": true,
                 "x": 5,
-                "y": 3
+                "y": 0
             },
             {
                 "triggerStepIndex": 7,
@@ -376,77 +401,23 @@
                 "modifications": [],
                 "useExactCell": true,
                 "x": 2,
-                "y": 1
+                "y": 4
             },
             {
                 "triggerStepIndex": 7,
-                "itemId": "burger",
-                "modifications": [
-                    {
-                        "modificationId": "no_tomato",
-                        "isAddition": false
-                    }
-                ],
+                "itemId": "cola",
+                "modifications": [],
                 "useExactCell": true,
                 "x": 3,
                 "y": 3
             },
             {
-                "triggerStepIndex": 8,
-                "itemId": "cola",
-                "modifications": [],
-                "useExactCell": true,
-                "x": 0,
-                "y": 4
-            },
-            {
-                "triggerStepIndex": 8,
+                "triggerStepIndex": 9,
                 "itemId": "cola",
                 "modifications": [],
                 "useExactCell": true,
                 "x": 1,
-                "y": 4
-            },
-            {
-                "triggerStepIndex": 9,
-                "itemId": "fries",
-                "modifications": [],
-                "useExactCell": true,
-                "x": 2,
-                "y": 2
-            },
-            {
-                "triggerStepIndex": 9,
-                "itemId": "burger",
-                "modifications": [
-                    {
-                        "modificationId": "no_tomato",
-                        "isAddition": false
-                    },
-                    {
-                        "modificationId": "extra_cheese",
-                        "isAddition": false
-                    }
-                ],
-                "useExactCell": true,
-                "x": 2,
                 "y": 3
-            },
-            {
-                "triggerStepIndex": 9,
-                "itemId": "fries",
-                "modifications": [],
-                "useExactCell": true,
-                "x": 3,
-                "y": 2
-            },
-            {
-                "triggerStepIndex": 10,
-                "itemId": "cola",
-                "modifications": [],
-                "useExactCell": true,
-                "x": 4,
-                "y": 2
             },
             {
                 "triggerStepIndex": 10,
@@ -466,15 +437,23 @@
                     }
                 ],
                 "useExactCell": true,
-                "x": 4,
-                "y": 3
+                "x": 0,
+                "y": 1
+            },
+            {
+                "triggerStepIndex": 10,
+                "itemId": "fries",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 2,
+                "y": 4
             },
             {
                 "triggerStepIndex": 10,
                 "itemId": "cola",
                 "modifications": [],
                 "useExactCell": true,
-                "x": 4,
+                "x": 3,
                 "y": 4
             },
             {
@@ -482,8 +461,16 @@
                 "itemId": "fries",
                 "modifications": [],
                 "useExactCell": true,
-                "x": 3,
+                "x": 4,
                 "y": 1
+            },
+            {
+                "triggerStepIndex": 9,
+                "itemId": "cola",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 0,
+                "y": 2
             },
             {
                 "triggerStepIndex": 9,
@@ -503,15 +490,28 @@
                     }
                 ],
                 "useExactCell": true,
-                "x": 5,
-                "y": 1
+                "x": 4,
+                "y": 2
             },
             {
                 "triggerStepIndex": 10,
                 "itemId": "cola",
                 "modifications": [],
                 "useExactCell": true,
-                "x": 3,
+                "x": 5,
+                "y": 3
+            },
+            {
+                "triggerStepIndex": 10,
+                "itemId": "burger",
+                "modifications": [
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    }
+                ],
+                "useExactCell": true,
+                "x": 1,
                 "y": 4
             }
         ],
