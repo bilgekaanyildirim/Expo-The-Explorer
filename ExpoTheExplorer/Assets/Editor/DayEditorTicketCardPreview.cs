@@ -7,18 +7,21 @@ using UnityEngine;
 
 namespace ExpoTheExplorer.Editor
 {
-    // Read-only IMGUI re-implementation of TicketCard.prefab/TicketCardView's visual
-    // layout (Assets/Scripts/UI/TicketCardView.cs) for the Day Editor -- a live uGUI
-    // prefab can't be rendered inside an EditorWindow, so this mirrors the same
-    // background/dish/side/drink/modification layout by hand, reusing the same sprite
-    // data (FoodItemConfig.Sprite, ModificationConfig.Icon) the game itself reads.
+    // IMGUI re-implementation of TicketCard.prefab/TicketCardView's visual layout
+    // (Assets/Scripts/UI/TicketCardView.cs) for the Day Editor -- a live uGUI prefab
+    // can't be rendered inside an EditorWindow, so this mirrors the same background/
+    // dish/side/drink/modification layout by hand, reusing the same sprite data
+    // (FoodItemConfig.Sprite, ModificationConfig.Icon) the game itself reads. Cards
+    // themselves are display-only; clicking one just reports its index back via
+    // selectedIndex so DayEditorModel can draw an edit panel for it below the strip.
     public static class DayEditorTicketCardPreview
     {
         private const float CardWidth = 130f;
         private const float CardHeight = 190f;
         private const float Spacing = 8f;
+        private static readonly Color SelectionHighlightColor = new(0.3f, 0.6f, 1f, 1f);
 
-        public static void DrawStrip(List<DayEditorTicketEntry> entries, TicketCardVisualsConfig visuals, ref Vector2 scrollPos)
+        public static void DrawStrip(List<DayEditorTicketEntry> entries, TicketCardVisualsConfig visuals, ref Vector2 scrollPos, ref int selectedIndex)
         {
             if (entries == null || entries.Count == 0) return;
 
@@ -33,13 +36,32 @@ namespace ExpoTheExplorer.Editor
             for (var i = 0; i < entries.Count; i++)
             {
                 var cardRect = new Rect(stripRect.x + i * (CardWidth + Spacing), stripRect.y, CardWidth, CardHeight);
-                DrawCard(cardRect, entries[i], visuals, i);
+                DrawCard(cardRect, entries[i], visuals, i, i == selectedIndex);
+
+                // Hit-tested here, in the strip's own (outer) coordinate space -- DrawCard
+                // wraps its own content in GUI.BeginGroup(cardRect), which remaps
+                // Event.current.mousePosition to group-local coordinates, so a click check
+                // inside DrawCard would be comparing against the wrong space entirely.
+                if (Event.current.type == EventType.MouseDown && Event.current.button == 0 && cardRect.Contains(Event.current.mousePosition))
+                {
+                    selectedIndex = i;
+                    GUI.changed = true;
+                    Event.current.Use();
+                }
             }
             EditorGUILayout.EndScrollView();
         }
 
-        private static void DrawCard(Rect cardRect, DayEditorTicketEntry entry, TicketCardVisualsConfig visuals, int index)
+        private static void DrawCard(Rect cardRect, DayEditorTicketEntry entry, TicketCardVisualsConfig visuals, int index, bool isSelected)
         {
+            if (isSelected)
+            {
+                const float highlightMargin = 3f;
+                EditorGUI.DrawRect(
+                    new Rect(cardRect.x - highlightMargin, cardRect.y - highlightMargin, cardRect.width + highlightMargin * 2f, cardRect.height + highlightMargin * 2f),
+                    SelectionHighlightColor);
+            }
+
             DrawFrame(cardRect, visuals, entry.PatienceType);
 
             GUI.BeginGroup(cardRect);
