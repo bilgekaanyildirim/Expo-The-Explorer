@@ -130,7 +130,7 @@ namespace ExpoTheExplorer.Systems.DaySystem
         // earliest one at a time by adding a spawn at the exact step the affected ticket
         // itself arrives (guaranteeing availability for its whole active window). Terminates
         // by construction: each patch closes exactly one shortfall out of a finite total.
-        private static void EnsureSolvable(List<ResolvedTicketEntry> ticketSequence, List<ResolvedBoardSpawnEntry> boardTimeline, GameConfig gameConfig, List<string> warnings)
+        public static void EnsureSolvable(List<ResolvedTicketEntry> ticketSequence, List<ResolvedBoardSpawnEntry> boardTimeline, GameConfig gameConfig, List<string> warnings)
         {
             while (true)
             {

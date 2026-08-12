@@ -63,20 +63,29 @@ namespace ExpoTheExplorer.Editor
                     entry.DrinkItem = regenerated.DrinkItem;
                     entry.Modifications = regenerated.Modifications;
                     entry.PatienceType = regenerated.PatienceType;
+                    ReSolveBoardTimeline();
                 }
             }
 
             EditorGUILayout.Space();
 
+            // Only fields that affect which items this ticket actually needs trigger a
+            // re-solve -- CustomerNameOverride/TimeLimitSecondsOverride don't, so two separate
+            // change-check blocks bracket just the item/modification fields, keeping the
+            // override fields in their original visual position between them.
+            EditorGUI.BeginChangeCheck();
             entry.MainItem = (FoodItemConfig)EditorGUILayout.ObjectField("Main Item", entry.MainItem, typeof(FoodItemConfig), false);
             entry.SideItem = (FoodItemConfig)EditorGUILayout.ObjectField("Side Item", entry.SideItem, typeof(FoodItemConfig), false);
             entry.DrinkItem = (FoodItemConfig)EditorGUILayout.ObjectField("Drink Item", entry.DrinkItem, typeof(FoodItemConfig), false);
             entry.PatienceType = (PatienceType)EditorGUILayout.EnumPopup("Patience Type", entry.PatienceType);
+            var itemFieldsChanged = EditorGUI.EndChangeCheck();
+
             entry.CustomerNameOverride = EditorGUILayout.TextField("Name Override", entry.CustomerNameOverride);
             entry.TimeLimitSecondsOverride = EditorGUILayout.FloatField("Time Override", entry.TimeLimitSecondsOverride);
 
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("Modifications", UnityEditor.EditorStyles.boldLabel);
+            EditorGUI.BeginChangeCheck();
             for (var i = 0; i < entry.Modifications.Count; i++)
             {
                 EditorGUILayout.BeginHorizontal();
@@ -94,12 +103,48 @@ namespace ExpoTheExplorer.Editor
             {
                 entry.Modifications.Add(new DayEditorModification());
             }
+            var modificationsChanged = EditorGUI.EndChangeCheck();
+
+            // MainItem == null means an unfilled ticket (e.g. just added, not generated yet) --
+            // nothing meaningful to re-solve for yet, and ResolvedTicketEntry.ToResolved()
+            // downstream doesn't expect a null Main.
+            if ((itemFieldsChanged || modificationsChanged) && entry.MainItem != null)
+            {
+                ReSolveBoardTimeline();
+            }
 
             EditorGUILayout.Space();
             if (UnityEngine.GUILayout.Button("Delete This Ticket"))
             {
                 TicketSequence.RemoveAt(selectedTicketIndex);
                 selectedTicketIndex = -1;
+            }
+        }
+
+        // Re-runs DayContentGenerator.EnsureSolvable (the same repair pass the full-Day
+        // "Generate" button already relies on) over the CURRENT ticket sequence/board timeline,
+        // so an edit to one ticket's item requirements can't silently leave the Day
+        // unsolvable. Only appends new patch spawns -- never touches or removes existing
+        // BoardTimeline entries, so manual authoring elsewhere in the timeline is preserved.
+        private void ReSolveBoardTimeline()
+        {
+            if (sharedGameConfig == null) return; // no config yet -- this can fire often while editing, stay silent
+
+            var resolvedTickets = TicketSequence.Select(e => e.ToResolved()).ToList();
+            var resolvedBoardTimeline = BoardTimeline.Select(e => e.ToResolved()).ToList();
+            var originalCount = resolvedBoardTimeline.Count;
+
+            var warnings = new List<string>();
+            DayContentGenerator.EnsureSolvable(resolvedTickets, resolvedBoardTimeline, sharedGameConfig, warnings);
+
+            for (var i = originalCount; i < resolvedBoardTimeline.Count; i++)
+            {
+                BoardTimeline.Add(DayEditorBoardSpawnEntry.FromResolved(resolvedBoardTimeline[i]));
+            }
+
+            if (warnings.Count > 0)
+            {
+                EditorUtility.DisplayDialog("Board Timeline", "Some required items couldn't be auto-placed (board is full at that point):\n\n" + string.Join("\n", warnings), "OK");
             }
         }
 
@@ -384,6 +429,19 @@ namespace ExpoTheExplorer.Editor
             UseExactCell = json.useExactCell,
             X = json.x,
             Y = json.y,
+        };
+
+        // Maps a patch spawn produced by DayContentGenerator.EnsureSolvable (already a
+        // resolved, in-memory entry -- no JSON round-trip needed) into editor data. Used by
+        // DrawSelectedTicketEditor's auto-resolve-on-edit flow.
+        public static DayEditorBoardSpawnEntry FromResolved(ResolvedBoardSpawnEntry resolved) => new()
+        {
+            TriggerStepIndex = resolved.TriggerStepIndex,
+            Item = resolved.Item,
+            Modifications = resolved.Modifications.Select(m => new DayEditorModification { Config = m.Config, IsAddition = m.IsAddition }).ToList(),
+            UseExactCell = resolved.UseExactCell,
+            X = resolved.X,
+            Y = resolved.Y,
         };
 
         public BoardSpawnEntryJson ToJson() => new()
