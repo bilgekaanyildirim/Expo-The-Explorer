@@ -21,13 +21,62 @@ namespace ExpoTheExplorer.Editor
         public int TicketsRequiredForDay = 10;
 
         [FoldoutGroup("Ticket Sequence"), OnInspectorGUI, PropertyOrder(-1)]
-        private void DrawTicketCardPreview() => DayEditorTicketCardPreview.DrawStrip(TicketSequence, sharedTicketCardVisuals, ref ticketStripScrollPos);
+        private void DrawTicketCardPreview() => DayEditorTicketCardPreview.DrawStrip(TicketSequence, sharedTicketCardVisuals, ref ticketStripScrollPos, ref selectedTicketIndex);
 
         // Not part of the JSON, not serialized -- same "plain private field" convention as
-        // sharedCatalog etc. below, just scroll-position UI state for the preview above.
+        // sharedCatalog etc. below, just UI state for the preview/editor above.
         private UnityEngine.Vector2 ticketStripScrollPos;
+        private int selectedTicketIndex = -1;
 
-        [TableList(ShowIndexLabels = true), FoldoutGroup("Ticket Sequence")]
+        [FoldoutGroup("Ticket Sequence"), OnInspectorGUI, PropertyOrder(-0.5f)]
+        private void DrawSelectedTicketEditor()
+        {
+            if (selectedTicketIndex < 0 || selectedTicketIndex >= TicketSequence.Count)
+            {
+                EditorGUILayout.HelpBox("Select a ticket card above to edit it.", UnityEditor.MessageType.Info);
+                return;
+            }
+
+            var entry = TicketSequence[selectedTicketIndex];
+
+            EditorGUILayout.LabelField($"Editing Ticket #{selectedTicketIndex}", UnityEditor.EditorStyles.boldLabel);
+
+            entry.MainItem = (FoodItemConfig)EditorGUILayout.ObjectField("Main Item", entry.MainItem, typeof(FoodItemConfig), false);
+            entry.SideItem = (FoodItemConfig)EditorGUILayout.ObjectField("Side Item", entry.SideItem, typeof(FoodItemConfig), false);
+            entry.DrinkItem = (FoodItemConfig)EditorGUILayout.ObjectField("Drink Item", entry.DrinkItem, typeof(FoodItemConfig), false);
+            entry.PatienceType = (PatienceType)EditorGUILayout.EnumPopup("Patience Type", entry.PatienceType);
+            entry.CustomerNameOverride = EditorGUILayout.TextField("Name Override", entry.CustomerNameOverride);
+            entry.TimeLimitSecondsOverride = EditorGUILayout.FloatField("Time Override", entry.TimeLimitSecondsOverride);
+
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("Modifications", UnityEditor.EditorStyles.boldLabel);
+            for (var i = 0; i < entry.Modifications.Count; i++)
+            {
+                EditorGUILayout.BeginHorizontal();
+                entry.Modifications[i].Config = (ModificationConfig)EditorGUILayout.ObjectField(entry.Modifications[i].Config, typeof(ModificationConfig), false);
+                entry.Modifications[i].IsAddition = EditorGUILayout.ToggleLeft("Addition", entry.Modifications[i].IsAddition, UnityEngine.GUILayout.Width(80));
+                var removeClicked = UnityEngine.GUILayout.Button("x", UnityEngine.GUILayout.Width(20));
+                EditorGUILayout.EndHorizontal();
+                if (removeClicked)
+                {
+                    entry.Modifications.RemoveAt(i);
+                    break; // list mutated mid-loop -- next OnGUI pass redraws the rest
+                }
+            }
+            if (UnityEngine.GUILayout.Button("+ Add Modification"))
+            {
+                entry.Modifications.Add(new DayEditorModification());
+            }
+
+            EditorGUILayout.Space();
+            if (UnityEngine.GUILayout.Button("Delete This Ticket"))
+            {
+                TicketSequence.RemoveAt(selectedTicketIndex);
+                selectedTicketIndex = -1;
+            }
+        }
+
+        [UnityEngine.HideInInspector]
         public List<DayEditorTicketEntry> TicketSequence = new();
 
         [TableList(ShowIndexLabels = true), FoldoutGroup("Board Timeline")]
@@ -236,13 +285,13 @@ namespace ExpoTheExplorer.Editor
     [Serializable]
     public class DayEditorTicketEntry
     {
-        [TableColumnWidth(120, false)] public FoodItemConfig MainItem;
-        [TableColumnWidth(120, false)] public FoodItemConfig SideItem;
-        [TableColumnWidth(120, false)] public FoodItemConfig DrinkItem;
+        public FoodItemConfig MainItem;
+        public FoodItemConfig SideItem;
+        public FoodItemConfig DrinkItem;
         public List<DayEditorModification> Modifications = new();
         public PatienceType PatienceType = PatienceType.Normal;
-        [LabelText("Name Override")] public string CustomerNameOverride;
-        [LabelText("Time Override")] public float TimeLimitSecondsOverride;
+        public string CustomerNameOverride;
+        public float TimeLimitSecondsOverride;
 
         public static DayEditorTicketEntry FromJson(TicketEntryJson json, FoodCatalog catalog) => new()
         {
