@@ -4,7 +4,8 @@
     "references": [
         "ExpoTheExplorer.Data",
         "ExpoTheExplorer.Core",
-        "ExpoTheExplorer.Systems.DaySystem"
+        "ExpoTheExplorer.Systems.DaySystem",
+        "ExpoTheExplorer.Systems.TicketSystem"
     ],
     "includePlatforms": [
         "Editor"

@@ -4,6 +4,7 @@ using System.Linq;
 using ExpoTheExplorer.Core;
 using ExpoTheExplorer.Data;
 using ExpoTheExplorer.Systems.DaySystem;
+using ExpoTheExplorer.Systems.TicketSystem;
 using Sirenix.OdinInspector;
 using UnityEditor;
 
@@ -40,6 +41,32 @@ namespace ExpoTheExplorer.Editor
             var entry = TicketSequence[selectedTicketIndex];
 
             EditorGUILayout.LabelField($"Editing Ticket #{selectedTicketIndex}", UnityEditor.EditorStyles.boldLabel);
+
+            if (UnityEngine.GUILayout.Button("Generate Random Ticket"))
+            {
+                if (sharedCatalog == null || sharedTicketConfig == null)
+                {
+                    EditorUtility.DisplayDialog("Generate Random Ticket", "Config assets aren't assigned yet -- set them in the toolbar above.", "OK");
+                }
+                else if (EditorUtility.DisplayDialog("Generate Random Ticket", "This overwrites this ticket's Main/Side/Drink/Modifications/Patience Type. Continue?", "Generate", "Cancel"))
+                {
+                    // Fresh, unseeded TicketFactory per click -- reuses the exact same generation
+                    // logic (weighted Main pick, Side/Drink inclusion chance, modification
+                    // count/selection) DayContentGenerator uses for a whole Day, just for this
+                    // one ticket, so a re-click always gives a genuinely different result.
+                    var factory = new TicketFactory(sharedTicketConfig);
+                    var patienceType = factory.PickRandomPatienceType();
+                    var ticket = factory.Create(sharedCatalog.Items, factory.PickRandomCustomerName(), patienceType);
+                    var regenerated = DayEditorTicketEntry.FromTicket(ticket);
+                    entry.MainItem = regenerated.MainItem;
+                    entry.SideItem = regenerated.SideItem;
+                    entry.DrinkItem = regenerated.DrinkItem;
+                    entry.Modifications = regenerated.Modifications;
+                    entry.PatienceType = regenerated.PatienceType;
+                }
+            }
+
+            EditorGUILayout.Space();
 
             entry.MainItem = (FoodItemConfig)EditorGUILayout.ObjectField("Main Item", entry.MainItem, typeof(FoodItemConfig), false);
             entry.SideItem = (FoodItemConfig)EditorGUILayout.ObjectField("Side Item", entry.SideItem, typeof(FoodItemConfig), false);
@@ -303,6 +330,19 @@ namespace ExpoTheExplorer.Editor
             PatienceType = Enum.TryParse<PatienceType>(json.patienceType, out var patienceType) ? patienceType : PatienceType.Normal,
             CustomerNameOverride = json.customerNameOverride,
             TimeLimitSecondsOverride = json.timeLimitSecondsOverride,
+        };
+
+        // Maps a freshly-rolled runtime Ticket (TicketFactory.Create) into editor data --
+        // used by DrawSelectedTicketEditor's "Generate Random Ticket" button. Deliberately
+        // doesn't set CustomerNameOverride/TimeLimitSecondsOverride: those are Day Editor
+        // authoring concepts TicketFactory has no notion of, left untouched by design.
+        public static DayEditorTicketEntry FromTicket(Ticket ticket) => new()
+        {
+            MainItem = ticket.RequiredItems.FirstOrDefault(item => item.Category == FoodCategory.Main),
+            SideItem = ticket.RequiredItems.FirstOrDefault(item => item.Category == FoodCategory.Side),
+            DrinkItem = ticket.RequiredItems.FirstOrDefault(item => item.Category == FoodCategory.Drink),
+            Modifications = ticket.Modifications.Select(m => new DayEditorModification { Config = m.Config, IsAddition = m.IsAddition }).ToList(),
+            PatienceType = ticket.PatienceType,
         };
 
         public TicketEntryJson ToJson() => new()
