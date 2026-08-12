@@ -85,13 +85,14 @@ namespace ExpoTheExplorer.Editor
             y += modSize + 30;
 
             const float thumbSize = 30f;
+            const float thumbSpacing = 12f;
             if (entry.SideItem != null && entry.SideItem.Sprite != null)
             {
-                DrawSpriteFit(new Rect(cardRect.width / 2f - thumbSize - 2, y, thumbSize, thumbSize), entry.SideItem.Sprite);
+                DrawSpriteFit(new Rect(cardRect.width / 2f - thumbSize - thumbSpacing, y, thumbSize, thumbSize), entry.SideItem.Sprite);
             }
             if (entry.DrinkItem != null && entry.DrinkItem.Sprite != null)
             {
-                DrawSpriteFit(new Rect(cardRect.width / 2f + 2, y, thumbSize, thumbSize), entry.DrinkItem.Sprite);
+                DrawSpriteFit(new Rect(cardRect.width / 2f + thumbSpacing, y, thumbSize, thumbSize), entry.DrinkItem.Sprite);
             }
             y += thumbSize + 4;
 
