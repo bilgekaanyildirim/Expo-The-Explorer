@@ -210,6 +210,46 @@ namespace ExpoTheExplorer.Editor
         [Button("Add Board Spawn"), FoldoutGroup("Board Timeline")]
         private void AddBoardSpawn() => BoardTimeline.Add(new DayEditorBoardSpawnEntry());
 
+        // Unlike ReSolveBoardTimeline (auto-triggered on ticket edits, append-only, never
+        // touches existing entries), this REPLACES the whole BoardTimeline -- including any
+        // manually-added spawns -- re-simulating required-item placement AND noise/leak
+        // content together from the current ticket sequence. Deliberately a manual, confirmed
+        // action rather than automatic: there's no way to tell a hand-authored entry apart
+        // from a generated one once it's in the list, so an automatic full-wipe on every edit
+        // would silently destroy manual authoring.
+        [Button("Regenerate Board Timeline (Noise + Leak)"), FoldoutGroup("Board Timeline")]
+        public void RegenerateBoardTimeline()
+        {
+            if (sharedCatalog == null || sharedGameConfig == null || sharedTicketConfig == null || sharedBoardConfig == null)
+            {
+                EditorUtility.DisplayDialog("Regenerate Board Timeline", "Config assets aren't assigned yet -- set them in the toolbar above.", "OK");
+                return;
+            }
+
+            var incompleteIndex = TicketSequence.FindIndex(e => e.MainItem == null);
+            if (incompleteIndex >= 0)
+            {
+                EditorUtility.DisplayDialog("Regenerate Board Timeline", $"Ticket #{incompleteIndex} has no Main Item set -- fill in every ticket before regenerating.", "OK");
+                return;
+            }
+
+            if (!EditorUtility.DisplayDialog("Regenerate Board Timeline", "This replaces the ENTIRE board timeline -- including any manually-added spawns -- based on the current ticket sequence and noise/leak settings. Continue?", "Regenerate", "Cancel"))
+            {
+                return;
+            }
+
+            var resolvedTickets = TicketSequence.Select(e => e.ToResolved()).ToList();
+            var (boardTimeline, warnings) = DayContentGenerator.RegenerateBoardTimeline(
+                sharedCatalog, sharedGameConfig, sharedTicketConfig, sharedBoardConfig, EditorMeta.ToJson(), resolvedTickets, GenerateSeed);
+
+            BoardTimeline = boardTimeline.Select(e => DayEditorBoardSpawnEntry.FromJson(e, sharedCatalog)).ToList();
+
+            if (warnings.Count > 0)
+            {
+                EditorUtility.DisplayDialog("Regenerate Board Timeline", "Some required items couldn't be auto-placed (board is full at that point):\n\n" + string.Join("\n", warnings), "OK");
+            }
+        }
+
         // Recomputed on every draw pass -- DayValidator has no Random/BoardDistributor calls, its
         // cost is a small board-sized scan per step, negligible for live feedback without a timer.
         private bool IsValid => Validate().IsValid;

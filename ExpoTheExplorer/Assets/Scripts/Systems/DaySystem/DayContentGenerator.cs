@@ -126,6 +126,85 @@ namespace ExpoTheExplorer.Systems.DaySystem
             return new DayContentGenerationResult(ticketEntries.ToArray(), finalBoardTimeline, warnings);
         }
 
+        // Re-simulates the WHOLE board timeline (required-item guarantees + noise leaking)
+        // for a Day's EXISTING/edited ticket sequence -- unlike Generate/GenerateCore, ticket
+        // content itself is never touched or re-rolled, only which board items appear and
+        // when. Used by the Day Editor's "Regenerate Board Timeline" button so noise/leak
+        // content can be refreshed to match tickets that were hand-edited after the Day was
+        // first generated. Callers must ensure every entry has a non-null MainItem first --
+        // TicketEntryFactory.Create has no null-guard of its own.
+        public static (BoardSpawnEntryJson[] BoardTimeline, IReadOnlyList<string> Warnings) RegenerateBoardTimeline(
+            FoodCatalog catalog,
+            GameConfig gameConfig,
+            TicketGenerationConfig ticketConfig,
+            BoardDistributionConfig baseBoardConfig,
+            DayEditorMetaJson editorMeta,
+            IReadOnlyList<ResolvedTicketEntry> ticketSequence,
+            int seed)
+        {
+            var boardConfig = ApplyBoardDistributionOverrides(baseBoardConfig, editorMeta);
+            try
+            {
+                return RegenerateBoardTimelineCore(catalog, gameConfig, ticketConfig, boardConfig, ticketSequence, seed);
+            }
+            finally
+            {
+                if (boardConfig != baseBoardConfig) UnityEngine.Object.DestroyImmediate(boardConfig);
+            }
+        }
+
+        private static (BoardSpawnEntryJson[] BoardTimeline, IReadOnlyList<string> Warnings) RegenerateBoardTimelineCore(
+            FoodCatalog catalog, GameConfig gameConfig, TicketGenerationConfig ticketConfig,
+            BoardDistributionConfig boardConfig, IReadOnlyList<ResolvedTicketEntry> ticketSequence, int seed)
+        {
+            var random = new Random(seed);
+            var state = new GameState(gameConfig);
+            var ticketFactory = new TicketFactory(ticketConfig, random);
+            var distributor = new BoardDistributor(state, boardConfig, random);
+
+            // Built once, up front -- BoardDistributor's noise-leak dedup (leakedTickets) tracks
+            // Tickets by reference identity, so the SAME Ticket instance must be reused across
+            // every step it's visible in the upcoming-queue window, not rebuilt per lookup.
+            var allTickets = ticketSequence
+                .Select((entry, index) => TicketEntryFactory.Create(entry, ticketConfig, ticketFactory, index))
+                .ToList();
+
+            var lookaheadCount = Math.Max(GameState.TicketSlotCount, ticketConfig.UpcomingQueueSize);
+            var activeSlots = new Ticket[GameState.TicketSlotCount];
+            var boardSpawnEntries = new List<BoardSpawnEntryJson>();
+            var warnings = new List<string>();
+
+            for (var step = 0; step < allTickets.Count; step++)
+            {
+                var slotIndex = step % GameState.TicketSlotCount;
+                var outgoingTicket = activeSlots[slotIndex];
+                if (outgoingTicket != null)
+                {
+                    RemoveTicketItemsFromBoard(state.Board, outgoingTicket, warnings, step);
+                }
+
+                var before = SnapshotBoard(state.Board);
+
+                activeSlots[slotIndex] = allTickets[step];
+                var upcomingWindow = allTickets.Skip(step + 1).Take(lookaheadCount).ToList();
+
+                var activeForCall = activeSlots.Where(t => t != null).ToList();
+                distributor.OnOrderPlaced(activeForCall, upcomingWindow);
+
+                var after = SnapshotBoard(state.Board);
+                foreach (var (x, y, item) in DiffChangedCells(before, after))
+                {
+                    boardSpawnEntries.Add(ToBoardSpawnEntryJson(step, x, y, item));
+                }
+            }
+
+            var resolvedBoardTimeline = boardSpawnEntries.Select(entry => ToResolvedBoardSpawnEntry(entry, catalog)).ToList();
+            var ticketsForSolvability = ticketSequence.ToList();
+            EnsureSolvable(ticketsForSolvability, resolvedBoardTimeline, gameConfig, warnings);
+
+            return (resolvedBoardTimeline.Select(ToBoardSpawnEntryJson).ToArray(), warnings);
+        }
+
         // Iterates until DaySolvabilityChecker reports no more shortfalls, patching the
         // earliest one at a time by adding a spawn at the exact step the affected ticket
         // itself arrives (guaranteeing availability for its whole active window). Terminates
