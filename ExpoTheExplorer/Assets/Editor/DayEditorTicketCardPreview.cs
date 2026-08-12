@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using ExpoTheExplorer.Core;
 using ExpoTheExplorer.Data;
 using UnityEditor;
@@ -60,17 +61,27 @@ namespace ExpoTheExplorer.Editor
             DrawSpriteFit(new Rect((cardRect.width - dishSize) / 2f, y, dishSize, dishSize), entry.MainItem != null ? entry.MainItem.Sprite : null);
             y += dishSize + 4;
 
-            const float modSize = 20f;
-            var modX = 4f;
-            foreach (var mod in entry.Modifications)
+            // Sized/badged to match the real Modification row (TicketCard.prefab): a 40x40
+            // dish-relative icon with a ~0.6x direction (+/-) badge overlapping its top-right
+            // corner -- centered as a row, same convention as the dish/side/drink rows above.
+            const float modSize = 24f;
+            const float modSpacing = 2f;
+            const float badgeSize = modSize * 0.6f;
+            var validMods = entry.Modifications.Where(m => m?.Config != null).ToList();
+            var rowWidth = validMods.Count * modSize + Mathf.Max(0, validMods.Count - 1) * modSpacing;
+            var modX = (cardRect.width - rowWidth) / 2f;
+            foreach (var mod in validMods)
             {
-                if (mod?.Config == null) continue;
                 if (modX + modSize > cardRect.width - 4) break; // out of row width -- drop the rest rather than overlap the next card
 
                 var modRect = new Rect(modX, y, modSize, modSize);
                 EditorGUI.DrawRect(modRect, ModificationBoxColorFor(visuals, entry.PatienceType));
                 DrawSpriteFit(modRect, mod.Config.Icon);
-                modX += modSize + 2;
+
+                var badgeRect = new Rect(modRect.xMax - badgeSize * 0.7f, modRect.y - badgeSize * 0.3f, badgeSize, badgeSize);
+                DrawSpriteFit(badgeRect, DirectionSpriteFor(visuals, mod.IsAddition));
+
+                modX += modSize + modSpacing;
             }
             y += modSize + 4;
 
@@ -126,6 +137,12 @@ namespace ExpoTheExplorer.Editor
                 PatienceType.Patient => visuals.PatientModificationBoxColor,
                 _ => visuals.NormalModificationBoxColor,
             };
+        }
+
+        private static Sprite DirectionSpriteFor(TicketCardVisualsConfig visuals, bool isAddition)
+        {
+            if (visuals == null) return null;
+            return isAddition ? visuals.AdditionSprite : visuals.RemovalSprite;
         }
 
         // Centers and fits within rect preserving aspect -- matches how the in-game
