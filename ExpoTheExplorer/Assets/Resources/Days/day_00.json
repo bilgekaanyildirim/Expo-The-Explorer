@@ -2,9 +2,6 @@
     "runtime": {
         "dayIndex": 0,
         "ticketsRequiredForDay": 11,
-        "star1Threshold": 60,
-        "star2Threshold": 300,
-        "star3Threshold": 460,
         "ticketSequence": [
             {
                 "mainItemId": "burger",
@@ -16,7 +13,7 @@
                         "isAddition": false
                     }
                 ],
-                "patienceType": "Normal",
+                "patienceType": "Patient",
                 "customerNameOverride": "",
                 "timeLimitSecondsOverride": 0.0
             },
@@ -518,6 +515,9 @@
                 "y": 4
             }
         ],
+        "star1Threshold": 0,
+        "star2Threshold": 0,
+        "star3Threshold": 0,
         "hasRetryVariant": false,
         "retryVariant": {
             "runtime": {
@@ -525,6 +525,9 @@
                 "ticketsRequiredForDay": 0,
                 "ticketSequence": [],
                 "boardTimeline": [],
+                "star1Threshold": 0,
+                "star2Threshold": 0,
+                "star3Threshold": 0,
                 "hasRetryVariant": false,
                 "retryVariant": {
                     "runtime": {
@@ -532,6 +535,9 @@
                         "ticketsRequiredForDay": 0,
                         "ticketSequence": [],
                         "boardTimeline": [],
+                        "star1Threshold": 0,
+                        "star2Threshold": 0,
+                        "star3Threshold": 0,
                         "hasRetryVariant": false,
                         "retryVariant": {
                             "runtime": {
@@ -539,6 +545,9 @@
                                 "ticketsRequiredForDay": 0,
                                 "ticketSequence": [],
                                 "boardTimeline": [],
+                                "star1Threshold": 0,
+                                "star2Threshold": 0,
+                                "star3Threshold": 0,
                                 "hasRetryVariant": false,
                                 "retryVariant": {
                                     "runtime": {
@@ -546,11 +555,17 @@
                                         "ticketsRequiredForDay": 0,
                                         "ticketSequence": [],
                                         "boardTimeline": [],
+                                        "star1Threshold": 0,
+                                        "star2Threshold": 0,
+                                        "star3Threshold": 0,
                                         "hasRetryVariant": false,
                                         "retryVariant": {
                                             "runtime": {
                                                 "dayIndex": 0,
                                                 "ticketsRequiredForDay": 0,
+                                                "star1Threshold": 0,
+                                                "star2Threshold": 0,
+                                                "star3Threshold": 0,
                                                 "hasRetryVariant": false
                                             },
                                             "editorMeta": {
