@@ -179,12 +179,6 @@ namespace ExpoTheExplorer.Editor
         [UnityEngine.HideInInspector]
         public int? LastSavedDayIndex;
 
-        [BoxGroup("Generate")]
-        public int GenerateSeed;
-
-        [BoxGroup("Generate"), Button]
-        private void RandomizeSeed() => GenerateSeed = UnityEngine.Random.Range(int.MinValue, int.MaxValue);
-
         [Button("Generate")]
         public void Generate()
         {
@@ -199,7 +193,10 @@ namespace ExpoTheExplorer.Editor
                 return;
             }
 
-            var result = DayContentGenerator.Generate(sharedCatalog, sharedGameConfig, sharedTicketConfig, sharedBoardConfig, EditorMeta.ToJson(), TicketsRequiredForDay, GenerateSeed);
+            // No user-facing seed field -- every click gets its own fresh randomness, not
+            // reproducible on purpose (nothing else persists a seed for this Day either).
+            var seed = UnityEngine.Random.Range(int.MinValue, int.MaxValue);
+            var result = DayContentGenerator.Generate(sharedCatalog, sharedGameConfig, sharedTicketConfig, sharedBoardConfig, EditorMeta.ToJson(), TicketsRequiredForDay, seed);
             TicketSequence = result.TicketSequence.Select(e => DayEditorTicketEntry.FromJson(e, sharedCatalog)).ToList();
             BoardTimeline = result.BoardTimeline.Select(e => DayEditorBoardSpawnEntry.FromJson(e, sharedCatalog)).ToList();
         }
@@ -239,8 +236,9 @@ namespace ExpoTheExplorer.Editor
             }
 
             var resolvedTickets = TicketSequence.Select(e => e.ToResolved()).ToList();
+            var seed = UnityEngine.Random.Range(int.MinValue, int.MaxValue);
             var (boardTimeline, warnings) = DayContentGenerator.RegenerateBoardTimeline(
-                sharedCatalog, sharedGameConfig, sharedTicketConfig, sharedBoardConfig, EditorMeta.ToJson(), resolvedTickets, GenerateSeed);
+                sharedCatalog, sharedGameConfig, sharedTicketConfig, sharedBoardConfig, EditorMeta.ToJson(), resolvedTickets, seed);
 
             BoardTimeline = boardTimeline.Select(e => DayEditorBoardSpawnEntry.FromJson(e, sharedCatalog)).ToList();
 
