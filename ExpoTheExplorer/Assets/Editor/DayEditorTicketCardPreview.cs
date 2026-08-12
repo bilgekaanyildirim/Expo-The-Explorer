@@ -67,12 +67,12 @@ namespace ExpoTheExplorer.Editor
             GUI.BeginGroup(cardRect);
 
             var y = 4f;
-            GUI.Label(new Rect(4, y, cardRect.width - 8, 16), $"#{index}  {entry.PatienceType}", EditorStyles.boldLabel);
+            GUI.Label(new Rect(4, y, cardRect.width - 8, 16), $"#{index}  {entry.PatienceType}", EditorStyles.whiteBoldLabel);
             y += 30;
 
             if (!string.IsNullOrEmpty(entry.CustomerNameOverride))
             {
-                GUI.Label(new Rect(4, y, cardRect.width - 8, 14), entry.CustomerNameOverride, EditorStyles.miniLabel);
+                GUI.Label(new Rect(4, y, cardRect.width - 8, 14), entry.CustomerNameOverride, EditorStyles.whiteMiniLabel);
                 y += 14;
             }
             y += 2;
@@ -149,7 +149,7 @@ namespace ExpoTheExplorer.Editor
                 _ => visuals.NormalTicketSprite,
             };
         }
-        
+
         private static Sprite DirectionSpriteFor(TicketCardVisualsConfig visuals, bool isAddition)
         {
             if (visuals == null) return null;
