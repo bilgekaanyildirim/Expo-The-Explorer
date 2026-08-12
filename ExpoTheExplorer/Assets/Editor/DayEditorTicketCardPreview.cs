@@ -46,7 +46,7 @@ namespace ExpoTheExplorer.Editor
 
             var y = 4f;
             GUI.Label(new Rect(4, y, cardRect.width - 8, 16), $"#{index}  {entry.PatienceType}", EditorStyles.boldLabel);
-            y += 16;
+            y += 30;
 
             if (!string.IsNullOrEmpty(entry.CustomerNameOverride))
             {
@@ -59,13 +59,13 @@ namespace ExpoTheExplorer.Editor
             // list -> side/drink.
             const float dishSize = 40f;
             DrawSpriteFit(new Rect((cardRect.width - dishSize) / 2f, y, dishSize, dishSize), entry.MainItem != null ? entry.MainItem.Sprite : null);
-            y += dishSize + 4;
+            y += dishSize + 10;
 
             // Sized/badged to match the real Modification row (TicketCard.prefab): a 40x40
             // dish-relative icon with a ~0.6x direction (+/-) badge overlapping its top-right
             // corner -- centered as a row, same convention as the dish/side/drink rows above.
-            const float modSize = 24f;
-            const float modSpacing = 2f;
+            const float modSize = 18f;
+            const float modSpacing = 3f;
             const float badgeSize = modSize * 0.6f;
             var validMods = entry.Modifications.Where(m => m?.Config != null).ToList();
             var rowWidth = validMods.Count * modSize + Mathf.Max(0, validMods.Count - 1) * modSpacing;
@@ -75,15 +75,14 @@ namespace ExpoTheExplorer.Editor
                 if (modX + modSize > cardRect.width - 4) break; // out of row width -- drop the rest rather than overlap the next card
 
                 var modRect = new Rect(modX, y, modSize, modSize);
-                EditorGUI.DrawRect(modRect, ModificationBoxColorFor(visuals, entry.PatienceType));
                 DrawSpriteFit(modRect, mod.Config.Icon);
 
-                var badgeRect = new Rect(modRect.xMax - badgeSize * 0.7f, modRect.y - badgeSize * 0.3f, badgeSize, badgeSize);
+                var badgeRect = new Rect((modRect.xMin + modRect.xMax - badgeSize) / 2, modRect.yMax, badgeSize, badgeSize);
                 DrawSpriteFit(badgeRect, DirectionSpriteFor(visuals, mod.IsAddition));
 
                 modX += modSize + modSpacing;
             }
-            y += modSize + 4;
+            y += modSize + 30;
 
             const float thumbSize = 30f;
             if (entry.SideItem != null && entry.SideItem.Sprite != null)
@@ -127,18 +126,7 @@ namespace ExpoTheExplorer.Editor
                 _ => visuals.NormalTicketSprite,
             };
         }
-
-        private static Color ModificationBoxColorFor(TicketCardVisualsConfig visuals, PatienceType patienceType)
-        {
-            if (visuals == null) return new Color(0.5f, 0.5f, 0.5f, 0.3f);
-            return patienceType switch
-            {
-                PatienceType.Impatient => visuals.ImpatientModificationBoxColor,
-                PatienceType.Patient => visuals.PatientModificationBoxColor,
-                _ => visuals.NormalModificationBoxColor,
-            };
-        }
-
+        
         private static Sprite DirectionSpriteFor(TicketCardVisualsConfig visuals, bool isAddition)
         {
             if (visuals == null) return null;
