@@ -1,0 +1,124 @@
+{
+  "_comment": "unity-dev skill — project hook registration. This file is the PRIMARY and ONLY home of enforcement: settings hooks run in every session and inside subagents, while SKILL.md frontmatter hooks run only when the skill is active (a gap — do not move these there). Verify with /hooks after install; project-settings hooks require accepting the workspace trust dialog once.",
+  "_form": "All hooks use exec form (command + args): the docs recommend it for any hook that references a path placeholder, because there is no shell to re-tokenize a project path containing spaces.",
+  "_no_if_on_the_gate": "The PreToolUse guard deliberately carries no `if` filter. `if` would cut process spawns, but a filter that stops matching — a pattern-semantics change across versions, an unanticipated protected extension — turns the security gate into a silent no-op. The guard is a few milliseconds of bash; the codemap nudge below, where a miss is harmless, is where `if` is used.",
+  "_worktree_deny": "A subagent spawned with isolation: worktree gets a fresh working copy branched from the default branch. CLAUDE_PROJECT_DIR and every manifest path in the preflight then point somewhere else, so the gate can neither verify nor meaningfully deny. Refusing the isolation flag outright is the readable answer; the committed .claude/unity-dev.json marker is the backstop if this rule is ever removed.",
+  "_subagent_start": "SubagentStart is the only lever that reaches the BUILT-IN Explore and Plan agents, which skip the CLAUDE.md hierarchy by design and would otherwise answer a location question with a repo-wide scan. It carries no matcher on purpose: every agent type gets the map contract, including ones added later. .claude/agents/Explore.md overrides the built-in on top of this and is independent of it.",
+  "_file_changed": "FileChanged carries no matcher here. That field builds the STATIC watch list out of literal filenames in the working directory and accepts only letters, digits, _ and | — it cannot express a path. The real watch list is published at runtime by session_context.py as SessionStart watchPaths (absolute scene/prefab/.asset paths). With no matcher this group matches every watched change. FileChanged has no decision control and its stderr reaches the user only, so the hook records drift to .claude/map-drift and map_drift_notice.sh reports it to Claude on the next prompt.",
+  "permissions": {
+    "deny": ["Agent(isolation:worktree)"]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/session_context.py", "${CLAUDE_PROJECT_DIR}"],
+            "statusMessage": "unity-dev: reading map health"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/preflight_guard.sh",
+            "args": [],
+            "statusMessage": "unity-dev: preflight gate"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/preflight_guard.sh",
+            "args": [],
+            "statusMessage": "unity-dev: preflight gate"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "if": "Edit(**/*.cs)",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/codemap_guard.sh",
+            "args": [],
+            "statusMessage": "unity-dev: codemap line check"
+          },
+          {
+            "type": "command",
+            "if": "Edit(**/*.asmdef)",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/codemap_guard.sh",
+            "args": [],
+            "statusMessage": "unity-dev: codemap line check"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/preflight_approve.sh",
+            "args": [],
+            "statusMessage": "unity-dev: approval token check"
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/map_drift_notice.sh",
+            "args": [],
+            "statusMessage": "unity-dev: editor drift check"
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/subagent_context.py", "${CLAUDE_PROJECT_DIR}"],
+            "statusMessage": "unity-dev: map contract"
+          }
+        ]
+      }
+    ],
+    "FileChanged": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/mark_map_stale.py", "${CLAUDE_PROJECT_DIR}"],
+            "statusMessage": "unity-dev: recording editor drift"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/refresh_maps.py", "${CLAUDE_PROJECT_DIR}"],
+            "statusMessage": "unity-dev: refreshing maps"
+          }
+        ]
+      }
+    ]
+  }
+}

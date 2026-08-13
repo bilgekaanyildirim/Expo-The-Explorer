@@ -1,0 +1,26 @@
+{
+  "name": "unity-dev",
+  "displayName": "unity-dev",
+  "version": "2.1.0",
+  "description": "Decision discipline for ALL of Unity game development — bootstrapping a project from scratch, adding systems and features, C# gameplay/UI/data code, bug fixes, content and level work, refactoring, optimization, and phase transitions. Provides a cost model, hook-enforced preflight/postflight gates that hold inside subagents too, and four self-auditing maps (index, codemap, unitymap, assetmap) with a fixed locate order, so a task never scans the repo. Requires bash, python3 and Claude Code v2.1.195+ (macOS, Linux, or Windows via WSL).",
+  "author": {
+    "name": "hilmi erkam gürbüz",
+    "url": "https://github.com/hilmierkamgurbuz"
+  },
+  "homepage": "https://github.com/hilmierkamgurbuz/unity-dev",
+  "repository": "https://github.com/hilmierkamgurbuz/unity-dev",
+  "license": "MIT",
+  "keywords": [
+    "unity",
+    "gamedev",
+    "csharp",
+    "game-development",
+    "architecture",
+    "optimization",
+    "hooks",
+    "skill"
+  ],
+  "skills": [
+    "./"
+  ]
+}

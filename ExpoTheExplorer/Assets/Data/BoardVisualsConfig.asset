@@ -1,0 +1,18 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3045e1f77a14a46ca858bb26650a96c3, type: 3}
+  m_Name: BoardVisualsConfig
+  m_EditorClassIdentifier: ExpoTheExplorer.Data::ExpoTheExplorer.Data.BoardVisualsConfig
+  cellColorA: {r: 0.98, g: 0.72, b: 0.42, a: 1}
+  cellColorB: {r: 0.93, g: 0.64, b: 0.34, a: 1}
+  placeholderItemColor: {r: 0.85, g: 0.35, b: 0.12, a: 1}
+  frameColor: {r: 0.45, g: 0.25, b: 0.1, a: 1}

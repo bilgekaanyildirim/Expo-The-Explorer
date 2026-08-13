@@ -82,7 +82,7 @@ namespace ExpoTheExplorer.Systems.DaySystem
                 var outgoingTicket = activeSlots[slotIndex];
                 if (outgoingTicket != null)
                 {
-                    RemoveTicketItemsFromBoard(state.Board, outgoingTicket, warnings, step);
+                    RemoveTicketItemsFromBoard(state.Board, outgoingTicket.RequiredItems, outgoingTicket.Modifications, warnings, step);
                 }
 
                 // Spans removal+backfill+OnOrderPlaced as a single diff, so a pending-queue
@@ -180,7 +180,7 @@ namespace ExpoTheExplorer.Systems.DaySystem
                 var outgoingTicket = activeSlots[slotIndex];
                 if (outgoingTicket != null)
                 {
-                    RemoveTicketItemsFromBoard(state.Board, outgoingTicket, warnings, step);
+                    RemoveTicketItemsFromBoard(state.Board, outgoingTicket.RequiredItems, outgoingTicket.Modifications, warnings, step);
                 }
 
                 var before = SnapshotBoard(state.Board);
@@ -298,11 +298,17 @@ namespace ExpoTheExplorer.Systems.DaySystem
         // next one due for "delivery" here), so a missing match should be rare -- if it
         // happens anyway, it's recorded as a warning rather than thrown, since this is a
         // preview/authoring aid, not a hard correctness gate (that's DayValidator's job).
-        private static void RemoveTicketItemsFromBoard(BoardGrid board, Ticket ticket, List<string> warnings, int step)
+        // Public (not private) because DayEditorBoardTimelinePreview replays this exact
+        // same round-robin idealization for its own board-timeline preview -- one
+        // implementation, two callers, rather than a second copy of this logic in Editor
+        // code. Takes the two members it actually reads off a Ticket, rather than a whole
+        // Ticket, so a caller with only authored ResolvedTicketEntry data (no live
+        // TicketFactory roll) can call it too.
+        public static void RemoveTicketItemsFromBoard(BoardGrid board, IReadOnlyList<FoodItemConfig> requiredItems, IReadOnlyList<Modification> modifications, List<string> warnings, int step)
         {
-            foreach (var food in ticket.RequiredItems)
+            foreach (var food in requiredItems)
             {
-                var mods = food.Category == FoodCategory.Main ? ticket.Modifications : Array.Empty<Modification>();
+                var mods = food.Category == FoodCategory.Main ? modifications : Array.Empty<Modification>();
                 var key = new RequiredItemKey(food, mods);
                 if (TryFindMatchingCell(board, key, out var x, out var y))
                 {

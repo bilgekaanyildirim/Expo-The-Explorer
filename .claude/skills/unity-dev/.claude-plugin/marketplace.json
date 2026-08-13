@@ -1,0 +1,20 @@
+{
+  "name": "unity-dev",
+  "owner": {
+    "name": "hilmi erkam gürbüz",
+    "url": "https://github.com/hilmierkamgurbuz"
+  },
+  "description": "Marketplace for the unity-dev Claude Code plugin — Unity game development with hook-enforced discipline.",
+  "plugins": [
+    {
+      "name": "unity-dev",
+      "source": "./",
+      "description": "Decision discipline for ALL of Unity game development — bootstrap, systems, C# code, content, refactoring, optimization, and phase transitions. Cost model + hook-enforced preflight/postflight gates + codemap routing for token-efficient, release-grade games.",
+      "category": "development",
+      "tags": ["unity", "gamedev", "csharp", "architecture", "optimization"],
+      "license": "MIT",
+      "homepage": "https://github.com/hilmierkamgurbuz/unity-dev",
+      "repository": "https://github.com/hilmierkamgurbuz/unity-dev"
+    }
+  ]
+}

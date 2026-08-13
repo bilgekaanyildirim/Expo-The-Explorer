@@ -73,3 +73,10 @@ crashlytics-build.properties
 # Temporary auto-generated Android Assets
 /[Aa]ssets/[Ss]treamingAssets/aa.meta
 /[Aa]ssets/[Ss]treamingAssets/aa/*
+
+# unity-dev skill
+.claude/preflight/
+.claude/settings.local.json
+.claude/hooks/__pycache__/
+.claude/worktrees/
+.claude/**/__pycache__/

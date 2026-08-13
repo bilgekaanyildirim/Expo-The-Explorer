@@ -74,9 +74,9 @@ namespace ExpoTheExplorer.Editor
             // change-check blocks bracket just the item/modification fields, keeping the
             // override fields in their original visual position between them.
             EditorGUI.BeginChangeCheck();
-            entry.MainItem = (FoodItemConfig)EditorGUILayout.ObjectField("Main Item", entry.MainItem, typeof(FoodItemConfig), false);
-            entry.SideItem = (FoodItemConfig)EditorGUILayout.ObjectField("Side Item", entry.SideItem, typeof(FoodItemConfig), false);
-            entry.DrinkItem = (FoodItemConfig)EditorGUILayout.ObjectField("Drink Item", entry.DrinkItem, typeof(FoodItemConfig), false);
+            entry.MainItem = DrawCategoryItemField("Main Item", entry.MainItem, FoodCategory.Main, sharedCatalog);
+            entry.SideItem = DrawCategoryItemField("Side Item", entry.SideItem, FoodCategory.Side, sharedCatalog);
+            entry.DrinkItem = DrawCategoryItemField("Drink Item", entry.DrinkItem, FoodCategory.Drink, sharedCatalog);
             entry.PatienceType = (PatienceType)EditorGUILayout.EnumPopup("Patience Type", entry.PatienceType);
             var itemFieldsChanged = EditorGUI.EndChangeCheck();
 
@@ -121,6 +121,38 @@ namespace ExpoTheExplorer.Editor
             }
         }
 
+        // Restricts the picker to items of the given category -- ObjectField can't filter by a
+        // field value, only by Type, so a plain ObjectField would let e.g. a Side item be
+        // assigned into the Main slot. Falls back to the old unfiltered ObjectField when the
+        // catalog isn't assigned yet, so editing isn't blocked before the toolbar is configured.
+        private static FoodItemConfig DrawCategoryItemField(string label, FoodItemConfig current, FoodCategory category, FoodCatalog catalog)
+        {
+            if (catalog == null)
+            {
+                return (FoodItemConfig)EditorGUILayout.ObjectField(label, current, typeof(FoodItemConfig), false);
+            }
+
+            var options = catalog.Items.Where(item => item.Category == category).ToList();
+
+            // Keep a mismatched/orphaned current value visible instead of silently dropping it
+            // (e.g. data authored before this filter existed, or a category changed since).
+            if (current != null && !options.Contains(current))
+            {
+                options.Insert(0, current);
+            }
+
+            var labels = new string[options.Count + 1];
+            labels[0] = "None";
+            for (var i = 0; i < options.Count; i++)
+            {
+                labels[i + 1] = options[i].DisplayName;
+            }
+
+            var currentIndex = current == null ? 0 : options.IndexOf(current) + 1;
+            var selectedIndex = EditorGUILayout.Popup(label, currentIndex, labels);
+            return selectedIndex == 0 ? null : options[selectedIndex - 1];
+        }
+
         // Re-runs DayContentGenerator.EnsureSolvable (the same repair pass the full-Day
         // "Generate" button already relies on) over the CURRENT ticket sequence/board timeline,
         // so an edit to one ticket's item requirements can't silently leave the Day
@@ -150,6 +182,13 @@ namespace ExpoTheExplorer.Editor
 
         [UnityEngine.HideInInspector]
         public List<DayEditorTicketEntry> TicketSequence = new();
+
+        [FoldoutGroup("Board Timeline"), OnInspectorGUI, PropertyOrder(-1)]
+        private void DrawBoardTimelinePreview() => DayEditorBoardTimelinePreview.DrawGrid(sharedGameConfig, sharedBoardVisuals, BoardTimeline, TicketSequence, ref boardPreviewScrollPos);
+
+        // Not part of the JSON, not serialized -- same UI-state convention as
+        // ticketStripScrollPos/selectedTicketIndex above.
+        private UnityEngine.Vector2 boardPreviewScrollPos;
 
         [TableList(ShowIndexLabels = true), FoldoutGroup("Board Timeline")]
         public List<DayEditorBoardSpawnEntry> BoardTimeline = new();
@@ -291,6 +330,7 @@ namespace ExpoTheExplorer.Editor
         private TicketGenerationConfig sharedTicketConfig;
         private BoardDistributionConfig sharedBoardConfig;
         private TicketCardVisualsConfig sharedTicketCardVisuals;
+        private BoardVisualsConfig sharedBoardVisuals;
         private Action<DayEditorModel> onSaveRequested;
         private Action<DayEditorModel> onDuplicateRequested;
         private Action<DayEditorModel> onDeleteRequested;
@@ -301,6 +341,7 @@ namespace ExpoTheExplorer.Editor
             TicketGenerationConfig ticketConfig,
             BoardDistributionConfig boardConfig,
             TicketCardVisualsConfig ticketCardVisuals,
+            BoardVisualsConfig boardVisuals,
             Action<DayEditorModel> onSave,
             Action<DayEditorModel> onDuplicate,
             Action<DayEditorModel> onDelete)
@@ -310,11 +351,12 @@ namespace ExpoTheExplorer.Editor
             sharedTicketConfig = ticketConfig;
             sharedBoardConfig = boardConfig;
             sharedTicketCardVisuals = ticketCardVisuals;
+            sharedBoardVisuals = boardVisuals;
             onSaveRequested = onSave;
             onDuplicateRequested = onDuplicate;
             onDeleteRequested = onDelete;
 
-            RetryVariant?.Configure(catalog, gameConfig, ticketConfig, boardConfig, ticketCardVisuals, null, null, null);
+            RetryVariant?.Configure(catalog, gameConfig, ticketConfig, boardConfig, ticketCardVisuals, boardVisuals, null, null, null);
         }
 
         public DayJson ToDayJson()

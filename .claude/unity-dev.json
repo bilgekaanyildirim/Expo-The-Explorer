@@ -1,0 +1,6 @@
+{
+  "_comment": "unity-dev enforcement marker. preflight_guard.sh treats the presence of this file as 'this project is under unity-dev enforcement' and denies every protected write that is not covered by an approved preflight manifest. It is COMMITTED to version control on purpose: a fresh clone or a git worktree must arrive already armed. Deleting it disarms the PreToolUse gate for the whole project.",
+  "enforcement": true,
+  "skillVersion": "2.1.0",
+  "protectedTypes": [".cs", ".asmdef", ".unity", ".prefab", ".asset"]
+}

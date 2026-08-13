@@ -44,7 +44,11 @@ namespace ExpoTheExplorer.Editor
                 // inside DrawCard would be comparing against the wrong space entirely.
                 if (Event.current.type == EventType.MouseDown && Event.current.button == 0 && cardRect.Contains(Event.current.mousePosition))
                 {
-                    selectedIndex = i;
+                    // Clicking the already-selected card toggles the selection off (-1),
+                    // which collapses DayEditorModel's edit panel below the strip -- a
+                    // click is the only way back out of editing, since the panel has no
+                    // close button of its own.
+                    selectedIndex = selectedIndex == i ? -1 : i;
                     GUI.changed = true;
                     Event.current.Use();
                 }
@@ -80,7 +84,7 @@ namespace ExpoTheExplorer.Editor
             // Info hierarchy matches the real card (CLAUDE.md Section 3): dish -> modification
             // list -> side/drink.
             const float dishSize = 40f;
-            DrawSpriteFit(new Rect((cardRect.width - dishSize) / 2f, y, dishSize, dishSize), entry.MainItem != null ? entry.MainItem.Sprite : null);
+            DayEditorSpriteGUI.DrawSpriteFit(new Rect((cardRect.width - dishSize) / 2f, y, dishSize, dishSize), entry.MainItem != null ? entry.MainItem.Sprite : null);
             y += dishSize + 10;
 
             // Sized/badged to match the real Modification row (TicketCard.prefab): a 40x40
@@ -97,10 +101,10 @@ namespace ExpoTheExplorer.Editor
                 if (modX + modSize > cardRect.width - 4) break; // out of row width -- drop the rest rather than overlap the next card
 
                 var modRect = new Rect(modX, y, modSize, modSize);
-                DrawSpriteFit(modRect, mod.Config.Icon);
+                DayEditorSpriteGUI.DrawSpriteFit(modRect, mod.Config.Icon);
 
                 var badgeRect = new Rect((modRect.xMin + modRect.xMax - badgeSize) / 2, modRect.yMax, badgeSize, badgeSize);
-                DrawSpriteFit(badgeRect, DirectionSpriteFor(visuals, mod.IsAddition));
+                DayEditorSpriteGUI.DrawSpriteFit(badgeRect, DirectionSpriteFor(visuals, mod.IsAddition));
 
                 modX += modSize + modSpacing;
             }
@@ -110,11 +114,11 @@ namespace ExpoTheExplorer.Editor
             const float thumbSpacing = 12f;
             if (entry.SideItem != null && entry.SideItem.Sprite != null)
             {
-                DrawSpriteFit(new Rect(cardRect.width / 2f - thumbSize - thumbSpacing, y, thumbSize, thumbSize), entry.SideItem.Sprite);
+                DayEditorSpriteGUI.DrawSpriteFit(new Rect(cardRect.width / 2f - thumbSize - thumbSpacing, y, thumbSize, thumbSize), entry.SideItem.Sprite);
             }
             if (entry.DrinkItem != null && entry.DrinkItem.Sprite != null)
             {
-                DrawSpriteFit(new Rect(cardRect.width / 2f + thumbSpacing, y, thumbSize, thumbSize), entry.DrinkItem.Sprite);
+                DayEditorSpriteGUI.DrawSpriteFit(new Rect(cardRect.width / 2f + thumbSpacing, y, thumbSize, thumbSize), entry.DrinkItem.Sprite);
             }
             y += thumbSize + 4;
 
@@ -131,7 +135,7 @@ namespace ExpoTheExplorer.Editor
             var frameSprite = TicketSpriteFor(visuals, patienceType);
             if (frameSprite != null)
             {
-                DrawTexCoords(cardRect, frameSprite);
+                DayEditorSpriteGUI.DrawTexCoords(cardRect, frameSprite);
             }
             else
             {
@@ -154,42 +158,6 @@ namespace ExpoTheExplorer.Editor
         {
             if (visuals == null) return null;
             return isAddition ? visuals.AdditionSprite : visuals.RemovalSprite;
-        }
-
-        // Centers and fits within rect preserving aspect -- matches how the in-game
-        // dish/side/drink/modification Image components size to their own sprite.
-        private static void DrawSpriteFit(Rect rect, Sprite sprite)
-        {
-            if (sprite == null) return;
-
-            var spriteRect = sprite.rect;
-            if (spriteRect.width <= 0 || spriteRect.height <= 0) return;
-
-            var aspect = spriteRect.width / spriteRect.height;
-            var fitWidth = aspect >= 1f ? rect.width : rect.height * aspect;
-            var fitHeight = aspect >= 1f ? rect.width / aspect : rect.height;
-            var fitRect = new Rect(
-                rect.x + (rect.width - fitWidth) / 2f,
-                rect.y + (rect.height - fitHeight) / 2f,
-                fitWidth,
-                fitHeight);
-
-            DrawTexCoords(fitRect, sprite);
-        }
-
-        // Handles sprites packed in an atlas via normalized UV (mirrors
-        // FoodItemConfigEditor.DrawSpriteInPreview's approach).
-        private static void DrawTexCoords(Rect rect, Sprite sprite)
-        {
-            var spriteRect = sprite.rect;
-            var texture = sprite.texture;
-            var texCoords = new Rect(
-                spriteRect.x / texture.width,
-                spriteRect.y / texture.height,
-                spriteRect.width / texture.width,
-                spriteRect.height / texture.height);
-
-            GUI.DrawTextureWithTexCoords(rect, texture, texCoords);
         }
     }
 }

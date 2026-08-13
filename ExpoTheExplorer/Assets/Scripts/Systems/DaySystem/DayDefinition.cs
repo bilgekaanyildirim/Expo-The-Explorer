@@ -46,6 +46,20 @@ namespace ExpoTheExplorer.Systems.DaySystem
         public string CustomerNameOverride { get; }
         public float TimeLimitSecondsOverride { get; }
 
+        // Main, then Side/Drink if set -- same order TicketEntryFactory.Create feeds
+        // into a real Ticket, and what DayContentGenerator's delivery simulation
+        // (RemoveTicketItemsFromBoard) needs without a live Ticket to read it from.
+        public IReadOnlyList<FoodItemConfig> RequiredItems
+        {
+            get
+            {
+                var items = new List<FoodItemConfig> { MainItem };
+                if (SideItem != null) items.Add(SideItem);
+                if (DrinkItem != null) items.Add(DrinkItem);
+                return items;
+            }
+        }
+
         public ResolvedTicketEntry(
             FoodItemConfig mainItem,
             FoodItemConfig sideItem,

@@ -1,0 +1,11 @@
+{
+  "_comment": "unity-dev — SINGLE SOURCE OF TRUTH for path -> codemap shard. SKILL.md, build_codemap.py and build_index.py all read this file; none of them carries its own copy of the mapping. First matching pattern wins, so order matters: Editor before UI/Gameplay, catch-all last. Patterns are gitignore-style globs relative to the project root: ** crosses directories, * stays inside one segment.",
+  "version": 1,
+  "shards": [
+    { "name": "editor",   "patterns": ["**/Editor/**"],                 "note": "editor-only tools; never in a build" },
+    { "name": "ui",       "patterns": ["**/Scripts/UI/**"],             "note": "UI code" },
+    { "name": "gameplay", "patterns": ["**/Scripts/Gameplay/**"],       "note": "mechanics, systems" },
+    { "name": "content",  "patterns": ["**/Scripts/Content/**"],        "note": "content-driving code; the DATA assets themselves live in assetmap.md" },
+    { "name": "core",     "patterns": ["**"],                           "note": "catch-all: game flow, save, shared services" }
+  ]
+}

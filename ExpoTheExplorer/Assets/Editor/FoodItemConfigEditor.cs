@@ -107,7 +107,7 @@ namespace ExpoTheExplorer.Editor
 
             foreach (var layer in resolvedLayers)
             {
-                DrawSpriteInPreview(previewRect, layer.Sprite, layer.Offset, layer.Scale);
+                DayEditorSpriteGUI.DrawLayeredSprite(previewRect, layer.Sprite, layer.Offset, layer.Scale);
             }
         }
 
@@ -123,45 +123,6 @@ namespace ExpoTheExplorer.Editor
             }
 
             return modifications;
-        }
-
-        // Mirrors BoardView's per-layer fit-then-offset approach (each layer is
-        // independently scaled to fit the cell, then nudged by its resolved
-        // offset as a fraction of the cell size, then adjusted by its own
-        // relative-size multiplier) so the preview matches what actually renders
-        // on the board.
-        private static void DrawSpriteInPreview(Rect previewRect, Sprite sprite, Vector2 offsetFraction, float scale)
-        {
-            if (sprite == null) return;
-
-            var spriteRect = sprite.rect;
-            if (spriteRect.width <= 0 || spriteRect.height <= 0) return;
-
-            var aspect = spriteRect.width / spriteRect.height;
-            var fitSize = Mathf.Min(previewRect.width, previewRect.height) * scale;
-            var drawWidth = aspect >= 1f ? fitSize : fitSize * aspect;
-            var drawHeight = aspect >= 1f ? fitSize / aspect : fitSize;
-
-            var centerX = previewRect.x + previewRect.width / 2f;
-            var centerY = previewRect.y + previewRect.height / 2f;
-            var offsetPxX = offsetFraction.x * previewRect.width;
-            // GUI space Y grows downward while board/world space Y grows upward.
-            var offsetPxY = -offsetFraction.y * previewRect.height;
-
-            var drawRect = new Rect(
-                centerX - drawWidth / 2f + offsetPxX,
-                centerY - drawHeight / 2f + offsetPxY,
-                drawWidth,
-                drawHeight);
-
-            var texture = sprite.texture;
-            var texCoords = new Rect(
-                spriteRect.x / texture.width,
-                spriteRect.y / texture.height,
-                spriteRect.width / texture.width,
-                spriteRect.height / texture.height);
-
-            GUI.DrawTextureWithTexCoords(drawRect, texture, texCoords);
         }
     }
 }

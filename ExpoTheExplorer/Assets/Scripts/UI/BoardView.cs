@@ -16,12 +16,10 @@ namespace ExpoTheExplorer.UI
         [SerializeField] private Camera targetCamera;
         [SerializeField, Range(0f, 1f)] private float screenFillFraction = 0.92f;
         [SerializeField, Range(0f, 1f)] private float cellPadding = 0f;
-        [SerializeField] private Color cellColorA = new(0.98f, 0.72f, 0.42f);
-        [SerializeField] private Color cellColorB = new(0.93f, 0.64f, 0.34f);
-        [SerializeField] private Color placeholderItemColor = new(0.85f, 0.35f, 0.12f);
+        [Tooltip("Board colors (cell checkerboard, placeholder item tint, frame) -- shared with the Day Editor's board preview via the same asset, so both stay in sync by construction instead of duplicating these values in two places.")]
+        [SerializeField] private BoardVisualsConfig visualsConfig;
 
         [Header("Frame")]
-        [SerializeField] private Color frameColor = new(0.45f, 0.25f, 0.1f);
         [Tooltip("Frame thickness as a fraction of cell size, added around the whole board on every side. 0 = no frame.")]
         [SerializeField, Range(0f, 1f)] private float frameThicknessFraction = 0.08f;
 
@@ -188,7 +186,7 @@ namespace ExpoTheExplorer.UI
 
             var renderer = frameObject.AddComponent<SpriteRenderer>();
             renderer.sprite = placeholderSprite;
-            renderer.color = frameColor;
+            renderer.color = visualsConfig.FrameColor;
             renderer.sortingOrder = -1;
 
             var thickness = frameThicknessFraction * cellSize;
@@ -213,7 +211,7 @@ namespace ExpoTheExplorer.UI
 
                     var renderer = cellObject.AddComponent<SpriteRenderer>();
                     renderer.sprite = placeholderSprite;
-                    renderer.color = (x + y) % 2 == 0 ? cellColorA : cellColorB;
+                    renderer.color = (x + y) % 2 == 0 ? visualsConfig.CellColorA : visualsConfig.CellColorB;
                     renderer.sortingOrder = 0;
                     ApplyFittedScale(cellObject.transform, placeholderSprite);
                 }
@@ -317,7 +315,7 @@ namespace ExpoTheExplorer.UI
             {
                 var placeholderRenderer = GetPooledLayerRenderer(pool, container, 0);
                 placeholderRenderer.sprite = placeholderSprite;
-                placeholderRenderer.color = placeholderItemColor;
+                placeholderRenderer.color = visualsConfig.PlaceholderItemColor;
                 placeholderRenderer.transform.localPosition = Vector3.zero;
                 ApplyFittedScale(placeholderRenderer.transform, placeholderSprite);
                 DeactivateUnusedLayers(pool, 1);
@@ -337,7 +335,7 @@ namespace ExpoTheExplorer.UI
                 else
                 {
                     layerRenderer.sprite = placeholderSprite;
-                    layerRenderer.color = placeholderItemColor;
+                    layerRenderer.color = visualsConfig.PlaceholderItemColor;
                 }
 
                 layerRenderer.transform.localPosition = new Vector3(resolved.Offset.x * cellSize, resolved.Offset.y * cellSize, 0f);

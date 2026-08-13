@@ -1,0 +1,19 @@
+# unity-dev skill — project state
+# NOTE: .claude/unity-dev.json is deliberately NOT ignored. It is the gate's
+# enforcement marker and must survive a clone; without it the guard treats the
+# checkout as "not a unity-dev project" and allows every protected write.
+.claude/preflight/
+.claude/map-drift
+.claude/settings.local.json
+.claude/hooks/__pycache__/
+
+# Unity standard
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+*.csproj
+*.sln
