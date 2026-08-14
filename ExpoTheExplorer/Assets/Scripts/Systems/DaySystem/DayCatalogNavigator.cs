@@ -12,18 +12,5 @@ namespace ExpoTheExplorer.Systems.DaySystem
             }
             return catalog[index];
         }
-
-        // A Day's own authored retry-difficulty variant applies for as long as
-        // the caller is on a retry attempt of that Day (not just the first one) --
-        // falls back to baseDay itself if it has no RetryVariant, or isn't
-        // retrying at all.
-        public static DayDefinition GetEffectiveDay(DayDefinition baseDay, bool isRetryAttempt)
-        {
-            if (!isRetryAttempt)
-            {
-                return baseDay;
-            }
-            return baseDay?.RetryVariant ?? baseDay;
-        }
     }
 }

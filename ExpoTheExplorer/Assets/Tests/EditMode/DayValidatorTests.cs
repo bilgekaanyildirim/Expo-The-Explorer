@@ -33,7 +33,7 @@ namespace ExpoTheExplorer.Tests.EditMode
         public void Validate_TicketCountMismatch_ReportsError()
         {
             var ticketSequence = new List<ResolvedTicketEntry> { CreateEntry(), CreateEntry(), CreateEntry() };
-            var day = new DayDefinition(0, ticketsRequiredForDay: 5, ticketSequence, new List<ResolvedBoardSpawnEntry>(), retryVariant: null);
+            var day = new DayDefinition(0, ticketsRequiredForDay: 5, ticketSequence, new List<ResolvedBoardSpawnEntry>());
 
             var result = DayValidator.Validate(day);
 
@@ -45,7 +45,7 @@ namespace ExpoTheExplorer.Tests.EditMode
         public void Validate_TicketCountMatches_NoErrors()
         {
             var ticketSequence = new List<ResolvedTicketEntry> { CreateEntry(), CreateEntry(), CreateEntry() };
-            var day = new DayDefinition(0, ticketsRequiredForDay: 3, ticketSequence, new List<ResolvedBoardSpawnEntry>(), retryVariant: null);
+            var day = new DayDefinition(0, ticketsRequiredForDay: 3, ticketSequence, new List<ResolvedBoardSpawnEntry>());
 
             var result = DayValidator.Validate(day);
 
@@ -70,8 +70,6 @@ namespace ExpoTheExplorer.Tests.EditMode
                     ticketsRequiredForDay = 10,
                     ticketSequence = ticketSequence,
                     boardTimeline = System.Array.Empty<BoardSpawnEntryJson>(),
-                    hasRetryVariant = false,
-                    retryVariant = null,
                 },
             };
             var json = JsonUtility.ToJson(dayJson);
@@ -81,20 +79,6 @@ namespace ExpoTheExplorer.Tests.EditMode
             var validation = DayValidator.Validate(day);
 
             CollectionAssert.IsEmpty(validation.Errors);
-        }
-
-        [Test]
-        public void Validate_RetryVariantAlsoInvalid_ReportsPrefixedError()
-        {
-            var validSequence = new List<ResolvedTicketEntry> { CreateEntry(), CreateEntry(), CreateEntry() };
-
-            var brokenVariant = new DayDefinition(0, ticketsRequiredForDay: 5, validSequence, new List<ResolvedBoardSpawnEntry>(), retryVariant: null);
-            var day = new DayDefinition(0, ticketsRequiredForDay: 3, validSequence, new List<ResolvedBoardSpawnEntry>(), retryVariant: brokenVariant);
-
-            var result = DayValidator.Validate(day);
-
-            Assert.IsFalse(result.IsValid);
-            Assert.IsTrue(HasErrorContaining(result, "RetryVariant: ticketsRequiredForDay is 5"));
         }
 
         private static bool HasErrorContaining(DayValidationResult result, string substring)

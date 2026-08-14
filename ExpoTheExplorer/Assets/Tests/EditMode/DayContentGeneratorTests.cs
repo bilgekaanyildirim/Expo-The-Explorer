@@ -88,8 +88,6 @@ namespace ExpoTheExplorer.Tests.EditMode
                     ticketsRequiredForDay = 8,
                     ticketSequence = result,
                     boardTimeline = Array.Empty<BoardSpawnEntryJson>(),
-                    hasRetryVariant = false,
-                    retryVariant = null,
                 },
             };
             var json = JsonUtility.ToJson(dayJson);

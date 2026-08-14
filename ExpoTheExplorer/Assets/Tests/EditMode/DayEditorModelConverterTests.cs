@@ -64,20 +64,6 @@ namespace ExpoTheExplorer.Tests.EditMode
                 y = 2,
             };
 
-            var retryVariant = new DayJson
-            {
-                runtime = new DayRuntimeJson
-                {
-                    dayIndex = 0,
-                    ticketsRequiredForDay = 1,
-                    ticketSequence = new[] { ticketEntry },
-                    boardTimeline = new[] { boardSpawnEntry },
-                    hasRetryVariant = false,
-                    retryVariant = null,
-                },
-                editorMeta = new DayEditorMetaJson(),
-            };
-
             return new DayJson
             {
                 runtime = new DayRuntimeJson
@@ -86,8 +72,6 @@ namespace ExpoTheExplorer.Tests.EditMode
                     ticketsRequiredForDay = 1,
                     ticketSequence = new[] { ticketEntry },
                     boardTimeline = new[] { boardSpawnEntry },
-                    hasRetryVariant = true,
-                    retryVariant = retryVariant,
                 },
                 editorMeta = new DayEditorMetaJson
                 {

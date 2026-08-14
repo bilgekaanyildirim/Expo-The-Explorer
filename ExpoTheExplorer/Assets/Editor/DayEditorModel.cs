@@ -252,21 +252,6 @@ namespace ExpoTheExplorer.Editor
         [FoldoutGroup("Editor Overrides (Generate-only)"), HideLabel]
         public DayEditorMetaModel EditorMeta = new();
 
-        // Only one nesting level is supported (matches DayDefinition.RetryVariant's own shape
-        // and the current game design -- a retry variant never has its own retry variant), so
-        // this foldout/field pair is hidden entirely on a nested (IsTopLevel=false) model.
-        [FoldoutGroup("Retry Variant"), ShowIf(nameof(IsTopLevel))]
-        public bool HasRetryVariant;
-
-        [FoldoutGroup("Retry Variant"), ShowIf(nameof(IsTopLevel)), HideLabel]
-        public DayEditorModel RetryVariant;
-
-        // False for a RetryVariant embedded inside another DayEditorModel -- it has no JSON
-        // file of its own, so Save/Duplicate/Delete (file-level actions) don't apply to it.
-        // Generate/Add Ticket/Add Board Spawn (content-level actions) still apply at any level.
-        [UnityEngine.HideInInspector]
-        public bool IsTopLevel = true;
-
         // Null for a Day that has never been saved under any filename yet (new or duplicated,
         // pre-first-Save) -- set to DayIndex by FromDayJson (loaded from an existing file) and
         // updated by DayEditorWindow after each successful save. Lets the Window detect a
@@ -325,13 +310,13 @@ namespace ExpoTheExplorer.Editor
             return DayValidator.Validate(ToDayDefinition());
         }
 
-        [ShowIf(nameof(IsTopLevel)), Button("Save"), EnableIf(nameof(IsValid)), GUIColor(0.4f, 0.85f, 0.4f, 1f)]
+        [Button("Save"), EnableIf(nameof(IsValid)), GUIColor(0.4f, 0.85f, 0.4f, 1f)]
         public void Save() => onSaveRequested?.Invoke(this);
 
-        [ShowIf(nameof(IsTopLevel)), Button("Duplicate")]
+        [Button("Duplicate")]
         private void Duplicate() => onDuplicateRequested?.Invoke(this);
 
-        [ShowIf(nameof(IsTopLevel)), Button("Delete"), GUIColor(0.85f, 0.35f, 0.35f, 1f)]
+        [Button("Delete"), GUIColor(0.85f, 0.35f, 0.35f, 1f)]
         private void Delete() => onDeleteRequested?.Invoke(this);
 
         // Injected by DayEditorWindow right after construction -- shared config assets used for
@@ -366,8 +351,6 @@ namespace ExpoTheExplorer.Editor
             onSaveRequested = onSave;
             onDuplicateRequested = onDuplicate;
             onDeleteRequested = onDelete;
-
-            RetryVariant?.Configure(catalog, gameConfig, ticketConfig, ticketCardVisuals, boardVisuals, null, null, null);
         }
 
         public DayJson ToDayJson()
@@ -380,8 +363,6 @@ namespace ExpoTheExplorer.Editor
                     ticketsRequiredForDay = TicketsRequiredForDay,
                     ticketSequence = TicketSequence.Select(e => e.ToJson()).ToArray(),
                     boardTimeline = BoardTimeline.Select(e => e.ToJson()).ToArray(),
-                    hasRetryVariant = HasRetryVariant,
-                    retryVariant = HasRetryVariant && RetryVariant != null ? RetryVariant.ToDayJson() : null,
                 },
                 editorMeta = EditorMeta.ToJson(),
             };
@@ -391,16 +372,14 @@ namespace ExpoTheExplorer.Editor
         {
             var ticketSequence = TicketSequence.Select(e => e.ToResolved()).ToList();
             var boardTimeline = BoardTimeline.Select(e => e.ToResolved()).ToList();
-            var retryVariant = HasRetryVariant && RetryVariant != null ? RetryVariant.ToDayDefinition() : null;
-            return new DayDefinition(DayIndex, TicketsRequiredForDay, ticketSequence, boardTimeline, retryVariant);
+            return new DayDefinition(DayIndex, TicketsRequiredForDay, ticketSequence, boardTimeline);
         }
 
-        public static DayEditorModel FromDayJson(DayJson json, FoodCatalog catalog, bool isTopLevel = true)
+        public static DayEditorModel FromDayJson(DayJson json, FoodCatalog catalog)
         {
             var runtime = json?.runtime;
             var model = new DayEditorModel
             {
-                IsTopLevel = isTopLevel,
                 DayIndex = runtime?.dayIndex ?? 0,
                 TicketsRequiredForDay = runtime?.ticketsRequiredForDay ?? 10,
                 TicketSequence = (runtime?.ticketSequence ?? Array.Empty<TicketEntryJson>())
@@ -408,20 +387,14 @@ namespace ExpoTheExplorer.Editor
                 BoardTimeline = (runtime?.boardTimeline ?? Array.Empty<BoardSpawnEntryJson>())
                     .Select(e => DayEditorBoardSpawnEntry.FromJson(e, catalog)).ToList(),
                 EditorMeta = DayEditorMetaModel.FromJson(json?.editorMeta),
-                HasRetryVariant = runtime?.hasRetryVariant ?? false,
             };
-
-            if (model.HasRetryVariant && runtime?.retryVariant != null)
-            {
-                model.RetryVariant = FromDayJson(runtime.retryVariant, catalog, isTopLevel: false);
-            }
 
             return model;
         }
 
         // Round-trips through the same JSON conversion used for Save/Load rather than a second,
         // hand-written deep-copy -- the two paths can't drift out of sync with each other.
-        public DayEditorModel Clone(FoodCatalog catalog) => FromDayJson(ToDayJson(), catalog, IsTopLevel);
+        public DayEditorModel Clone(FoodCatalog catalog) => FromDayJson(ToDayJson(), catalog);
     }
 
     [Serializable]

@@ -25,8 +25,7 @@ namespace ExpoTheExplorer.Editor
 
         // draggedIndex/dragStartMousePos are UI state owned by the caller (same convention as
         // scrollPos/selectedIndex) -- a static field here would be shared across every open Day
-        // tab (including a RetryVariant's own nested strip drawn in the same inspector pass),
-        // corrupting one drag with another's state.
+        // tab, corrupting one drag with another's state.
         public static void DrawStrip(List<DayEditorTicketEntry> entries, TicketCardVisualsConfig visuals, ref Vector2 scrollPos, ref int selectedIndex, ref int draggedIndex, ref Vector2 dragStartMousePos)
         {
             if (entries == null || entries.Count == 0) return;

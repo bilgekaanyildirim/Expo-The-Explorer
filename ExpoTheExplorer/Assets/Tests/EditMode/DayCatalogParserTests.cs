@@ -83,7 +83,6 @@ namespace ExpoTheExplorer.Tests.EditMode
             var day = result[0];
             Assert.AreEqual(1, day.DayIndex);
             Assert.AreEqual(1, day.TicketsRequiredForDay);
-            Assert.IsNull(day.RetryVariant);
 
             Assert.AreEqual(1, day.TicketSequence.Count);
             var entry = day.TicketSequence[0];
@@ -218,20 +217,6 @@ namespace ExpoTheExplorer.Tests.EditMode
             Assert.AreEqual(2, result.Count);
             Assert.AreEqual(2, result[0].DayIndex);
             Assert.AreEqual(5, result[1].DayIndex);
-        }
-
-        [Test]
-        public void ParseAll_RetryVariant_ResolvesRecursively()
-        {
-            var parentRuntime = BuildMinimalRuntime(dayIndex: 1);
-            parentRuntime.hasRetryVariant = true;
-            parentRuntime.retryVariant = new DayJson { runtime = BuildMinimalRuntime(dayIndex: 1, ticketsRequiredForDay: 2) };
-
-            var result = ParseSingle(new DayJson { runtime = parentRuntime }, "day_01");
-
-            Assert.AreEqual(1, result.Count);
-            Assert.IsNotNull(result[0].RetryVariant);
-            Assert.AreEqual(2, result[0].RetryVariant.TicketsRequiredForDay);
         }
 
         private List<DayDefinition> ParseSingle(DayJson dayJson, string fileName)

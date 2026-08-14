@@ -66,8 +66,6 @@ namespace ExpoTheExplorer.Tests.EditMode
                     ticketsRequiredForDay = ticketsRequiredForDay,
                     ticketSequence = result,
                     boardTimeline = Array.Empty<BoardSpawnEntryJson>(),
-                    hasRetryVariant = false,
-                    retryVariant = null,
                 },
             };
             var json = JsonUtility.ToJson(dayJson);
@@ -129,8 +127,6 @@ namespace ExpoTheExplorer.Tests.EditMode
                     ticketsRequiredForDay = ticketsRequiredForDay,
                     ticketSequence = result,
                     boardTimeline = Array.Empty<BoardSpawnEntryJson>(),
-                    hasRetryVariant = false,
-                    retryVariant = null,
                 },
             };
             var json = JsonUtility.ToJson(dayJson);

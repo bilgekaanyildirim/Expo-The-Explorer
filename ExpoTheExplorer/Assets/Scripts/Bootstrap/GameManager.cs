@@ -56,12 +56,6 @@ namespace ExpoTheExplorer.Bootstrap
         // "already leaked" (never leak again) in this one.
         private BoardDistributor boardDistributor;
 
-        // Set by RetryDay, cleared by AdvanceToNextDay -- stays true across
-        // repeated retries of the SAME Day, not just the first one, so
-        // CurrentDay keeps resolving to that Day's RetryVariant (if it has
-        // one) for as long as the player is retrying it.
-        private bool isRetryAttempt;
-
         // Snapshot of SoftMoney/Xp/Level as of the moment the CURRENT day
         // began (captured in Awake for day 0, re-captured in AdvanceToNextDay
         // for every day after) -- NOT re-captured by RetryDay, so it still
@@ -76,7 +70,7 @@ namespace ExpoTheExplorer.Bootstrap
         // sort order) -- null until a Day catalog exists (PR-7), so every
         // consumer falls back to the pre-Day-system GameConfig behavior.
         private DayDefinition CurrentDay =>
-            DayCatalogNavigator.GetEffectiveDay(DayCatalogNavigator.GetDayAt(dayCatalog, State.CurrentDayIndex), isRetryAttempt);
+            DayCatalogNavigator.GetDayAt(dayCatalog, State.CurrentDayIndex);
 
         private void Awake()
         {
@@ -213,8 +207,7 @@ namespace ExpoTheExplorer.Bootstrap
         // abandons the current day attempt and restarts it at the same
         // difficulty (difficulty scale-down on retry is a still-open GDD
         // question, CLAUDE.md Section 4, deliberately not addressed here) --
-        // or, if the Day has its own authored RetryVariant, that instead
-        // (isRetryAttempt flips CurrentDay over to it). Order matters for the
+        // a retry always replays the Day itself. Order matters for the
         // first three calls: Board.Clear() -> ApplyDayStartBoardPreSeed() ->
         // TrayManager.DiscardAllForNewDay() -> TicketSlotManager.
         // ResetSlotsForNewDay() -- the pre-seed must land on the freshly
@@ -225,7 +218,6 @@ namespace ExpoTheExplorer.Bootstrap
         public void RetryDay()
         {
             var ticketsBeforeRetry = State.TicketsDeliveredToday;
-            isRetryAttempt = true;
             RefreshDayTicketSequenceProvider();
 
             State.Board.Clear();
@@ -244,11 +236,7 @@ namespace ExpoTheExplorer.Bootstrap
         // and the Xp/Level OnDayCompleted already committed to disk back to
         // dayStartProfile/dayStartSoftMoney, so replaying for stars can't
         // stack income on top of what the day already paid out. Mirrors
-        // RetryDay's reset order otherwise, including a full Lives refill --
-        // isRetryAttempt is deliberately left untouched, so if the player had
-        // already fallen onto the Day's RetryVariant before this success,
-        // the redo keeps replaying that same variant rather than switching
-        // back to the original.
+        // RetryDay's reset order otherwise, including a full Lives refill.
         public void RetryCompletedDay()
         {
             State.SoftMoney = dayStartSoftMoney;
@@ -277,7 +265,6 @@ namespace ExpoTheExplorer.Bootstrap
             }
 
             State.CurrentDayIndex = nextIndex;
-            isRetryAttempt = false;
             CaptureDayStartSnapshot();
             RefreshDayTicketSequenceProvider();
 

@@ -78,13 +78,7 @@ namespace ExpoTheExplorer.Systems.DaySystem
                 boardTimeline.Add(resolvedSpawn);
             }
 
-            DayDefinition retryVariant = null;
-            if (runtime.hasRetryVariant)
-            {
-                retryVariant = ResolveDay(runtime.retryVariant, catalog, $"{fileName} (retryVariant)");
-            }
-
-            return new DayDefinition(runtime.dayIndex, runtime.ticketsRequiredForDay, ticketSequence, boardTimeline, retryVariant,
+            return new DayDefinition(runtime.dayIndex, runtime.ticketsRequiredForDay, ticketSequence, boardTimeline,
                 runtime.star1Threshold, runtime.star2Threshold, runtime.star3Threshold);
         }
 

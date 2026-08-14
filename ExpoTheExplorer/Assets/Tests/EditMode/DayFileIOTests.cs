@@ -35,8 +35,6 @@ namespace ExpoTheExplorer.Tests.EditMode
                     ticketsRequiredForDay = ticketsRequiredForDay,
                     ticketSequence = Array.Empty<TicketEntryJson>(),
                     boardTimeline = Array.Empty<BoardSpawnEntryJson>(),
-                    hasRetryVariant = false,
-                    retryVariant = null,
                 },
                 editorMeta = new DayEditorMetaJson(),
             };

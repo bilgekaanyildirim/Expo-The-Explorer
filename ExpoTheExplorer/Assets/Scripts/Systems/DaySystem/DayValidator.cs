@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 
 namespace ExpoTheExplorer.Systems.DaySystem
 {
@@ -33,12 +32,6 @@ namespace ExpoTheExplorer.Systems.DaySystem
             if (day.TicketSequence.Count != day.TicketsRequiredForDay)
             {
                 errors.Add($"ticketSequence has {day.TicketSequence.Count} entries but ticketsRequiredForDay is {day.TicketsRequiredForDay}.");
-            }
-
-            if (day.RetryVariant != null)
-            {
-                var variantResult = Validate(day.RetryVariant);
-                errors.AddRange(variantResult.Errors.Select(e => $"RetryVariant: {e}"));
             }
 
             return new DayValidationResult(errors);

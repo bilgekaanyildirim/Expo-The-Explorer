@@ -25,13 +25,6 @@ namespace ExpoTheExplorer.Systems.DaySystem
         public int star1Threshold;
         public int star2Threshold;
         public int star3Threshold;
-
-        // JsonUtility never round-trips a null nested-class field as null -- it always
-        // deserializes a default-constructed instance instead. hasRetryVariant is the
-        // explicit sentinel that lets the parser tell "no retry variant" apart from
-        // "an authored one that happens to look empty".
-        public bool hasRetryVariant;
-        public DayJson retryVariant;
     }
 
     [Serializable]
