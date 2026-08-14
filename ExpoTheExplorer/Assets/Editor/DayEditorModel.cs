@@ -141,8 +141,105 @@ namespace ExpoTheExplorer.Editor
         [UnityEngine.HideInInspector]
         public List<DayEditorTicketEntry> TicketSequence = new();
 
-        [FoldoutGroup("Board Timeline"), OnInspectorGUI, PropertyOrder(-1)]
-        private void DrawDayStartPreview() => DayEditorDayStartPreview.DrawGrid(sharedGameConfig, sharedBoardVisuals, BoardTimeline);
+        [FoldoutGroup("Start Board"), OnInspectorGUI, PropertyOrder(-1)]
+        private void DrawDayStartPreview()
+        {
+            UnityEngine.GUILayout.BeginHorizontal();
+            DayEditorDayStartPreview.DrawGrid(
+                sharedGameConfig, sharedBoardVisuals, BoardTimeline,
+                ref selectedStartBoardX, ref selectedStartBoardY, ref draggedStartBoardX, ref draggedStartBoardY, ref startBoardDragStartMousePos);
+            UnityEngine.GUILayout.Space(10);
+            DrawStartBoardCellEditor();
+            UnityEngine.GUILayout.EndHorizontal();
+        }
+
+        // Not part of the JSON, not serialized -- same UI-state convention as
+        // selectedTicketIndex above. -1 = no cell clicked yet.
+        private int selectedStartBoardX = -1;
+        private int selectedStartBoardY = -1;
+        private int draggedStartBoardX = -1;
+        private int draggedStartBoardY = -1;
+        private UnityEngine.Vector2 startBoardDragStartMousePos;
+
+        // Click-to-place authoring for Day Start content: pick an item for whichever cell
+        // was last clicked in the grid to its left. Finds the existing BoardTimeline entry
+        // at that exact cell (TriggerStepIndex -1, UseExactCell true) if there is one, adds
+        // one if the cell was empty and an item got picked, or removes it if the item field
+        // is cleared back to None -- the same add/update/remove semantics the old
+        // Trigger Step/Use Exact Cell/X/Y table columns exposed, just driven by clicking the
+        // preview instead of typing coordinates.
+        private void DrawStartBoardCellEditor()
+        {
+            UnityEngine.GUILayout.BeginVertical(UnityEngine.GUILayout.Width(220));
+
+            if (selectedStartBoardX < 0)
+            {
+                EditorGUILayout.HelpBox("Click a cell in the grid to edit it.", UnityEditor.MessageType.Info);
+                UnityEngine.GUILayout.EndVertical();
+                return;
+            }
+
+            EditorGUILayout.LabelField($"Cell ({selectedStartBoardX}, {selectedStartBoardY})", UnityEditor.EditorStyles.boldLabel);
+
+            var entry = FindStartBoardEntry(selectedStartBoardX, selectedStartBoardY);
+            var currentItem = entry?.Item;
+            var newItem = (FoodItemConfig)EditorGUILayout.ObjectField("Item", currentItem, typeof(FoodItemConfig), false);
+
+            if (newItem != currentItem)
+            {
+                if (newItem == null)
+                {
+                    if (entry != null) BoardTimeline.Remove(entry);
+                    entry = null;
+                }
+                else if (entry != null)
+                {
+                    entry.Item = newItem;
+                }
+                else
+                {
+                    entry = new DayEditorBoardSpawnEntry { TriggerStepIndex = -1, Item = newItem, UseExactCell = true, X = selectedStartBoardX, Y = selectedStartBoardY };
+                    BoardTimeline.Add(entry);
+                }
+            }
+
+            if (entry == null)
+            {
+                UnityEngine.GUILayout.EndVertical();
+                return;
+            }
+
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("Modifications", UnityEditor.EditorStyles.boldLabel);
+            for (var i = 0; i < entry.Modifications.Count; i++)
+            {
+                EditorGUILayout.BeginHorizontal();
+                entry.Modifications[i].Config = (ModificationConfig)EditorGUILayout.ObjectField(entry.Modifications[i].Config, typeof(ModificationConfig), false);
+                entry.Modifications[i].IsAddition = EditorGUILayout.ToggleLeft("Addition", entry.Modifications[i].IsAddition, UnityEngine.GUILayout.Width(80));
+                var removeClicked = UnityEngine.GUILayout.Button("x", UnityEngine.GUILayout.Width(20));
+                EditorGUILayout.EndHorizontal();
+                if (removeClicked)
+                {
+                    entry.Modifications.RemoveAt(i);
+                    break; // list mutated mid-loop -- next OnGUI pass redraws the rest
+                }
+            }
+            if (UnityEngine.GUILayout.Button("+ Add Modification"))
+            {
+                entry.Modifications.Add(new DayEditorModification());
+            }
+
+            EditorGUILayout.Space();
+            if (UnityEngine.GUILayout.Button("Clear Cell"))
+            {
+                BoardTimeline.Remove(entry);
+            }
+
+            UnityEngine.GUILayout.EndVertical();
+        }
+
+        private DayEditorBoardSpawnEntry FindStartBoardEntry(int x, int y) =>
+            BoardTimeline.FirstOrDefault(e => e.TriggerStepIndex == -1 && e.UseExactCell && e.X == x && e.Y == y);
 
         // Only TriggerStepIndex == -1 (Day Start) entries are ever replayed at runtime
         // (BoardDistributor took over everything after Day Start, see decisions.md D-001
@@ -405,14 +502,14 @@ namespace ExpoTheExplorer.Editor
     [Serializable]
     public class DayEditorBoardSpawnEntry
     {
-        [LabelText("Trigger Step (-1 = Day Start)")]
+        [HideInTables, LabelText("Trigger Step (-1 = Day Start)")]
         public int TriggerStepIndex = -1;
 
         public FoodItemConfig Item;
         public List<DayEditorModification> Modifications = new();
-        public bool UseExactCell;
-        [ShowIf(nameof(UseExactCell))] public int X;
-        [ShowIf(nameof(UseExactCell))] public int Y;
+        [HideInTables] public bool UseExactCell;
+        [HideInTables, ShowIf(nameof(UseExactCell))] public int X;
+        [HideInTables, ShowIf(nameof(UseExactCell))] public int Y;
 
         public static DayEditorBoardSpawnEntry FromJson(BoardSpawnEntryJson json, FoodCatalog catalog) => new()
         {
