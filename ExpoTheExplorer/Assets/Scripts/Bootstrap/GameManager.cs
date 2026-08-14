@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using ExpoTheExplorer.Core;
 using ExpoTheExplorer.Data;
+using ExpoTheExplorer.Systems.BoardDistribution;
 using ExpoTheExplorer.Systems.DayLifecycle;
 using ExpoTheExplorer.Systems.DaySystem;
 using ExpoTheExplorer.Systems.EconomySystem;
@@ -27,6 +29,7 @@ namespace ExpoTheExplorer.Bootstrap
         [SerializeField] private EconomyConfig economyConfig;
         [SerializeField] private LivesConfig livesConfig;
         [SerializeField] private LevelProgressionConfig levelProgressionConfig;
+        [SerializeField] private BoardDistributionConfig boardDistributionConfig;
 
         public GameState State { get; private set; }
         public TicketSlotManager TicketSlotManager { get; private set; }
@@ -45,6 +48,13 @@ namespace ExpoTheExplorer.Bootstrap
         private EconomyCalculator economyCalculator;
         private IReadOnlyList<DayDefinition> dayCatalog;
         private DayTicketSequenceProvider dayTicketSequenceProvider;
+
+        // (Re)constructed alongside dayTicketSequenceProvider (see
+        // RefreshDayTicketSequenceProvider) rather than once for the whole session --
+        // its leakedTickets dedup state must not survive into a retried/new Day, or a
+        // ticket that already leaked once in the PREVIOUS attempt would wrongly stay
+        // "already leaked" (never leak again) in this one.
+        private BoardDistributor boardDistributor;
 
         // Set by RetryDay, cleared by AdvanceToNextDay -- stays true across
         // repeated retries of the SAME Day, not just the first one, so
@@ -127,13 +137,21 @@ namespace ExpoTheExplorer.Bootstrap
             TicketSlotManager.Tick(Time.deltaTime);
         }
 
-        // Production is order-triggered (GDD Section 4), not a continuous poll —
-        // every time a new ticket enters a slot, the Day's authored board
-        // timeline plays back whatever step corresponds to that exact ticket
-        // (ArrivalSequence == its position in DayDefinition.TicketSequence),
-        // and that slot's tray (if a timeout left it holding orphaned items)
-        // is cleared back onto the board. No fallback: an authored Day is
-        // required (PR-7).
+        // Production is order-triggered (GDD Section 4), not a continuous poll --
+        // every time a slot's ticket changes (a new arrival, OR a slot going empty
+        // once the Day's authored sequence is exhausted), BoardDistributor
+        // re-evaluates live what the board needs (required-pool top-up, then
+        // noise-pool leaking) from the CURRENT active + upcoming ticket state.
+        // Deliberately unconditional on assignment.Ticket being non-null: with
+        // GuaranteedTicketCount covering only a few tickets per round, a later
+        // slot-emptied event is what finally makes an earlier, not-yet-covered
+        // active ticket "earliest" and eligible -- skipping this on a null
+        // assignment was a real bug (found via playtest): the last tickets of a
+        // finite Day could reach the end of the sequence without ever getting a
+        // qualifying round, since no further arrivals remained to trigger one.
+        // That slot's tray (if a timeout left it holding orphaned items) is
+        // cleared back onto the board either way. No fallback: an authored Day
+        // is required (PR-7).
         private void OnTicketAssigned((int SlotIndex, Ticket Ticket) assignment)
         {
             if (CurrentDay == null)
@@ -141,12 +159,11 @@ namespace ExpoTheExplorer.Bootstrap
                 throw new InvalidOperationException("No Day loaded -- board playback requires an authored Day (PR-7).");
             }
 
-            // Ticket is null once the Day's authored sequence is exhausted -- the slot is
-            // just left empty (TicketSlotManager.AssignTicket), nothing to play back.
-            if (assignment.Ticket != null)
-            {
-                DayBoardTimelinePlayer.ApplyForStep(State.Board, CurrentDay.BoardTimeline, assignment.Ticket.ArrivalSequence);
-            }
+            var activeTickets = State.TicketSlots.Where(t => t != null).ToList();
+            var lookaheadCount = Math.Max(GameState.TicketSlotCount, ticketGenerationConfig.UpcomingQueueSize);
+            var upcomingTickets = dayTicketSequenceProvider.PeekUpcoming(lookaheadCount);
+            boardDistributor.OnOrderPlaced(activeTickets, upcomingTickets);
+
             TrayManager.OnTicketAssigned(assignment.SlotIndex);
         }
 
@@ -302,11 +319,16 @@ namespace ExpoTheExplorer.Bootstrap
 
         // Re-pointed every time CurrentDay could have changed (Awake, RetryDay,
         // AdvanceToNextDay) -- a fresh provider per Day/retry-variant, cursor
-        // reset to 0, rather than resetting a single long-lived instance.
+        // reset to 0, rather than resetting a single long-lived instance. Also
+        // (re)constructs boardDistributor for the same reason -- see its field
+        // comment for why a stale instance can't carry over.
         private void RefreshDayTicketSequenceProvider()
         {
             dayTicketSequenceProvider = CurrentDay != null
                 ? new DayTicketSequenceProvider(CurrentDay.TicketSequence, ticketGenerationConfig, ticketFactory)
+                : null;
+            boardDistributor = CurrentDay != null
+                ? new BoardDistributor(State, boardDistributionConfig)
                 : null;
         }
 
