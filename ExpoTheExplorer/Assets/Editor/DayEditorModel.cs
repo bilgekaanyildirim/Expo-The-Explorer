@@ -22,12 +22,14 @@ namespace ExpoTheExplorer.Editor
         public int TicketsRequiredForDay = 10;
 
         [FoldoutGroup("Ticket Sequence"), OnInspectorGUI, PropertyOrder(-1)]
-        private void DrawTicketCardPreview() => DayEditorTicketCardPreview.DrawStrip(TicketSequence, sharedTicketCardVisuals, ref ticketStripScrollPos, ref selectedTicketIndex);
+        private void DrawTicketCardPreview() => DayEditorTicketCardPreview.DrawStrip(TicketSequence, sharedTicketCardVisuals, ref ticketStripScrollPos, ref selectedTicketIndex, ref draggedTicketIndex, ref ticketDragStartMousePos);
 
         // Not part of the JSON, not serialized -- same "plain private field" convention as
         // sharedCatalog etc. below, just UI state for the preview/editor above.
         private UnityEngine.Vector2 ticketStripScrollPos;
         private int selectedTicketIndex = -1;
+        private int draggedTicketIndex = -1;
+        private UnityEngine.Vector2 ticketDragStartMousePos;
 
         [FoldoutGroup("Ticket Sequence"), OnInspectorGUI, PropertyOrder(-0.5f)]
         private void DrawSelectedTicketEditor()

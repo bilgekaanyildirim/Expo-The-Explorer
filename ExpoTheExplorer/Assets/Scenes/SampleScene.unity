@@ -3674,10 +3674,7 @@ MonoBehaviour:
   targetCamera: {fileID: 0}
   screenFillFraction: 0.97
   cellPadding: 0
-  cellColorA: {r: 0.9150943, g: 0.8278186, b: 0.7381185, a: 1}
-  cellColorB: {r: 0.7924528, g: 0.7222979, b: 0.6541474, a: 1}
-  placeholderItemColor: {r: 0.85, g: 0.35, b: 0.12, a: 1}
-  frameColor: {r: 0.6415094, g: 0.46079803, b: 0.251157, a: 1}
+  visualsConfig: {fileID: 11400000, guid: cf518e7c1ae584c45aad5d905974f6c9, type: 2}
   frameThicknessFraction: 0.08
   dragFeelConfig: {fileID: 11400000, guid: 2e840fbbe99bf43f0a9da1b27f74528f, type: 2}
   animConfig: {fileID: 11400000, guid: 836ace345c29845f1b25f60bb6a89488, type: 2}

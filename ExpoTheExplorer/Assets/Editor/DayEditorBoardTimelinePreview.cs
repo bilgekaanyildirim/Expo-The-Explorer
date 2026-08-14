@@ -52,16 +52,22 @@ namespace ExpoTheExplorer.Editor
             var gridHeight = board.Height * (CellSize + CellSpacing) + LabelHeight;
             var warnings = new List<string>();
 
+            // Day Start (TriggerStepIndex = -1) is applied but not drawn as its own column --
+            // DayContentGenerator never produces step=-1 entries (its loop starts at 0), and per
+            // GameManager.cs, step -1 and steps 0/1/2 all fire before the player can act anyway,
+            // so "Step 0" already reads as "day start" in practice. A hand-authored -1 entry
+            // ("Add Board Spawn" still defaults new rows to it) still gets applied here and shows
+            // up in Step 0's grid, just unhighlighted (pre-existing) rather than as its own column.
+            DayBoardTimelinePlayer.ApplyForStep(board, resolvedTimeline, -1);
+
             // One cumulative pass -- board state carries over from one step's grid to
-            // the next (Day Start, then each ticket's arrival in order), so every
-            // step's snapshot is drawn right after its own ApplyForStep call instead
-            // of re-replaying the whole prefix from scratch per step.
+            // the next, so every step's snapshot is drawn right after its own ApplyForStep
+            // call instead of re-replaying the whole prefix from scratch per step.
             scrollPos = EditorGUILayout.BeginScrollView(scrollPos, false, false, GUILayout.Height(gridHeight + 20));
             GUILayout.BeginHorizontal();
-            DrawStepColumn(board, resolvedTimeline, null, -1, "Day Start", cellColorA, cellColorB, warnings);
             for (var step = 0; step < resolvedTickets.Count; step++)
             {
-                DrawColumnDivider(gridHeight);
+                if (step > 0) DrawColumnDivider(gridHeight);
                 // Same round-robin idealization DayContentGenerator.GenerateCore uses to
                 // keep its own simulation's board from growing forever: the ticket that
                 // occupied this same slot (TicketSlotCount steps ago) is assumed delivered

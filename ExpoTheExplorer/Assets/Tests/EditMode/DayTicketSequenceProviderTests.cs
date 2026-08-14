@@ -78,5 +78,78 @@ namespace ExpoTheExplorer.Tests.EditMode
 
             Assert.Throws<InvalidOperationException>(() => provider.NextTicket());
         }
+
+        [Test]
+        public void PeekUpcoming_DoesNotAdvanceCursor()
+        {
+            var config = CreateConfig();
+            var factory = new TicketFactory(config, new System.Random(1));
+            var entries = new List<ResolvedTicketEntry>
+            {
+                CreateEntry(CreateFood(), "First"),
+                CreateEntry(CreateFood(), "Second"),
+            };
+            var provider = new DayTicketSequenceProvider(entries, config, factory);
+
+            provider.PeekUpcoming(2);
+            provider.PeekUpcoming(2); // calling it repeatedly must not shift anything either
+
+            Assert.IsTrue(provider.HasNext);
+            var first = provider.NextTicket();
+            Assert.AreEqual("First", first.CustomerName);
+        }
+
+        [Test]
+        public void PeekUpcoming_ThenNextTicket_ReturnsTheSameInstance()
+        {
+            var config = CreateConfig();
+            var factory = new TicketFactory(config, new System.Random(1));
+            var entries = new List<ResolvedTicketEntry> { CreateEntry(CreateFood(), "Only") };
+            var provider = new DayTicketSequenceProvider(entries, config, factory);
+
+            var peeked = provider.PeekUpcoming(1);
+            var arrived = provider.NextTicket();
+
+            Assert.AreSame(peeked[0], arrived);
+        }
+
+        [Test]
+        public void PeekUpcoming_PastEndOfSequence_ReturnsFewerThanRequested()
+        {
+            var config = CreateConfig();
+            var factory = new TicketFactory(config, new System.Random(1));
+            var entries = new List<ResolvedTicketEntry> { CreateEntry(CreateFood(), "Only") };
+            var provider = new DayTicketSequenceProvider(entries, config, factory);
+
+            var peeked = provider.PeekUpcoming(5);
+
+            Assert.AreEqual(1, peeked.Count);
+        }
+
+        [Test]
+        public void NextTicket_InterleavedWithPeekUpcoming_StaysInOrder()
+        {
+            var config = CreateConfig();
+            var factory = new TicketFactory(config, new System.Random(1));
+            var entries = new List<ResolvedTicketEntry>
+            {
+                CreateEntry(CreateFood(), "First"),
+                CreateEntry(CreateFood(), "Second"),
+                CreateEntry(CreateFood(), "Third"),
+            };
+            var provider = new DayTicketSequenceProvider(entries, config, factory);
+
+            var peekedBeforeAnyArrival = provider.PeekUpcoming(3);
+            var first = provider.NextTicket();
+            var peekedAfterFirstArrival = provider.PeekUpcoming(2);
+            var second = provider.NextTicket();
+            var third = provider.NextTicket();
+
+            Assert.AreSame(peekedBeforeAnyArrival[0], first);
+            Assert.AreSame(peekedBeforeAnyArrival[1], second);
+            Assert.AreSame(peekedBeforeAnyArrival[2], third);
+            Assert.AreSame(peekedAfterFirstArrival[0], second);
+            Assert.AreSame(peekedAfterFirstArrival[1], third);
+        }
     }
 }

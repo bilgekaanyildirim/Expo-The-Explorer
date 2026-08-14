@@ -11,6 +11,7 @@ namespace ExpoTheExplorer.Systems.DaySystem
         private readonly IReadOnlyList<ResolvedTicketEntry> ticketSequence;
         private readonly TicketGenerationConfig config;
         private readonly TicketFactory ticketFactory;
+        private readonly Dictionary<int, Ticket> peekCache = new();
         private int cursor;
 
         public DayTicketSequenceProvider(IReadOnlyList<ResolvedTicketEntry> ticketSequence, TicketGenerationConfig config, TicketFactory ticketFactory)
@@ -37,7 +38,40 @@ namespace ExpoTheExplorer.Systems.DaySystem
                     $"Day's authored ticketSequence only has {ticketSequence.Count} entries but ticket #{index + 1} was requested.");
             }
             cursor++;
+
+            // Reuse a peeked instance if one exists for this index (see PeekUpcoming) rather
+            // than rolling a fresh one -- callers that peeked ahead (BoardDistributor's
+            // leakedTickets dedup is reference-identity-based) must get the exact same Ticket
+            // back when it actually arrives, not a second, differently-randomized copy.
+            if (peekCache.TryGetValue(index, out var cached))
+            {
+                peekCache.Remove(index);
+                return cached;
+            }
+
             return TicketEntryFactory.Create(ticketSequence[index], config, ticketFactory, index);
+        }
+
+        // Looks ahead into the authored sequence WITHOUT advancing cursor -- unlike NextTicket,
+        // calling this any number of times has no effect on what NextTicket returns next. Each
+        // constructed Ticket is cached by index so a later NextTicket() call for that same index
+        // returns this exact instance (see NextTicket's comment for why that matters). Returns
+        // fewer than `count` once the sequence runs out, same "running out is expected, not an
+        // error" stance HasNext already documents -- never throws.
+        public IReadOnlyList<Ticket> PeekUpcoming(int count)
+        {
+            var result = new List<Ticket>(count);
+            var end = Math.Min(cursor + count, ticketSequence.Count);
+            for (var index = cursor; index < end; index++)
+            {
+                if (!peekCache.TryGetValue(index, out var ticket))
+                {
+                    ticket = TicketEntryFactory.Create(ticketSequence[index], config, ticketFactory, index);
+                    peekCache[index] = ticket;
+                }
+                result.Add(ticket);
+            }
+            return result;
         }
     }
 }

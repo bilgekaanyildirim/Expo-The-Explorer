@@ -1,4 +1,4 @@
-<!-- stamp: 2026-08-13 systems:2 unmapped:0 unassigned-files:114 -->
+<!-- stamp: 2026-08-14 systems:2 unmapped:0 unassigned-files:114 -->
 # index — system to location, one screen
 
 Step 1 of `procedures/locate.md`: read this before anything else, and only
