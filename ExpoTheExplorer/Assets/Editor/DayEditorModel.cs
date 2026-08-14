@@ -13,12 +13,12 @@ namespace ExpoTheExplorer.Editor
     [Serializable]
     public class DayEditorModel
     {
-        [BoxGroup("Day"), LabelText("Day Index")]
+        [BoxGroup("Day"), LabelText("Day Index"), PropertyOrder(-4)]
         [InfoBox("$ValidationMessage", InfoMessageType.Error, nameof(HasValidationErrors))]
         [InfoBox("$ValidationMessage", InfoMessageType.Info, nameof(IsValid))]
         public int DayIndex;
 
-        [BoxGroup("Day")]
+        [BoxGroup("Day"), PropertyOrder(-4)]
         public int TicketsRequiredForDay = 10;
 
         [FoldoutGroup("Ticket Sequence"), OnInspectorGUI, PropertyOrder(-1)]
@@ -36,7 +36,7 @@ namespace ExpoTheExplorer.Editor
         {
             if (selectedTicketIndex < 0 || selectedTicketIndex >= TicketSequence.Count)
             {
-                EditorGUILayout.HelpBox("Select a ticket card above to edit it.", UnityEditor.MessageType.Info);
+                EditorGUILayout.HelpBox("Right click to a ticket card above to edit it.", UnityEditor.MessageType.Info);
                 return;
             }
 
@@ -243,13 +243,12 @@ namespace ExpoTheExplorer.Editor
 
         // Only TriggerStepIndex == -1 (Day Start) entries are ever replayed at runtime
         // (BoardDistributor took over everything after Day Start, see decisions.md D-001
-        // Phase 2/3) -- this table is Day Start authoring, hand-edited, not simulated or
-        // regenerated. AddBoardSpawn() already defaults new rows to -1.
-        [InfoBox("Only Trigger Step -1 (Day Start) entries are used by the live game. Other values are ignored at runtime.")]
-        [TableList(ShowIndexLabels = true), FoldoutGroup("Board Timeline")]
+        // Phase 2/3). Authored entirely through the Start Board grid's click-to-place
+        // editor above now -- no table, no separate "Add Board Spawn" button.
+        [UnityEngine.HideInInspector]
         public List<DayEditorBoardSpawnEntry> BoardTimeline = new();
 
-        [FoldoutGroup("Editor Overrides (Generate-only)"), HideLabel]
+        [FoldoutGroup("Editor Overrides (Generate-only)"), HideLabel, PropertyOrder(-3)]
         public DayEditorMetaModel EditorMeta = new();
 
         // Only one nesting level is supported (matches DayDefinition.RetryVariant's own shape
@@ -274,7 +273,7 @@ namespace ExpoTheExplorer.Editor
         [UnityEngine.HideInInspector]
         public int? LastSavedDayIndex;
 
-        [Button("Generate")]
+        [Button("Generate"), PropertyOrder(-2)]
         public void Generate()
         {
             if (sharedCatalog == null || sharedTicketConfig == null)
@@ -297,9 +296,6 @@ namespace ExpoTheExplorer.Editor
 
         [Button("Add Ticket"), FoldoutGroup("Ticket Sequence")]
         private void AddTicket() => TicketSequence.Add(new DayEditorTicketEntry());
-
-        [Button("Add Board Spawn"), FoldoutGroup("Board Timeline")]
-        private void AddBoardSpawn() => BoardTimeline.Add(new DayEditorBoardSpawnEntry());
 
         // Recomputed on every draw pass -- DayValidator is a cheap ticketSequence.Count check,
         // negligible for live feedback without a timer.
