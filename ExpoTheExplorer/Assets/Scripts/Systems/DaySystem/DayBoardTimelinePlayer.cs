@@ -14,6 +14,7 @@ namespace ExpoTheExplorer.Systems.DaySystem
             foreach (var entry in boardTimeline)
             {
                 if (entry.TriggerStepIndex != stepIndex) continue;
+                if (entry.Item == null) continue; // not-yet-authored entry (e.g. a freshly added row) -- nothing meaningful to spawn
 
                 var item = new BoardItem(entry.Item, entry.Modifications);
                 if (entry.UseExactCell && board.TryPlaceItem(item, entry.X, entry.Y))

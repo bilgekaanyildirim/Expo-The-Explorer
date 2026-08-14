@@ -27,7 +27,6 @@ namespace ExpoTheExplorer.Tests.EditMode
         private FoodCatalog catalog;
         private GameConfig gameConfig;
         private TicketGenerationConfig ticketConfig;
-        private BoardDistributionConfig boardConfig;
 
         [SetUp]
         public void SetUp()
@@ -42,8 +41,6 @@ namespace ExpoTheExplorer.Tests.EditMode
             spawned.Add(gameConfig);
 
             ticketConfig = CreateTicketGenerationConfig();
-            boardConfig = ScriptableObject.CreateInstance<BoardDistributionConfig>();
-            spawned.Add(boardConfig);
         }
 
         [TearDown]
@@ -58,8 +55,8 @@ namespace ExpoTheExplorer.Tests.EditMode
         {
             const int ticketsRequiredForDay = 10;
 
-            var result = DayContentGenerator.Generate(catalog, gameConfig, ticketConfig, boardConfig, null, ticketsRequiredForDay, seed: 1);
-            Assert.AreEqual(ticketsRequiredForDay, result.TicketSequence.Length);
+            var result = DayContentGenerator.Generate(catalog, ticketConfig, null, ticketsRequiredForDay, seed: 1);
+            Assert.AreEqual(ticketsRequiredForDay, result.Length);
 
             var dayJson = new DayJson
             {
@@ -67,8 +64,8 @@ namespace ExpoTheExplorer.Tests.EditMode
                 {
                     dayIndex = 0,
                     ticketsRequiredForDay = ticketsRequiredForDay,
-                    ticketSequence = result.TicketSequence,
-                    boardTimeline = result.BoardTimeline,
+                    ticketSequence = result,
+                    boardTimeline = Array.Empty<BoardSpawnEntryJson>(),
                     hasRetryVariant = false,
                     retryVariant = null,
                 },
@@ -121,8 +118,8 @@ namespace ExpoTheExplorer.Tests.EditMode
         {
             const int ticketsRequiredForDay = 11;
 
-            var result = DayContentGenerator.Generate(catalog, gameConfig, ticketConfig, boardConfig, null, ticketsRequiredForDay, seed: 1);
-            Assert.AreEqual(ticketsRequiredForDay, result.TicketSequence.Length);
+            var result = DayContentGenerator.Generate(catalog, ticketConfig, null, ticketsRequiredForDay, seed: 1);
+            Assert.AreEqual(ticketsRequiredForDay, result.Length);
 
             var dayJson = new DayJson
             {
@@ -130,8 +127,8 @@ namespace ExpoTheExplorer.Tests.EditMode
                 {
                     dayIndex = 0,
                     ticketsRequiredForDay = ticketsRequiredForDay,
-                    ticketSequence = result.TicketSequence,
-                    boardTimeline = result.BoardTimeline,
+                    ticketSequence = result,
+                    boardTimeline = Array.Empty<BoardSpawnEntryJson>(),
                     hasRetryVariant = false,
                     retryVariant = null,
                 },

@@ -65,29 +65,21 @@ namespace ExpoTheExplorer.Editor
                     entry.DrinkItem = regenerated.DrinkItem;
                     entry.Modifications = regenerated.Modifications;
                     entry.PatienceType = regenerated.PatienceType;
-                    ReSolveBoardTimeline();
                 }
             }
 
             EditorGUILayout.Space();
 
-            // Only fields that affect which items this ticket actually needs trigger a
-            // re-solve -- CustomerNameOverride/TimeLimitSecondsOverride don't, so two separate
-            // change-check blocks bracket just the item/modification fields, keeping the
-            // override fields in their original visual position between them.
-            EditorGUI.BeginChangeCheck();
             entry.MainItem = DrawCategoryItemField("Main Item", entry.MainItem, FoodCategory.Main, sharedCatalog);
             entry.SideItem = DrawCategoryItemField("Side Item", entry.SideItem, FoodCategory.Side, sharedCatalog);
             entry.DrinkItem = DrawCategoryItemField("Drink Item", entry.DrinkItem, FoodCategory.Drink, sharedCatalog);
             entry.PatienceType = (PatienceType)EditorGUILayout.EnumPopup("Patience Type", entry.PatienceType);
-            var itemFieldsChanged = EditorGUI.EndChangeCheck();
 
             entry.CustomerNameOverride = EditorGUILayout.TextField("Name Override", entry.CustomerNameOverride);
             entry.TimeLimitSecondsOverride = EditorGUILayout.FloatField("Time Override", entry.TimeLimitSecondsOverride);
 
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("Modifications", UnityEditor.EditorStyles.boldLabel);
-            EditorGUI.BeginChangeCheck();
             for (var i = 0; i < entry.Modifications.Count; i++)
             {
                 EditorGUILayout.BeginHorizontal();
@@ -104,15 +96,6 @@ namespace ExpoTheExplorer.Editor
             if (UnityEngine.GUILayout.Button("+ Add Modification"))
             {
                 entry.Modifications.Add(new DayEditorModification());
-            }
-            var modificationsChanged = EditorGUI.EndChangeCheck();
-
-            // MainItem == null means an unfilled ticket (e.g. just added, not generated yet) --
-            // nothing meaningful to re-solve for yet, and ResolvedTicketEntry.ToResolved()
-            // downstream doesn't expect a null Main.
-            if ((itemFieldsChanged || modificationsChanged) && entry.MainItem != null)
-            {
-                ReSolveBoardTimeline();
             }
 
             EditorGUILayout.Space();
@@ -155,43 +138,17 @@ namespace ExpoTheExplorer.Editor
             return selectedIndex == 0 ? null : options[selectedIndex - 1];
         }
 
-        // Re-runs DayContentGenerator.EnsureSolvable (the same repair pass the full-Day
-        // "Generate" button already relies on) over the CURRENT ticket sequence/board timeline,
-        // so an edit to one ticket's item requirements can't silently leave the Day
-        // unsolvable. Only appends new patch spawns -- never touches or removes existing
-        // BoardTimeline entries, so manual authoring elsewhere in the timeline is preserved.
-        private void ReSolveBoardTimeline()
-        {
-            if (sharedGameConfig == null) return; // no config yet -- this can fire often while editing, stay silent
-
-            var resolvedTickets = TicketSequence.Select(e => e.ToResolved()).ToList();
-            var resolvedBoardTimeline = BoardTimeline.Select(e => e.ToResolved()).ToList();
-            var originalCount = resolvedBoardTimeline.Count;
-
-            var warnings = new List<string>();
-            DayContentGenerator.EnsureSolvable(resolvedTickets, resolvedBoardTimeline, sharedGameConfig, warnings);
-
-            for (var i = originalCount; i < resolvedBoardTimeline.Count; i++)
-            {
-                BoardTimeline.Add(DayEditorBoardSpawnEntry.FromResolved(resolvedBoardTimeline[i]));
-            }
-
-            if (warnings.Count > 0)
-            {
-                EditorUtility.DisplayDialog("Board Timeline", "Some required items couldn't be auto-placed (board is full at that point):\n\n" + string.Join("\n", warnings), "OK");
-            }
-        }
-
         [UnityEngine.HideInInspector]
         public List<DayEditorTicketEntry> TicketSequence = new();
 
         [FoldoutGroup("Board Timeline"), OnInspectorGUI, PropertyOrder(-1)]
-        private void DrawBoardTimelinePreview() => DayEditorBoardTimelinePreview.DrawGrid(sharedGameConfig, sharedBoardVisuals, BoardTimeline, TicketSequence, ref boardPreviewScrollPos);
+        private void DrawDayStartPreview() => DayEditorDayStartPreview.DrawGrid(sharedGameConfig, sharedBoardVisuals, BoardTimeline);
 
-        // Not part of the JSON, not serialized -- same UI-state convention as
-        // ticketStripScrollPos/selectedTicketIndex above.
-        private UnityEngine.Vector2 boardPreviewScrollPos;
-
+        // Only TriggerStepIndex == -1 (Day Start) entries are ever replayed at runtime
+        // (BoardDistributor took over everything after Day Start, see decisions.md D-001
+        // Phase 2/3) -- this table is Day Start authoring, hand-edited, not simulated or
+        // regenerated. AddBoardSpawn() already defaults new rows to -1.
+        [InfoBox("Only Trigger Step -1 (Day Start) entries are used by the live game. Other values are ignored at runtime.")]
         [TableList(ShowIndexLabels = true), FoldoutGroup("Board Timeline")]
         public List<DayEditorBoardSpawnEntry> BoardTimeline = new();
 
@@ -223,13 +180,13 @@ namespace ExpoTheExplorer.Editor
         [Button("Generate")]
         public void Generate()
         {
-            if (sharedCatalog == null || sharedGameConfig == null || sharedTicketConfig == null || sharedBoardConfig == null)
+            if (sharedCatalog == null || sharedTicketConfig == null)
             {
                 EditorUtility.DisplayDialog("Generate", "Config assets aren't assigned yet -- set them in the toolbar above.", "OK");
                 return;
             }
 
-            if (!EditorUtility.DisplayDialog("Generate", "This overwrites the current ticket sequence and board timeline. Continue?", "Generate", "Cancel"))
+            if (!EditorUtility.DisplayDialog("Generate", "This overwrites the current ticket sequence. Continue?", "Generate", "Cancel"))
             {
                 return;
             }
@@ -237,9 +194,8 @@ namespace ExpoTheExplorer.Editor
             // No user-facing seed field -- every click gets its own fresh randomness, not
             // reproducible on purpose (nothing else persists a seed for this Day either).
             var seed = UnityEngine.Random.Range(int.MinValue, int.MaxValue);
-            var result = DayContentGenerator.Generate(sharedCatalog, sharedGameConfig, sharedTicketConfig, sharedBoardConfig, EditorMeta.ToJson(), TicketsRequiredForDay, seed);
-            TicketSequence = result.TicketSequence.Select(e => DayEditorTicketEntry.FromJson(e, sharedCatalog)).ToList();
-            BoardTimeline = result.BoardTimeline.Select(e => DayEditorBoardSpawnEntry.FromJson(e, sharedCatalog)).ToList();
+            var result = DayContentGenerator.Generate(sharedCatalog, sharedTicketConfig, EditorMeta.ToJson(), TicketsRequiredForDay, seed);
+            TicketSequence = result.Select(e => DayEditorTicketEntry.FromJson(e, sharedCatalog)).ToList();
         }
 
         [Button("Add Ticket"), FoldoutGroup("Ticket Sequence")]
@@ -248,49 +204,8 @@ namespace ExpoTheExplorer.Editor
         [Button("Add Board Spawn"), FoldoutGroup("Board Timeline")]
         private void AddBoardSpawn() => BoardTimeline.Add(new DayEditorBoardSpawnEntry());
 
-        // Unlike ReSolveBoardTimeline (auto-triggered on ticket edits, append-only, never
-        // touches existing entries), this REPLACES the whole BoardTimeline -- including any
-        // manually-added spawns -- re-simulating required-item placement AND noise/leak
-        // content together from the current ticket sequence. Deliberately a manual, confirmed
-        // action rather than automatic: there's no way to tell a hand-authored entry apart
-        // from a generated one once it's in the list, so an automatic full-wipe on every edit
-        // would silently destroy manual authoring.
-        [Button("Regenerate Board Timeline (Noise + Leak)"), FoldoutGroup("Board Timeline")]
-        public void RegenerateBoardTimeline()
-        {
-            if (sharedCatalog == null || sharedGameConfig == null || sharedTicketConfig == null || sharedBoardConfig == null)
-            {
-                EditorUtility.DisplayDialog("Regenerate Board Timeline", "Config assets aren't assigned yet -- set them in the toolbar above.", "OK");
-                return;
-            }
-
-            var incompleteIndex = TicketSequence.FindIndex(e => e.MainItem == null);
-            if (incompleteIndex >= 0)
-            {
-                EditorUtility.DisplayDialog("Regenerate Board Timeline", $"Ticket #{incompleteIndex} has no Main Item set -- fill in every ticket before regenerating.", "OK");
-                return;
-            }
-
-            if (!EditorUtility.DisplayDialog("Regenerate Board Timeline", "This replaces the ENTIRE board timeline -- including any manually-added spawns -- based on the current ticket sequence and noise/leak settings. Continue?", "Regenerate", "Cancel"))
-            {
-                return;
-            }
-
-            var resolvedTickets = TicketSequence.Select(e => e.ToResolved()).ToList();
-            var seed = UnityEngine.Random.Range(int.MinValue, int.MaxValue);
-            var (boardTimeline, warnings) = DayContentGenerator.RegenerateBoardTimeline(
-                sharedCatalog, sharedGameConfig, sharedTicketConfig, sharedBoardConfig, EditorMeta.ToJson(), resolvedTickets, seed);
-
-            BoardTimeline = boardTimeline.Select(e => DayEditorBoardSpawnEntry.FromJson(e, sharedCatalog)).ToList();
-
-            if (warnings.Count > 0)
-            {
-                EditorUtility.DisplayDialog("Regenerate Board Timeline", "Some required items couldn't be auto-placed (board is full at that point):\n\n" + string.Join("\n", warnings), "OK");
-            }
-        }
-
-        // Recomputed on every draw pass -- DayValidator has no Random/BoardDistributor calls, its
-        // cost is a small board-sized scan per step, negligible for live feedback without a timer.
+        // Recomputed on every draw pass -- DayValidator is a cheap ticketSequence.Count check,
+        // negligible for live feedback without a timer.
         private bool IsValid => Validate().IsValid;
         private bool HasValidationErrors => !IsValid;
 
@@ -330,7 +245,6 @@ namespace ExpoTheExplorer.Editor
         private FoodCatalog sharedCatalog;
         private GameConfig sharedGameConfig;
         private TicketGenerationConfig sharedTicketConfig;
-        private BoardDistributionConfig sharedBoardConfig;
         private TicketCardVisualsConfig sharedTicketCardVisuals;
         private BoardVisualsConfig sharedBoardVisuals;
         private Action<DayEditorModel> onSaveRequested;
@@ -341,7 +255,6 @@ namespace ExpoTheExplorer.Editor
             FoodCatalog catalog,
             GameConfig gameConfig,
             TicketGenerationConfig ticketConfig,
-            BoardDistributionConfig boardConfig,
             TicketCardVisualsConfig ticketCardVisuals,
             BoardVisualsConfig boardVisuals,
             Action<DayEditorModel> onSave,
@@ -351,14 +264,13 @@ namespace ExpoTheExplorer.Editor
             sharedCatalog = catalog;
             sharedGameConfig = gameConfig;
             sharedTicketConfig = ticketConfig;
-            sharedBoardConfig = boardConfig;
             sharedTicketCardVisuals = ticketCardVisuals;
             sharedBoardVisuals = boardVisuals;
             onSaveRequested = onSave;
             onDuplicateRequested = onDuplicate;
             onDeleteRequested = onDelete;
 
-            RetryVariant?.Configure(catalog, gameConfig, ticketConfig, boardConfig, ticketCardVisuals, boardVisuals, null, null, null);
+            RetryVariant?.Configure(catalog, gameConfig, ticketConfig, ticketCardVisuals, boardVisuals, null, null, null);
         }
 
         public DayJson ToDayJson()
@@ -511,19 +423,6 @@ namespace ExpoTheExplorer.Editor
             UseExactCell = json.useExactCell,
             X = json.x,
             Y = json.y,
-        };
-
-        // Maps a patch spawn produced by DayContentGenerator.EnsureSolvable (already a
-        // resolved, in-memory entry -- no JSON round-trip needed) into editor data. Used by
-        // DrawSelectedTicketEditor's auto-resolve-on-edit flow.
-        public static DayEditorBoardSpawnEntry FromResolved(ResolvedBoardSpawnEntry resolved) => new()
-        {
-            TriggerStepIndex = resolved.TriggerStepIndex,
-            Item = resolved.Item,
-            Modifications = resolved.Modifications.Select(m => new DayEditorModification { Config = m.Config, IsAddition = m.IsAddition }).ToList(),
-            UseExactCell = resolved.UseExactCell,
-            X = resolved.X,
-            Y = resolved.Y,
         };
 
         public BoardSpawnEntryJson ToJson() => new()

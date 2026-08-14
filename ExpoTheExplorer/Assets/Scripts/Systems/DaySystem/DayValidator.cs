@@ -16,10 +16,12 @@ namespace ExpoTheExplorer.Systems.DaySystem
 
     // Authoring-time gate for a Day (PR-7's "Save" button), not a runtime concern --
     // DayCatalogParser is never called from here, and this is never wired into the
-    // runtime load path. Deterministic and Random-free: BoardDistributor is never
-    // invoked, only DaySolvabilityChecker's counting-based check, so this matches
-    // runtime's actual board-mutation behavior exactly (real item removal only ever
-    // happens via player drag-and-drop, which Day data never models).
+    // runtime load path. No longer checks board-content solvability (see decisions.md
+    // D-001 Phase 4): since BoardDistributor reconnected live (Phase 2/3), "is this Day
+    // completable" is guaranteed BY CONSTRUCTION every OnOrderPlaced call at runtime,
+    // not something to pre-validate from a per-step authored schedule -- the old
+    // DaySolvabilityChecker-based check assumed exactly that kind of schedule and was
+    // removed alongside it.
     public static class DayValidator
     {
         public static DayValidationResult Validate(DayDefinition day)
@@ -31,16 +33,6 @@ namespace ExpoTheExplorer.Systems.DaySystem
             if (day.TicketSequence.Count != day.TicketsRequiredForDay)
             {
                 errors.Add($"ticketSequence has {day.TicketSequence.Count} entries but ticketsRequiredForDay is {day.TicketsRequiredForDay}.");
-            }
-
-            // Counting-based solvability check -- see DaySolvabilityChecker for why this
-            // replaced the earlier (2026-08, PR-6.6) "board never shrinks" simulation, which
-            // was a MORE generous supply assumption than real gameplay, not a stricter one,
-            // and missed fungible (no-modification) items being under-supplied relative to
-            // cumulative demand across the whole Day.
-            foreach (var shortfall in DaySolvabilityChecker.FindShortfalls(day.TicketSequence, day.BoardTimeline))
-            {
-                errors.Add($"Step {shortfall.TicketIndex}: required item '{shortfall.MissingKey.Food.Id}' is not available in time for this ticket.");
             }
 
             if (day.RetryVariant != null)
