@@ -47,6 +47,7 @@ These are fixed design decisions — don't second-guess them during implementati
 - The required pool must spawn **before** noise items.
 - Upper bound = grid capacity. If no empty cell is available, the spawn request queues and fills the first cell that opens up.
 - Noise items don't expire or disappear on their own — they stay on the board until the player uses them.
+- **Which tickets the required pool covers each round is probabilistic, not deterministic "earliest N":** a per-round budget (fixed value or Poisson-sampled, per-Day configurable) picks tickets via an arrival-order-weighted lottery — earlier-arrived tickets are favored but not guaranteed. Any active ticket whose remaining time drops below a configurable threshold (default 10s) is guaranteed unconditionally regardless of the lottery, consuming from (and able to exceed) that round's budget. Selection is sticky across rounds — a ticket stays guaranteed once picked, until it's delivered/cancelled — so the guarantee never silently drifts past "at least one ticket" from repeated re-rolling. See `BoardDistributor.SelectGuaranteedTickets`, `decisions.md` D-001.
 
 ### Interaction
 - Drag & drop is the primary interaction: player drags an item from the board and drops it into the tray.
@@ -110,7 +111,10 @@ The principles from GDD Section 15 are binding:
   Assets/
     Scripts/
       Core/           // GameState, event bus, domain models (Unity-agnostic, testable)
+      Bootstrap/      // GameManager: composition root wiring every system together
       Systems/
+        DaySystem/            // Day content authoring/parsing/playback, ticket sequencing
+        DayLifecycle/         // Day completion/star-rating bookkeeping
         TicketSystem/
         BoardDistribution/   // required pool + noise pool
         TraySystem/
@@ -120,9 +124,10 @@ The principles from GDD Section 15 are binding:
         ProgressionSystem/   // XP/Level/Gem/SoftMoney
       UI/               // display + input only, reactively bound to state
       Data/             // ScriptableObject configs (food types, modifications, level thresholds)
+    Editor/             // Day Editor tooling (not shipped in builds)
     Tests/
       EditMode/         // unit tests for Core and Systems
-  ```e 
+  ```
 - Balancing numbers should live in **ScriptableObject configs** or JSON, not hardcoded in scripts — so a designer can tune them from the Unity Inspector.
 
 ## 6. Code Style / General Rules

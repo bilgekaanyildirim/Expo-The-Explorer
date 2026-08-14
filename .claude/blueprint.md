@@ -17,7 +17,11 @@
      ownership problem: apply procedures/ownership.md before writing it
      down. One line per system: name — responsibility — depends-on. -->
 - <System — one-line responsibility — depends on: a, b>
-- DayEditor — custom EditorWindow tooling for authoring Day JSON content (ticket sequence, board timeline, retry variants) — depends on: -
+- Bootstrap — central runtime composition root / game flow orchestration (GameManager) — depends on: DaySystem, BoardDistribution, TicketSystem
+- DaySystem — Day content authoring/parsing/playback (ticket-sequence rolling, Day Start board replay, JSON schema, validation) — depends on: TicketSystem
+- BoardDistribution — live required-pool + noise-pool board food spawning (probabilistic guaranteed-ticket selection) — depends on: -
+- TicketSystem — active-slot ticket lifecycle (assignment/delivery/cancellation) + ticket generation — depends on: -
+- DayEditor — custom EditorWindow tooling for authoring Day JSON content (ticket sequence, board timeline, retry variants) — depends on: DaySystem, TicketSystem
 - BoardUI — runtime board grid rendering + drag/drop (BoardView, board-visual config assets) — depends on: -
 
 ## Scene inventory
