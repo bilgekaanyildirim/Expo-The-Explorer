@@ -19,6 +19,7 @@ namespace ExpoTheExplorer.Systems.BoardDistribution
         private readonly BoardDistributionConfig config;
         private readonly Random random;
         private readonly HashSet<Ticket> leakedTickets = new();
+        private readonly HashSet<Ticket> guaranteedTickets = new();
 
         public BoardDistributor(GameState state, BoardDistributionConfig config, Random random = null)
         {
@@ -37,13 +38,11 @@ namespace ExpoTheExplorer.Systems.BoardDistribution
             LeakNoiseItems(upcomingTickets);
         }
 
-        // Guarantees the GuaranteedTicketCount earliest-arrived tickets are
-        // completable from the required pool (GDD Section 4 — "oyuncu her
-        // zaman en az bir bileti tamamlayabilecek malzemeye sahip olmalı": AT
-        // LEAST ONE ticket, not every active ticket). Selection is by arrival
-        // order, not by remaining time or slot index — active tickets are
-        // considered first, and once GuaranteedTicketCount exceeds the active
-        // count, it reaches into the upcoming queue too.
+        // Guarantees a per-round budget of tickets are completable from the
+        // required pool (GDD Section 4 — "oyuncu her zaman en az bir bileti
+        // tamamlayabilecek malzemeye sahip olmalı": AT LEAST ONE ticket, not
+        // every active ticket). See SelectGuaranteedTickets for exactly which
+        // tickets that budget picks.
         private void SpawnMissingRequiredItems(IReadOnlyList<Ticket> activeTickets, IReadOnlyList<Ticket> upcomingTickets)
         {
             var guaranteedTickets = SelectGuaranteedTickets(activeTickets, upcomingTickets);
@@ -78,14 +77,106 @@ namespace ExpoTheExplorer.Systems.BoardDistribution
         // front and enqueues at the back), so concatenating the two lists and
         // sorting by ArrivalSequence reconstructs full arrival order without
         // needing a separate global ticket registry.
+        //
+        // Selection is a two-layer probabilistic scheme (GDD Section 4 refinement,
+        // decisions.md D-001 Phase 2a): a per-round budget (Manual fixed value, or
+        // Poisson-sampled -- always 1..TicketSlotCount, never 0, so "at least one
+        // ticket must always be completable" holds even in Poisson mode) picks that
+        // many tickets via an arrival-weighted lottery. Layered on top: any active
+        // ticket under UrgentTimeThresholdSeconds is guaranteed unconditionally --
+        // it consumes from the budget when the budget isn't exceeded, but is
+        // guaranteed in full even past budget if urgent-ticket count exceeds it
+        // (confirmed with the user: urgency always wins).
+        //
+        // Selection is STICKY across calls (guaranteedTickets is instance state,
+        // pruned/topped-up here rather than recomputed from scratch each time) --
+        // re-rolling the lottery on every single OnOrderPlaced call, even when the
+        // active-ticket set hasn't changed at all, would spawn a fresh required
+        // item for whatever ticket randomly wins THIS round on top of whatever a
+        // PREVIOUS round already spawned (nothing here ever un-spawns an item),
+        // silently drifting "at least one ticket" toward "eventually every
+        // ticket" purely from repeated re-rolling. A ticket only leaves the
+        // guaranteed set when it leaves the pool entirely (delivered/cancelled),
+        // which frees its slot for the next event to fill.
         private List<Ticket> SelectGuaranteedTickets(IReadOnlyList<Ticket> activeTickets, IReadOnlyList<Ticket> upcomingTickets)
         {
-            return activeTickets
+            var pool = activeTickets
                 .Where(t => t != null && t.State == TicketState.Active)
                 .Concat(upcomingTickets)
                 .OrderBy(t => t.ArrivalSequence)
-                .Take(config.GuaranteedTicketCount)
                 .ToList();
+
+            guaranteedTickets.IntersectWith(pool);
+
+            // Only active tickets tick down -- an upcoming/queued ticket's
+            // RemainingSeconds stays frozen at TimeLimitSeconds until it's
+            // assigned into a slot, so it can never be "urgent" yet.
+            foreach (var ticket in activeTickets)
+            {
+                if (ticket != null && ticket.State == TicketState.Active && ticket.RemainingSeconds < config.UrgentTimeThresholdSeconds)
+                {
+                    guaranteedTickets.Add(ticket);
+                }
+            }
+
+            var budget = config.GuaranteedTicketCountMode == GuaranteedTicketCountMode.Poisson
+                ? TruncatedPoisson.Sample(GameState.TicketSlotCount - 1, config.GuaranteedTicketCountLambda, random) + 1
+                : config.GuaranteedTicketCount;
+
+            var slotsToFill = budget - guaranteedTickets.Count;
+            if (slotsToFill > 0)
+            {
+                var candidates = pool.Where(t => !guaranteedTickets.Contains(t)).ToList();
+                foreach (var picked in WeightedSampleWithoutReplacement(candidates, slotsToFill))
+                {
+                    guaranteedTickets.Add(picked);
+                }
+            }
+
+            return guaranteedTickets.ToList();
+        }
+
+        // Standard weighted draw-without-replacement, fine for the small
+        // candidate counts here (active slots + a short upcoming lookahead).
+        // Weight for the candidate at index i of what's currently left is
+        // EarlyTicketWeightDecay^i -- since `remaining` stays in arrival order
+        // throughout (only ever shrinks via removal, never reordered), index 0
+        // is always "earliest among what hasn't been picked yet" at each draw.
+        // Decay 0 makes every rank >= 1 exactly zero weight (deterministic
+        // earliest-first); decay 1 makes every rank equal weight (uniform).
+        private List<Ticket> WeightedSampleWithoutReplacement(List<Ticket> pool, int count)
+        {
+            var remaining = new List<Ticket>(pool);
+            var result = new List<Ticket>(Math.Min(count, remaining.Count));
+
+            for (var picks = 0; picks < count && remaining.Count > 0; picks++)
+            {
+                var weights = new double[remaining.Count];
+                var totalWeight = 0d;
+                for (var i = 0; i < remaining.Count; i++)
+                {
+                    weights[i] = Math.Pow(config.EarlyTicketWeightDecay, i);
+                    totalWeight += weights[i];
+                }
+
+                var roll = random.NextDouble() * totalWeight;
+                var cumulative = 0d;
+                var chosenIndex = remaining.Count - 1;
+                for (var i = 0; i < remaining.Count; i++)
+                {
+                    cumulative += weights[i];
+                    if (roll < cumulative)
+                    {
+                        chosenIndex = i;
+                        break;
+                    }
+                }
+
+                result.Add(remaining[chosenIndex]);
+                remaining.RemoveAt(chosenIndex);
+            }
+
+            return result;
         }
 
         private Dictionary<RequiredItemKey, int> CountItemsOnBoard()

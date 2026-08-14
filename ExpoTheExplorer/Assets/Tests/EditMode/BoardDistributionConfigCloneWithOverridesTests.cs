@@ -18,7 +18,11 @@ namespace ExpoTheExplorer.Tests.EditMode
 
             var serialized = new SerializedObject(config);
             serialized.FindProperty("noiseLeakCountLambda").floatValue = 0.5f;
+            serialized.FindProperty("guaranteedTicketCountMode").enumValueIndex = (int)GuaranteedTicketCountMode.Manual;
             serialized.FindProperty("guaranteedTicketCount").intValue = 1;
+            serialized.FindProperty("guaranteedTicketCountLambda").floatValue = 1f;
+            serialized.FindProperty("earlyTicketWeightDecay").floatValue = 0.5f;
+            serialized.FindProperty("urgentTimeThresholdSeconds").floatValue = 10f;
             serialized.FindProperty("leakDepth").intValue = 10;
             serialized.FindProperty("maxLeakCount").intValue = 10;
             serialized.ApplyModifiedPropertiesWithoutUndo();
@@ -39,7 +43,11 @@ namespace ExpoTheExplorer.Tests.EditMode
             spawned.Add(clone);
 
             Assert.AreEqual(config.NoiseLeakCountLambda, clone.NoiseLeakCountLambda);
+            Assert.AreEqual(config.GuaranteedTicketCountMode, clone.GuaranteedTicketCountMode);
             Assert.AreEqual(config.GuaranteedTicketCount, clone.GuaranteedTicketCount);
+            Assert.AreEqual(config.GuaranteedTicketCountLambda, clone.GuaranteedTicketCountLambda);
+            Assert.AreEqual(config.EarlyTicketWeightDecay, clone.EarlyTicketWeightDecay);
+            Assert.AreEqual(config.UrgentTimeThresholdSeconds, clone.UrgentTimeThresholdSeconds);
             Assert.AreEqual(config.LeakDepth, clone.LeakDepth);
             Assert.AreEqual(config.MaxLeakCount, clone.MaxLeakCount);
         }
@@ -47,11 +55,18 @@ namespace ExpoTheExplorer.Tests.EditMode
         [Test]
         public void CloneWithOverrides_GivenOverrides_AppliesThem()
         {
-            var clone = config.CloneWithOverrides(noiseLeakCountLambda: 0f, guaranteedTicketCount: 4, leakDepth: 2, maxLeakCount: 3);
+            var clone = config.CloneWithOverrides(
+                noiseLeakCountLambda: 0f, guaranteedTicketCount: 3, leakDepth: 2, maxLeakCount: 3,
+                guaranteedTicketCountMode: GuaranteedTicketCountMode.Poisson, guaranteedTicketCountLambda: 2f,
+                earlyTicketWeightDecay: 0.1f, urgentTimeThresholdSeconds: 5f);
             spawned.Add(clone);
 
             Assert.AreEqual(0f, clone.NoiseLeakCountLambda);
-            Assert.AreEqual(4, clone.GuaranteedTicketCount);
+            Assert.AreEqual(GuaranteedTicketCountMode.Poisson, clone.GuaranteedTicketCountMode);
+            Assert.AreEqual(3, clone.GuaranteedTicketCount);
+            Assert.AreEqual(2f, clone.GuaranteedTicketCountLambda);
+            Assert.AreEqual(0.1f, clone.EarlyTicketWeightDecay);
+            Assert.AreEqual(5f, clone.UrgentTimeThresholdSeconds);
             Assert.AreEqual(2, clone.LeakDepth);
             Assert.AreEqual(3, clone.MaxLeakCount);
         }
@@ -59,7 +74,7 @@ namespace ExpoTheExplorer.Tests.EditMode
         [Test]
         public void CloneWithOverrides_ReturnsDistinctInstance_DoesNotMutateBase()
         {
-            var clone = config.CloneWithOverrides(guaranteedTicketCount: 4);
+            var clone = config.CloneWithOverrides(guaranteedTicketCount: 3);
             spawned.Add(clone);
 
             Assert.AreNotSame(config, clone);

@@ -55,14 +55,31 @@ namespace ExpoTheExplorer.Tests.EditMode
             return modConfig;
         }
 
-        private BoardDistributionConfig CreateDistributionConfig(float noiseLeakCountLambda, int guaranteedTicketCount = 1, int leakDepth = 10, int maxLeakCount = 10)
+        // earlyTicketWeightDecay defaults to 0 (not the production default) so
+        // every pre-existing test in this file -- written when selection was
+        // deterministic "earliest N" -- keeps that exact behavior unchanged:
+        // decay 0 gives rank >= 1 candidates exactly zero weight, so the
+        // arrival-weighted lottery degenerates back to "always pick earliest"
+        // (Math.Pow(0, 0) == 1, Math.Pow(0, r > 0) == 0). Same isolation
+        // pattern as this file's own ExtremeLambda constant for noise-leak
+        // count. urgentTimeThresholdSeconds defaults to 0 so no test ticket
+        // (all use timeLimitSeconds significantly above 0) is ever
+        // accidentally treated as urgent unless a test opts in explicitly.
+        private BoardDistributionConfig CreateDistributionConfig(
+            float noiseLeakCountLambda, int guaranteedTicketCount = 1, int leakDepth = 10, int maxLeakCount = 10,
+            GuaranteedTicketCountMode guaranteedTicketCountMode = GuaranteedTicketCountMode.Manual,
+            float guaranteedTicketCountLambda = 0f, float earlyTicketWeightDecay = 0f, float urgentTimeThresholdSeconds = 0f)
         {
             var config = ScriptableObject.CreateInstance<BoardDistributionConfig>();
             spawnedAssets.Add(config);
 
             var serialized = new SerializedObject(config);
             serialized.FindProperty("noiseLeakCountLambda").floatValue = noiseLeakCountLambda;
+            serialized.FindProperty("guaranteedTicketCountMode").enumValueIndex = (int)guaranteedTicketCountMode;
             serialized.FindProperty("guaranteedTicketCount").intValue = guaranteedTicketCount;
+            serialized.FindProperty("guaranteedTicketCountLambda").floatValue = guaranteedTicketCountLambda;
+            serialized.FindProperty("earlyTicketWeightDecay").floatValue = earlyTicketWeightDecay;
+            serialized.FindProperty("urgentTimeThresholdSeconds").floatValue = urgentTimeThresholdSeconds;
             serialized.FindProperty("leakDepth").intValue = leakDepth;
             serialized.FindProperty("maxLeakCount").intValue = maxLeakCount;
             serialized.ApplyModifiedPropertiesWithoutUndo();
@@ -186,16 +203,17 @@ namespace ExpoTheExplorer.Tests.EditMode
             var state = new GameState(gameConfig);
             var mainActive1 = CreateFoodItem();
             var mainActive2 = CreateFoodItem();
-            var mainActive3 = CreateFoodItem();
             var mainUpcoming = CreateFoodItem();
             var active1 = CreateTicket(new List<FoodItemConfig> { mainActive1 }, arrivalSequence: 0);
             var active2 = CreateTicket(new List<FoodItemConfig> { mainActive2 }, arrivalSequence: 1);
-            var active3 = CreateTicket(new List<FoodItemConfig> { mainActive3 }, arrivalSequence: 2);
-            var nextUpcoming = CreateTicket(new List<FoodItemConfig> { mainUpcoming }, arrivalSequence: 3);
-            var laterUpcoming = CreateTicket(new List<FoodItemConfig> { CreateFoodItem() }, arrivalSequence: 4);
-            var distributor = new BoardDistributor(state, CreateDistributionConfig(0f, guaranteedTicketCount: 4));
+            var nextUpcoming = CreateTicket(new List<FoodItemConfig> { mainUpcoming }, arrivalSequence: 2);
+            var laterUpcoming = CreateTicket(new List<FoodItemConfig> { CreateFoodItem() }, arrivalSequence: 3);
+            // GuaranteedTicketCount is clamped to 3 (GDD's 3-slot invariant), so
+            // budget: 3 with only 2 active tickets present is the maximal way to
+            // still force one pick out of the upcoming queue.
+            var distributor = new BoardDistributor(state, CreateDistributionConfig(0f, guaranteedTicketCount: 3));
 
-            distributor.OnOrderPlaced(new[] { active1, active2, active3 }, new[] { nextUpcoming, laterUpcoming });
+            distributor.OnOrderPlaced(new[] { active1, active2 }, new[] { nextUpcoming, laterUpcoming });
 
             Assert.AreEqual(1, CountMatchingItemsOnBoard(state.Board, mainUpcoming, nextUpcoming.Modifications));
         }
@@ -470,6 +488,204 @@ namespace ExpoTheExplorer.Tests.EditMode
 
             Assert.DoesNotThrow(() => distributor.OnOrderPlaced(new[] { ticket }, Array.Empty<Ticket>()));
             Assert.AreEqual(1, state.Board.PendingSpawnCount);
+        }
+
+        [Test]
+        public void OnOrderPlaced_UrgentActiveTicket_GuaranteedEvenWhenNotEarliest()
+        {
+            var state = new GameState(gameConfig);
+            var mainEarly = CreateFoodItem();
+            var mainUrgent = CreateFoodItem();
+            // Budget is 1 and decay is 0 (deterministic earliest-first), so
+            // WITHOUT the urgency override the required pool would only ever
+            // guarantee `early` (arrivalSequence: 0). `urgent` arrived later but
+            // has fallen under the threshold -- it must still get its item.
+            var early = CreateTicket(new List<FoodItemConfig> { mainEarly }, timeLimitSeconds: 90f, arrivalSequence: 0);
+            var urgent = CreateTicket(new List<FoodItemConfig> { mainUrgent }, timeLimitSeconds: 90f, arrivalSequence: 1);
+            urgent.RemainingSeconds = 5f;
+            var distributor = new BoardDistributor(state, CreateDistributionConfig(0f, guaranteedTicketCount: 1, urgentTimeThresholdSeconds: 10f));
+
+            distributor.OnOrderPlaced(new[] { early, urgent }, Array.Empty<Ticket>());
+
+            Assert.AreEqual(1, CountMatchingItemsOnBoard(state.Board, mainUrgent, urgent.Modifications));
+        }
+
+        [Test]
+        public void OnOrderPlaced_UrgentTicket_ConsumesFromBudget_NonUrgentNotAlsoGuaranteed()
+        {
+            var state = new GameState(gameConfig);
+            var mainEarly = CreateFoodItem();
+            var mainUrgent = CreateFoodItem();
+            var early = CreateTicket(new List<FoodItemConfig> { mainEarly }, timeLimitSeconds: 90f, arrivalSequence: 0);
+            var urgent = CreateTicket(new List<FoodItemConfig> { mainUrgent }, timeLimitSeconds: 90f, arrivalSequence: 1);
+            urgent.RemainingSeconds = 5f;
+            // Budget: 1. The single urgent ticket consumes the whole budget, so
+            // the earliest non-urgent ticket must NOT also get a required item
+            // ("bütçeden düşsün" -- urgency consumes from, not adds to, budget).
+            var distributor = new BoardDistributor(state, CreateDistributionConfig(0f, guaranteedTicketCount: 1, urgentTimeThresholdSeconds: 10f));
+
+            distributor.OnOrderPlaced(new[] { early, urgent }, Array.Empty<Ticket>());
+
+            Assert.AreEqual(0, CountMatchingItemsOnBoard(state.Board, mainEarly, early.Modifications));
+        }
+
+        [Test]
+        public void OnOrderPlaced_UrgentCountExceedsBudget_AllUrgentTicketsStillGuaranteed()
+        {
+            var state = new GameState(gameConfig);
+            var mainUrgent1 = CreateFoodItem();
+            var mainUrgent2 = CreateFoodItem();
+            var urgent1 = CreateTicket(new List<FoodItemConfig> { mainUrgent1 }, timeLimitSeconds: 90f, arrivalSequence: 0);
+            var urgent2 = CreateTicket(new List<FoodItemConfig> { mainUrgent2 }, timeLimitSeconds: 90f, arrivalSequence: 1);
+            urgent1.RemainingSeconds = 5f;
+            urgent2.RemainingSeconds = 5f;
+            // Budget: 1, but 2 urgent tickets -- urgency always wins, even past
+            // budget ("her ikisini de garantile").
+            var distributor = new BoardDistributor(state, CreateDistributionConfig(0f, guaranteedTicketCount: 1, urgentTimeThresholdSeconds: 10f));
+
+            distributor.OnOrderPlaced(new[] { urgent1, urgent2 }, Array.Empty<Ticket>());
+
+            Assert.AreEqual(1, CountMatchingItemsOnBoard(state.Board, mainUrgent1, urgent1.Modifications));
+            Assert.AreEqual(1, CountMatchingItemsOnBoard(state.Board, mainUrgent2, urgent2.Modifications));
+        }
+
+        [Test]
+        public void OnOrderPlaced_PoissonMode_BudgetAlwaysWithinOneToTicketSlotCount()
+        {
+            var state = new GameState(gameConfig);
+            var mains = new List<FoodItemConfig>();
+            var tickets = new List<Ticket>();
+            for (var i = 0; i < GameState.TicketSlotCount; i++)
+            {
+                var main = CreateFoodItem();
+                mains.Add(main);
+                tickets.Add(CreateTicket(new List<FoodItemConfig> { main }, arrivalSequence: i));
+            }
+            // Lambda 0 truncated+shifted should always sample the minimum (1).
+            var distributor = new BoardDistributor(state, CreateDistributionConfig(
+                0f, guaranteedTicketCountMode: GuaranteedTicketCountMode.Poisson, guaranteedTicketCountLambda: 0f));
+
+            distributor.OnOrderPlaced(tickets, Array.Empty<Ticket>());
+
+            var guaranteedCount = 0;
+            for (var i = 0; i < mains.Count; i++)
+            {
+                guaranteedCount += CountMatchingItemsOnBoard(state.Board, mains[i], tickets[i].Modifications);
+            }
+
+            Assert.AreEqual(1, guaranteedCount);
+        }
+
+        [Test]
+        public void OnOrderPlaced_PoissonMode_ExtremeLambda_GuaranteesEveryActiveTicket()
+        {
+            var state = new GameState(gameConfig);
+            var mains = new List<FoodItemConfig>();
+            var tickets = new List<Ticket>();
+            for (var i = 0; i < GameState.TicketSlotCount; i++)
+            {
+                var main = CreateFoodItem();
+                mains.Add(main);
+                tickets.Add(CreateTicket(new List<FoodItemConfig> { main }, arrivalSequence: i));
+            }
+            var distributor = new BoardDistributor(state, CreateDistributionConfig(
+                0f, guaranteedTicketCountMode: GuaranteedTicketCountMode.Poisson, guaranteedTicketCountLambda: ExtremeLambda));
+
+            distributor.OnOrderPlaced(tickets, Array.Empty<Ticket>());
+
+            for (var i = 0; i < mains.Count; i++)
+            {
+                Assert.AreEqual(1, CountMatchingItemsOnBoard(state.Board, mains[i], tickets[i].Modifications));
+            }
+        }
+
+        [Test]
+        public void OnOrderPlaced_EarlyTicketWeightDecayOfOne_EventuallySelectsEveryCandidate()
+        {
+            // Decay 1.0 = uniform weighting (arrival order ignored). Across many
+            // independent trials with budget 1 among 2 equally-weighted
+            // candidates, both must get picked at least once -- if decay were
+            // still behaving like the deterministic default (0), ticketB would
+            // never be picked. Same weak, non-flaky-by-construction style as
+            // this file's own OnOrderPlaced_ModerateLambda_SometimesLeaksMoreThanOneItemPerCall.
+            var mainA = CreateFoodItem();
+            var mainB = CreateFoodItem();
+            var aPicked = false;
+            var bPicked = false;
+
+            for (var trial = 0; trial < 60 && !(aPicked && bPicked); trial++)
+            {
+                var state = new GameState(gameConfig);
+                var ticketA = CreateTicket(new List<FoodItemConfig> { mainA }, arrivalSequence: 0);
+                var ticketB = CreateTicket(new List<FoodItemConfig> { mainB }, arrivalSequence: 1);
+                var distributor = new BoardDistributor(state, CreateDistributionConfig(0f, guaranteedTicketCount: 1, earlyTicketWeightDecay: 1f));
+
+                distributor.OnOrderPlaced(new[] { ticketA, ticketB }, Array.Empty<Ticket>());
+
+                if (CountMatchingItemsOnBoard(state.Board, mainA, ticketA.Modifications) == 1) aPicked = true;
+                if (CountMatchingItemsOnBoard(state.Board, mainB, ticketB.Modifications) == 1) bPicked = true;
+            }
+
+            Assert.IsTrue(aPicked && bPicked, "Expected uniform weighting (decay 1.0) to eventually select both candidates across independent trials.");
+        }
+
+        [Test]
+        public void OnOrderPlaced_SameActiveTicketsAcrossManyRounds_OnlyOneTicketsFoodEverGuaranteed()
+        {
+            // Regression test for a real playtest bug: without sticky
+            // guaranteed-ticket state, re-rolling the arrival-weighted lottery on
+            // every OnOrderPlaced call -- even when the active-ticket set hasn't
+            // changed between calls -- could pick a DIFFERENT ticket each round
+            // and spawn its (distinctly-modified) required item too, since
+            // nothing here ever un-spawns an already-placed item. Over enough
+            // rounds this silently drifted "at least one ticket guaranteed"
+            // toward "eventually every ticket guaranteed". decay: 1f (uniform)
+            // makes each round's draw genuinely random, so this must hold even
+            // though B and C individually have a real chance to win any one round.
+            var state = new GameState(gameConfig);
+            var mainA = CreateFoodItem();
+            var mainB = CreateFoodItem();
+            var mainC = CreateFoodItem();
+            var ticketA = CreateTicket(new List<FoodItemConfig> { mainA }, arrivalSequence: 0);
+            var ticketB = CreateTicket(new List<FoodItemConfig> { mainB }, arrivalSequence: 1);
+            var ticketC = CreateTicket(new List<FoodItemConfig> { mainC }, arrivalSequence: 2);
+            var distributor = new BoardDistributor(state, CreateDistributionConfig(0f, guaranteedTicketCount: 1, earlyTicketWeightDecay: 1f));
+
+            for (var round = 0; round < 30; round++)
+            {
+                distributor.OnOrderPlaced(new[] { ticketA, ticketB, ticketC }, Array.Empty<Ticket>());
+            }
+
+            var guaranteedFoodCount =
+                CountMatchingItemsOnBoard(state.Board, mainA, ticketA.Modifications) +
+                CountMatchingItemsOnBoard(state.Board, mainB, ticketB.Modifications) +
+                CountMatchingItemsOnBoard(state.Board, mainC, ticketC.Modifications);
+
+            Assert.AreEqual(1, guaranteedFoodCount);
+        }
+
+        [Test]
+        public void OnOrderPlaced_GuaranteedTicketDeliveredAndReplaced_FreedSlotFillsFromRemainingPool()
+        {
+            var state = new GameState(gameConfig);
+            var mainA = CreateFoodItem();
+            var mainB = CreateFoodItem();
+            var mainC = CreateFoodItem();
+            var ticketA = CreateTicket(new List<FoodItemConfig> { mainA }, arrivalSequence: 0);
+            var ticketB = CreateTicket(new List<FoodItemConfig> { mainB }, arrivalSequence: 1);
+            var ticketC = CreateTicket(new List<FoodItemConfig> { mainC }, arrivalSequence: 2);
+            var distributor = new BoardDistributor(state, CreateDistributionConfig(0f, guaranteedTicketCount: 1));
+
+            // Round 1: decay 0 deterministically guarantees the earliest (A).
+            distributor.OnOrderPlaced(new[] { ticketA, ticketB, ticketC }, Array.Empty<Ticket>());
+            Assert.AreEqual(1, CountMatchingItemsOnBoard(state.Board, mainA, ticketA.Modifications));
+
+            // A is delivered and leaves the pool entirely -- its guaranteed slot
+            // must free up and get filled by the next-earliest remaining ticket (B).
+            distributor.OnOrderPlaced(new[] { ticketB, ticketC }, Array.Empty<Ticket>());
+
+            Assert.AreEqual(1, CountMatchingItemsOnBoard(state.Board, mainB, ticketB.Modifications));
+            Assert.AreEqual(0, CountMatchingItemsOnBoard(state.Board, mainC, ticketC.Modifications));
         }
     }
 }

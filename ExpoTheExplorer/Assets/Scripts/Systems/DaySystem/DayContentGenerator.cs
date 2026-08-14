@@ -439,7 +439,11 @@ namespace ExpoTheExplorer.Systems.DaySystem
                 noiseLeakCountLambda: editorMeta.noiseLeakCountLambdaOverride,
                 guaranteedTicketCount: editorMeta.guaranteedTicketCountOverride,
                 leakDepth: editorMeta.leakDepthOverride,
-                maxLeakCount: editorMeta.maxLeakCountOverride);
+                maxLeakCount: editorMeta.maxLeakCountOverride,
+                guaranteedTicketCountMode: editorMeta.guaranteedTicketCountModeOverride,
+                guaranteedTicketCountLambda: editorMeta.guaranteedTicketCountLambdaOverride,
+                earlyTicketWeightDecay: editorMeta.earlyTicketWeightDecayOverride,
+                urgentTimeThresholdSeconds: editorMeta.urgentTimeThresholdSecondsOverride);
         }
     }
 }

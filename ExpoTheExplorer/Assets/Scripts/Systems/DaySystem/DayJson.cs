@@ -1,4 +1,5 @@
 using System;
+using ExpoTheExplorer.Data;
 
 namespace ExpoTheExplorer.Systems.DaySystem
 {
@@ -42,7 +43,11 @@ namespace ExpoTheExplorer.Systems.DaySystem
         public float modificationCountLambdaOverride;
         public bool hasBoardDistributionOverride;
         public float noiseLeakCountLambdaOverride;
+        public GuaranteedTicketCountMode guaranteedTicketCountModeOverride;
         public int guaranteedTicketCountOverride;
+        public float guaranteedTicketCountLambdaOverride;
+        public float earlyTicketWeightDecayOverride;
+        public float urgentTimeThresholdSecondsOverride;
         public int leakDepthOverride;
         public int maxLeakCountOverride;
     }

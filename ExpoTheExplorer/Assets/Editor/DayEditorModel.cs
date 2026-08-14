@@ -556,7 +556,11 @@ namespace ExpoTheExplorer.Editor
 
         [ToggleGroup(BoardDistGroup, "Board Distribution Override")] public bool HasBoardDistributionOverride;
         [ToggleGroup(BoardDistGroup, "Board Distribution Override")] public float NoiseLeakCountLambdaOverride;
+        [ToggleGroup(BoardDistGroup, "Board Distribution Override")] public GuaranteedTicketCountMode GuaranteedTicketCountModeOverride;
         [ToggleGroup(BoardDistGroup, "Board Distribution Override")] public int GuaranteedTicketCountOverride;
+        [ToggleGroup(BoardDistGroup, "Board Distribution Override")] public float GuaranteedTicketCountLambdaOverride;
+        [ToggleGroup(BoardDistGroup, "Board Distribution Override")] public float EarlyTicketWeightDecayOverride;
+        [ToggleGroup(BoardDistGroup, "Board Distribution Override")] public float UrgentTimeThresholdSecondsOverride;
         [ToggleGroup(BoardDistGroup, "Board Distribution Override")] public int LeakDepthOverride;
         [ToggleGroup(BoardDistGroup, "Board Distribution Override")] public int MaxLeakCountOverride;
 
@@ -568,7 +572,11 @@ namespace ExpoTheExplorer.Editor
             modificationCountLambdaOverride = ModificationCountLambdaOverride,
             hasBoardDistributionOverride = HasBoardDistributionOverride,
             noiseLeakCountLambdaOverride = NoiseLeakCountLambdaOverride,
+            guaranteedTicketCountModeOverride = GuaranteedTicketCountModeOverride,
             guaranteedTicketCountOverride = GuaranteedTicketCountOverride,
+            guaranteedTicketCountLambdaOverride = GuaranteedTicketCountLambdaOverride,
+            earlyTicketWeightDecayOverride = EarlyTicketWeightDecayOverride,
+            urgentTimeThresholdSecondsOverride = UrgentTimeThresholdSecondsOverride,
             leakDepthOverride = LeakDepthOverride,
             maxLeakCountOverride = MaxLeakCountOverride,
         };
@@ -585,7 +593,11 @@ namespace ExpoTheExplorer.Editor
                 ModificationCountLambdaOverride = json.modificationCountLambdaOverride,
                 HasBoardDistributionOverride = json.hasBoardDistributionOverride,
                 NoiseLeakCountLambdaOverride = json.noiseLeakCountLambdaOverride,
+                GuaranteedTicketCountModeOverride = json.guaranteedTicketCountModeOverride,
                 GuaranteedTicketCountOverride = json.guaranteedTicketCountOverride,
+                GuaranteedTicketCountLambdaOverride = json.guaranteedTicketCountLambdaOverride,
+                EarlyTicketWeightDecayOverride = json.earlyTicketWeightDecayOverride,
+                UrgentTimeThresholdSecondsOverride = json.urgentTimeThresholdSecondsOverride,
                 LeakDepthOverride = json.leakDepthOverride,
                 MaxLeakCountOverride = json.maxLeakCountOverride,
             };
