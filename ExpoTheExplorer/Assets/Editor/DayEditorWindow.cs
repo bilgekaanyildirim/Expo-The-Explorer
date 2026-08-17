@@ -36,6 +36,13 @@ namespace ExpoTheExplorer.Editor
         // view is gone now (DayEditorTicketCardPreview), so this is what the wheel scrolls.
         public override bool UseScrollView => true;
 
+        // Each config field shrinks with the window instead of pinning a width the toolbar
+        // can never go below. 40px still shows the asset icon and stays clickable.
+        private static readonly GUILayoutOption[] ConfigFieldWidth =
+        {
+            GUILayout.MinWidth(40f), GUILayout.MaxWidth(130f),
+        };
+
         private FoodCatalog catalog;
         private GameConfig gameConfig;
         private TicketGenerationConfig ticketConfig;
@@ -104,27 +111,33 @@ namespace ExpoTheExplorer.Editor
 
             SirenixEditorGUI.BeginHorizontalToolbar();
 
-            if (GUILayout.Button("+ New Day", EditorStyles.toolbarButton, GUILayout.Width(90)))
+            if (GUILayout.Button("+ New Day", EditorStyles.toolbarButton, GUILayout.MinWidth(70), GUILayout.MaxWidth(90)))
             {
                 CreateNewDay();
             }
 
             GUILayout.FlexibleSpace();
 
-            EditorGUILayout.LabelField("Catalog", GUILayout.Width(50));
-            var newCatalog = (FoodCatalog)EditorGUILayout.ObjectField(catalog, typeof(FoodCatalog), false, GUILayout.Width(130));
+            // Shrinkable, not fixed. Five 130px fields plus their labels used to add up to a
+            // floor of roughly 1050px that the toolbar could never go below, and GUILayout
+            // widens the whole content column to its widest child -- so on any window
+            // narrower than that, every row in the inspector below was pushed past the right
+            // edge along with it. Names are tooltips now instead of separate labels, which
+            // removes another 300px of floor.
+            var newCatalog = (FoodCatalog)EditorGUILayout.ObjectField(
+                new GUIContent(string.Empty, "Food Catalog"), catalog, typeof(FoodCatalog), false, ConfigFieldWidth);
 
-            EditorGUILayout.LabelField("Game", GUILayout.Width(38));
-            var newGameConfig = (GameConfig)EditorGUILayout.ObjectField(gameConfig, typeof(GameConfig), false, GUILayout.Width(130));
+            var newGameConfig = (GameConfig)EditorGUILayout.ObjectField(
+                new GUIContent(string.Empty, "Game Config"), gameConfig, typeof(GameConfig), false, ConfigFieldWidth);
 
-            EditorGUILayout.LabelField("Ticket Gen", GUILayout.Width(65));
-            var newTicketConfig = (TicketGenerationConfig)EditorGUILayout.ObjectField(ticketConfig, typeof(TicketGenerationConfig), false, GUILayout.Width(130));
+            var newTicketConfig = (TicketGenerationConfig)EditorGUILayout.ObjectField(
+                new GUIContent(string.Empty, "Ticket Generation Config (seed for new Days)"), ticketConfig, typeof(TicketGenerationConfig), false, ConfigFieldWidth);
 
-            EditorGUILayout.LabelField("Card Visuals", GUILayout.Width(75));
-            var newTicketCardVisuals = (TicketCardVisualsConfig)EditorGUILayout.ObjectField(ticketCardVisuals, typeof(TicketCardVisualsConfig), false, GUILayout.Width(130));
+            var newTicketCardVisuals = (TicketCardVisualsConfig)EditorGUILayout.ObjectField(
+                new GUIContent(string.Empty, "Ticket Card Visuals Config"), ticketCardVisuals, typeof(TicketCardVisualsConfig), false, ConfigFieldWidth);
 
-            EditorGUILayout.LabelField("Board Visuals", GUILayout.Width(80));
-            var newBoardVisuals = (BoardVisualsConfig)EditorGUILayout.ObjectField(boardVisuals, typeof(BoardVisualsConfig), false, GUILayout.Width(130));
+            var newBoardVisuals = (BoardVisualsConfig)EditorGUILayout.ObjectField(
+                new GUIContent(string.Empty, "Board Visuals Config"), boardVisuals, typeof(BoardVisualsConfig), false, ConfigFieldWidth);
 
             SirenixEditorGUI.EndHorizontalToolbar();
 

@@ -357,13 +357,25 @@ namespace ExpoTheExplorer.Editor
                 foreach (var item in items) SetFoodAllowed(item, selectAll);
             }
 
-            // Wraps to the inspector's current width rather than a fixed column count, so a
-            // narrow Day Editor window shortens the rows instead of clipping them.
-            var available = UnityEngine.Mathf.Max(FoodTileStride, EditorGUIUtility.currentViewWidth - 40f);
-            var columns = UnityEngine.Mathf.Max(1, UnityEngine.Mathf.FloorToInt(available / FoodTileStride));
+            // Wraps to the width this grid is actually given, which is NOT
+            // EditorGUIUtility.currentViewWidth: that is the whole window, including the Day
+            // list on the left, so sizing against it asked for a row wider than the content
+            // column and forced a horizontal scrollbar onto the entire inspector -- every
+            // row, not just this one, since GUILayout widens the whole column to its widest
+            // child. The column count is therefore derived from the width measured on the
+            // last repaint, and the rect asks only for one tile's worth of width while
+            // expanding into whatever is on offer, so it can never demand more than exists.
+            var columns = UnityEngine.Mathf.Max(1, UnityEngine.Mathf.FloorToInt(lastFoodGridWidth / FoodTileStride));
             var rows = UnityEngine.Mathf.CeilToInt(items.Count / (float)columns);
             var gridRect = UnityEngine.GUILayoutUtility.GetRect(
-                columns * FoodTileStride, rows * FoodTileStride, UnityEngine.GUILayout.ExpandWidth(false));
+                FoodTileStride, rows * FoodTileStride, UnityEngine.GUILayout.ExpandWidth(true));
+
+            // Layout passes report a meaningless width; only repaints carry the real rect.
+            // Converges on the first repaint after any resize, which IMGUI does continuously.
+            if (UnityEngine.Event.current.type == UnityEngine.EventType.Repaint && gridRect.width > 1f)
+            {
+                lastFoodGridWidth = gridRect.width;
+            }
 
             for (var i = 0; i < items.Count; i++)
             {
@@ -442,6 +454,10 @@ namespace ExpoTheExplorer.Editor
 
         private const string NoMainDishMessage =
             "No Main dish is in this Day -- pick at least one Main under Food Selection before generating.";
+
+        // Seeded wide enough to look sensible on the very first layout pass, then corrected
+        // from the real rect on the first repaint (see DrawFoodSelection).
+        private float lastFoodGridWidth = 600f;
 
         private const float FoodTileSize = 52f;
         private const float FoodTileSpacing = 6f;
