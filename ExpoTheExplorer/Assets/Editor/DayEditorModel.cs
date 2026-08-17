@@ -48,7 +48,7 @@ namespace ExpoTheExplorer.Editor
         public DayEditorTicketRuntime TicketRuntime = new();
 
         [FoldoutGroup("Ticket Sequence"), OnInspectorGUI, PropertyOrder(-1)]
-        private void DrawTicketCardPreview() => DayEditorTicketCardPreview.DrawStrip(TicketSequence, sharedTicketCardVisuals, ref ticketStripScrollPos, ref selectedTicketIndex, ref draggedTicketIndex, ref ticketDragStartMousePos);
+        private void DrawTicketCardPreview() => DayEditorTicketCardPreview.DrawStrip(TicketSequence, sharedTicketCardVisuals, ref ticketStripScrollPos, ref selectedTicketIndex, ref draggedTicketIndex, ref ticketDragStartMousePos, ref ticketStripViewWidth);
 
         // Not part of the JSON, not serialized -- same "plain private field" convention as
         // sharedCatalog etc. below, just UI state for the preview/editor above.
@@ -56,6 +56,11 @@ namespace ExpoTheExplorer.Editor
         private int selectedTicketIndex = -1;
         private int draggedTicketIndex = -1;
         private UnityEngine.Vector2 ticketDragStartMousePos;
+
+        // Width the strip was actually given, carried between frames -- see DrawStrip for why
+        // it cannot be read fresh during a layout pass. Seeded non-zero so the first pass
+        // before any repaint does not think the strip has no room at all.
+        private float ticketStripViewWidth = 600f;
 
         [FoldoutGroup("Ticket Sequence"), OnInspectorGUI, PropertyOrder(-0.5f)]
         private void DrawSelectedTicketEditor()

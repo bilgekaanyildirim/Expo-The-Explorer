@@ -26,7 +26,7 @@ namespace ExpoTheExplorer.Editor
         // draggedIndex/dragStartMousePos are UI state owned by the caller (same convention as
         // scrollPos/selectedIndex) -- a static field here would be shared across every open Day
         // tab, corrupting one drag with another's state.
-        public static void DrawStrip(List<DayEditorTicketEntry> entries, TicketCardVisualsConfig visuals, ref Vector2 scrollPos, ref int selectedIndex, ref int draggedIndex, ref Vector2 dragStartMousePos)
+        public static void DrawStrip(List<DayEditorTicketEntry> entries, TicketCardVisualsConfig visuals, ref Vector2 scrollPos, ref int selectedIndex, ref int draggedIndex, ref Vector2 dragStartMousePos, ref float lastViewWidth)
         {
             if (entries == null || entries.Count == 0) return;
 
@@ -49,7 +49,18 @@ namespace ExpoTheExplorer.Editor
             // hit-testing and drag math below are unaffected, but the wheel now falls through
             // to Odin's own scroll view where it belongs.
             var viewRect = GUILayoutUtility.GetRect(0f, CardHeight, GUILayout.ExpandWidth(true));
-            var maxScroll = Mathf.Max(0f, totalWidth - viewRect.width);
+
+            // GetRect only reports a real width on repaints; layout passes give 0. Deciding
+            // whether to emit the scrollbar from that raw value made the two passes disagree
+            // about how many layout elements exist, which is why dragging the strip sideways
+            // did nothing. The decision is made from the last measured width instead, so it
+            // is identical in both passes.
+            if (Event.current.type == EventType.Repaint && viewRect.width > 1f)
+            {
+                lastViewWidth = viewRect.width;
+            }
+
+            var maxScroll = Mathf.Max(0f, totalWidth - lastViewWidth);
             scrollPos.x = Mathf.Clamp(scrollPos.x, 0f, maxScroll);
 
             GUI.BeginClip(viewRect, new Vector2(-scrollPos.x, 0f), Vector2.zero, false);
@@ -133,7 +144,7 @@ namespace ExpoTheExplorer.Editor
             // when everything already fits, so a short Day gets no dead scrollbar row.
             if (maxScroll > 0f)
             {
-                scrollPos.x = GUILayout.HorizontalScrollbar(scrollPos.x, viewRect.width, 0f, totalWidth);
+                scrollPos.x = GUILayout.HorizontalScrollbar(scrollPos.x, lastViewWidth, 0f, totalWidth);
             }
         }
 
