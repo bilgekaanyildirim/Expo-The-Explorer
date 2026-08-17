@@ -160,7 +160,7 @@ namespace ExpoTheExplorer.Bootstrap
             }
 
             var activeTickets = State.TicketSlots.Where(t => t != null).ToList();
-            var lookaheadCount = Math.Max(GameState.TicketSlotCount, ticketGenerationConfig.UpcomingQueueSize);
+            var lookaheadCount = Math.Max(GameState.TicketSlotCount, CurrentDay.TicketRuntime.UpcomingQueueSize);
             var upcomingTickets = dayTicketSequenceProvider.PeekUpcoming(lookaheadCount);
             boardDistributor.OnOrderPlaced(activeTickets, upcomingTickets);
 
@@ -318,7 +318,7 @@ namespace ExpoTheExplorer.Bootstrap
         private void RefreshDayTicketSequenceProvider()
         {
             dayTicketSequenceProvider = CurrentDay != null
-                ? new DayTicketSequenceProvider(CurrentDay.TicketSequence, ticketGenerationConfig, ticketFactory)
+                ? new DayTicketSequenceProvider(CurrentDay.TicketSequence, CurrentDay.TicketRuntime, ticketFactory)
                 : null;
             boardDistributor = CurrentDay != null
                 ? new BoardDistributor(State, CurrentDay.BoardDistribution)

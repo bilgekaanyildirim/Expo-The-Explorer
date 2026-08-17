@@ -41,6 +41,12 @@ namespace ExpoTheExplorer.Editor
         [BoxGroup("Board Distribution"), HideLabel, PropertyOrder(-2.5f)]
         public DayEditorBoardDistribution BoardDistribution = new();
 
+        // Per-Day ticket play-time balancing (time limits + lookahead depth). Same story as
+        // BoardDistribution above: plain nested box for now, proper grouping in a later
+        // step of .claude/day-config-plan.md.
+        [BoxGroup("Ticket Runtime"), HideLabel, PropertyOrder(-2.4f)]
+        public DayEditorTicketRuntime TicketRuntime = new();
+
         [FoldoutGroup("Ticket Sequence"), OnInspectorGUI, PropertyOrder(-1)]
         private void DrawTicketCardPreview() => DayEditorTicketCardPreview.DrawStrip(TicketSequence, sharedTicketCardVisuals, ref ticketStripScrollPos, ref selectedTicketIndex, ref draggedTicketIndex, ref ticketDragStartMousePos);
 
@@ -556,6 +562,7 @@ namespace ExpoTheExplorer.Editor
                     dayIndex = DayIndex,
                     ticketsRequiredForDay = TicketsRequiredForDay,
                     boardDistribution = BoardDistribution.ToJson(),
+                    ticketRuntime = TicketRuntime.ToJson(),
                     ticketSequence = TicketSequence.Select(e => e.ToJson()).ToArray(),
                     boardTimeline = BoardTimeline.Select(e => e.ToJson()).ToArray(),
                     star1Threshold = Star1Threshold,
@@ -571,7 +578,7 @@ namespace ExpoTheExplorer.Editor
             var ticketSequence = TicketSequence.Select(e => e.ToResolved()).ToList();
             var boardTimeline = BoardTimeline.Select(e => e.ToResolved()).ToList();
             return new DayDefinition(DayIndex, TicketsRequiredForDay, ticketSequence, boardTimeline,
-                Star1Threshold, Star2Threshold, Star3Threshold, BoardDistribution.ToResolved());
+                Star1Threshold, Star2Threshold, Star3Threshold, BoardDistribution.ToResolved(), TicketRuntime.ToResolved());
         }
 
         public static DayEditorModel FromDayJson(DayJson json, FoodCatalog catalog)
@@ -582,6 +589,7 @@ namespace ExpoTheExplorer.Editor
                 DayIndex = runtime?.dayIndex ?? 0,
                 TicketsRequiredForDay = runtime?.ticketsRequiredForDay ?? 10,
                 BoardDistribution = DayEditorBoardDistribution.FromJson(runtime?.boardDistribution),
+                TicketRuntime = DayEditorTicketRuntime.FromJson(runtime?.ticketRuntime),
                 TicketSequence = (runtime?.ticketSequence ?? Array.Empty<TicketEntryJson>())
                     .Select(e => DayEditorTicketEntry.FromJson(e, catalog)).ToList(),
                 BoardTimeline = (runtime?.boardTimeline ?? Array.Empty<BoardSpawnEntryJson>())
@@ -810,5 +818,49 @@ namespace ExpoTheExplorer.Editor
         public BoardDistributionSettings ToResolved() => new(
             NoiseLeakCountLambda, GuaranteedTicketCountMode, GuaranteedTicketCount, GuaranteedTicketCountLambda,
             EarlyTicketWeightDecay, UrgentTimeThresholdSeconds, LeakDepth, MaxLeakCount);
+    }
+
+    // This Day's play-time ticket balancing. Defaults mirror TicketGenerationConfig's
+    // declared initializers so a brand-new Day starts from the designed values; the GDD
+    // Section 8 ordering (Impatient < Normal < Patient) is a design rule, not enforced
+    // here -- DayValidator is where that check belongs (day-config-plan.md step 6).
+    [Serializable]
+    public class DayEditorTicketRuntime
+    {
+        [UnityEngine.Min(1f)] public float ImpatientTimeLimitSeconds = 45f;
+        [UnityEngine.Min(1f)] public float NormalTimeLimitSeconds = 90f;
+        [UnityEngine.Min(1f)] public float PatientTimeLimitSeconds = 150f;
+
+        [UnityEngine.Min(1)]
+        [UnityEngine.Tooltip("How many tickets are pre-generated ahead of the 3 active slots. BoardDistributor's noise pool leaks from these, so LeakDepth above this is wasted reach.")]
+        public int UpcomingQueueSize = 10;
+
+        // Tolerates a Day file written before this block existed (all-zero, since
+        // JsonUtility cannot produce null here) by falling back to the designed defaults,
+        // so an old Day can still be opened and re-saved into a form the runtime accepts.
+        // DayCatalogParser is the strict one; the editor is deliberately the forgiving one.
+        public static DayEditorTicketRuntime FromJson(TicketRuntimeJson json)
+        {
+            if (json == null || json.impatientTimeLimitSeconds <= 0f) return new DayEditorTicketRuntime();
+
+            return new DayEditorTicketRuntime
+            {
+                ImpatientTimeLimitSeconds = json.impatientTimeLimitSeconds,
+                NormalTimeLimitSeconds = json.normalTimeLimitSeconds,
+                PatientTimeLimitSeconds = json.patientTimeLimitSeconds,
+                UpcomingQueueSize = json.upcomingQueueSize,
+            };
+        }
+
+        public TicketRuntimeJson ToJson() => new()
+        {
+            impatientTimeLimitSeconds = ImpatientTimeLimitSeconds,
+            normalTimeLimitSeconds = NormalTimeLimitSeconds,
+            patientTimeLimitSeconds = PatientTimeLimitSeconds,
+            upcomingQueueSize = UpcomingQueueSize,
+        };
+
+        public TicketRuntimeSettings ToResolved() => new(
+            ImpatientTimeLimitSeconds, NormalTimeLimitSeconds, PatientTimeLimitSeconds, UpcomingQueueSize);
     }
 }

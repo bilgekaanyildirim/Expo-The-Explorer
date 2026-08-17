@@ -70,7 +70,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             var factory = new TicketFactory(config, new System.Random(1));
             var entry = CreateEntry(CreateFood(), customerNameOverride: "Overridden Name");
 
-            var ticket = TicketEntryFactory.Create(entry, config, factory, 0);
+            var ticket = TicketEntryFactory.Create(entry, config.ToRuntimeSettings(), factory, 0);
 
             Assert.AreEqual("Overridden Name", ticket.CustomerName);
         }
@@ -82,7 +82,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             var factory = new TicketFactory(config, new System.Random(1));
             var entry = CreateEntry(CreateFood(), customerNameOverride: null);
 
-            var ticket = TicketEntryFactory.Create(entry, config, factory, 0);
+            var ticket = TicketEntryFactory.Create(entry, config.ToRuntimeSettings(), factory, 0);
 
             Assert.IsTrue(config.CustomerNames.Contains(ticket.CustomerName));
         }
@@ -94,7 +94,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             var factory = new TicketFactory(config, new System.Random(1));
             var entry = CreateEntry(CreateFood(), patienceType: PatienceType.Impatient, customerNameOverride: "Whoever", timeLimitSecondsOverride: 99f);
 
-            var ticket = TicketEntryFactory.Create(entry, config, factory, 0);
+            var ticket = TicketEntryFactory.Create(entry, config.ToRuntimeSettings(), factory, 0);
 
             Assert.AreEqual(99f, ticket.TimeLimitSeconds);
         }
@@ -106,9 +106,9 @@ namespace ExpoTheExplorer.Tests.EditMode
             var factory = new TicketFactory(config, new System.Random(1));
             var entry = CreateEntry(CreateFood(), patienceType: PatienceType.Patient, customerNameOverride: "Whoever", timeLimitSecondsOverride: 0f);
 
-            var ticket = TicketEntryFactory.Create(entry, config, factory, 0);
+            var ticket = TicketEntryFactory.Create(entry, config.ToRuntimeSettings(), factory, 0);
 
-            Assert.AreEqual(config.PatientTimeLimitSeconds, ticket.TimeLimitSeconds);
+            Assert.AreEqual(config.ToRuntimeSettings().PatientTimeLimitSeconds, ticket.TimeLimitSeconds);
         }
 
         [Test]
@@ -120,7 +120,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             var drink = CreateFood();
             var entry = CreateEntry(main, sideItem: null, drinkItem: drink, customerNameOverride: "Whoever");
 
-            var ticket = TicketEntryFactory.Create(entry, config, factory, 0);
+            var ticket = TicketEntryFactory.Create(entry, config.ToRuntimeSettings(), factory, 0);
 
             Assert.AreEqual(2, ticket.RequiredItems.Count);
             Assert.AreSame(main, ticket.RequiredItems[0]);
@@ -134,7 +134,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             var factory = new TicketFactory(config, new System.Random(1));
             var entry = CreateEntry(CreateFood(), customerNameOverride: "Whoever");
 
-            var ticket = TicketEntryFactory.Create(entry, config, factory, 42);
+            var ticket = TicketEntryFactory.Create(entry, config.ToRuntimeSettings(), factory, 42);
 
             Assert.AreEqual(42, ticket.ArrivalSequence);
         }

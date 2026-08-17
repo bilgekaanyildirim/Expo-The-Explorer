@@ -6,7 +6,10 @@ namespace ExpoTheExplorer.Systems.DaySystem
 {
     public static class TicketEntryFactory
     {
-        public static Ticket Create(ResolvedTicketEntry entry, TicketGenerationConfig config, TicketFactory ticketFactory, long arrivalSequence)
+        // ticketRuntime is the PLAYED Day's own block (decisions.md D-005), so two Days can
+        // give the same patience type different time limits. A per-ticket
+        // TimeLimitSecondsOverride still wins over both.
+        public static Ticket Create(ResolvedTicketEntry entry, TicketRuntimeSettings ticketRuntime, TicketFactory ticketFactory, long arrivalSequence)
         {
             var customerName = string.IsNullOrEmpty(entry.CustomerNameOverride)
                 ? ticketFactory.PickRandomCustomerName()
@@ -14,7 +17,7 @@ namespace ExpoTheExplorer.Systems.DaySystem
 
             var timeLimitSeconds = entry.TimeLimitSecondsOverride > 0f
                 ? entry.TimeLimitSecondsOverride
-                : config.TimeLimitSecondsFor(entry.PatienceType);
+                : ticketRuntime.TimeLimitSecondsFor(entry.PatienceType);
 
             return new Ticket(customerName, entry.PatienceType, entry.RequiredItems, entry.Modifications, timeLimitSeconds, arrivalSequence);
         }

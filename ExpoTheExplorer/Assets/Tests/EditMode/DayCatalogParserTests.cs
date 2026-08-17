@@ -50,6 +50,7 @@ namespace ExpoTheExplorer.Tests.EditMode
                     dayIndex = 1,
                     ticketsRequiredForDay = 1,
                     boardDistribution = ValidBoardDistribution(),
+                    ticketRuntime = ValidTicketRuntime(),
                     ticketSequence = new[]
                     {
                         new TicketEntryJson
@@ -115,6 +116,70 @@ namespace ExpoTheExplorer.Tests.EditMode
             Assert.AreEqual(10f, distribution.UrgentTimeThresholdSeconds);
             Assert.AreEqual(10, distribution.LeakDepth);
             Assert.AreEqual(10, distribution.MaxLeakCount);
+
+            var ticketRuntime = day.TicketRuntime;
+            Assert.IsNotNull(ticketRuntime);
+            Assert.AreEqual(45f, ticketRuntime.ImpatientTimeLimitSeconds);
+            Assert.AreEqual(90f, ticketRuntime.NormalTimeLimitSeconds);
+            Assert.AreEqual(150f, ticketRuntime.PatientTimeLimitSeconds);
+            Assert.AreEqual(10, ticketRuntime.UpcomingQueueSize);
+        }
+
+        // Same absence-by-content problem as boardDistribution: JsonUtility hands back a
+        // zeroed block rather than null. A 0-second limit would time the ticket out on
+        // arrival, so it is rejected instead of quietly played.
+        [Test]
+        public void ParseAll_MissingTicketRuntimeBlock_LogsErrorAndSkipsDay()
+        {
+            var runtime = BuildMinimalRuntime(dayIndex: 1);
+            runtime.ticketRuntime = null;
+
+            LogAssert.Expect(LogType.Error, "Day file 'day_01': runtime.ticketRuntime block is missing or incomplete -- impatient/normal/patient time limits must all be greater than 0.");
+            var result = ParseSingle(new DayJson { runtime = runtime }, "day_01");
+
+            Assert.AreEqual(0, result.Count);
+        }
+
+        [Test]
+        public void ParseAll_TicketRuntimeWithZeroTimeLimit_LogsErrorAndSkipsDay()
+        {
+            var runtime = BuildMinimalRuntime(dayIndex: 1);
+            runtime.ticketRuntime.normalTimeLimitSeconds = 0f;
+
+            LogAssert.Expect(LogType.Error, "Day file 'day_01': runtime.ticketRuntime block is missing or incomplete -- impatient/normal/patient time limits must all be greater than 0.");
+            var result = ParseSingle(new DayJson { runtime = runtime }, "day_01");
+
+            Assert.AreEqual(0, result.Count);
+        }
+
+        [Test]
+        public void ParseAll_TicketRuntimeWithZeroQueueSize_LogsErrorAndSkipsDay()
+        {
+            var runtime = BuildMinimalRuntime(dayIndex: 1);
+            runtime.ticketRuntime.upcomingQueueSize = 0;
+
+            LogAssert.Expect(LogType.Error, "Day file 'day_01': runtime.ticketRuntime.upcomingQueueSize (0) must be at least 1.");
+            var result = ParseSingle(new DayJson { runtime = runtime }, "day_01");
+
+            Assert.AreEqual(0, result.Count);
+        }
+
+        // The point of moving these per Day: two Days must be able to disagree.
+        [Test]
+        public void ParseAll_TwoDaysWithDifferentTimeLimits_EachKeepsItsOwn()
+        {
+            var strict = BuildMinimalRuntime(dayIndex: 1);
+            strict.ticketRuntime.normalTimeLimitSeconds = 30f;
+            var lenient = BuildMinimalRuntime(dayIndex: 2);
+            lenient.ticketRuntime.normalTimeLimitSeconds = 120f;
+
+            var parsed = DayCatalogParser.ParseAll(
+                new[] { ToFile(new DayJson { runtime = strict }, "day_01"), ToFile(new DayJson { runtime = lenient }, "day_02") },
+                catalog);
+
+            Assert.AreEqual(2, parsed.Count);
+            Assert.AreEqual(30f, parsed[0].TicketRuntime.NormalTimeLimitSeconds);
+            Assert.AreEqual(120f, parsed[1].TicketRuntime.NormalTimeLimitSeconds);
         }
 
         [Test]
@@ -302,6 +367,7 @@ namespace ExpoTheExplorer.Tests.EditMode
                 dayIndex = dayIndex,
                 ticketsRequiredForDay = ticketsRequiredForDay,
                 boardDistribution = ValidBoardDistribution(),
+                ticketRuntime = ValidTicketRuntime(),
                 ticketSequence = new[] { new TicketEntryJson { mainItemId = "burger", patienceType = "Normal" } }
             };
         }
@@ -318,6 +384,17 @@ namespace ExpoTheExplorer.Tests.EditMode
                 urgentTimeThresholdSeconds = 10f,
                 leakDepth = 10,
                 maxLeakCount = 10
+            };
+        }
+
+        private static TicketRuntimeJson ValidTicketRuntime()
+        {
+            return new TicketRuntimeJson
+            {
+                impatientTimeLimitSeconds = 45f,
+                normalTimeLimitSeconds = 90f,
+                patientTimeLimitSeconds = 150f,
+                upcomingQueueSize = 10
             };
         }
 

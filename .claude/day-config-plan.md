@@ -200,15 +200,28 @@ silindi (override katmanının artığıydı).
       `dotnet build` → **0 hata**. Playtest bekleniyor: bu adımla acil-ticket garantisi
       ve loto rastgeleliği fiilen açıldı, oynanış değişti.
 
-### Adım 3 — `runtime.ticketRuntime` bloğu + TicketFactory'nin güne bağlanması
-- [ ] Blok + parser + `DayDefinition` alanı (Adım 1 deseni).
-- [ ] `GameManager:94`'teki oturum ömürlü `ticketFactory`,
-      `RefreshDayTicketSequenceProvider` içine taşınır — `DayTicketSequenceProvider`'a
-      verilen config ile `TicketFactory`'nin config'i **aynı klon** olmalı, yoksa
-      zaman limitleri baz asset'ten, geri kalanı klondan gelir.
-- [ ] `:157` lookahead, günün `upcomingQueueSize`'ından okunur.
-- [ ] Dikkat: `TicketFactory` her kurulumda yeni `Random` alıyor; gün başına
-      yeniden kurulum RNG akışını sıfırlar — kabul edilebilirliği doğrulanır.
+### Adım 3 — `runtime.ticketRuntime` bloğu ✅ 2026-08-17
+**Plandan sapma (onaylı):** `TicketFactory` **güne bağlanmadı, gerekmiyordu.** Play
+time'da tek çağrılan metodu `PickRandomCustomerName()`; `Create` ve
+`PickRandomPatienceType` yalnız authoring yolundan çağrılıyor. İsim havuzu güne
+göre değişen bir balans olmadığı için oturum ömürlü kalması doğru — planın
+uyardığı "aynı klon olmalı" tuzağı ve RNG-sıfırlama endişesi böylece konusuz kaldı.
+
+- [x] `TicketRuntimeSettings` (Data): 3 süre limiti + `upcomingQueueSize`.
+- [x] `TicketRuntimeSettingsExtensions` (Core): sabır→süre switch'inin **tek** yeri;
+      `TicketGenerationConfigExtensions` silindi. Switch Core'da kaldı çünkü Data
+      `Core.PatienceType`'ı referanslayamıyor (mevcut kısıt, `EconomyConfig` notu).
+- [x] `DayJson.ticketRuntime` + parser (eksik blok / 0 süre / 0 kuyruk → gün düşer).
+- [x] `TicketEntryFactory` + `DayTicketSequenceProvider` artık settings alıyor;
+      `GameManager` lookahead'i `CurrentDay.TicketRuntime`'dan okuyor.
+- [x] `TicketGenerationConfig` **silinmedi** (D-004'ün aksine): isim veritabanı ve
+      üretim knob'larının sahibi olarak duruyor, `ToRuntimeSettings()` seed'i eklendi.
+- [x] `day_00`/`day_01` asset'in birebir değerleriyle migrate edildi (45/90/150/10) —
+      dört alan da asset'te fiziksel olarak vardı, Adım 1'deki belirsizlik yok.
+      **Bu adım davranışı değiştirmiyor.**
+- [x] `decisions.md` D-005.
+- [ ] **Açık:** EditMode testleri çalıştırılamadı (Unity proje kilidi). `dotnet build`
+      → 0 hata, ve yeni dosyaların csproj'lere gerçekten kayıtlı olduğu doğrulandı.
 
 ### Adım 4 — `editorMeta.ticketGeneration` (Generate ayarları, tam kapsam)
 - [ ] Alanlar `Override` ekinden ve toggle'dan arındırılır, hepsi her günde dolu (K1).
@@ -219,7 +232,27 @@ silindi (override katmanının artığıydı).
 - [ ] `DayContentGenerator`: artık koşulsuz olarak günün ayarlarını kullanır
       (`hasTicketGenerationOverride` kontrolü kalkar).
 
-### Adım 5 — Day Editör UI
+### Adım 5 — Day Editör UI (+ `BoardDistributionConfig`'in tasfiyesi)
+
+**Karar (2026-08-17, kullanıcı):** SO silinecek, ama **bu adımda**, tek hamlede.
+Adım 2 sonrası asset'in tek gerçek bağımlısı kendi Inspector önizlemesi kaldı
+(`BoardDistributionConfigEditor`) — hiçbir şeyi çalıştırmayan bir asset'in
+önizlemesi. Şimdi silinmedi çünkü kullanıcı tam da o önizlemenin gösterdiği iki
+değeri (`noiseLeakCountLambda`, `maxLeakCount`) ayarlıyor; önizleme Day Editör'e
+taşınmadan silmek onu körlerdi. Sıra: **önce önizlemeyi taşı → yeni-gün
+varsayılanlarının kaynağına karar ver → sonra asset'i + custom editor'ü sil.**
+
+Bu adımda kapatılacak iki artık:
+- `BoardDistributionConfig.ToSettings()` — Adım 2'de eklendi, **çağıranı yok**.
+  Ya seed yoluna bağlanır ya asset'le birlikte silinir.
+- `SampleScene.unity` hâlâ asset'in GUID'ini tutuyor (Adım 2'de kaldırılan
+  `GameManager.boardDistributionConfig` alanından kalma). Silmeden önce sahne bir
+  kez kaydedilirse kopuk referans uyarısı çıkmaz.
+- Yeni-gün varsayılanları şu an `DayEditorBoardDistribution` içinde koda gömülü
+  (0.5 / 10 / 1 ...). CLAUDE.md'nin "sayılar koda gömülmez" invariant'ıyla
+  gerilimde; asset silinecekse bu gerilimin nasıl çözüldüğü burada yazılmalı.
+
+
 - [ ] Üç bölüm de **her zaman görünür** düz section olur (`ToggleGroup` kalkar):
       "Ticket Generation" (Generate kaydı), "Ticket Runtime", "Board Distribution".
 - [ ] Yeni gün açılırken alanlar SO'lardan **seed** edilir — sıfır tuzağının

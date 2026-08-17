@@ -85,6 +85,13 @@ namespace ExpoTheExplorer.Tests.EditMode
                         leakDepth = 4,
                         maxLeakCount = 6,
                     },
+                    ticketRuntime = new TicketRuntimeJson
+                    {
+                        impatientTimeLimitSeconds = 11f,
+                        normalTimeLimitSeconds = 22f,
+                        patientTimeLimitSeconds = 33f,
+                        upcomingQueueSize = 7,
+                    },
                     ticketSequence = new[] { ticketEntry },
                     boardTimeline = new[] { boardSpawnEntry },
                     star1Threshold = 100,
@@ -115,6 +122,9 @@ namespace ExpoTheExplorer.Tests.EditMode
             Assert.AreEqual("Poisson", runtime.boardDistribution.guaranteedTicketCountMode);
             Assert.AreEqual(7f, runtime.boardDistribution.urgentTimeThresholdSeconds);
             Assert.AreEqual(4, runtime.boardDistribution.leakDepth);
+            Assert.AreEqual(11f, runtime.ticketRuntime.impatientTimeLimitSeconds);
+            Assert.AreEqual(33f, runtime.ticketRuntime.patientTimeLimitSeconds);
+            Assert.AreEqual(7, runtime.ticketRuntime.upcomingQueueSize);
         }
 
         // An old Day file has no boardDistribution block at all. The editor must still open

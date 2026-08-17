@@ -9,15 +9,18 @@ namespace ExpoTheExplorer.Systems.DaySystem
     public class DayTicketSequenceProvider
     {
         private readonly IReadOnlyList<ResolvedTicketEntry> ticketSequence;
-        private readonly TicketGenerationConfig config;
+        private readonly TicketRuntimeSettings ticketRuntime;
         private readonly TicketFactory ticketFactory;
         private readonly Dictionary<int, Ticket> peekCache = new();
         private int cursor;
 
-        public DayTicketSequenceProvider(IReadOnlyList<ResolvedTicketEntry> ticketSequence, TicketGenerationConfig config, TicketFactory ticketFactory)
+        // ticketRuntime comes from the Day being played, ticketFactory from the session --
+        // the factory is only a customer-name picker here, and the name pool is not
+        // per-Day balancing (decisions.md D-005).
+        public DayTicketSequenceProvider(IReadOnlyList<ResolvedTicketEntry> ticketSequence, TicketRuntimeSettings ticketRuntime, TicketFactory ticketFactory)
         {
             this.ticketSequence = ticketSequence;
-            this.config = config;
+            this.ticketRuntime = ticketRuntime;
             this.ticketFactory = ticketFactory;
         }
 
@@ -49,7 +52,7 @@ namespace ExpoTheExplorer.Systems.DaySystem
                 return cached;
             }
 
-            return TicketEntryFactory.Create(ticketSequence[index], config, ticketFactory, index);
+            return TicketEntryFactory.Create(ticketSequence[index], ticketRuntime, ticketFactory, index);
         }
 
         // Looks ahead into the authored sequence WITHOUT advancing cursor -- unlike NextTicket,
@@ -66,7 +69,7 @@ namespace ExpoTheExplorer.Systems.DaySystem
             {
                 if (!peekCache.TryGetValue(index, out var ticket))
                 {
-                    ticket = TicketEntryFactory.Create(ticketSequence[index], config, ticketFactory, index);
+                    ticket = TicketEntryFactory.Create(ticketSequence[index], ticketRuntime, ticketFactory, index);
                     peekCache[index] = ticket;
                 }
                 result.Add(ticket);

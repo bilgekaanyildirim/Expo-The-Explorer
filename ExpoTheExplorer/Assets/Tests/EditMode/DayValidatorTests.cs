@@ -104,6 +104,7 @@ namespace ExpoTheExplorer.Tests.EditMode
                     dayIndex = 0,
                     ticketsRequiredForDay = 10,
                     boardDistribution = ValidBoardDistribution(),
+                    ticketRuntime = ValidTicketRuntime(),
                     ticketSequence = ticketSequence,
                     boardTimeline = System.Array.Empty<BoardSpawnEntryJson>(),
                 },
@@ -128,6 +129,20 @@ namespace ExpoTheExplorer.Tests.EditMode
                 guaranteedTicketCount = 1,
                 leakDepth = 10,
                 maxLeakCount = 10,
+            };
+        }
+
+        // DayCatalogParser drops a Day whose runtime.ticketRuntime block is missing or has
+        // a non-positive time limit. Values are the designed defaults; this suite does not
+        // assert on them, it just needs the Day to be loadable.
+        private static TicketRuntimeJson ValidTicketRuntime()
+        {
+            return new TicketRuntimeJson
+            {
+                impatientTimeLimitSeconds = 45f,
+                normalTimeLimitSeconds = 90f,
+                patientTimeLimitSeconds = 150f,
+                upcomingQueueSize = 10,
             };
         }
 

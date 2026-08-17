@@ -79,6 +79,16 @@ namespace ExpoTheExplorer.Data
                 $"{name}: Names Database is not assigned or contains no valid entries (see Assets/Database/names.json).");
         public int UpcomingQueueSize => upcomingQueueSize;
 
+        // The four play-time values, packaged for the runtime (decisions.md D-005). Since
+        // those are authored per Day now, this asset is only their SEED: the starting
+        // values a brand-new Day gets, and what TicketFactory uses on the authoring path.
+        // The live game reads DayDefinition.TicketRuntime, never this.
+        public TicketRuntimeSettings ToRuntimeSettings()
+        {
+            return new TicketRuntimeSettings(
+                impatientTimeLimitSeconds, normalTimeLimitSeconds, patientTimeLimitSeconds, upcomingQueueSize);
+        }
+
         // Used by DayContentGenerator (PR-6.5) to apply a Day's editorMeta overrides
         // without mutating the shared base asset -- Instantiate (not SerializedObject)
         // keeps this class Editor-independent. Only fields a caller passes a value for

@@ -12,6 +12,12 @@
       "leakDepth": 3,
       "maxLeakCount": 6
     },
+    "ticketRuntime": {
+      "impatientTimeLimitSeconds": 45.0,
+      "normalTimeLimitSeconds": 90.0,
+      "patientTimeLimitSeconds": 150.0,
+      "upcomingQueueSize": 10
+    },
     "ticketSequence": [
       {
         "mainItemId": "burger",

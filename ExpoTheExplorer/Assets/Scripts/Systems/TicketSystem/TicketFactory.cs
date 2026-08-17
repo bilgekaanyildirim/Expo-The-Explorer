@@ -13,12 +13,19 @@ namespace ExpoTheExplorer.Systems.TicketSystem
     public class TicketFactory
     {
         private readonly TicketGenerationConfig config;
+        private readonly TicketRuntimeSettings runtimeSettings;
         private readonly Random random;
         private long nextArrivalSequence;
 
         public TicketFactory(TicketGenerationConfig config, Random random = null)
         {
             this.config = config;
+            // Built once here rather than per Create call: this factory is the AUTHORING
+            // path (Day generation, the Day Editor's single-ticket reroll), where the seed
+            // asset's own time limits are the right source. The played Day gets its limits
+            // from its own JSON via TicketEntryFactory (decisions.md D-005). Going through
+            // the same settings type keeps the patience switch in one place.
+            runtimeSettings = config.ToRuntimeSettings();
             this.random = random ?? new Random();
         }
 
@@ -56,7 +63,7 @@ namespace ExpoTheExplorer.Systems.TicketSystem
             var chosenMods = ChooseModifications(main.AvailableModifications, modificationCount);
             var modifications = chosenMods.Select(CreateModification).ToList();
 
-            var timeLimitSeconds = config.TimeLimitSecondsFor(patienceType);
+            var timeLimitSeconds = runtimeSettings.TimeLimitSecondsFor(patienceType);
 
             return new Ticket(customerName, patienceType, requiredItems, modifications, timeLimitSeconds, nextArrivalSequence++);
         }

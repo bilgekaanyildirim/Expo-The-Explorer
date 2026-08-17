@@ -21,6 +21,13 @@ namespace ExpoTheExplorer.Systems.DaySystem
         // no "override" layer -- every Day carries a complete block).
         public BoardDistributionJson boardDistribution;
 
+        // This Day's play-time ticket values. Same reasoning as boardDistribution: read
+        // live while the Day runs, so authored per Day under runtime rather than taken
+        // from the shared TicketGenerationConfig asset (decisions.md D-005). The
+        // generation PROBABILITIES stay in editorMeta -- they have already been spent by
+        // the time this Day is played.
+        public TicketRuntimeJson ticketRuntime;
+
         public TicketEntryJson[] ticketSequence;
         public BoardSpawnEntryJson[] boardTimeline;
 
@@ -73,6 +80,19 @@ namespace ExpoTheExplorer.Systems.DaySystem
         public float urgentTimeThresholdSeconds;
         public int leakDepth;
         public int maxLeakCount;
+    }
+
+    // Mirrors the play-time half of TicketGenerationConfig (see TicketRuntimeSettings for
+    // why only these four). No enum here, so absence is detected numerically instead: an
+    // unauthored block deserializes to all-zeros, and a 0-second time limit would time the
+    // ticket out the instant it arrives -- see DayCatalogParser.ResolveTicketRuntime.
+    [Serializable]
+    public class TicketRuntimeJson
+    {
+        public float impatientTimeLimitSeconds;
+        public float normalTimeLimitSeconds;
+        public float patientTimeLimitSeconds;
+        public int upcomingQueueSize;
     }
 
     [Serializable]

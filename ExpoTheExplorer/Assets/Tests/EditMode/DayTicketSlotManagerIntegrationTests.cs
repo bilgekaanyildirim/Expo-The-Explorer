@@ -65,6 +65,7 @@ namespace ExpoTheExplorer.Tests.EditMode
                     dayIndex = 0,
                     ticketsRequiredForDay = ticketsRequiredForDay,
                     boardDistribution = ValidBoardDistribution(),
+                    ticketRuntime = ValidTicketRuntime(),
                     ticketSequence = result,
                     boardTimeline = Array.Empty<BoardSpawnEntryJson>(),
                 },
@@ -74,7 +75,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             var day = parsed[0];
 
             var callCount = 0;
-            var sequenceProvider = new DayTicketSequenceProvider(day.TicketSequence, ticketConfig, new TicketFactory(ticketConfig, new System.Random(1)));
+            var sequenceProvider = new DayTicketSequenceProvider(day.TicketSequence, day.TicketRuntime, new TicketFactory(ticketConfig, new System.Random(1)));
 
             Ticket CountingProvider()
             {
@@ -127,6 +128,7 @@ namespace ExpoTheExplorer.Tests.EditMode
                     dayIndex = 0,
                     ticketsRequiredForDay = ticketsRequiredForDay,
                     boardDistribution = ValidBoardDistribution(),
+                    ticketRuntime = ValidTicketRuntime(),
                     ticketSequence = result,
                     boardTimeline = Array.Empty<BoardSpawnEntryJson>(),
                 },
@@ -135,7 +137,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             var parsed = DayCatalogParser.ParseAll(new[] { new DayJsonFile("test", json) }, catalog);
             var day = parsed[0];
 
-            var sequenceProvider = new DayTicketSequenceProvider(day.TicketSequence, ticketConfig, new TicketFactory(ticketConfig, new System.Random(1)));
+            var sequenceProvider = new DayTicketSequenceProvider(day.TicketSequence, day.TicketRuntime, new TicketFactory(ticketConfig, new System.Random(1)));
             Ticket NextOrNull() => sequenceProvider.HasNext ? sequenceProvider.NextTicket() : null;
 
             var state = new GameState(gameConfig);
@@ -209,6 +211,20 @@ namespace ExpoTheExplorer.Tests.EditMode
                 guaranteedTicketCount = 1,
                 leakDepth = 10,
                 maxLeakCount = 10,
+            };
+        }
+
+        // DayCatalogParser drops a Day whose runtime.ticketRuntime block is missing or has
+        // a non-positive time limit. Values are the designed defaults; this suite does not
+        // assert on them, it just needs the Day to be loadable.
+        private static TicketRuntimeJson ValidTicketRuntime()
+        {
+            return new TicketRuntimeJson
+            {
+                impatientTimeLimitSeconds = 45f,
+                normalTimeLimitSeconds = 90f,
+                patientTimeLimitSeconds = 150f,
+                upcomingQueueSize = 10,
             };
         }
 

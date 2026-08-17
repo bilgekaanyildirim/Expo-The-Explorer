@@ -84,8 +84,41 @@ namespace ExpoTheExplorer.Systems.DaySystem
                 return null;
             }
 
+            var ticketRuntime = ResolveTicketRuntime(runtime.ticketRuntime, fileName);
+            if (ticketRuntime == null)
+            {
+                return null;
+            }
+
             return new DayDefinition(runtime.dayIndex, runtime.ticketsRequiredForDay, ticketSequence, boardTimeline,
-                runtime.star1Threshold, runtime.star2Threshold, runtime.star3Threshold, boardDistribution);
+                runtime.star1Threshold, runtime.star2Threshold, runtime.star3Threshold, boardDistribution, ticketRuntime);
+        }
+
+        // Same absence-by-content detection as ResolveBoardDistribution (JsonUtility gives
+        // a zeroed instance, never null), but there is no enum to key off here, so the
+        // check is that the numbers are usable at all. A 0-second limit is not a valid
+        // authored value: the ticket would time out on the frame it arrives, costing a life
+        // before the player could touch it. Requiring all three keeps a half-filled block
+        // from passing on the strength of one field.
+        private static TicketRuntimeSettings ResolveTicketRuntime(TicketRuntimeJson json, string fileName)
+        {
+            if (json == null || json.impatientTimeLimitSeconds <= 0f || json.normalTimeLimitSeconds <= 0f || json.patientTimeLimitSeconds <= 0f)
+            {
+                Debug.LogError($"Day file '{fileName}': runtime.ticketRuntime block is missing or incomplete -- impatient/normal/patient time limits must all be greater than 0.");
+                return null;
+            }
+
+            if (json.upcomingQueueSize < 1)
+            {
+                Debug.LogError($"Day file '{fileName}': runtime.ticketRuntime.upcomingQueueSize ({json.upcomingQueueSize}) must be at least 1.");
+                return null;
+            }
+
+            return new TicketRuntimeSettings(
+                json.impatientTimeLimitSeconds,
+                json.normalTimeLimitSeconds,
+                json.patientTimeLimitSeconds,
+                json.upcomingQueueSize);
         }
 
         // JsonUtility cannot express a null nested [Serializable] class -- an absent

@@ -52,7 +52,7 @@ namespace ExpoTheExplorer.Tests.EditMode
                 CreateEntry(CreateFood(), "Second"),
                 CreateEntry(CreateFood(), "Third"),
             };
-            var provider = new DayTicketSequenceProvider(entries, config, factory);
+            var provider = new DayTicketSequenceProvider(entries, config.ToRuntimeSettings(), factory);
 
             var first = provider.NextTicket();
             var second = provider.NextTicket();
@@ -72,7 +72,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             var config = CreateConfig();
             var factory = new TicketFactory(config, new System.Random(1));
             var entries = new List<ResolvedTicketEntry> { CreateEntry(CreateFood(), "Only") };
-            var provider = new DayTicketSequenceProvider(entries, config, factory);
+            var provider = new DayTicketSequenceProvider(entries, config.ToRuntimeSettings(), factory);
 
             provider.NextTicket();
 
@@ -89,7 +89,7 @@ namespace ExpoTheExplorer.Tests.EditMode
                 CreateEntry(CreateFood(), "First"),
                 CreateEntry(CreateFood(), "Second"),
             };
-            var provider = new DayTicketSequenceProvider(entries, config, factory);
+            var provider = new DayTicketSequenceProvider(entries, config.ToRuntimeSettings(), factory);
 
             provider.PeekUpcoming(2);
             provider.PeekUpcoming(2); // calling it repeatedly must not shift anything either
@@ -105,7 +105,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             var config = CreateConfig();
             var factory = new TicketFactory(config, new System.Random(1));
             var entries = new List<ResolvedTicketEntry> { CreateEntry(CreateFood(), "Only") };
-            var provider = new DayTicketSequenceProvider(entries, config, factory);
+            var provider = new DayTicketSequenceProvider(entries, config.ToRuntimeSettings(), factory);
 
             var peeked = provider.PeekUpcoming(1);
             var arrived = provider.NextTicket();
@@ -119,7 +119,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             var config = CreateConfig();
             var factory = new TicketFactory(config, new System.Random(1));
             var entries = new List<ResolvedTicketEntry> { CreateEntry(CreateFood(), "Only") };
-            var provider = new DayTicketSequenceProvider(entries, config, factory);
+            var provider = new DayTicketSequenceProvider(entries, config.ToRuntimeSettings(), factory);
 
             var peeked = provider.PeekUpcoming(5);
 
@@ -137,7 +137,7 @@ namespace ExpoTheExplorer.Tests.EditMode
                 CreateEntry(CreateFood(), "Second"),
                 CreateEntry(CreateFood(), "Third"),
             };
-            var provider = new DayTicketSequenceProvider(entries, config, factory);
+            var provider = new DayTicketSequenceProvider(entries, config.ToRuntimeSettings(), factory);
 
             var peekedBeforeAnyArrival = provider.PeekUpcoming(3);
             var first = provider.NextTicket();

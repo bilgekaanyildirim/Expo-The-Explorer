@@ -26,6 +26,11 @@ namespace ExpoTheExplorer.Systems.DaySystem
         // data-source procedure forbids.
         public BoardDistributionSettings BoardDistribution { get; }
 
+        // This Day's play-time ticket balancing (time limits + lookahead depth). Optional
+        // on the ctor for the same reason as BoardDistribution: authoring-side callers that
+        // only need a DayDefinition to run DayValidator over don't have to invent one.
+        public TicketRuntimeSettings TicketRuntime { get; }
+
         public DayDefinition(
             int dayIndex,
             int ticketsRequiredForDay,
@@ -34,7 +39,8 @@ namespace ExpoTheExplorer.Systems.DaySystem
             int star1Threshold = 0,
             int star2Threshold = 0,
             int star3Threshold = 0,
-            BoardDistributionSettings boardDistribution = null)
+            BoardDistributionSettings boardDistribution = null,
+            TicketRuntimeSettings ticketRuntime = null)
         {
             DayIndex = dayIndex;
             TicketsRequiredForDay = ticketsRequiredForDay;
@@ -44,6 +50,7 @@ namespace ExpoTheExplorer.Systems.DaySystem
             Star2Threshold = star2Threshold;
             Star3Threshold = star3Threshold;
             BoardDistribution = boardDistribution;
+            TicketRuntime = ticketRuntime;
         }
     }
 
