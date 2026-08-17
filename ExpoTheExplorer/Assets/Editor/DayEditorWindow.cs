@@ -155,11 +155,32 @@ namespace ExpoTheExplorer.Editor
         // Adds directly to the live MenuTree rather than ForceMenuTreeRebuild() -- a rebuild
         // re-reads BuildMenuTree() from disk, which would silently drop this brand-new,
         // not-yet-saved Day (it doesn't exist as a file yet).
+        // Seeded from the highest-numbered existing Day rather than from a shared template
+        // asset (decisions.md D-007). Two reasons: the settings a designer wants for a new
+        // Day are almost always the previous Day's, and it keeps the numbers in data --
+        // there is no longer a BoardDistributionConfig to read them from, and the coded
+        // defaults on DayEditorBoardDistribution are only ever reached for the very first
+        // Day in an empty catalog.
         private void CreateNewDay()
         {
             var nextIndex = loadedDays.Count == 0 ? 0 : loadedDays.Max(d => d.DayIndex) + 1;
+            var previous = loadedDays.Count == 0 ? null : loadedDays.OrderBy(d => d.DayIndex).Last();
+
             var day = new DayEditorModel { DayIndex = nextIndex };
+
+            // Configure BEFORE copying: the copy resolves main-dish food ids through the
+            // shared catalog, and an unconfigured model has none -- the weights would come
+            // back with empty Food slots.
             day.Configure(catalog, gameConfig, ticketConfig, ticketCardVisuals, boardVisuals, OnSaveRequested, OnDuplicateRequested, OnDeleteRequested);
+
+            if (previous != null)
+            {
+                // Balancing only. Content -- the ticket sequence, the Day Start board, the
+                // star thresholds, the food selection -- is deliberately NOT copied: those
+                // are what makes a Day a different Day, and silently inheriting them would
+                // hide that the new Day is still empty.
+                day.CopySettingsFrom(previous);
+            }
 
             loadedDays.Add(day);
             MenuTree.Add($"Day {day.DayIndex}", day);

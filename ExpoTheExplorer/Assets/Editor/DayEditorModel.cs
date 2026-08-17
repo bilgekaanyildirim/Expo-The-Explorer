@@ -41,6 +41,13 @@ namespace ExpoTheExplorer.Editor
         [BoxGroup("Board Distribution"), HideLabel, PropertyOrder(-2.5f)]
         public DayEditorBoardDistribution BoardDistribution = new();
 
+        // Drawn from THIS Day's values, which is the whole point: these two distributions
+        // are what the balance knobs above actually mean, and before this they could only be
+        // seen on the shared config asset's inspector -- i.e. never for the Day being tuned.
+        [BoxGroup("Board Distribution"), OnInspectorGUI, PropertyOrder(-2.45f)]
+        private void DrawLeakPreview() =>
+            DayEditorSettingsPreviews.DrawLeakPreview(BoardDistribution.MaxLeakCount, BoardDistribution.NoiseLeakCountLambda);
+
         // Per-Day ticket play-time balancing (time limits + lookahead depth). Same story as
         // BoardDistribution above: plain nested box for now, proper grouping in a later
         // step of .claude/day-config-plan.md.
@@ -291,6 +298,15 @@ namespace ExpoTheExplorer.Editor
         // generated, and the input the next Generate uses.
         [FoldoutGroup("Generation Settings (authoring only)"), HideLabel, PropertyOrder(-3)]
         public DayEditorMetaModel EditorMeta = new();
+
+        // Same reasoning as the leak preview: the spawn-chance and modification-count
+        // distributions belong next to the Day whose Generate they drive, not only on the
+        // seed asset's inspector.
+        [FoldoutGroup("Generation Settings (authoring only)"), OnInspectorGUI, PropertyOrder(-2.9f)]
+        private void DrawMainDishPreview() =>
+            DayEditorSettingsPreviews.DrawMainDishPreview(
+                EditorMeta.TicketGeneration.MainDishWeights
+                    .Select(w => (w.Food, w.Weight, w.ModificationCountLambda)).ToList());
 
         // Which foods exist in this Day: drives Generate's pool AND the ticket editor's
         // Main/Side/Drink pickers, so a Day can only ever contain food it actually
@@ -630,6 +646,18 @@ namespace ExpoTheExplorer.Editor
         // Round-trips through the same JSON conversion used for Save/Load rather than a second,
         // hand-written deep-copy -- the two paths can't drift out of sync with each other.
         public DayEditorModel Clone(FoodCatalog catalog) => FromDayJson(ToDayJson(), catalog);
+
+        // Copies the three balancing blocks and nothing else, for seeding a brand-new Day
+        // from the previous one (decisions.md D-007). Goes through JSON for the same reason
+        // Clone does -- a hand-written field-by-field copy is a second place to forget a
+        // field, which is exactly how the star thresholds were being lost before.
+        public void CopySettingsFrom(DayEditorModel source)
+        {
+            BoardDistribution = DayEditorBoardDistribution.FromJson(source.BoardDistribution.ToJson());
+            TicketRuntime = DayEditorTicketRuntime.FromJson(source.TicketRuntime.ToJson());
+            EditorMeta.TicketGeneration = DayEditorTicketGeneration.FromJson(
+                source.EditorMeta.TicketGeneration.ToJson(), sharedCatalog);
+        }
     }
 
     [Serializable]

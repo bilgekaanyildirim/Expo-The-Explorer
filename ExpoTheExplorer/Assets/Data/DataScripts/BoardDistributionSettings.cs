@@ -2,6 +2,14 @@ using UnityEngine;
 
 namespace ExpoTheExplorer.Data
 {
+    // Moved here from BoardDistributionConfig when that ScriptableObject was deleted
+    // (decisions.md D-007). Same namespace, so nothing that uses it needed touching.
+    public enum GuaranteedTicketCountMode
+    {
+        Manual,
+        Poisson
+    }
+
     // The eight values BoardDistributor actually runs on, as plain data rather than a
     // ScriptableObject. Two reasons it is not just "the config asset":
     //

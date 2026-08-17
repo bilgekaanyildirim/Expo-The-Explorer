@@ -266,18 +266,28 @@ Bu adımda kapatılacak iki artık:
   gerilimde; asset silinecekse bu gerilimin nasıl çözüldüğü burada yazılmalı.
 
 
-- [ ] Üç bölüm de **her zaman görünür** düz section olur (`ToggleGroup` kalkar):
-      "Ticket Generation" (Generate kaydı), "Ticket Runtime", "Board Distribution".
-- [ ] Yeni gün açılırken alanlar SO'lardan **seed** edilir — sıfır tuzağının
-      çözümü (bkz. Riskler). Ayrıca "SO varsayılanlarından doldur" butonu.
-- [ ] Toolbar'a `BoardDistributionConfig` alanı eklenir (bugün yok —
-      `DayEditorWindow:97-111`'de 5 config var), `DayEditorModel.Configure`
-      imzasına girer.
-- [ ] `BoardDistributionConfigEditor`'ün leak-dağılım preview'ı ve
-      `TicketGenerationConfigEditor`'ün main-dish yüzde preview'ı Day Editör
-      içinden de çizilir; yoksa tuning körleşir.
-- [ ] `DayEditorDayStartPreview` / ticket kartı preview'ı günün ayarlarını
-      kullanır, global asset'i değil.
+- [x] Üç bölüm de her zaman görünür düz section (`ToggleGroup` Adım 1-4'te zaten kalktı).
+- [x] Leak dağılımı ve ana yemek yüzdesi önizlemeleri `DayEditorSettingsPreviews`'e
+      çıkarıldı; Day Editör **günün kendi değerleriyle** çiziyor,
+      `TicketGenerationConfigEditor` de aynı yardımcıyı çağırıyor (matematik tek yerde).
+- [x] Yeni gün, en yüksek indeksli günün üç ayar bloğunu kopyalıyor (D-007).
+      İçerik (ticket dizisi, Day Start, yıldız eşikleri, yemek seçimi) **kopyalanmıyor**.
+      `Configure` kopyalamadan önce çağrılıyor — yoksa ana yemek id'leri katalogsuz
+      çözülüp boş kalırdı.
+- [x] `BoardDistributionConfig` silindi: sınıf + `.asset` + custom editor.
+      `GuaranteedTicketCountMode` `BoardDistributionSettings.cs`'e taşındı (aynı
+      namespace, kullanan 8 dosyada değişiklik yok). `ToSettings()` çağıranı olmadan
+      sınıfla birlikte gitti.
+- [x] Toolbar'a `BoardDistributionConfig` alanı **eklenmedi** — plan bunu istiyordu ama
+      asset silindiği için konusuz kaldı.
+- [x] Ticket kartı / Day Start önizlemeleri: bunlar per-Day ayar okumuyor
+      (`TicketCardVisualsConfig`, `GameConfig` board boyutu, `BoardVisualsConfig` —
+      hiçbiri bu planda taşınan ayar değil), madde gerekçesiyle kapatıldı.
+- [ ] **Açık — kullanıcı adımı:** `SampleScene.unity` satır 3003'te
+      `boardDistributionConfig:` kalıntısı duruyor (D-004'te kaldırılan alandan).
+      Artık kopuk bir GUID; sahne bir kez açılıp kaydedilince düşer. Elle YAML
+      düzenlenmedi (tek sahne, K1).
+- [ ] **Açık:** EditMode koşusu + editörde gözle doğrulama bekleniyor.
 
 ### Adım 6 — Validator + migrasyon
 - [ ] `DayValidator`: `leakDepth > upcomingQueueSize` uyarısı; `mainDishWeights`
