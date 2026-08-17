@@ -16,6 +16,7 @@ namespace ExpoTheExplorer.Editor
         [BoxGroup("Day"), LabelText("Day Index"), PropertyOrder(-4)]
         [InfoBox("$ValidationMessage", InfoMessageType.Error, nameof(HasValidationErrors))]
         [InfoBox("$ValidationMessage", InfoMessageType.Info, nameof(IsValid))]
+        [InfoBox("$ValidationWarningMessage", InfoMessageType.Warning, nameof(HasValidationWarnings))]
         public int DayIndex;
 
         [BoxGroup("Day"), PropertyOrder(-4)]
@@ -306,7 +307,8 @@ namespace ExpoTheExplorer.Editor
         private void DrawMainDishPreview() =>
             DayEditorSettingsPreviews.DrawMainDishPreview(
                 EditorMeta.TicketGeneration.MainDishWeights
-                    .Select(w => (w.Food, w.Weight, w.ModificationCountLambda)).ToList());
+                    .Select(w => (w.Food, w.Weight, w.ModificationCountLambda)).ToList(),
+                sharedCatalog != null ? AllowedFoodPool : null);
 
         // Which foods exist in this Day: drives Generate's pool AND the ticket editor's
         // Main/Side/Drink pickers, so a Day can only ever contain food it actually
@@ -539,6 +541,12 @@ namespace ExpoTheExplorer.Editor
                 return errors.Count > 0 ? string.Join("\n", errors) : "Valid.";
             }
         }
+
+        // Shown in their own box, separate from the error one: these never block Save (see
+        // DayValidationResult.IsValid), so mixing them into the error message would make a
+        // saveable Day look broken.
+        private bool HasValidationWarnings => Validate().Warnings.Count > 0;
+        private string ValidationWarningMessage => string.Join("\n", Validate().Warnings);
 
         private DayValidationResult Validate()
         {

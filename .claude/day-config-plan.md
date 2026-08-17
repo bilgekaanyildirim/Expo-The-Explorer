@@ -289,12 +289,25 @@ Bu adımda kapatılacak iki artık:
       düzenlenmedi (tek sahne, K1).
 - [ ] **Açık:** EditMode koşusu + editörde gözle doğrulama bekleniyor.
 
-### Adım 6 — Validator + migrasyon
-- [ ] `DayValidator`: `leakDepth > upcomingQueueSize` uyarısı; `mainDishWeights`
-      içinde günün servis etmediği yemek varsa uyarı; `guaranteedTicketCount` ile
-      `GameState.TicketSlotCount` tutarlılığı.
-- [ ] `day_00.json` / `day_01.json` yeni bloklarla, bugünkü SO değerleriyle
-      doldurulur → davranış değişmez (K3).
+### Adım 6 — Validator kuralları ✅ 2026-08-17
+Migrasyon maddesi Adım 1/3/4'te yapıldığı için burada yalnız kurallar kaldı.
+
+- [x] `DayValidationResult`'a **uyarı kanalı** eklendi. Gerekçe: bugünkü tek kanalda her
+      hata Save'i kapatıyordu; eklenecek kontrollerin çoğu "çalışır ama muhtemelen
+      istediğin bu değil" cinsinden. `IsValid` yalnız hatalara bakıyor.
+- [x] **Hata** (Save kapanır) — üçü de `DayCatalogParser`'ın reddettiği durumların aynısı,
+      yani editör artık runtime'ın açmayı reddedeceği bir dosya yazamıyor:
+      süre limiti ≤ 0, `upcomingQueueSize` < 1, board sayaçlarından biri < 1.
+- [x] **Uyarı** (Save açık): `leakDepth` > `upcomingQueueSize`; süre limitleri
+      Impatient < Normal < Patient sırasında değil (GDD Bölüm 8); yıldız eşikleri artan
+      değil ya da üçü de 0; `guaranteedTicketCount` slot sayısının üstünde (runtime kırpar).
+- [x] Ana yemek ağırlığı günün servis etmediği yemeğe yazılmışsa uyarı — validator'da
+      değil **önizlemede**, çünkü ağırlıklar `editorMeta`'da ve `DayDefinition` onları
+      taşımıyor. Önizleme zaten satır satır uyarı basıyordu.
+- [x] Day Editör uyarıları ayrı bir sarı kutuda gösteriyor (hata kutusuyla karışmasın).
+- [x] Test: her kural için bir test + ayarsız `DayDefinition`'ın patlamadığı (authoring
+      çağrıcıları blokları hiç doldurmuyor) + temiz günde hiç uyarı çıkmadığı.
+- [ ] **Açık:** EditMode koşusu bekleniyor.
 
 ### Adım 7 — Test, harita, karar kaydı
 - [ ] **`DayCatalogParserTests.cs:114-115`** — yalnız `editorMeta`'da farklı iki

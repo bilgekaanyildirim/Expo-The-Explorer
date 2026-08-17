@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using ExpoTheExplorer.Core;
 using ExpoTheExplorer.Data;
 using UnityEditor;
@@ -34,7 +35,15 @@ namespace ExpoTheExplorer.Editor
 
         // Takes the resolved entries rather than either concrete weight type, so the Day
         // Editor's own model and the config asset's serialized list can both feed it.
-        public static void DrawMainDishPreview(IReadOnlyList<(FoodItemConfig Food, float Weight, float ModificationCountLambda)> entries)
+        //
+        // allowedFoods is the Day's food selection, and is null when there is no Day to
+        // check against (the config asset's own inspector). A weight on a food the Day does
+        // not serve is dead weight -- TicketFactory only ever rolls from the Day's pool --
+        // and it is flagged here rather than in DayValidator because the weights live in
+        // editorMeta, which DayDefinition does not carry.
+        public static void DrawMainDishPreview(
+            IReadOnlyList<(FoodItemConfig Food, float Weight, float ModificationCountLambda)> entries,
+            IReadOnlyList<FoodItemConfig> allowedFoods = null)
         {
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("Main Dish Preview (read-only)", EditorStyles.boldLabel);
@@ -65,6 +74,14 @@ namespace ExpoTheExplorer.Editor
                 if (entry.Food.Category != FoodCategory.Main)
                 {
                     EditorGUILayout.HelpBox($"'{entry.Food.DisplayName}' is not a Main-category food.", MessageType.Warning);
+                    continue;
+                }
+
+                if (allowedFoods != null && !allowedFoods.Contains(entry.Food))
+                {
+                    EditorGUILayout.HelpBox(
+                        $"'{entry.Food.DisplayName}' is not in this Day's food selection, so this weight does nothing.",
+                        MessageType.Warning);
                     continue;
                 }
 
