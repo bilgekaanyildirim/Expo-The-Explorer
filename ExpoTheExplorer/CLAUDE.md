@@ -42,6 +42,11 @@ These are fixed design decisions — don't second-guess them during implementati
 - On check: are the items correct AND are the modifications correct? If both pass -> auto-deliver. If either fails -> lose a life, tray contents scatter back to the board.
 
 ### Board / Food Distribution
+- **Every balancing knob below is authored per Day**, in that Day's JSON under
+  `runtime.boardDistribution`, and edited in the Day Editor — not in a shared
+  ScriptableObject. There is no global board-distribution asset any more and no
+  override layer: each Day carries a complete block, and a Day file missing it is
+  refused at load rather than silently defaulted. `decisions.md` D-004 / D-007.
 - Board is a fixed grid, starting point **6x5 = 30 cells** (not locked — keep this parametric, don't hardcode it).
 - Two pools: **Required pool** (minimum set needed to complete active tickets — at least one ticket must always be completable) + **Noise pool** (items leaking from upcoming tickets; the main source of difficulty).
 - The required pool must spawn **before** noise items.
@@ -60,6 +65,12 @@ These are fixed design decisions — don't second-guess them during implementati
 
 ### Time Limit
 - Time is **per-ticket**, each ticket has its own countdown.
+- The three patience time limits are **authored per Day** (`runtime.ticketRuntime`
+  in the Day JSON, edited in the Day Editor), so two Days can give the same
+  patience type different limits. A single ticket may still override its own
+  limit. GDD Section 8's Impatient < Normal < Patient ordering is not enforced —
+  the Day Editor warns when a Day breaks it, but still lets you save.
+  `decisions.md` D-005.
 - On timeout: lives decrease + the ticket is cancelled outright (no tray scatter, since the ticket itself is gone).
 
 ### Customer Patience System
@@ -129,6 +140,15 @@ The principles from GDD Section 15 are binding:
       EditMode/         // unit tests for Core and Systems
   ```
 - Balancing numbers should live in **ScriptableObject configs** or JSON, not hardcoded in scripts — so a designer can tune them from the Unity Inspector.
+- **Per-Day balancing lives in the Day's own JSON, not in a config asset.** Board
+  distribution and the ticket play-time values (patience limits, lookahead depth)
+  are read from the Day being played; the generation probabilities that produced
+  its `ticketSequence` are kept alongside them in `editorMeta` as a record of how
+  that Day was rolled. A config asset is only a **seed** for a new Day — never an
+  authority the runtime reads. `TicketGenerationConfig` survives in that role
+  because it also owns `namesDatabase`, a TextAsset reference that cannot live in
+  JSON; `BoardDistributionConfig` had no such reason left and was deleted.
+  `decisions.md` D-004 … D-007.
 
 ## 6. Code Style / General Rules
 

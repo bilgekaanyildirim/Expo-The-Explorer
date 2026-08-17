@@ -309,16 +309,44 @@ Migrasyon maddesi Adım 1/3/4'te yapıldığı için burada yalnız kurallar kal
       çağrıcıları blokları hiç doldurmuyor) + temiz günde hiç uyarı çıkmadığı.
 - [ ] **Açık:** EditMode koşusu bekleniyor.
 
-### Adım 7 — Test, harita, karar kaydı
-- [ ] **`DayCatalogParserTests.cs:114-115`** — yalnız `editorMeta`'da farklı iki
-      günün aynı parse edildiğini iddia ediyor. Bu test K2'nin sözleşmesini
-      kodluyor, **korunur**; sadece board-dist alanları oradan çıktığı için
-      güncellenir.
-- [ ] `BoardDistributionConfigCloneWithOverridesTests`,
-      `DayEditorModelConverterTests`, `DayContentGeneratorTests` güncellenir.
-- [ ] `decisions.md`'ye yeni karar (D-004) + CLAUDE.md'nin "Board / Food
-      Distribution" bölümüne per-day balans notu.
-- [ ] `codemap-*` / `index.md` yenilenir.
+### Adım 7 — Belge ve kayıt kapanışı ✅ 2026-08-17
+- [x] `DayCatalogParserTests`'in `editorMeta` sözleşme testi **korundu** (Adım 1) —
+      K2'yi kodlayan tek test, board-dist alanları çıkarıldı ama iddia yerinde.
+- [x] Test dosyaları adım adım güncellendi (1, 3, 4, 6). `...CloneWithOverridesTests`'in
+      ikisi de haleflerine dönüştü.
+- [x] `decisions.md`: D-004 (board runtime), D-005 (ticket runtime), D-006 (generation
+      kaydı), D-007 (SO tasfiyesi + seed).
+- [x] `ExpoTheExplorer/CLAUDE.md`: "Board / Food Distribution", "Time Limit" ve
+      Bölüm 5'in balans maddesi per-Day gerçeğine göre güncellendi.
+- [x] `codemap-*` / `index.md` her adımda yenilendi; `check_blueprint.py` → 0 error.
+- [ ] **Kullanıcıya kalan:** (1) GDD dosyasının kendisi (`docs/*.docx`) güncellenmedi —
+      ikili format, kullanıcı işi; (2) `SampleScene.unity` bir kez kaydedilmeli
+      (D-007'deki kopuk referans); (3) EditMode koşusu; (4) editörde gözle doğrulama,
+      özellikle kart sürükle-bırak sıralaması.
+
+---
+
+## Sonuç
+
+Plan tamamlandı. Ulaşılan durum:
+
+| Ayar grubu | Nerede yaşıyor | Runtime okur mu |
+|---|---|---|
+| Board distribution (8 alan) | `runtime.boardDistribution` | evet |
+| Ticket süre limitleri + kuyruk (4 alan) | `runtime.ticketRuntime` | evet |
+| Generation olasılıkları (5 alan) | `editorMeta.ticketGeneration` | hayır — üretim kaydı |
+| Yemek seçimi | `editorMeta.allowedFoodItemIds` | hayır |
+| `namesDatabase` | `TicketGenerationConfig` (SO) | evet |
+
+Silinenler: `BoardDistributionConfig` (sınıf + asset + editor), her iki
+`CloneWithOverrides`, `TicketGenerationConfigExtensions`, üç ölü test dosyası.
+
+Yol boyunca çıkan ve kapatılan yan bulgular: yıldız eşiklerini her Save'de
+sıfırlayan bug (Adım 1), Adım 2'de kendi soktuğum fazla clamp (regresyon,
+düzeltildi + teste bağlandı), "bilinen flaky" diye kayıtlı ama aslında 30'da 29
+kalan tepsi testi, ve Day Editör'ün dört ayrı yerleşim sorunu (etiket genişliği
+yüzdeydi, sayfada hiç kaydırma alanı yoktu, yemek ızgarası pencere genişliğini
+yanlış ölçüyordu, toolbar küçülemiyordu).
 
 ---
 
