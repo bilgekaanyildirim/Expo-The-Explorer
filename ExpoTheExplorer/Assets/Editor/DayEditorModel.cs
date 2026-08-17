@@ -911,7 +911,13 @@ namespace ExpoTheExplorer.Editor
         [PropertyRange(0f, 10f)] public float NoiseLeakCountLambda = 0.5f;
         public GuaranteedTicketCountMode GuaranteedTicketCountMode = GuaranteedTicketCountMode.Manual;
         [PropertyRange(1, 3)] public int GuaranteedTicketCount = 1;
-        [PropertyRange(0f, 3f)] public float GuaranteedTicketCountLambda = 1f;
+        // Ranges to 10 like the other two lambda sliders. Nothing clamps this value at
+        // runtime -- it is a Poisson rate and TruncatedPoisson bounds the outcome -- so the
+        // ceiling is purely how far the slider lets a designer push it. At 10 the budget
+        // comes out 3 about 82% of the time; the curve approaches certainty but never gets
+        // there (95% would need λ≈39, 99% needs λ≈199), so Manual mode with a count of 3 is
+        // the tool for "always three", not a large lambda.
+        [PropertyRange(0f, 10f)] public float GuaranteedTicketCountLambda = 1f;
         [PropertyRange(0f, 1f)] public float EarlyTicketWeightDecay = 0.5f;
         [PropertyRange(0f, 30f)] public float UrgentTimeThresholdSeconds = 10f;
         [PropertyRange(1, 10)] public int LeakDepth = 10;
