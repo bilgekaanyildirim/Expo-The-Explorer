@@ -909,6 +909,14 @@ namespace ExpoTheExplorer.Editor
     public class DayEditorBoardDistribution
     {
         [PropertyRange(0f, 10f)] public float NoiseLeakCountLambda = 0.5f;
+        // Buttons rather than a dropdown, and not only because two options read better that
+        // way: Odin's dropdown popup calls UnityEditor.ContainerWindow.FitWindowRectToScreen,
+        // which exists in Unity 6000.0 but was removed by 6000.1 (verified against both
+        // UnityEditor.dll files). Odin 3.3.1.12 predates that removal, so opening this
+        // dropdown threw MissingMethodException every time. A workaround, not a fix -- the
+        // same popup path is reachable from other Odin controls, and the real repair is
+        // updating Odin to a build that supports Unity 6.1+.
+        [EnumToggleButtons]
         public GuaranteedTicketCountMode GuaranteedTicketCountMode = GuaranteedTicketCountMode.Manual;
         [PropertyRange(1, 3)] public int GuaranteedTicketCount = 1;
         // Ranges to 10 like the other two lambda sliders. Nothing clamps this value at
