@@ -214,6 +214,36 @@ namespace ExpoTheExplorer.Tests.EditMode
             return catalog;
         }
 
+        // Pins which fields BoardDistributionSettings clamps, because that ctor replaced
+        // BoardDistributionConfig's getters and has to match them field for field. Copying
+        // the asset's OnValidate rules instead put a Clamp(0, 3) on GuaranteedTicketCountLambda,
+        // which silently turned the ExtremeLambda test below into a coin flip -- the sort of
+        // regression that reads as "flaky test" rather than "wrong code".
+        [Test]
+        public void Settings_ClampOnlyTheFieldsTheConfigGettersClamped()
+        {
+            var settings = new BoardDistributionSettings(
+                noiseLeakCountLambda: ExtremeLambda,
+                guaranteedTicketCountMode: GuaranteedTicketCountMode.Poisson,
+                guaranteedTicketCount: 0,
+                guaranteedTicketCountLambda: ExtremeLambda,
+                earlyTicketWeightDecay: 5f,
+                urgentTimeThresholdSeconds: -3f,
+                leakDepth: 99,
+                maxLeakCount: 0);
+
+            // Poisson rates pass through untouched -- TruncatedPoisson bounds the outcome.
+            Assert.AreEqual(ExtremeLambda, settings.NoiseLeakCountLambda);
+            Assert.AreEqual(ExtremeLambda, settings.GuaranteedTicketCountLambda);
+
+            // Everything the getters clamped still clamps, with the same bounds.
+            Assert.AreEqual(1, settings.GuaranteedTicketCount, "0 would mean no ticket is completable (GDD Section 4).");
+            Assert.AreEqual(1f, settings.EarlyTicketWeightDecay);
+            Assert.AreEqual(0f, settings.UrgentTimeThresholdSeconds);
+            Assert.AreEqual(10, settings.LeakDepth);
+            Assert.AreEqual(1, settings.MaxLeakCount);
+        }
+
         [Test]
         public void OnOrderPlaced_ActiveTicketNeedsMissingItem_SpawnsIt()
         {

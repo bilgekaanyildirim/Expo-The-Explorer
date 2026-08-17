@@ -33,10 +33,20 @@ namespace ExpoTheExplorer.Data
         // some other route. Clamping is idempotent, so the config asset's own defensive
         // getters (kept for its Inspector preview) re-clamping first changes nothing.
         //
+        // These mirror what BoardDistributionConfig's public GETTERS did, field for field --
+        // not what its OnValidate did. The distinction matters: OnValidate tidies the asset
+        // in the Inspector, the getters were what the runtime actually read, and this ctor
+        // replaced the getters. Copying OnValidate instead is how a Clamp(0, 3) briefly got
+        // onto GuaranteedTicketCountLambda here and broke the ExtremeLambda test.
+        //
         // GuaranteedTicketCount's floor of 1 is not cosmetic: 0 would mean "no ticket is
         // guaranteed completable", contradicting GDD Section 4's "at least one ticket".
-        // NoiseLeakCountLambda is deliberately unclamped -- it is a Poisson rate, and
-        // TruncatedPoisson already bounds the outcome by MaxLeakCount.
+        // Both lambdas are deliberately unclamped -- they are Poisson rates, and
+        // TruncatedPoisson already bounds each outcome (by MaxLeakCount for the leak count,
+        // by the active-slot count for the guaranteed-ticket budget), so a deliberately huge
+        // rate is a legitimate way to author "always the maximum". The designer-facing 0-3
+        // range lives on DayEditorBoardDistribution's [Range] attribute, where an authoring
+        // constraint belongs.
         public BoardDistributionSettings(
             float noiseLeakCountLambda,
             GuaranteedTicketCountMode guaranteedTicketCountMode,
@@ -50,7 +60,7 @@ namespace ExpoTheExplorer.Data
             NoiseLeakCountLambda = noiseLeakCountLambda;
             GuaranteedTicketCountMode = guaranteedTicketCountMode;
             GuaranteedTicketCount = Mathf.Clamp(guaranteedTicketCount, 1, 3);
-            GuaranteedTicketCountLambda = Mathf.Clamp(guaranteedTicketCountLambda, 0f, 3f);
+            GuaranteedTicketCountLambda = guaranteedTicketCountLambda;
             EarlyTicketWeightDecay = Mathf.Clamp01(earlyTicketWeightDecay);
             UrgentTimeThresholdSeconds = Mathf.Max(0f, urgentTimeThresholdSeconds);
             LeakDepth = Mathf.Clamp(leakDepth, 1, 10);
