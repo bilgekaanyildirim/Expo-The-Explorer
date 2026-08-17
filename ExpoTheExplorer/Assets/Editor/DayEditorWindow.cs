@@ -28,6 +28,14 @@ namespace ExpoTheExplorer.Editor
         // every extra pixel of window to the value column instead.
         public override float DefaultLabelWidth => 260f;
 
+        // A Day's inspector is far taller than any window (food selection, ticket strip,
+        // per-ticket editor, Day Start grid, three settings blocks), and without this the
+        // content simply ran off the bottom with no way to reach it: the only scrollable
+        // thing on the page was the ticket strip's own nested scroll view, which is why the
+        // wheel appeared to "scroll the ticket sequence" instead of the page. That nested
+        // view is gone now (DayEditorTicketCardPreview), so this is what the wheel scrolls.
+        public override bool UseScrollView => true;
+
         private FoodCatalog catalog;
         private GameConfig gameConfig;
         private TicketGenerationConfig ticketConfig;
