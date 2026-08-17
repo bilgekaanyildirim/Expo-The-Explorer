@@ -167,6 +167,43 @@ namespace ExpoTheExplorer.Tests.EditMode
             Assert.AreEqual(10f, model.BoardDistribution.UrgentTimeThresholdSeconds);
         }
 
+        // Replaces a DayValidator rule that could never fire: the validator sees the resolved
+        // settings objects, whose constructors have already clamped these values, so it could
+        // not tell a hand-edited 0 from a legitimate 1. Clamping on load is where the check
+        // works -- without it the editor would read leakDepth 0 out of a file, write it
+        // straight back on Save, and DayCatalogParser would drop the Day at runtime.
+        [Test]
+        public void FromDayJson_OutOfRangeCounts_AreClampedSoSaveCannotWriteThemBack()
+        {
+            var json = CreateFullDayJson();
+            json.runtime.boardDistribution.guaranteedTicketCount = 0;
+            json.runtime.boardDistribution.leakDepth = 0;
+            json.runtime.boardDistribution.maxLeakCount = 99;
+            json.runtime.ticketRuntime.upcomingQueueSize = 0;
+
+            var runtime = DayEditorModel.FromDayJson(json, catalog).ToDayJson().runtime;
+
+            Assert.AreEqual(1, runtime.boardDistribution.guaranteedTicketCount);
+            Assert.AreEqual(1, runtime.boardDistribution.leakDepth);
+            Assert.AreEqual(10, runtime.boardDistribution.maxLeakCount);
+            Assert.AreEqual(1, runtime.ticketRuntime.upcomingQueueSize);
+        }
+
+        // Time limits are deliberately left alone, so a 0 stays visible to DayValidator and
+        // blocks Save with a reason instead of being silently rounded up to something nobody
+        // authored.
+        [Test]
+        public void FromDayJson_ZeroTimeLimit_IsNotSilentlyRepaired()
+        {
+            var json = CreateFullDayJson();
+            json.runtime.ticketRuntime.normalTimeLimitSeconds = 0f;
+
+            var model = DayEditorModel.FromDayJson(json, catalog);
+
+            Assert.AreEqual(0f, model.TicketRuntime.NormalTimeLimitSeconds);
+            Assert.IsFalse(DayValidator.Validate(model.ToDayDefinition(), null).IsValid);
+        }
+
         [Test]
         public void FromDayJson_ThenToDayJson_RoundTripsAllFields()
         {

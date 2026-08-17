@@ -939,16 +939,22 @@ namespace ExpoTheExplorer.Editor
             // the more forgiving of the two, so an old Day can be opened and re-saved.
             if (json == null || string.IsNullOrEmpty(json.guaranteedTicketCountMode)) return new DayEditorBoardDistribution();
 
+            // Counts are clamped into the same ranges the sliders enforce. A Day file edited
+            // outside Unity can hold e.g. leakDepth 0, which DayCatalogParser refuses -- and
+            // without this the editor would load it, hand it straight back on Save, and the
+            // game would come up with the Day dropped. DayValidator cannot catch that: it
+            // sees BoardDistributionSettings, whose constructor has already clamped the value
+            // away. Clamping at the point the bad value enters is the only place it works.
             return new DayEditorBoardDistribution
             {
                 NoiseLeakCountLambda = json.noiseLeakCountLambda,
                 GuaranteedTicketCountMode = Enum.TryParse<GuaranteedTicketCountMode>(json.guaranteedTicketCountMode, out var mode) ? mode : GuaranteedTicketCountMode.Manual,
-                GuaranteedTicketCount = json.guaranteedTicketCount,
+                GuaranteedTicketCount = UnityEngine.Mathf.Clamp(json.guaranteedTicketCount, 1, 3),
                 GuaranteedTicketCountLambda = json.guaranteedTicketCountLambda,
                 EarlyTicketWeightDecay = json.earlyTicketWeightDecay,
                 UrgentTimeThresholdSeconds = json.urgentTimeThresholdSeconds,
-                LeakDepth = json.leakDepth,
-                MaxLeakCount = json.maxLeakCount,
+                LeakDepth = UnityEngine.Mathf.Clamp(json.leakDepth, 1, 10),
+                MaxLeakCount = UnityEngine.Mathf.Clamp(json.maxLeakCount, 1, 10),
             };
         }
 
@@ -992,12 +998,17 @@ namespace ExpoTheExplorer.Editor
         {
             if (json == null || json.impatientTimeLimitSeconds <= 0f) return new DayEditorTicketRuntime();
 
+            // Queue size is clamped for the same reason as the board counts above. The three
+            // time limits deliberately are NOT: TicketRuntimeSettings lets a 0 through, so
+            // DayValidator can still see it and refuse the Save with the reason spelled out.
+            // Silently rounding a 0-second limit up to 1 would hide an authoring mistake
+            // behind a value nobody chose.
             return new DayEditorTicketRuntime
             {
                 ImpatientTimeLimitSeconds = json.impatientTimeLimitSeconds,
                 NormalTimeLimitSeconds = json.normalTimeLimitSeconds,
                 PatientTimeLimitSeconds = json.patientTimeLimitSeconds,
-                UpcomingQueueSize = json.upcomingQueueSize,
+                UpcomingQueueSize = UnityEngine.Mathf.Max(1, json.upcomingQueueSize),
             };
         }
 

@@ -71,17 +71,26 @@ namespace ExpoTheExplorer.Systems.DaySystem
             }
 
             ValidateTicketRuntime(day.TicketRuntime, errors, warnings);
-            ValidateBoardDistribution(day.BoardDistribution, day.TicketRuntime, errors, warnings);
+            ValidateBoardDistribution(day.BoardDistribution, day.TicketRuntime, warnings);
             ValidateStarThresholds(day, warnings);
 
             return new DayValidationResult(errors, warnings);
         }
 
-        // The errors here mirror DayCatalogParser's own rejection rules one for one. That is
-        // the point: without them the editor can save a Day the runtime then refuses to
-        // load, and the game comes up throwing "No Day loaded" with nothing pointing back at
-        // the file that caused it. The field ranges in the Day Editor make these hard to
-        // reach by hand, but a JSON edited outside the editor and re-saved through it is not.
+        // WHAT THIS METHOD CAN AND CANNOT SEE -- worth stating, because getting it wrong
+        // produced three rules that could never fire:
+        //
+        // DayCatalogParser inspects the RAW JSON and rejects out-of-range values. This
+        // validator inspects the RESOLVED settings objects, whose constructors have already
+        // clamped everything into range. So a rule shaped like "reject what the parser
+        // rejects" is dead on arrival here for every field the constructor clamps --
+        // UpcomingQueueSize (Max(1, x)), GuaranteedTicketCount (Clamp 1..3), LeakDepth and
+        // MaxLeakCount (Clamp 1..10). Those checks live where they can work instead: the Day
+        // Editor clamps on load, so a hand-edited file cannot be carried back out unchanged.
+        //
+        // Time limits are the exception and the reason the one error below survives: the
+        // constructor uses Max(0f, x), so a 0 passes straight through, and a 0-second ticket
+        // times out on arrival while the parser refuses the Day outright.
         //
         // Null blocks are not an error: authoring-side callers build a DayDefinition purely
         // to run it past this method and never fill them (see the ctor's optional params).
@@ -94,11 +103,6 @@ namespace ExpoTheExplorer.Systems.DaySystem
                 errors.Add("Ticket Runtime: every patience time limit must be greater than 0 -- a 0-second ticket times out the instant it arrives, and the runtime refuses to load the Day.");
             }
 
-            if (runtime.UpcomingQueueSize < 1)
-            {
-                errors.Add($"Ticket Runtime: Upcoming Queue Size is {runtime.UpcomingQueueSize}; it must be at least 1, and the runtime refuses to load the Day otherwise.");
-            }
-
             // GDD Section 8 states the ordering as a locked rule. Warning, not an error: the
             // Day still plays, and overruling a designer on a design decision is not this
             // gate's job -- surfacing it is.
@@ -109,26 +113,20 @@ namespace ExpoTheExplorer.Systems.DaySystem
             }
         }
 
-        private static void ValidateBoardDistribution(BoardDistributionSettings board, TicketRuntimeSettings runtime, List<string> errors, List<string> warnings)
+        // Every range check that belongs to this block is already guaranteed by
+        // BoardDistributionSettings' constructor (see the note above), so the only thing left
+        // worth saying is about the relationship BETWEEN two settings, which no constructor
+        // can enforce on its own.
+        private static void ValidateBoardDistribution(BoardDistributionSettings board, TicketRuntimeSettings runtime, List<string> warnings)
         {
-            if (board == null) return;
-
-            if (board.GuaranteedTicketCount < 1 || board.LeakDepth < 1 || board.MaxLeakCount < 1)
-            {
-                errors.Add($"Board Distribution: Guaranteed Ticket Count ({board.GuaranteedTicketCount}), Leak Depth ({board.LeakDepth}) and Max Leak Count ({board.MaxLeakCount}) must all be at least 1, and the runtime refuses to load the Day otherwise.");
-            }
+            if (board == null || runtime == null) return;
 
             // Leak sources are drawn from the upcoming queue, so reach beyond that queue can
             // never find anything -- harmless, but it reads as a bigger noise radius than the
             // Day actually has.
-            if (runtime != null && board.LeakDepth > runtime.UpcomingQueueSize)
+            if (board.LeakDepth > runtime.UpcomingQueueSize)
             {
                 warnings.Add($"Board Distribution: Leak Depth ({board.LeakDepth}) reaches past Upcoming Queue Size ({runtime.UpcomingQueueSize}); only the queued tickets can ever leak, so the extra depth does nothing.");
-            }
-
-            if (board.GuaranteedTicketCount > GameState.TicketSlotCount)
-            {
-                warnings.Add($"Board Distribution: Guaranteed Ticket Count ({board.GuaranteedTicketCount}) is above the {GameState.TicketSlotCount} active slots and is clamped down at runtime.");
             }
         }
 

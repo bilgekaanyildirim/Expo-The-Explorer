@@ -243,6 +243,14 @@ uyardığı "aynı klon olmalı" tuzağı ve RNG-sıfırlama endişesi böylece 
       yeniden yazıldı. *Ders:* sembol yeniden adlandırırken locate taraması alan adları
       üzerinden değil, **sembolün kendi adı** üzerinden yapılmalı — bu oturumda aynı
       tipte ikinci kaçaktı (ilki Adım 3'te `BoardDistributionTests`).
+- [x] **Düzeltme (test koşusu sonrası):** eklediğim hata kurallarından ikisi ve bir uyarı
+      **hiç tetiklenemiyordu** — validator çözülmüş settings nesnesini görüyor, o nesnenin
+      ctor'u değerleri zaten kırpıyor (`UpcomingQueueSize = Max(1,x)`,
+      `GuaranteedTicketCount = Clamp(1,3)`, `LeakDepth/MaxLeakCount = Clamp(1,10)`).
+      Kuralları ham JSON görüyormuşum gibi yazmışım. Üçü silindi; korumak istedikleri
+      senaryo (elle düzenlenmiş dosyanın editörden aynen geri yazılması) `FromJson`'da
+      kırpmayla kapatıldı ve teste bağlandı. Süre limiti kuralı kaldı — ctor `Max(0f,x)`
+      kullandığı için 0 hayatta kalıyor, yani tetiklenebilir ve öldürücü.
 - [ ] **Açık:** EditMode koşusu bekleniyor.
 
 ### Adım 5 — Day Editör UI (+ `BoardDistributionConfig`'in tasfiyesi)

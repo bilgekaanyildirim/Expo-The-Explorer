@@ -157,8 +157,10 @@ namespace ExpoTheExplorer.Tests.EditMode
 
         // --- settings blocks (day-config-plan step 6) ---------------------------------
 
-        // Errors here mirror DayCatalogParser's rejection rules, so the editor cannot save a
-        // Day the runtime would then refuse to load.
+        // The one range error that can actually fire: TicketRuntimeSettings clamps with
+        // Max(0f, x), so a 0 survives into the validator. The other range rules that used to
+        // sit beside this one were removed -- their constructors clamp the value away before
+        // the validator ever sees it, so they could never fail.
         [Test]
         public void Validate_ZeroTimeLimit_IsAnError()
         {
@@ -170,16 +172,6 @@ namespace ExpoTheExplorer.Tests.EditMode
             Assert.IsTrue(HasErrorContaining(result, "time limit must be greater than 0"));
         }
 
-        [Test]
-        public void Validate_ZeroQueueSize_IsAnError()
-        {
-            var day = DayWithSettings(ticketRuntime: new TicketRuntimeSettings(45f, 90f, 150f, 0));
-
-            var result = DayValidator.Validate(day, null);
-
-            Assert.IsFalse(result.IsValid);
-            Assert.IsTrue(HasErrorContaining(result, "Upcoming Queue Size"));
-        }
 
         // Warnings must never close the Save button -- that is the whole reason they are a
         // separate channel.
