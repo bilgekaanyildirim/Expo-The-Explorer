@@ -129,7 +129,35 @@ namespace ExpoTheExplorer.Tests.EditMode
             Assert.AreEqual(startingLives - 1, state.Lives);
             Assert.AreEqual(0, manager.GetContents(0).Count);
             Assert.AreEqual(1, state.Board.OccupiedCellCount);
-            Assert.AreSame(wrongMain, state.Board.ItemAt(0, 0)?.Config);
+
+            // WHERE it lands is not part of the contract: TrayManager always holds a
+            // System.Random, so BoardGrid.RequestSpawn picks uniformly among the empty
+            // cells. Asserting cell (0, 0) made this test a 1-in-30 coin flip on a 6x5
+            // board -- it read as a flaky test and was written off as one for a while.
+            // What the scatter rule actually promises is that the item is back on the
+            // board, so that is what gets asserted.
+            Assert.AreSame(wrongMain, SingleItemOnBoard(state.Board).Config);
+        }
+
+        // Fails loudly rather than returning null if the board does not hold exactly one
+        // item, so a future regression surfaces here instead of as a NullReferenceException
+        // inside the assertion above.
+        private static BoardItem SingleItemOnBoard(BoardGrid board)
+        {
+            BoardItem found = null;
+            for (var x = 0; x < board.Width; x++)
+            {
+                for (var y = 0; y < board.Height; y++)
+                {
+                    var item = board.ItemAt(x, y);
+                    if (item == null) continue;
+                    Assert.IsNull(found, "Expected exactly one item on the board.");
+                    found = item;
+                }
+            }
+
+            Assert.IsNotNull(found, "Expected exactly one item on the board, found none.");
+            return found;
         }
 
         [Test]
