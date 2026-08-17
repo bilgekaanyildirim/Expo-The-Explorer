@@ -30,6 +30,15 @@ namespace ExpoTheExplorer.Systems.DaySystem
     [Serializable]
     public class DayEditorMetaJson
     {
+        // The set of FoodCatalog items that exist in this Day -- selected means present,
+        // absent means the Day never serves it. Deliberately has no accompanying
+        // "restrict: on/off" bool: the list IS the answer, so an empty one means an
+        // empty Day (Generate refuses it) rather than a silent "use everything".
+        // Stored as ids, like every other food reference in Day JSON, and resolved
+        // against FoodCatalog.Items. Authoring-time only -- runtime replays the
+        // resolved ticketSequence and never needs to know what was selectable.
+        public string[] allowedFoodItemIds;
+
         public bool hasTicketGenerationOverride;
         public float sideInclusionChanceOverride;
         public float drinkInclusionChanceOverride;

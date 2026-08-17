@@ -35,7 +35,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             var ticketSequence = new List<ResolvedTicketEntry> { CreateEntry(), CreateEntry(), CreateEntry() };
             var day = new DayDefinition(0, ticketsRequiredForDay: 5, ticketSequence, new List<ResolvedBoardSpawnEntry>());
 
-            var result = DayValidator.Validate(day);
+            var result = DayValidator.Validate(day, new List<FoodItemConfig> { main });
 
             Assert.IsFalse(result.IsValid);
             Assert.IsTrue(HasErrorContaining(result, "ticketsRequiredForDay is 5"));
@@ -47,10 +47,42 @@ namespace ExpoTheExplorer.Tests.EditMode
             var ticketSequence = new List<ResolvedTicketEntry> { CreateEntry(), CreateEntry(), CreateEntry() };
             var day = new DayDefinition(0, ticketsRequiredForDay: 3, ticketSequence, new List<ResolvedBoardSpawnEntry>());
 
-            var result = DayValidator.Validate(day);
+            var result = DayValidator.Validate(day, new List<FoodItemConfig> { main });
 
             CollectionAssert.IsEmpty(result.Errors);
             Assert.IsTrue(result.IsValid);
+        }
+
+        [Test]
+        public void Validate_TicketUsesFoodOutsideTheSelection_ReportsErrorPerTicket()
+        {
+            var unselected = CreateFoodItem("unselected");
+            var ticketSequence = new List<ResolvedTicketEntry>
+            {
+                CreateEntry(),
+                new(unselected, null, null, new List<Modification>(), PatienceType.Normal, null, 0f),
+            };
+            var day = new DayDefinition(0, ticketsRequiredForDay: 2, ticketSequence, new List<ResolvedBoardSpawnEntry>());
+
+            var result = DayValidator.Validate(day, new List<FoodItemConfig> { main });
+
+            Assert.IsFalse(result.IsValid);
+            Assert.AreEqual(1, result.Errors.Count, "Only the second ticket is outside the selection.");
+            Assert.IsTrue(HasErrorContaining(result, "Ticket 1: 'unselected'"));
+        }
+
+        [Test]
+        public void Validate_NullSelection_SkipsTheFoodCheck()
+        {
+            var unselected = CreateFoodItem("unselected");
+            var ticketSequence = new List<ResolvedTicketEntry>
+            {
+                new(unselected, null, null, new List<Modification>(), PatienceType.Normal, null, 0f),
+            };
+            var day = new DayDefinition(0, ticketsRequiredForDay: 1, ticketSequence, new List<ResolvedBoardSpawnEntry>());
+
+            // null means "no catalog to resolve the selection against", not "nothing allowed".
+            CollectionAssert.IsEmpty(DayValidator.Validate(day, null).Errors);
         }
 
         [Test]
@@ -60,7 +92,10 @@ namespace ExpoTheExplorer.Tests.EditMode
             spawned.Add(catalog);
             SetItemsList(catalog, main);
 
-            var ticketSequence = DayContentGenerator.Generate(catalog, ticketConfig, null, ticketsRequiredForDay: 10, seed: 11);
+            // A Day's food selection is absolute (an unset one is an empty Day), so this
+            // has to name the foods that exist before it can generate anything at all.
+            var editorMeta = new DayEditorMetaJson { allowedFoodItemIds = new[] { main.Id } };
+            var ticketSequence = DayContentGenerator.Generate(catalog, ticketConfig, editorMeta, ticketsRequiredForDay: 10, seed: 11);
 
             var dayJson = new DayJson
             {
@@ -76,7 +111,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             var parsed = DayCatalogParser.ParseAll(new[] { new DayJsonFile("test", json) }, catalog);
             var day = parsed[0];
 
-            var validation = DayValidator.Validate(day);
+            var validation = DayValidator.Validate(day, catalog.Items);
 
             CollectionAssert.IsEmpty(validation.Errors);
         }

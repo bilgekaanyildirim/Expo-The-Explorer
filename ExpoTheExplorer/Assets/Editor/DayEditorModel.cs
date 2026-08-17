@@ -50,6 +50,10 @@ namespace ExpoTheExplorer.Editor
                 {
                     EditorUtility.DisplayDialog("Generate Random Ticket", "Config assets aren't assigned yet -- set them in the toolbar above.", "OK");
                 }
+                else if (!HasSelectableMainDish)
+                {
+                    EditorUtility.DisplayDialog("Generate Random Ticket", NoMainDishMessage, "OK");
+                }
                 else if (EditorUtility.DisplayDialog("Generate Random Ticket", "This overwrites this ticket's Main/Side/Drink/Modifications/Patience Type. Continue?", "Generate", "Cancel"))
                 {
                     // Fresh, unseeded TicketFactory per click -- reuses the exact same generation
@@ -58,7 +62,7 @@ namespace ExpoTheExplorer.Editor
                     // one ticket, so a re-click always gives a genuinely different result.
                     var factory = new TicketFactory(sharedTicketConfig);
                     var patienceType = factory.PickRandomPatienceType();
-                    var ticket = factory.Create(sharedCatalog.Items, factory.PickRandomCustomerName(), patienceType);
+                    var ticket = factory.Create(AllowedFoodPool, factory.PickRandomCustomerName(), patienceType);
                     var regenerated = DayEditorTicketEntry.FromTicket(ticket);
                     entry.MainItem = regenerated.MainItem;
                     entry.SideItem = regenerated.SideItem;
@@ -70,9 +74,10 @@ namespace ExpoTheExplorer.Editor
 
             EditorGUILayout.Space();
 
-            entry.MainItem = DrawCategoryItemField("Main Item", entry.MainItem, FoodCategory.Main, sharedCatalog);
-            entry.SideItem = DrawCategoryItemField("Side Item", entry.SideItem, FoodCategory.Side, sharedCatalog);
-            entry.DrinkItem = DrawCategoryItemField("Drink Item", entry.DrinkItem, FoodCategory.Drink, sharedCatalog);
+            var pool = AllowedFoodPool;
+            entry.MainItem = DrawCategoryItemField("Main Item", entry.MainItem, FoodCategory.Main, pool);
+            entry.SideItem = DrawCategoryItemField("Side Item", entry.SideItem, FoodCategory.Side, pool);
+            entry.DrinkItem = DrawCategoryItemField("Drink Item", entry.DrinkItem, FoodCategory.Drink, pool);
             entry.PatienceType = (PatienceType)EditorGUILayout.EnumPopup("Patience Type", entry.PatienceType);
 
             entry.CustomerNameOverride = EditorGUILayout.TextField("Name Override", entry.CustomerNameOverride);
@@ -106,18 +111,20 @@ namespace ExpoTheExplorer.Editor
             }
         }
 
-        // Restricts the picker to items of the given category -- ObjectField can't filter by a
-        // field value, only by Type, so a plain ObjectField would let e.g. a Side item be
-        // assigned into the Main slot. Falls back to the old unfiltered ObjectField when the
-        // catalog isn't assigned yet, so editing isn't blocked before the toolbar is configured.
-        private static FoodItemConfig DrawCategoryItemField(string label, FoodItemConfig current, FoodCategory category, FoodCatalog catalog)
+        // Restricts the picker to items of the given category, out of the pool this Day is
+        // allowed to use -- ObjectField can't filter by a field value, only by Type, so a
+        // plain ObjectField would let e.g. a Side item be assigned into the Main slot (or a
+        // food this Day's own selection excludes). Falls back to the old unfiltered
+        // ObjectField when there is no pool yet (catalog unassigned), so editing isn't
+        // blocked before the toolbar is configured.
+        private static FoodItemConfig DrawCategoryItemField(string label, FoodItemConfig current, FoodCategory category, IReadOnlyList<FoodItemConfig> pool)
         {
-            if (catalog == null)
+            if (pool == null)
             {
                 return (FoodItemConfig)EditorGUILayout.ObjectField(label, current, typeof(FoodItemConfig), false);
             }
 
-            var options = catalog.Items.Where(item => item.Category == category).ToList();
+            var options = pool.Where(item => item.Category == category).ToList();
 
             // Keep a mismatched/orphaned current value visible instead of silently dropping it
             // (e.g. data authored before this filter existed, or a category changed since).
@@ -251,6 +258,171 @@ namespace ExpoTheExplorer.Editor
         [FoldoutGroup("Editor Overrides (Generate-only)"), HideLabel, PropertyOrder(-3)]
         public DayEditorMetaModel EditorMeta = new();
 
+        // Which foods exist in this Day: drives Generate's pool AND the ticket editor's
+        // Main/Side/Drink pickers, so a Day can only ever contain food it actually
+        // selected. Hand-drawn (rather than an Odin list of ids) because the options come
+        // from FoodCatalog while the stored data is just the chosen subset -- a tile per
+        // catalog item is the shape that matches, and it can't drift out of sync with a
+        // catalog that gained or lost an item. Expanded by default: seeing the Day's food
+        // set is the point, so it shouldn't need a click to reveal.
+        [FoldoutGroup("Food Selection", expanded: true), OnInspectorGUI, PropertyOrder(-5)]
+        private void DrawFoodSelection()
+        {
+            if (sharedCatalog == null)
+            {
+                EditorGUILayout.HelpBox("Food Catalog not assigned (toolbar above) -- nothing to select from.", UnityEditor.MessageType.Info);
+                return;
+            }
+
+            var allItems = sharedCatalog.Items.Where(item => item != null).ToList();
+            if (allItems.Count == 0)
+            {
+                EditorGUILayout.HelpBox("Food Catalog is empty -- nothing to select from.", UnityEditor.MessageType.Info);
+                return;
+            }
+
+            // Label on its own line and the buttons on the next, rather than one shared
+            // row: an EditorGUILayout label expands to fill, which can push fixed-width
+            // buttons past the right edge of a narrow inspector and make them look absent.
+            EditorGUILayout.LabelField("Click a food to put it in this Day", UnityEditor.EditorStyles.boldLabel);
+
+            EditorGUILayout.BeginHorizontal();
+            var selectAll = UnityEngine.GUILayout.Button("Select All", UnityEngine.GUILayout.Width(90));
+            var clearAll = UnityEngine.GUILayout.Button("Clear All", UnityEngine.GUILayout.Width(90));
+            UnityEngine.GUILayout.FlexibleSpace();
+            EditorGUILayout.EndHorizontal();
+
+            if (selectAll || clearAll)
+            {
+                foreach (var item in allItems) SetFoodAllowed(item, selectAll);
+            }
+
+            DrawFoodCategorySelection(allItems, FoodCategory.Main);
+            DrawFoodCategorySelection(allItems, FoodCategory.Side);
+            DrawFoodCategorySelection(allItems, FoodCategory.Drink);
+
+            if (!HasSelectableMainDish)
+            {
+                EditorGUILayout.Space();
+                EditorGUILayout.HelpBox(NoMainDishMessage, UnityEditor.MessageType.Warning);
+            }
+        }
+
+        private void DrawFoodCategorySelection(List<FoodItemConfig> allItems, FoodCategory category)
+        {
+            var items = allItems.Where(item => item.Category == category).ToList();
+            if (items.Count == 0) return;
+
+            EditorGUILayout.Space();
+            EditorGUILayout.BeginHorizontal();
+            // Fixed-width label for the same reason as the header above -- an expanding
+            // one can crowd the buttons off the right edge of a narrow inspector.
+            EditorGUILayout.LabelField(category.ToString(), UnityEditor.EditorStyles.boldLabel, UnityEngine.GUILayout.Width(60));
+            var selectAll = UnityEngine.GUILayout.Button("All", UnityEngine.GUILayout.Width(45));
+            var selectNone = UnityEngine.GUILayout.Button("None", UnityEngine.GUILayout.Width(45));
+            UnityEngine.GUILayout.FlexibleSpace();
+            EditorGUILayout.EndHorizontal();
+
+            if (selectAll || selectNone)
+            {
+                foreach (var item in items) SetFoodAllowed(item, selectAll);
+            }
+
+            // Wraps to the inspector's current width rather than a fixed column count, so a
+            // narrow Day Editor window shortens the rows instead of clipping them.
+            var available = UnityEngine.Mathf.Max(FoodTileStride, EditorGUIUtility.currentViewWidth - 40f);
+            var columns = UnityEngine.Mathf.Max(1, UnityEngine.Mathf.FloorToInt(available / FoodTileStride));
+            var rows = UnityEngine.Mathf.CeilToInt(items.Count / (float)columns);
+            var gridRect = UnityEngine.GUILayoutUtility.GetRect(
+                columns * FoodTileStride, rows * FoodTileStride, UnityEngine.GUILayout.ExpandWidth(false));
+
+            for (var i = 0; i < items.Count; i++)
+            {
+                var tileRect = new UnityEngine.Rect(
+                    gridRect.x + i % columns * FoodTileStride,
+                    gridRect.y + i / columns * FoodTileStride,
+                    FoodTileSize, FoodTileSize);
+                DrawFoodTile(tileRect, items[i]);
+            }
+        }
+
+        // One clickable food tile. Selected reads two ways at once on purpose: the same
+        // highlight DayEditorTicketCardPreview draws behind a selected ticket card, plus
+        // full opacity while excluded tiles fade back -- a frame alone is hard to scan
+        // across a row where only a few items are in the Day.
+        private void DrawFoodTile(UnityEngine.Rect tileRect, FoodItemConfig item)
+        {
+            var isAllowed = EditorMeta.AllowedFoodItemIds.Contains(item.Id);
+
+            if (isAllowed)
+            {
+                EditorGUI.DrawRect(
+                    new UnityEngine.Rect(
+                        tileRect.x - FoodTileHighlightMargin, tileRect.y - FoodTileHighlightMargin,
+                        tileRect.width + FoodTileHighlightMargin * 2f, tileRect.height + FoodTileHighlightMargin * 2f),
+                    FoodTileSelectedColor);
+            }
+            EditorGUI.DrawRect(tileRect, FoodTileBackgroundColor);
+
+            var previousColor = UnityEngine.GUI.color;
+            if (!isAllowed) UnityEngine.GUI.color = new UnityEngine.Color(1f, 1f, 1f, 0.3f) * previousColor;
+            DayEditorSpriteGUI.DrawSpriteFit(tileRect, item.Sprite);
+            UnityEngine.GUI.color = previousColor;
+
+            // Sprites alone can be ambiguous (two drinks, two buns), so the name rides
+            // along as a hover tooltip -- an empty-label GUI.Label draws nothing but does
+            // register the tooltip region. Falls back to the id when DisplayName is unset.
+            var name = string.IsNullOrEmpty(item.DisplayName) ? item.Id : item.DisplayName;
+            UnityEngine.GUI.Label(tileRect, new UnityEngine.GUIContent(string.Empty, name));
+
+            if (UnityEngine.Event.current.type == UnityEngine.EventType.MouseDown
+                && UnityEngine.Event.current.button == 0
+                && tileRect.Contains(UnityEngine.Event.current.mousePosition))
+            {
+                SetFoodAllowed(item, !isAllowed);
+                UnityEngine.GUI.changed = true;
+                UnityEngine.Event.current.Use();
+            }
+        }
+
+        private void SetFoodAllowed(FoodItemConfig item, bool allowed)
+        {
+            if (!allowed)
+            {
+                EditorMeta.AllowedFoodItemIds.Remove(item.Id);
+                return;
+            }
+
+            if (!EditorMeta.AllowedFoodItemIds.Contains(item.Id))
+            {
+                EditorMeta.AllowedFoodItemIds.Add(item.Id);
+            }
+        }
+
+        // Delegates to DayContentGenerator rather than re-deriving the rule, so the pickers
+        // and Generate can never disagree about what this Day is allowed to use. Null only
+        // when there is no catalog to resolve against; the pickers treat that as "unfiltered".
+        private IReadOnlyList<FoodItemConfig> AllowedFoodPool =>
+            sharedCatalog == null ? null : DayContentGenerator.ResolveFoodPool(sharedCatalog, EditorMeta.ToJson());
+
+        // TicketFactory.Create throws without a Main dish in the pool. That's the right
+        // behaviour for a direct caller, but reaching it through a button click would be a
+        // console exception instead of an answer, so both generate paths check first.
+        private bool HasSelectableMainDish =>
+            AllowedFoodPool?.Any(item => item != null && item.Category == FoodCategory.Main) ?? false;
+
+        private const string NoMainDishMessage =
+            "No Main dish is in this Day -- pick at least one Main under Food Selection before generating.";
+
+        private const float FoodTileSize = 52f;
+        private const float FoodTileSpacing = 6f;
+        private const float FoodTileStride = FoodTileSize + FoodTileSpacing;
+        private const float FoodTileHighlightMargin = 3f;
+        // Same blue DayEditorTicketCardPreview highlights a selected ticket card with, so
+        // "selected" means one thing across the whole Day Editor.
+        private static readonly UnityEngine.Color FoodTileSelectedColor = new(0.3f, 0.6f, 1f, 1f);
+        private static readonly UnityEngine.Color FoodTileBackgroundColor = new(0.22f, 0.22f, 0.22f, 1f);
+
         // Null for a Day that has never been saved under any filename yet (new or duplicated,
         // pre-first-Save) -- set to DayIndex by FromDayJson (loaded from an existing file) and
         // updated by DayEditorWindow after each successful save. Lets the Window detect a
@@ -264,6 +436,12 @@ namespace ExpoTheExplorer.Editor
             if (sharedCatalog == null || sharedTicketConfig == null)
             {
                 EditorUtility.DisplayDialog("Generate", "Config assets aren't assigned yet -- set them in the toolbar above.", "OK");
+                return;
+            }
+
+            if (!HasSelectableMainDish)
+            {
+                EditorUtility.DisplayDialog("Generate", NoMainDishMessage, "OK");
                 return;
             }
 
@@ -303,7 +481,7 @@ namespace ExpoTheExplorer.Editor
                 return new DayValidationResult(new List<string> { "Not configured yet -- assign the config assets above." });
             }
 
-            return DayValidator.Validate(ToDayDefinition());
+            return DayValidator.Validate(ToDayDefinition(), AllowedFoodPool);
         }
 
         [Button("Save"), EnableIf(nameof(IsValid)), GUIColor(0.4f, 0.85f, 0.4f, 1f)]
@@ -514,6 +692,13 @@ namespace ExpoTheExplorer.Editor
         private const string TicketGenGroup = nameof(HasTicketGenerationOverride);
         private const string BoardDistGroup = nameof(HasBoardDistributionOverride);
 
+        // Drawn by DayEditorModel's own "Food Selection" section, not by Odin here: the UI
+        // has to render a tile for every FoodCatalog item, and this plain serializable
+        // model has no catalog reference (DayEditorModel does, via Configure). The data
+        // still lives here so ToJson/FromJson stay the single place editor-meta is
+        // serialized.
+        [UnityEngine.HideInInspector] public List<string> AllowedFoodItemIds = new();
+
         [ToggleGroup(TicketGenGroup, "Ticket Generation Override")] public bool HasTicketGenerationOverride;
         [ToggleGroup(TicketGenGroup, "Ticket Generation Override")] public float SideInclusionChanceOverride;
         [ToggleGroup(TicketGenGroup, "Ticket Generation Override")] public float DrinkInclusionChanceOverride;
@@ -531,6 +716,7 @@ namespace ExpoTheExplorer.Editor
 
         public DayEditorMetaJson ToJson() => new()
         {
+            allowedFoodItemIds = AllowedFoodItemIds.ToArray(),
             hasTicketGenerationOverride = HasTicketGenerationOverride,
             sideInclusionChanceOverride = SideInclusionChanceOverride,
             drinkInclusionChanceOverride = DrinkInclusionChanceOverride,
@@ -552,6 +738,7 @@ namespace ExpoTheExplorer.Editor
 
             return new DayEditorMetaModel
             {
+                AllowedFoodItemIds = (json.allowedFoodItemIds ?? Array.Empty<string>()).ToList(),
                 HasTicketGenerationOverride = json.hasTicketGenerationOverride,
                 SideInclusionChanceOverride = json.sideInclusionChanceOverride,
                 DrinkInclusionChanceOverride = json.drinkInclusionChanceOverride,

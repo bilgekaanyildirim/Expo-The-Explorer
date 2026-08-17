@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using ExpoTheExplorer.Core;
 using ExpoTheExplorer.Data;
@@ -28,7 +29,7 @@ namespace ExpoTheExplorer.Systems.DaySystem
 
             try
             {
-                return GenerateCore(catalog, ticketConfig, ticketsRequiredForDay, random);
+                return GenerateCore(ResolveFoodPool(catalog, editorMeta), ticketConfig, ticketsRequiredForDay, random);
             }
             finally
             {
@@ -36,7 +37,28 @@ namespace ExpoTheExplorer.Systems.DaySystem
             }
         }
 
-        private static TicketEntryJson[] GenerateCore(FoodCatalog catalog, TicketGenerationConfig ticketConfig, int ticketsRequiredForDay, Random random)
+        // The items that exist in this Day: exactly the ones its food selection names.
+        // Filters the catalog (rather than mapping ids through GetById) so catalog order
+        // is preserved, duplicates in the id list can't duplicate an item, and an id left
+        // over from a deleted/renamed FoodItemConfig is simply absent instead of becoming
+        // a null entry TicketFactory would trip over. The null check covers an empty slot
+        // in the catalog's own serialized list, for the same reason.
+        //
+        // No selection means an EMPTY pool, not "everything" -- the selection is the Day's
+        // food set, so nothing selected is an empty Day. TicketFactory.Create then throws
+        // on the missing Main, which is the honest outcome for a direct caller; the Day
+        // Editor guards before ever reaching it (see DayEditorModel.HasSelectableMainDish).
+        //
+        // Public because the Day Editor's item pickers must offer exactly this same pool --
+        // one implementation, two authoring-time readers, rather than the same filter rule
+        // written out in two places that can drift apart.
+        public static IReadOnlyList<FoodItemConfig> ResolveFoodPool(FoodCatalog catalog, DayEditorMetaJson editorMeta)
+        {
+            var allowedIds = editorMeta?.allowedFoodItemIds ?? Array.Empty<string>();
+            return catalog.Items.Where(item => item != null && allowedIds.Contains(item.Id)).ToList();
+        }
+
+        private static TicketEntryJson[] GenerateCore(IReadOnlyList<FoodItemConfig> pool, TicketGenerationConfig ticketConfig, int ticketsRequiredForDay, Random random)
         {
             var ticketFactory = new TicketFactory(ticketConfig, random);
             var entries = new TicketEntryJson[ticketsRequiredForDay];
@@ -44,7 +66,7 @@ namespace ExpoTheExplorer.Systems.DaySystem
             for (var i = 0; i < ticketsRequiredForDay; i++)
             {
                 var patienceType = ticketFactory.PickRandomPatienceType();
-                var ticket = ticketFactory.Create(catalog.Items, SimulatedCustomerName, patienceType);
+                var ticket = ticketFactory.Create(pool, SimulatedCustomerName, patienceType);
                 entries[i] = ToTicketEntryJson(ticket);
             }
 

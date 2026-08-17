@@ -41,7 +41,7 @@ namespace ExpoTheExplorer.Tests.EditMode
         [Test]
         public void Generate_ProducesExactlyTicketsRequiredForDayEntries()
         {
-            var result = DayContentGenerator.Generate(catalog, ticketConfig, null, ticketsRequiredForDay: 5, seed: 1);
+            var result = DayContentGenerator.Generate(catalog, ticketConfig, SelectEveryFood(catalog), ticketsRequiredForDay: 5, seed: 1);
 
             Assert.AreEqual(5, result.Length);
         }
@@ -49,8 +49,8 @@ namespace ExpoTheExplorer.Tests.EditMode
         [Test]
         public void Generate_SameSeed_ProducesIdenticalOutput()
         {
-            var first = DayContentGenerator.Generate(catalog, ticketConfig, null, ticketsRequiredForDay: 5, seed: 42);
-            var second = DayContentGenerator.Generate(catalog, ticketConfig, null, ticketsRequiredForDay: 5, seed: 42);
+            var first = DayContentGenerator.Generate(catalog, ticketConfig, SelectEveryFood(catalog), ticketsRequiredForDay: 5, seed: 42);
+            var second = DayContentGenerator.Generate(catalog, ticketConfig, SelectEveryFood(catalog), ticketsRequiredForDay: 5, seed: 42);
 
             Assert.AreEqual(ToComparableJson(first), ToComparableJson(second));
         }
@@ -58,13 +58,11 @@ namespace ExpoTheExplorer.Tests.EditMode
         [Test]
         public void Generate_WithTicketGenerationOverride_ForcesInclusionExtremes()
         {
-            var editorMeta = new DayEditorMetaJson
-            {
-                hasTicketGenerationOverride = true,
-                sideInclusionChanceOverride = 0f,
-                drinkInclusionChanceOverride = 1f,
-                modificationCountLambdaOverride = 0f,
-            };
+            var editorMeta = SelectEveryFood(catalog);
+            editorMeta.hasTicketGenerationOverride = true;
+            editorMeta.sideInclusionChanceOverride = 0f;
+            editorMeta.drinkInclusionChanceOverride = 1f;
+            editorMeta.modificationCountLambdaOverride = 0f;
 
             var result = DayContentGenerator.Generate(catalog, ticketConfig, editorMeta, ticketsRequiredForDay: 5, seed: 3);
 
@@ -76,9 +74,80 @@ namespace ExpoTheExplorer.Tests.EditMode
         }
 
         [Test]
+        public void Generate_WithFoodSelection_OnlyRollsSelectedItems()
+        {
+            var allowedMain = CreateFoodItem("main-allowed", FoodCategory.Main);
+            var excludedMain = CreateFoodItem("main-excluded", FoodCategory.Main);
+            var allowedSide = CreateFoodItem("side-allowed", FoodCategory.Side);
+            var excludedSide = CreateFoodItem("side-excluded", FoodCategory.Side);
+
+            var selectiveCatalog = ScriptableObject.CreateInstance<FoodCatalog>();
+            spawned.Add(selectiveCatalog);
+            SetItemsList(selectiveCatalog, allowedMain, excludedMain, allowedSide, excludedSide);
+
+            var editorMeta = new DayEditorMetaJson
+            {
+                allowedFoodItemIds = new[] { allowedMain.Id, allowedSide.Id },
+                // Forcing a side onto every ticket is what makes the side assertion mean
+                // something -- at the default inclusion chance it could pass vacuously by
+                // never rolling a side at all.
+                hasTicketGenerationOverride = true,
+                sideInclusionChanceOverride = 1f,
+                drinkInclusionChanceOverride = 0f,
+                modificationCountLambdaOverride = 0f,
+            };
+
+            var result = DayContentGenerator.Generate(selectiveCatalog, ticketConfig, editorMeta, ticketsRequiredForDay: 20, seed: 4);
+
+            Assert.AreEqual(20, result.Length);
+            foreach (var entry in result)
+            {
+                Assert.AreEqual(allowedMain.Id, entry.mainItemId, "An excluded Main dish was rolled.");
+                Assert.AreEqual(allowedSide.Id, entry.sideItemId, "An excluded Side item was rolled.");
+            }
+        }
+
+        // The selection IS the Day's food set, so "nothing selected" must mean an empty
+        // Day, not a silent fallback to the whole catalog -- that fallback is exactly the
+        // behaviour the master on/off toggle used to provide and that was removed.
+        [Test]
+        public void ResolveFoodPool_NothingSelected_ReturnsEmptyPool()
+        {
+            CollectionAssert.IsEmpty(DayContentGenerator.ResolveFoodPool(catalog, null));
+            CollectionAssert.IsEmpty(DayContentGenerator.ResolveFoodPool(catalog, new DayEditorMetaJson()));
+            CollectionAssert.IsEmpty(DayContentGenerator.ResolveFoodPool(
+                catalog, new DayEditorMetaJson { allowedFoodItemIds = Array.Empty<string>() }));
+        }
+
+        [Test]
+        public void ResolveFoodPool_KeepsSelectedIdsAndDropsUnknownOnes()
+        {
+            var editorMeta = new DayEditorMetaJson
+            {
+                // "gone" stands in for an id left behind by a FoodItemConfig that was
+                // renamed or deleted after the Day was authored: it must drop out of the
+                // pool, not resolve to a null entry TicketFactory would trip over.
+                allowedFoodItemIds = new[] { "side", "gone" },
+            };
+
+            var pool = DayContentGenerator.ResolveFoodPool(catalog, editorMeta);
+
+            Assert.AreEqual(1, pool.Count);
+            Assert.AreEqual("side", pool[0].Id);
+        }
+
+        [Test]
+        public void ResolveFoodPool_EverythingSelected_ReturnsCatalogOrder()
+        {
+            var pool = DayContentGenerator.ResolveFoodPool(catalog, SelectEveryFood(catalog));
+
+            CollectionAssert.AreEqual(catalog.Items, pool);
+        }
+
+        [Test]
         public void Generate_ThenPlayback_TicketContentMatchesGeneratedSequence()
         {
-            var result = DayContentGenerator.Generate(catalog, ticketConfig, null, ticketsRequiredForDay: 8, seed: 7);
+            var result = DayContentGenerator.Generate(catalog, ticketConfig, SelectEveryFood(catalog), ticketsRequiredForDay: 8, seed: 7);
 
             var dayJson = new DayJson
             {
@@ -116,6 +185,16 @@ namespace ExpoTheExplorer.Tests.EditMode
         private static string ToComparableJson(TicketEntryJson[] result)
         {
             return JsonUtility.ToJson(new ComparableResult { ticketSequence = result });
+        }
+
+        // A Day's food selection is absolute -- an unset one means an empty Day -- so a
+        // test that cares about some other aspect of generation still has to say which
+        // foods exist. This is the "everything in the catalog" shorthand for those.
+        private static DayEditorMetaJson SelectEveryFood(FoodCatalog target)
+        {
+            var ids = new string[target.Items.Count];
+            for (var i = 0; i < ids.Length; i++) ids[i] = target.Items[i].Id;
+            return new DayEditorMetaJson { allowedFoodItemIds = ids };
         }
 
         private FoodItemConfig CreateFoodItem(string id, FoodCategory category)

@@ -55,7 +55,7 @@ namespace ExpoTheExplorer.Tests.EditMode
         {
             const int ticketsRequiredForDay = 10;
 
-            var result = DayContentGenerator.Generate(catalog, ticketConfig, null, ticketsRequiredForDay, seed: 1);
+            var result = DayContentGenerator.Generate(catalog, ticketConfig, SelectEveryFood(catalog), ticketsRequiredForDay, seed: 1);
             Assert.AreEqual(ticketsRequiredForDay, result.Length);
 
             var dayJson = new DayJson
@@ -116,7 +116,7 @@ namespace ExpoTheExplorer.Tests.EditMode
         {
             const int ticketsRequiredForDay = 11;
 
-            var result = DayContentGenerator.Generate(catalog, ticketConfig, null, ticketsRequiredForDay, seed: 1);
+            var result = DayContentGenerator.Generate(catalog, ticketConfig, SelectEveryFood(catalog), ticketsRequiredForDay, seed: 1);
             Assert.AreEqual(ticketsRequiredForDay, result.Length);
 
             var dayJson = new DayJson
@@ -161,6 +161,15 @@ namespace ExpoTheExplorer.Tests.EditMode
             {
                 Assert.IsNull(state.TicketSlots[i]);
             }
+        }
+
+        // A Day's food selection is absolute (an unset one means an empty Day), so these
+        // tests have to name the foods that exist before Generate can roll anything.
+        private static DayEditorMetaJson SelectEveryFood(FoodCatalog target)
+        {
+            var ids = new string[target.Items.Count];
+            for (var i = 0; i < ids.Length; i++) ids[i] = target.Items[i].Id;
+            return new DayEditorMetaJson { allowedFoodItemIds = ids };
         }
 
         private FoodItemConfig CreateFoodItem(string id)

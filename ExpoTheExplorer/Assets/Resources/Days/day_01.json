@@ -9,16 +9,34 @@
                 "drinkItemId": "cola",
                 "modifications": [
                     {
-                        "modificationId": "extra_cheese",
-                        "isAddition": true
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
                     },
                     {
                         "modificationId": "extra_patty",
                         "isAddition": true
-                    },
+                    }
+                ],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "fries",
+                "drinkItemId": "cola",
+                "modifications": [
                     {
                         "modificationId": "no_tomato",
                         "isAddition": false
+                    },
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": true
                     },
                     {
                         "modificationId": "no_lettuce",
@@ -35,31 +53,10 @@
                 "drinkItemId": "cola",
                 "modifications": [
                     {
-                        "modificationId": "no_tomato",
-                        "isAddition": false
-                    },
-                    {
                         "modificationId": "extra_cheese",
-                        "isAddition": false
-                    },
-                    {
-                        "modificationId": "extra_patty",
                         "isAddition": true
-                    },
-                    {
-                        "modificationId": "no_lettuce",
-                        "isAddition": false
                     }
                 ],
-                "patienceType": "Normal",
-                "customerNameOverride": "",
-                "timeLimitSecondsOverride": 0.0
-            },
-            {
-                "mainItemId": "burger",
-                "sideItemId": "fries",
-                "drinkItemId": "cola",
-                "modifications": [],
                 "patienceType": "Impatient",
                 "customerNameOverride": "",
                 "timeLimitSecondsOverride": 0.0
@@ -69,6 +66,56 @@
                 "sideItemId": "fries",
                 "drinkItemId": "cola",
                 "modifications": [],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "fries",
+                "drinkItemId": "cola",
+                "modifications": [
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": true
+                    },
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "fries",
+                "drinkItemId": "cola",
+                "modifications": [
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "fries",
+                "drinkItemId": "cola",
+                "modifications": [
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
+                    }
+                ],
                 "patienceType": "Impatient",
                 "customerNameOverride": "",
                 "timeLimitSecondsOverride": 0.0
@@ -88,17 +135,25 @@
                 "drinkItemId": "cola",
                 "modifications": [
                     {
-                        "modificationId": "extra_cheese",
+                        "modificationId": "no_tomato",
                         "isAddition": false
+                    },
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "extra_patty",
+                        "isAddition": true
                     }
                 ],
-                "patienceType": "Impatient",
+                "patienceType": "Normal",
                 "customerNameOverride": "",
                 "timeLimitSecondsOverride": 0.0
             },
             {
                 "mainItemId": "burger",
-                "sideItemId": "fries",
+                "sideItemId": "",
                 "drinkItemId": "cola",
                 "modifications": [
                     {
@@ -108,68 +163,6 @@
                     {
                         "modificationId": "no_lettuce",
                         "isAddition": false
-                    },
-                    {
-                        "modificationId": "extra_cheese",
-                        "isAddition": false
-                    }
-                ],
-                "patienceType": "Normal",
-                "customerNameOverride": "",
-                "timeLimitSecondsOverride": 0.0
-            },
-            {
-                "mainItemId": "burger",
-                "sideItemId": "fries",
-                "drinkItemId": "cola",
-                "modifications": [
-                    {
-                        "modificationId": "extra_patty",
-                        "isAddition": true
-                    }
-                ],
-                "patienceType": "Patient",
-                "customerNameOverride": "",
-                "timeLimitSecondsOverride": 0.0
-            },
-            {
-                "mainItemId": "burger",
-                "sideItemId": "fries",
-                "drinkItemId": "cola",
-                "modifications": [
-                    {
-                        "modificationId": "no_lettuce",
-                        "isAddition": false
-                    },
-                    {
-                        "modificationId": "extra_patty",
-                        "isAddition": true
-                    },
-                    {
-                        "modificationId": "no_tomato",
-                        "isAddition": false
-                    }
-                ],
-                "patienceType": "Normal",
-                "customerNameOverride": "",
-                "timeLimitSecondsOverride": 0.0
-            },
-            {
-                "mainItemId": "burger",
-                "sideItemId": "fries",
-                "drinkItemId": "cola",
-                "modifications": [
-                    {
-                        "modificationId": "extra_patty",
-                        "isAddition": true
-                    },
-                    {
-                        "modificationId": "no_lettuce",
-                        "isAddition": false
-                    },
-                    {
-                        "modificationId": "extra_cheese",
-                        "isAddition": true
                     }
                 ],
                 "patienceType": "Normal",
@@ -183,13 +176,22 @@
         "star3Threshold": 0
     },
     "editorMeta": {
+        "allowedFoodItemIds": [
+            "burger",
+            "fries",
+            "cola"
+        ],
         "hasTicketGenerationOverride": false,
         "sideInclusionChanceOverride": 0.0,
         "drinkInclusionChanceOverride": 0.0,
         "modificationCountLambdaOverride": 0.0,
         "hasBoardDistributionOverride": false,
         "noiseLeakCountLambdaOverride": 0.0,
+        "guaranteedTicketCountModeOverride": 0,
         "guaranteedTicketCountOverride": 0,
+        "guaranteedTicketCountLambdaOverride": 0.0,
+        "earlyTicketWeightDecayOverride": 0.0,
+        "urgentTimeThresholdSecondsOverride": 0.0,
         "leakDepthOverride": 0,
         "maxLeakCountOverride": 0
     }

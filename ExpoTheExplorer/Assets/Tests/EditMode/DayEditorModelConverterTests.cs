@@ -75,6 +75,7 @@ namespace ExpoTheExplorer.Tests.EditMode
                 },
                 editorMeta = new DayEditorMetaJson
                 {
+                    allowedFoodItemIds = new[] { main.Id, drink.Id },
                     hasTicketGenerationOverride = true,
                     sideInclusionChanceOverride = 0.25f,
                     drinkInclusionChanceOverride = 0.75f,
@@ -113,7 +114,9 @@ namespace ExpoTheExplorer.Tests.EditMode
                 model.BoardTimeline.Add(new DayEditorBoardSpawnEntry { TriggerStepIndex = step, Item = main, UseExactCell = true, X = step % 6, Y = step / 6 });
             }
 
-            var result = DayValidator.Validate(model.ToDayDefinition());
+            // null = "no catalog to resolve the selection against", which skips the
+            // food-selection check; this test is about the DayDefinition conversion.
+            var result = DayValidator.Validate(model.ToDayDefinition(), null);
 
             CollectionAssert.IsEmpty(result.Errors);
         }

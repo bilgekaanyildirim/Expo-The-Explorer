@@ -194,6 +194,11 @@
         "star3Threshold": 0
     },
     "editorMeta": {
+        "allowedFoodItemIds": [
+            "burger",
+            "fries",
+            "cola"
+        ],
         "hasTicketGenerationOverride": false,
         "sideInclusionChanceOverride": 0.0,
         "drinkInclusionChanceOverride": 0.0,
