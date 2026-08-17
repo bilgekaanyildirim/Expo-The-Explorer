@@ -765,14 +765,14 @@ namespace ExpoTheExplorer.Editor
     [Serializable]
     public class DayEditorTicketGeneration
     {
-        [UnityEngine.Range(0f, 1f)] public float SideInclusionChance = 0.5f;
-        [UnityEngine.Range(0f, 1f)] public float DrinkInclusionChance = 0.5f;
+        [PropertyRange(0f, 1f)] public float SideInclusionChance = 0.5f;
+        [PropertyRange(0f, 1f)] public float DrinkInclusionChance = 0.5f;
 
-        [UnityEngine.Range(0f, 10f)]
+        [PropertyRange(0f, 10f)]
         [UnityEngine.Tooltip("Fallback Poisson rate for a Main dish missing from Main Dish Weights below -- a dish listed there uses its own rate instead.")]
         public float ModificationCountLambda = MainDishWeight.DefaultModificationCountLambda;
 
-        [UnityEngine.Range(0f, 1f)]
+        [PropertyRange(0f, 1f)]
         [UnityEngine.Tooltip("Only consulted for Both-direction modifications; AdditionOnly/RemovalOnly get their direction from the modification itself.")]
         public float ModificationAdditionChance = 0.5f;
 
@@ -814,7 +814,7 @@ namespace ExpoTheExplorer.Editor
         // object picker; ToJson writes the id back out, like every other food reference.
         public FoodItemConfig Food;
         public float Weight = MainDishWeight.DefaultWeight;
-        [UnityEngine.Range(0f, 10f)] public float ModificationCountLambda = MainDishWeight.DefaultModificationCountLambda;
+        [PropertyRange(0f, 10f)] public float ModificationCountLambda = MainDishWeight.DefaultModificationCountLambda;
 
         // Same tolerance as DayEditorTicketEntry.FromJson: an id whose FoodItemConfig is
         // gone leaves Food null (an empty slot in the editor) instead of dropping the row,
@@ -843,14 +843,14 @@ namespace ExpoTheExplorer.Editor
     [Serializable]
     public class DayEditorBoardDistribution
     {
-        [UnityEngine.Range(0f, 10f)] public float NoiseLeakCountLambda = 0.5f;
+        [PropertyRange(0f, 10f)] public float NoiseLeakCountLambda = 0.5f;
         public GuaranteedTicketCountMode GuaranteedTicketCountMode = GuaranteedTicketCountMode.Manual;
-        [UnityEngine.Range(1, 3)] public int GuaranteedTicketCount = 1;
-        [UnityEngine.Range(0f, 3f)] public float GuaranteedTicketCountLambda = 1f;
-        [UnityEngine.Range(0f, 1f)] public float EarlyTicketWeightDecay = 0.5f;
-        [UnityEngine.Range(0f, 30f)] public float UrgentTimeThresholdSeconds = 10f;
-        [UnityEngine.Range(1, 10)] public int LeakDepth = 10;
-        [UnityEngine.Range(1, 10)] public int MaxLeakCount = 10;
+        [PropertyRange(1, 3)] public int GuaranteedTicketCount = 1;
+        [PropertyRange(0f, 3f)] public float GuaranteedTicketCountLambda = 1f;
+        [PropertyRange(0f, 1f)] public float EarlyTicketWeightDecay = 0.5f;
+        [PropertyRange(0f, 30f)] public float UrgentTimeThresholdSeconds = 10f;
+        [PropertyRange(1, 10)] public int LeakDepth = 10;
+        [PropertyRange(1, 10)] public int MaxLeakCount = 10;
 
         public static DayEditorBoardDistribution FromJson(BoardDistributionJson json)
         {
