@@ -5,8 +5,12 @@
   "_worktree_deny": "A subagent spawned with isolation: worktree gets a fresh working copy branched from the default branch. CLAUDE_PROJECT_DIR and every manifest path in the preflight then point somewhere else, so the gate can neither verify nor meaningfully deny. Refusing the isolation flag outright is the readable answer; the committed .claude/unity-dev.json marker is the backstop if this rule is ever removed.",
   "_subagent_start": "SubagentStart is the only lever that reaches the BUILT-IN Explore and Plan agents, which skip the CLAUDE.md hierarchy by design and would otherwise answer a location question with a repo-wide scan. It carries no matcher on purpose: every agent type gets the map contract, including ones added later. .claude/agents/Explore.md overrides the built-in on top of this and is independent of it.",
   "_file_changed": "FileChanged carries no matcher here. That field builds the STATIC watch list out of literal filenames in the working directory and accepts only letters, digits, _ and | — it cannot express a path. The real watch list is published at runtime by session_context.py as SessionStart watchPaths (absolute scene/prefab/.asset paths). With no matcher this group matches every watched change. FileChanged has no decision control and its stderr reaches the user only, so the hook records drift to .claude/map-drift and map_drift_notice.sh reports it to Claude on the next prompt.",
+  "_bg_isolation": "Background sessions must NOT be auto-isolated into a worktree, for the same reason `_worktree_deny` above refuses the subagent flag: CLAUDE_PROJECT_DIR and every preflight manifest path would then point at a fresh working copy, so preflight_guard.sh/codemap_guard.sh can neither verify nor meaningfully deny, and a background job stalls against a gate it cannot satisfy. Isolation for this repo is the preflight manifest, not a separate checkout.",
   "permissions": {
     "deny": ["Agent(isolation:worktree)"]
+  },
+  "worktree": {
+    "bgIsolation": "none"
   },
   "hooks": {
     "SessionStart": [
