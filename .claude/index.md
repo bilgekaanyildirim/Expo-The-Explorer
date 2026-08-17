@@ -11,7 +11,7 @@ maps and never invents a name.
 | BoardDistribution | core | ExpoTheExplorer/Assets/Data/DataScripts/BoardDistributionSettings.cs, ExpoTheExplorer/Assets/Scripts/Systems/BoardDistribution/BoardDistributor.cs (+2) | - | - | - | OK |
 | BoardUI | core, ui | ExpoTheExplorer/Assets/Scripts/UI/BoardView.cs, ExpoTheExplorer/Assets/Data/DataScripts/BoardVisualsConfig.cs | - | - | - | OK |
 | Bootstrap | core | ExpoTheExplorer/Assets/Scripts/Bootstrap/GameManager.cs, ExpoTheExplorer/Assets/Scripts/Bootstrap/DebugTicketDeliveryController.cs | - | - | - | OK |
-| DayEditor | core, editor | ExpoTheExplorer/Assets/Editor/DayEditorDayStartPreview.cs, ExpoTheExplorer/Assets/Editor/DayEditorModel.cs (+4) | - | - | - | OK |
+| DayEditor | core, editor | ExpoTheExplorer/Assets/Editor/DayEditorDayStartPreview.cs, ExpoTheExplorer/Assets/Editor/DayEditorModel.cs (+5) | - | - | - | OK |
 | DayLifecycle | core, ui | ExpoTheExplorer/Assets/Scripts/Systems/DayLifecycle/DayLifecycleManager.cs, ExpoTheExplorer/Assets/Scripts/Systems/DayLifecycle/ExpoTheExplorer.Systems.DayLifecycle.asmdef (+2) | - | - | - | OK |
 | DaySystem | core | ExpoTheExplorer/Assets/Scripts/Systems/DaySystem/DayBoardTimelinePlayer.cs, ExpoTheExplorer/Assets/Scripts/Systems/DaySystem/DayCatalogParser.cs (+11) | - | - | - | OK |
 | EconomySystem | core, editor | ExpoTheExplorer/Assets/Data/DataScripts/EconomyConfig.cs, ExpoTheExplorer/Assets/Scripts/Systems/EconomySystem/EconomyCalculator.cs (+3) | - | - | - | OK |
@@ -22,4 +22,4 @@ maps and never invents a name.
 
 ## Gaps
 - `sys: ?` on 54 codemap line(s) — first: ExpoTheExplorer/Assets/Data/ExpoTheExplorer.Data.asmdef, ExpoTheExplorer/Assets/Data/DataScripts/BoardAnimationConfig.cs, ExpoTheExplorer/Assets/Data/DataScripts/DragFeelConfig.cs
-- 4 flagged codemap line(s) excluded from this table (STALE)
+- 3 flagged codemap line(s) excluded from this table (STALE)

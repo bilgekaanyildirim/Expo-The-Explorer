@@ -281,7 +281,10 @@ namespace ExpoTheExplorer.Editor
         [UnityEngine.HideInInspector]
         public List<DayEditorBoardSpawnEntry> BoardTimeline = new();
 
-        [FoldoutGroup("Editor Overrides (Generate-only)"), HideLabel, PropertyOrder(-3)]
+        // Named for what it is since D-006 removed the override layer: these settings are not
+        // overrides of anything, they are the record of how this Day's ticketSequence was
+        // generated, and the input the next Generate uses.
+        [FoldoutGroup("Generation Settings (authoring only)"), HideLabel, PropertyOrder(-3)]
         public DayEditorMetaModel EditorMeta = new();
 
         // Which foods exist in this Day: drives Generate's pool AND the ticket editor's

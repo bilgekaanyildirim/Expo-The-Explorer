@@ -39,8 +39,21 @@ namespace ExpoTheExplorer.Editor
             var isDragging = draggedIndex >= 0 && (Event.current.mousePosition - dragStartMousePos).sqrMagnitude > DragThreshold * DragThreshold;
 
             var totalWidth = entries.Count * (CardWidth + Spacing);
-            scrollPos = EditorGUILayout.BeginScrollView(scrollPos, false, false, GUILayout.Height(CardHeight + 20));
-            var stripRect = GUILayoutUtility.GetRect(totalWidth, CardHeight);
+
+            // Clipped by hand rather than wrapped in an EditorGUILayout scroll view. A nested
+            // scroll view swallowed the mouse wheel: the strip's content fits vertically, so
+            // Unity turned every vertical wheel tick over it into a HORIZONTAL scroll of the
+            // strip, and the page underneath refused to move at all. GUI.BeginClip does the
+            // same coordinate shift a scroll view does -- content-space rects and
+            // Event.current.mousePosition stay in the same space as each other -- so the card
+            // hit-testing and drag math below are unaffected, but the wheel now falls through
+            // to Odin's own scroll view where it belongs.
+            var viewRect = GUILayoutUtility.GetRect(0f, CardHeight, GUILayout.ExpandWidth(true));
+            var maxScroll = Mathf.Max(0f, totalWidth - viewRect.width);
+            scrollPos.x = Mathf.Clamp(scrollPos.x, 0f, maxScroll);
+
+            GUI.BeginClip(viewRect, new Vector2(-scrollPos.x, 0f), Vector2.zero, false);
+            var stripRect = new Rect(0f, 0f, totalWidth, CardHeight);
             for (var i = 0; i < entries.Count; i++)
             {
                 var cardRect = new Rect(stripRect.x + i * (CardWidth + Spacing), stripRect.y, CardWidth, CardHeight);
@@ -114,7 +127,14 @@ namespace ExpoTheExplorer.Editor
                 DrawCard(ghostRect, entries[draggedIndex], visuals, draggedIndex, false, 0.85f); // reuses DrawCard as the drag ghost
             }
 
-            EditorGUILayout.EndScrollView();
+            GUI.EndClip();
+
+            // Drawn outside the clip so it stays put while the strip slides under it. Hidden
+            // when everything already fits, so a short Day gets no dead scrollbar row.
+            if (maxScroll > 0f)
+            {
+                scrollPos.x = GUILayout.HorizontalScrollbar(scrollPos.x, viewRect.width, 0f, totalWidth);
+            }
         }
 
         private static int ComputeTargetIndex(Rect stripRect, int count, float mouseX)

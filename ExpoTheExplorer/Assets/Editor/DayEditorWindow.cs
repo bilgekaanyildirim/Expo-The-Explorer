@@ -19,6 +19,15 @@ namespace ExpoTheExplorer.Editor
             window.Show();
         }
 
+        // Pixels, not the inherited default. Odin reads this as a PERCENTAGE when it is
+        // between 0 and 1 ("values between 0 and 1 are treated as percentages, and values
+        // above as pixels"), and the inherited default is a percentage -- so the label
+        // column grew in step with the window and the value column never gained any room.
+        // Widening the window could not fix it, which is exactly how it showed up: the
+        // sliders' number fields sat permanently past the right edge. A fixed width gives
+        // every extra pixel of window to the value column instead.
+        public override float DefaultLabelWidth => 260f;
+
         private FoodCatalog catalog;
         private GameConfig gameConfig;
         private TicketGenerationConfig ticketConfig;
