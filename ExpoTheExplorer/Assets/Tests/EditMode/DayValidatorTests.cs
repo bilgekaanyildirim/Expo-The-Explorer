@@ -199,31 +199,12 @@ namespace ExpoTheExplorer.Tests.EditMode
             Assert.IsTrue(HasWarningContaining(result, "reaches past Upcoming Queue Size"));
         }
 
-        // The state both shipped Days are in: every attempt scores 3 stars.
-        [Test]
-        public void Validate_AllStarThresholdsZero_WarnsButStaysValid()
-        {
-            var result = DayValidator.Validate(DayWithSettings(), null);
 
-            Assert.IsTrue(result.IsValid);
-            Assert.IsTrue(HasWarningContaining(result, "every attempt earns 3 stars"));
-        }
-
-        [Test]
-        public void Validate_StarThresholdsNotAscending_WarnsButStaysValid()
-        {
-            var day = DayWithSettings(star1: 300, star2: 200, star3: 100);
-
-            var result = DayValidator.Validate(day, null);
-
-            Assert.IsTrue(result.IsValid);
-            Assert.IsTrue(HasWarningContaining(result, "expected 1 < 2 < 3 stars"));
-        }
 
         [Test]
         public void Validate_WellFormedSettings_ProducesNoWarnings()
         {
-            var day = DayWithSettings(star1: 100, star2: 200, star3: 300);
+            var day = DayWithSettings();
 
             var result = DayValidator.Validate(day, null);
 
@@ -236,8 +217,7 @@ namespace ExpoTheExplorer.Tests.EditMode
         [Test]
         public void Validate_NoSettingsBlocks_DoesNotThrowOrComplainAboutThem()
         {
-            var day = new DayDefinition(0, 0, new List<ResolvedTicketEntry>(), new List<ResolvedBoardSpawnEntry>(),
-                star1Threshold: 100, star2Threshold: 200, star3Threshold: 300);
+            var day = new DayDefinition(0, 0, new List<ResolvedTicketEntry>(), new List<ResolvedBoardSpawnEntry>());
 
             DayValidationResult result = null;
             Assert.DoesNotThrow(() => result = DayValidator.Validate(day, null));
@@ -259,12 +239,10 @@ namespace ExpoTheExplorer.Tests.EditMode
         // rule quiet, so each test above asserts on its own rule alone.
         private static DayDefinition DayWithSettings(
             TicketRuntimeSettings ticketRuntime = null,
-            BoardDistributionSettings board = null,
-            int star1 = 0, int star2 = 0, int star3 = 0)
+            BoardDistributionSettings board = null)
         {
             return new DayDefinition(
                 0, 0, new List<ResolvedTicketEntry>(), new List<ResolvedBoardSpawnEntry>(),
-                star1, star2, star3,
                 board ?? CreateBoardSettings(),
                 ticketRuntime ?? new TicketRuntimeSettings(45f, 90f, 150f, 10));
         }

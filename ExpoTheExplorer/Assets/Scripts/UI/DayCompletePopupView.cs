@@ -63,7 +63,6 @@ namespace ExpoTheExplorer.UI
         private void Show(int _)
         {
             var summary = gameManager.DayLifecycleManager;
-            var thresholds = gameManager.CurrentDayStarThresholds;
 
             ordersDeliveredCountText.text = summary.OrdersDeliveredCount.ToString();
             ordersDeliveredValueText.text = summary.OrdersDeliveredValue.ToString();
@@ -72,9 +71,12 @@ namespace ExpoTheExplorer.UI
             ordersFailedValueText.text = "0"; // no failure-penalty formula in the GDD yet
             totalText.text = summary.Total.ToString();
 
-            star1Filled.SetActive(summary.Total >= thresholds.Star1);
-            star2Filled.SetActive(summary.Total >= thresholds.Star2);
-            star3Filled.SetActive(summary.Total >= thresholds.Star3);
+            // Just renders the count the day's bookkeeping already worked out -- the rule
+            // behind it lives in DayLifecycleManager.StarCount, where it can be tested.
+            var stars = summary.StarCount;
+            star1Filled.SetActive(stars >= 1);
+            star2Filled.SetActive(stars >= 2);
+            star3Filled.SetActive(stars >= 3);
 
             popupRoot.SetActive(true);
         }

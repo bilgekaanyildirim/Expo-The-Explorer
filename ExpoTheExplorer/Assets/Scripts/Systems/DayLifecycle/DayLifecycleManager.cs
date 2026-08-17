@@ -26,6 +26,19 @@ namespace ExpoTheExplorer.Systems.DayLifecycle
         public int OrdersFailedCount => ordersFailedToday;
         public int Total => totalBaseTipToday + totalBonusTipToday;
 
+        public const int MaxStars = 3;
+
+        // One star lost per life lost: a flawless day is 3 stars, one slip is 2, two is 1
+        // (decisions.md D-008). Replaces the old comparison of Total against per-Day authored
+        // thresholds -- stars now measure accuracy alone, and nothing has to be balanced by
+        // hand for each Day.
+        //
+        // Lives start at 3, so finishing a day with 3 or more failures is only reachable by
+        // paying Gems to continue: that refills lives but deliberately does not reset this
+        // counter, since it is still the same attempt. Those runs floor at 0 stars -- the day
+        // is completed and paid out, it just earns nothing to show for it.
+        public int StarCount => Mathf.Max(0, MaxStars - ordersFailedToday);
+
         // Rounds once per delivery, the same way GameManager rounds before
         // adding to SoftMoney -- keeps OrdersDeliveredValue + TipsValue always
         // summing to exactly the SoftMoney the player actually received today,

@@ -31,13 +31,6 @@ namespace ExpoTheExplorer.Systems.DaySystem
         public TicketEntryJson[] ticketSequence;
         public BoardSpawnEntryJson[] boardTimeline;
 
-        // Day Complete popup star rating (score = sum of delivered BaseTip + tip
-        // bonus for the day) -- ascending score needed for 1/2/3 stars, authored
-        // per Day alongside ticketSequence/boardTimeline rather than as a global
-        // config, since thresholds are expected to scale with day difficulty.
-        public int star1Threshold;
-        public int star2Threshold;
-        public int star3Threshold;
     }
 
     [Serializable]

@@ -94,9 +94,6 @@ namespace ExpoTheExplorer.Tests.EditMode
                     },
                     ticketSequence = new[] { ticketEntry },
                     boardTimeline = new[] { boardSpawnEntry },
-                    star1Threshold = 100,
-                    star2Threshold = 200,
-                    star3Threshold = 300,
                 },
                 editorMeta = new DayEditorMetaJson
                 {
@@ -117,15 +114,12 @@ namespace ExpoTheExplorer.Tests.EditMode
         }
 
         [Test]
-        public void FromDayJson_ThenToDayJson_KeepsStarThresholdsAndBoardDistribution()
+        public void FromDayJson_ThenToDayJson_KeepsTheSettingsBlocks()
         {
             var model = DayEditorModel.FromDayJson(CreateFullDayJson(), catalog);
 
             var runtime = model.ToDayJson().runtime;
 
-            Assert.AreEqual(100, runtime.star1Threshold);
-            Assert.AreEqual(200, runtime.star2Threshold);
-            Assert.AreEqual(300, runtime.star3Threshold);
             Assert.AreEqual("Poisson", runtime.boardDistribution.guaranteedTicketCountMode);
             Assert.AreEqual(7f, runtime.boardDistribution.urgentTimeThresholdSeconds);
             Assert.AreEqual(4, runtime.boardDistribution.leakDepth);

@@ -91,7 +91,7 @@ namespace ExpoTheExplorer.Systems.DaySystem
             }
 
             return new DayDefinition(runtime.dayIndex, runtime.ticketsRequiredForDay, ticketSequence, boardTimeline,
-                runtime.star1Threshold, runtime.star2Threshold, runtime.star3Threshold, boardDistribution, ticketRuntime);
+                boardDistribution, ticketRuntime);
         }
 
         // Same absence-by-content detection as ResolveBoardDistribution (JsonUtility gives

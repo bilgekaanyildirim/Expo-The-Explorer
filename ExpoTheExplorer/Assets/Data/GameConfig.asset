@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   boardWidth: 6
   boardHeight: 5
-  startingLives: 5
+  startingLives: 3
   startingSoftMoney: 250
   startingGems: 100
   startingXp: 0

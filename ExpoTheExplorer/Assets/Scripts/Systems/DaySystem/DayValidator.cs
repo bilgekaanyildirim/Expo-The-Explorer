@@ -72,7 +72,6 @@ namespace ExpoTheExplorer.Systems.DaySystem
 
             ValidateTicketRuntime(day.TicketRuntime, errors, warnings);
             ValidateBoardDistribution(day.BoardDistribution, day.TicketRuntime, warnings);
-            ValidateStarThresholds(day, warnings);
 
             return new DayValidationResult(errors, warnings);
         }
@@ -130,23 +129,6 @@ namespace ExpoTheExplorer.Systems.DaySystem
             }
         }
 
-        // Star thresholds are compared against the day's earned score (see
-        // ExpoTheExplorer/CLAUDE.md, "Day Complete Popup / Star Rating"). All-zero is the
-        // state both shipped Days are in today, and it silently awards 3 stars for any
-        // result at all -- worth saying out loud, but it is authored content, not a fault.
-        private static void ValidateStarThresholds(DayDefinition day, List<string> warnings)
-        {
-            if (day.Star1Threshold == 0 && day.Star2Threshold == 0 && day.Star3Threshold == 0)
-            {
-                warnings.Add("Star Thresholds: all three are 0, so every attempt earns 3 stars.");
-                return;
-            }
-
-            if (!(day.Star1Threshold < day.Star2Threshold && day.Star2Threshold < day.Star3Threshold))
-            {
-                warnings.Add($"Star Thresholds: expected 1 < 2 < 3 stars, but this Day has {day.Star1Threshold} / {day.Star2Threshold} / {day.Star3Threshold} -- a tier that is not above the one below it can never be the result.");
-            }
-        }
 
         private static IEnumerable<FoodItemConfig> RequiredItemsOf(ResolvedTicketEntry ticket)
         {

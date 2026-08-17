@@ -43,11 +43,6 @@ namespace ExpoTheExplorer.Bootstrap
         public LevelManager LevelManager { get; private set; }
         public DayLifecycleManager DayLifecycleManager { get; private set; }
 
-        // Day Complete popup reads this against DayLifecycleManager.Total to
-        // decide how many of the day's 3 stars light up.
-        public (int Star1, int Star2, int Star3) CurrentDayStarThresholds =>
-            (CurrentDay.Star1Threshold, CurrentDay.Star2Threshold, CurrentDay.Star3Threshold);
-
         private TicketFactory ticketFactory;
         private EconomyCalculator economyCalculator;
         private IReadOnlyList<DayDefinition> dayCatalog;

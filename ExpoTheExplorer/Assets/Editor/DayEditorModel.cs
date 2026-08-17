@@ -22,18 +22,6 @@ namespace ExpoTheExplorer.Editor
         [BoxGroup("Day"), PropertyOrder(-4)]
         public int TicketsRequiredForDay = 10;
 
-        // Day Complete popup's 3-star rating, compared against the day's earned score
-        // (summed BaseTip + tip bonus). Authored per Day -- see ExpoTheExplorer/CLAUDE.md
-        // "Day Complete Popup / Star Rating". These were absent from this model while the
-        // JSON carried them, so every Save silently reset all three to 0.
-        [BoxGroup("Star Thresholds"), PropertyOrder(-3), LabelText("1 Star")]
-        public int Star1Threshold;
-
-        [BoxGroup("Star Thresholds"), PropertyOrder(-3), LabelText("2 Stars")]
-        public int Star2Threshold;
-
-        [BoxGroup("Star Thresholds"), PropertyOrder(-3), LabelText("3 Stars")]
-        public int Star3Threshold;
 
         // Per-Day BoardDistributor balancing, replacing the shared BoardDistributionConfig
         // asset as the runtime authority. Odin draws this as a plain nested box for now;
@@ -634,9 +622,6 @@ namespace ExpoTheExplorer.Editor
                     ticketRuntime = TicketRuntime.ToJson(),
                     ticketSequence = TicketSequence.Select(e => e.ToJson()).ToArray(),
                     boardTimeline = BoardTimeline.Select(e => e.ToJson()).ToArray(),
-                    star1Threshold = Star1Threshold,
-                    star2Threshold = Star2Threshold,
-                    star3Threshold = Star3Threshold,
                 },
                 editorMeta = EditorMeta.ToJson(),
             };
@@ -647,7 +632,7 @@ namespace ExpoTheExplorer.Editor
             var ticketSequence = TicketSequence.Select(e => e.ToResolved()).ToList();
             var boardTimeline = BoardTimeline.Select(e => e.ToResolved()).ToList();
             return new DayDefinition(DayIndex, TicketsRequiredForDay, ticketSequence, boardTimeline,
-                Star1Threshold, Star2Threshold, Star3Threshold, BoardDistribution.ToResolved(), TicketRuntime.ToResolved());
+                BoardDistribution.ToResolved(), TicketRuntime.ToResolved());
         }
 
         public static DayEditorModel FromDayJson(DayJson json, FoodCatalog catalog)
@@ -663,9 +648,6 @@ namespace ExpoTheExplorer.Editor
                     .Select(e => DayEditorTicketEntry.FromJson(e, catalog)).ToList(),
                 BoardTimeline = (runtime?.boardTimeline ?? Array.Empty<BoardSpawnEntryJson>())
                     .Select(e => DayEditorBoardSpawnEntry.FromJson(e, catalog)).ToList(),
-                Star1Threshold = runtime?.star1Threshold ?? 0,
-                Star2Threshold = runtime?.star2Threshold ?? 0,
-                Star3Threshold = runtime?.star3Threshold ?? 0,
                 EditorMeta = DayEditorMetaModel.FromJson(json?.editorMeta, catalog),
             };
 
