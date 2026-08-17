@@ -64,6 +64,7 @@ namespace ExpoTheExplorer.Tests.EditMode
                 {
                     dayIndex = 0,
                     ticketsRequiredForDay = ticketsRequiredForDay,
+                    boardDistribution = ValidBoardDistribution(),
                     ticketSequence = result,
                     boardTimeline = Array.Empty<BoardSpawnEntryJson>(),
                 },
@@ -125,6 +126,7 @@ namespace ExpoTheExplorer.Tests.EditMode
                 {
                     dayIndex = 0,
                     ticketsRequiredForDay = ticketsRequiredForDay,
+                    boardDistribution = ValidBoardDistribution(),
                     ticketSequence = result,
                     boardTimeline = Array.Empty<BoardSpawnEntryJson>(),
                 },
@@ -194,6 +196,20 @@ namespace ExpoTheExplorer.Tests.EditMode
                 property.GetArrayElementAtIndex(i).objectReferenceValue = values[i];
             }
             serialized.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        // DayCatalogParser drops a Day whose runtime.boardDistribution block is missing. These
+        // integration tests drive TicketSlotManager off a parsed Day, so the block has to be
+        // present; BoardDistributor is not part of this suite, so the values are arbitrary.
+        private static BoardDistributionJson ValidBoardDistribution()
+        {
+            return new BoardDistributionJson
+            {
+                guaranteedTicketCountMode = "Manual",
+                guaranteedTicketCount = 1,
+                leakDepth = 10,
+                maxLeakCount = 10,
+            };
         }
 
         private TicketGenerationConfig CreateTicketGenerationConfig()

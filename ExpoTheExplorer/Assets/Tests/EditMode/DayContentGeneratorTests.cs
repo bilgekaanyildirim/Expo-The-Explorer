@@ -155,6 +155,7 @@ namespace ExpoTheExplorer.Tests.EditMode
                 {
                     dayIndex = 0,
                     ticketsRequiredForDay = 8,
+                    boardDistribution = ValidBoardDistribution(),
                     ticketSequence = result,
                     boardTimeline = Array.Empty<BoardSpawnEntryJson>(),
                 },
@@ -180,6 +181,20 @@ namespace ExpoTheExplorer.Tests.EditMode
         private class ComparableResult
         {
             public TicketEntryJson[] ticketSequence;
+        }
+
+        // DayCatalogParser drops a Day whose runtime.boardDistribution block is missing. This
+        // suite only round-trips through the parser to prove the generated ticketSequence
+        // survives it, so the values just have to be structurally valid.
+        private static BoardDistributionJson ValidBoardDistribution()
+        {
+            return new BoardDistributionJson
+            {
+                guaranteedTicketCountMode = "Manual",
+                guaranteedTicketCount = 1,
+                leakDepth = 10,
+                maxLeakCount = 10,
+            };
         }
 
         private static string ToComparableJson(TicketEntryJson[] result)

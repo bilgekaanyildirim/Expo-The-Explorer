@@ -78,8 +78,55 @@ namespace ExpoTheExplorer.Systems.DaySystem
                 boardTimeline.Add(resolvedSpawn);
             }
 
+            var boardDistribution = ResolveBoardDistribution(runtime.boardDistribution, fileName);
+            if (boardDistribution == null)
+            {
+                return null;
+            }
+
             return new DayDefinition(runtime.dayIndex, runtime.ticketsRequiredForDay, ticketSequence, boardTimeline,
-                runtime.star1Threshold, runtime.star2Threshold, runtime.star3Threshold);
+                runtime.star1Threshold, runtime.star2Threshold, runtime.star3Threshold, boardDistribution);
+        }
+
+        // JsonUtility cannot express a null nested [Serializable] class -- an absent
+        // boardDistribution block comes back as a non-null instance with every field at
+        // its CLR default, indistinguishable from a deliberately-zeroed one. So absence
+        // is detected by content instead of by a null check or a "has..." sentinel bool
+        // (the sentinel pattern was removed with the retry variant, decisions.md D-003):
+        // the mode string is empty on an unauthored block, and the three counts below are
+        // documented as never-zero in BoardDistributionConfig. Getting this wrong is not
+        // cosmetic -- a silently zeroed block disables the urgent-ticket guarantee and
+        // flattens the arrival-weighted lottery, which is precisely how the shared config
+        // asset ended up with two of D-001's features quietly switched off.
+        private static ResolvedBoardDistribution ResolveBoardDistribution(BoardDistributionJson json, string fileName)
+        {
+            if (json == null || string.IsNullOrEmpty(json.guaranteedTicketCountMode))
+            {
+                Debug.LogError($"Day file '{fileName}': runtime.boardDistribution block is missing or has no guaranteedTicketCountMode.");
+                return null;
+            }
+
+            if (!Enum.TryParse<GuaranteedTicketCountMode>(json.guaranteedTicketCountMode, out var mode))
+            {
+                Debug.LogError($"Day file '{fileName}': invalid guaranteedTicketCountMode '{json.guaranteedTicketCountMode}'.");
+                return null;
+            }
+
+            if (json.guaranteedTicketCount < 1 || json.leakDepth < 1 || json.maxLeakCount < 1)
+            {
+                Debug.LogError($"Day file '{fileName}': runtime.boardDistribution is incomplete -- guaranteedTicketCount ({json.guaranteedTicketCount}), leakDepth ({json.leakDepth}) and maxLeakCount ({json.maxLeakCount}) must all be at least 1.");
+                return null;
+            }
+
+            return new ResolvedBoardDistribution(
+                json.noiseLeakCountLambda,
+                mode,
+                json.guaranteedTicketCount,
+                json.guaranteedTicketCountLambda,
+                json.earlyTicketWeightDecay,
+                json.urgentTimeThresholdSeconds,
+                json.leakDepth,
+                json.maxLeakCount);
         }
 
         private static ResolvedTicketEntry ResolveTicketEntry(TicketEntryJson entry, FoodCatalog catalog, string fileName)

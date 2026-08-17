@@ -21,6 +21,26 @@ namespace ExpoTheExplorer.Editor
         [BoxGroup("Day"), PropertyOrder(-4)]
         public int TicketsRequiredForDay = 10;
 
+        // Day Complete popup's 3-star rating, compared against the day's earned score
+        // (summed BaseTip + tip bonus). Authored per Day -- see ExpoTheExplorer/CLAUDE.md
+        // "Day Complete Popup / Star Rating". These were absent from this model while the
+        // JSON carried them, so every Save silently reset all three to 0.
+        [BoxGroup("Star Thresholds"), PropertyOrder(-3), LabelText("1 Star")]
+        public int Star1Threshold;
+
+        [BoxGroup("Star Thresholds"), PropertyOrder(-3), LabelText("2 Stars")]
+        public int Star2Threshold;
+
+        [BoxGroup("Star Thresholds"), PropertyOrder(-3), LabelText("3 Stars")]
+        public int Star3Threshold;
+
+        // Per-Day BoardDistributor balancing, replacing the shared BoardDistributionConfig
+        // asset as the runtime authority. Odin draws this as a plain nested box for now;
+        // grouping, seeding from the config asset and the leak-distribution preview land in
+        // a later step of .claude/day-config-plan.md.
+        [BoxGroup("Board Distribution"), HideLabel, PropertyOrder(-2.5f)]
+        public DayEditorBoardDistribution BoardDistribution = new();
+
         [FoldoutGroup("Ticket Sequence"), OnInspectorGUI, PropertyOrder(-1)]
         private void DrawTicketCardPreview() => DayEditorTicketCardPreview.DrawStrip(TicketSequence, sharedTicketCardVisuals, ref ticketStripScrollPos, ref selectedTicketIndex, ref draggedTicketIndex, ref ticketDragStartMousePos);
 
@@ -535,8 +555,12 @@ namespace ExpoTheExplorer.Editor
                 {
                     dayIndex = DayIndex,
                     ticketsRequiredForDay = TicketsRequiredForDay,
+                    boardDistribution = BoardDistribution.ToJson(),
                     ticketSequence = TicketSequence.Select(e => e.ToJson()).ToArray(),
                     boardTimeline = BoardTimeline.Select(e => e.ToJson()).ToArray(),
+                    star1Threshold = Star1Threshold,
+                    star2Threshold = Star2Threshold,
+                    star3Threshold = Star3Threshold,
                 },
                 editorMeta = EditorMeta.ToJson(),
             };
@@ -546,7 +570,8 @@ namespace ExpoTheExplorer.Editor
         {
             var ticketSequence = TicketSequence.Select(e => e.ToResolved()).ToList();
             var boardTimeline = BoardTimeline.Select(e => e.ToResolved()).ToList();
-            return new DayDefinition(DayIndex, TicketsRequiredForDay, ticketSequence, boardTimeline);
+            return new DayDefinition(DayIndex, TicketsRequiredForDay, ticketSequence, boardTimeline,
+                Star1Threshold, Star2Threshold, Star3Threshold, BoardDistribution.ToResolved());
         }
 
         public static DayEditorModel FromDayJson(DayJson json, FoodCatalog catalog)
@@ -556,10 +581,14 @@ namespace ExpoTheExplorer.Editor
             {
                 DayIndex = runtime?.dayIndex ?? 0,
                 TicketsRequiredForDay = runtime?.ticketsRequiredForDay ?? 10,
+                BoardDistribution = DayEditorBoardDistribution.FromJson(runtime?.boardDistribution),
                 TicketSequence = (runtime?.ticketSequence ?? Array.Empty<TicketEntryJson>())
                     .Select(e => DayEditorTicketEntry.FromJson(e, catalog)).ToList(),
                 BoardTimeline = (runtime?.boardTimeline ?? Array.Empty<BoardSpawnEntryJson>())
                     .Select(e => DayEditorBoardSpawnEntry.FromJson(e, catalog)).ToList(),
+                Star1Threshold = runtime?.star1Threshold ?? 0,
+                Star2Threshold = runtime?.star2Threshold ?? 0,
+                Star3Threshold = runtime?.star3Threshold ?? 0,
                 EditorMeta = DayEditorMetaModel.FromJson(json?.editorMeta),
             };
 
@@ -690,7 +719,6 @@ namespace ExpoTheExplorer.Editor
     public class DayEditorMetaModel
     {
         private const string TicketGenGroup = nameof(HasTicketGenerationOverride);
-        private const string BoardDistGroup = nameof(HasBoardDistributionOverride);
 
         // Drawn by DayEditorModel's own "Food Selection" section, not by Odin here: the UI
         // has to render a tile for every FoodCatalog item, and this plain serializable
@@ -704,16 +732,6 @@ namespace ExpoTheExplorer.Editor
         [ToggleGroup(TicketGenGroup, "Ticket Generation Override")] public float DrinkInclusionChanceOverride;
         [ToggleGroup(TicketGenGroup, "Ticket Generation Override")] public float ModificationCountLambdaOverride;
 
-        [ToggleGroup(BoardDistGroup, "Board Distribution Override")] public bool HasBoardDistributionOverride;
-        [ToggleGroup(BoardDistGroup, "Board Distribution Override")] public float NoiseLeakCountLambdaOverride;
-        [ToggleGroup(BoardDistGroup, "Board Distribution Override")] public GuaranteedTicketCountMode GuaranteedTicketCountModeOverride;
-        [ToggleGroup(BoardDistGroup, "Board Distribution Override")] public int GuaranteedTicketCountOverride;
-        [ToggleGroup(BoardDistGroup, "Board Distribution Override")] public float GuaranteedTicketCountLambdaOverride;
-        [ToggleGroup(BoardDistGroup, "Board Distribution Override")] public float EarlyTicketWeightDecayOverride;
-        [ToggleGroup(BoardDistGroup, "Board Distribution Override")] public float UrgentTimeThresholdSecondsOverride;
-        [ToggleGroup(BoardDistGroup, "Board Distribution Override")] public int LeakDepthOverride;
-        [ToggleGroup(BoardDistGroup, "Board Distribution Override")] public int MaxLeakCountOverride;
-
         public DayEditorMetaJson ToJson() => new()
         {
             allowedFoodItemIds = AllowedFoodItemIds.ToArray(),
@@ -721,15 +739,6 @@ namespace ExpoTheExplorer.Editor
             sideInclusionChanceOverride = SideInclusionChanceOverride,
             drinkInclusionChanceOverride = DrinkInclusionChanceOverride,
             modificationCountLambdaOverride = ModificationCountLambdaOverride,
-            hasBoardDistributionOverride = HasBoardDistributionOverride,
-            noiseLeakCountLambdaOverride = NoiseLeakCountLambdaOverride,
-            guaranteedTicketCountModeOverride = GuaranteedTicketCountModeOverride,
-            guaranteedTicketCountOverride = GuaranteedTicketCountOverride,
-            guaranteedTicketCountLambdaOverride = GuaranteedTicketCountLambdaOverride,
-            earlyTicketWeightDecayOverride = EarlyTicketWeightDecayOverride,
-            urgentTimeThresholdSecondsOverride = UrgentTimeThresholdSecondsOverride,
-            leakDepthOverride = LeakDepthOverride,
-            maxLeakCountOverride = MaxLeakCountOverride,
         };
 
         public static DayEditorMetaModel FromJson(DayEditorMetaJson json)
@@ -743,16 +752,63 @@ namespace ExpoTheExplorer.Editor
                 SideInclusionChanceOverride = json.sideInclusionChanceOverride,
                 DrinkInclusionChanceOverride = json.drinkInclusionChanceOverride,
                 ModificationCountLambdaOverride = json.modificationCountLambdaOverride,
-                HasBoardDistributionOverride = json.hasBoardDistributionOverride,
-                NoiseLeakCountLambdaOverride = json.noiseLeakCountLambdaOverride,
-                GuaranteedTicketCountModeOverride = json.guaranteedTicketCountModeOverride,
-                GuaranteedTicketCountOverride = json.guaranteedTicketCountOverride,
-                GuaranteedTicketCountLambdaOverride = json.guaranteedTicketCountLambdaOverride,
-                EarlyTicketWeightDecayOverride = json.earlyTicketWeightDecayOverride,
-                UrgentTimeThresholdSecondsOverride = json.urgentTimeThresholdSecondsOverride,
-                LeakDepthOverride = json.leakDepthOverride,
-                MaxLeakCountOverride = json.maxLeakCountOverride,
             };
         }
+    }
+
+    // The Day's own BoardDistributor balancing. Field defaults mirror
+    // BoardDistributionConfig's declared initializers, so a brand-new Day starts from the
+    // designed values rather than from CLR zeros -- which is the failure the shared asset
+    // itself fell into (its YAML predates half these fields, leaving the urgent-ticket
+    // guarantee and the arrival-weighted lottery switched off). Ranges mirror the config's
+    // [Range] attributes so the editor cannot author a value the runtime would clamp away.
+    [Serializable]
+    public class DayEditorBoardDistribution
+    {
+        [UnityEngine.Range(0f, 10f)] public float NoiseLeakCountLambda = 0.5f;
+        public GuaranteedTicketCountMode GuaranteedTicketCountMode = GuaranteedTicketCountMode.Manual;
+        [UnityEngine.Range(1, 3)] public int GuaranteedTicketCount = 1;
+        [UnityEngine.Range(0f, 3f)] public float GuaranteedTicketCountLambda = 1f;
+        [UnityEngine.Range(0f, 1f)] public float EarlyTicketWeightDecay = 0.5f;
+        [UnityEngine.Range(0f, 30f)] public float UrgentTimeThresholdSeconds = 10f;
+        [UnityEngine.Range(1, 10)] public int LeakDepth = 10;
+        [UnityEngine.Range(1, 10)] public int MaxLeakCount = 10;
+
+        public static DayEditorBoardDistribution FromJson(BoardDistributionJson json)
+        {
+            // A Day file written before this block existed parses to an empty mode string;
+            // falling back to a fresh instance gives the designed defaults instead of zeros.
+            // DayCatalogParser refuses the same file at runtime -- the editor is deliberately
+            // the more forgiving of the two, so an old Day can be opened and re-saved.
+            if (json == null || string.IsNullOrEmpty(json.guaranteedTicketCountMode)) return new DayEditorBoardDistribution();
+
+            return new DayEditorBoardDistribution
+            {
+                NoiseLeakCountLambda = json.noiseLeakCountLambda,
+                GuaranteedTicketCountMode = Enum.TryParse<GuaranteedTicketCountMode>(json.guaranteedTicketCountMode, out var mode) ? mode : GuaranteedTicketCountMode.Manual,
+                GuaranteedTicketCount = json.guaranteedTicketCount,
+                GuaranteedTicketCountLambda = json.guaranteedTicketCountLambda,
+                EarlyTicketWeightDecay = json.earlyTicketWeightDecay,
+                UrgentTimeThresholdSeconds = json.urgentTimeThresholdSeconds,
+                LeakDepth = json.leakDepth,
+                MaxLeakCount = json.maxLeakCount,
+            };
+        }
+
+        public BoardDistributionJson ToJson() => new()
+        {
+            noiseLeakCountLambda = NoiseLeakCountLambda,
+            guaranteedTicketCountMode = GuaranteedTicketCountMode.ToString(),
+            guaranteedTicketCount = GuaranteedTicketCount,
+            guaranteedTicketCountLambda = GuaranteedTicketCountLambda,
+            earlyTicketWeightDecay = EarlyTicketWeightDecay,
+            urgentTimeThresholdSeconds = UrgentTimeThresholdSeconds,
+            leakDepth = LeakDepth,
+            maxLeakCount = MaxLeakCount,
+        };
+
+        public ResolvedBoardDistribution ToResolved() => new(
+            NoiseLeakCountLambda, GuaranteedTicketCountMode, GuaranteedTicketCount, GuaranteedTicketCountLambda,
+            EarlyTicketWeightDecay, UrgentTimeThresholdSeconds, LeakDepth, MaxLeakCount);
     }
 }

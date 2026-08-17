@@ -103,6 +103,7 @@ namespace ExpoTheExplorer.Tests.EditMode
                 {
                     dayIndex = 0,
                     ticketsRequiredForDay = 10,
+                    boardDistribution = ValidBoardDistribution(),
                     ticketSequence = ticketSequence,
                     boardTimeline = System.Array.Empty<BoardSpawnEntryJson>(),
                 },
@@ -114,6 +115,20 @@ namespace ExpoTheExplorer.Tests.EditMode
             var validation = DayValidator.Validate(day, catalog.Items);
 
             CollectionAssert.IsEmpty(validation.Errors);
+        }
+
+        // DayCatalogParser drops a Day whose runtime.boardDistribution block is missing, so
+        // any test that round-trips through it has to author one. Values are irrelevant here
+        // -- DayValidator does not look at them -- they just have to be structurally valid.
+        private static BoardDistributionJson ValidBoardDistribution()
+        {
+            return new BoardDistributionJson
+            {
+                guaranteedTicketCountMode = "Manual",
+                guaranteedTicketCount = 1,
+                leakDepth = 10,
+                maxLeakCount = 10,
+            };
         }
 
         private static bool HasErrorContaining(DayValidationResult result, string substring)

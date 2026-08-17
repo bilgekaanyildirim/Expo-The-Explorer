@@ -49,6 +49,7 @@ namespace ExpoTheExplorer.Tests.EditMode
                 {
                     dayIndex = 1,
                     ticketsRequiredForDay = 1,
+                    boardDistribution = ValidBoardDistribution(),
                     ticketSequence = new[]
                     {
                         new TicketEntryJson
@@ -103,6 +104,71 @@ namespace ExpoTheExplorer.Tests.EditMode
             Assert.IsTrue(spawn.UseExactCell);
             Assert.AreEqual(2, spawn.X);
             Assert.AreEqual(3, spawn.Y);
+
+            var distribution = day.BoardDistribution;
+            Assert.IsNotNull(distribution);
+            Assert.AreEqual(0.5f, distribution.NoiseLeakCountLambda);
+            Assert.AreEqual(GuaranteedTicketCountMode.Manual, distribution.GuaranteedTicketCountMode);
+            Assert.AreEqual(1, distribution.GuaranteedTicketCount);
+            Assert.AreEqual(1f, distribution.GuaranteedTicketCountLambda);
+            Assert.AreEqual(0.5f, distribution.EarlyTicketWeightDecay);
+            Assert.AreEqual(10f, distribution.UrgentTimeThresholdSeconds);
+            Assert.AreEqual(10, distribution.LeakDepth);
+            Assert.AreEqual(10, distribution.MaxLeakCount);
+        }
+
+        [Test]
+        public void ParseAll_PoissonGuaranteedTicketCountMode_ParsesFromTheStringForm()
+        {
+            var runtime = BuildMinimalRuntime(dayIndex: 1);
+            runtime.boardDistribution.guaranteedTicketCountMode = "Poisson";
+
+            var result = ParseSingle(new DayJson { runtime = runtime }, "day_01");
+
+            Assert.AreEqual(1, result.Count);
+            Assert.AreEqual(GuaranteedTicketCountMode.Poisson, result[0].BoardDistribution.GuaranteedTicketCountMode);
+        }
+
+        // A Day file written before the block existed deserializes to a zeroed
+        // BoardDistributionJson, not to null -- JsonUtility cannot represent a null nested
+        // class. Silently accepting it would switch off the urgent-ticket guarantee and
+        // flatten the arrival-weighted lottery, so the Day is dropped instead.
+        [Test]
+        public void ParseAll_MissingBoardDistributionBlock_LogsErrorAndSkipsDay()
+        {
+            var runtime = BuildMinimalRuntime(dayIndex: 1);
+            runtime.boardDistribution = null;
+
+            LogAssert.Expect(LogType.Error, "Day file 'day_01': runtime.boardDistribution block is missing or has no guaranteedTicketCountMode.");
+            var result = ParseSingle(new DayJson { runtime = runtime }, "day_01");
+
+            Assert.AreEqual(0, result.Count);
+        }
+
+        [Test]
+        public void ParseAll_InvalidGuaranteedTicketCountMode_LogsErrorAndSkipsDay()
+        {
+            var runtime = BuildMinimalRuntime(dayIndex: 1);
+            runtime.boardDistribution.guaranteedTicketCountMode = "Bogus";
+
+            LogAssert.Expect(LogType.Error, "Day file 'day_01': invalid guaranteedTicketCountMode 'Bogus'.");
+            var result = ParseSingle(new DayJson { runtime = runtime }, "day_01");
+
+            Assert.AreEqual(0, result.Count);
+        }
+
+        [Test]
+        public void ParseAll_BoardDistributionWithZeroedCounts_LogsErrorAndSkipsDay()
+        {
+            var runtime = BuildMinimalRuntime(dayIndex: 1);
+            runtime.boardDistribution.guaranteedTicketCount = 0;
+            runtime.boardDistribution.leakDepth = 0;
+            runtime.boardDistribution.maxLeakCount = 0;
+
+            LogAssert.Expect(LogType.Error, "Day file 'day_01': runtime.boardDistribution is incomplete -- guaranteedTicketCount (0), leakDepth (0) and maxLeakCount (0) must all be at least 1.");
+            var result = ParseSingle(new DayJson { runtime = runtime }, "day_01");
+
+            Assert.AreEqual(0, result.Count);
         }
 
         [Test]
@@ -235,7 +301,23 @@ namespace ExpoTheExplorer.Tests.EditMode
             {
                 dayIndex = dayIndex,
                 ticketsRequiredForDay = ticketsRequiredForDay,
+                boardDistribution = ValidBoardDistribution(),
                 ticketSequence = new[] { new TicketEntryJson { mainItemId = "burger", patienceType = "Normal" } }
+            };
+        }
+
+        private static BoardDistributionJson ValidBoardDistribution()
+        {
+            return new BoardDistributionJson
+            {
+                noiseLeakCountLambda = 0.5f,
+                guaranteedTicketCountMode = "Manual",
+                guaranteedTicketCount = 1,
+                guaranteedTicketCountLambda = 1f,
+                earlyTicketWeightDecay = 0.5f,
+                urgentTimeThresholdSeconds = 10f,
+                leakDepth = 10,
+                maxLeakCount = 10
             };
         }
 

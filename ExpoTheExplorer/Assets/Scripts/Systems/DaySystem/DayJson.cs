@@ -1,5 +1,4 @@
 using System;
-using ExpoTheExplorer.Data;
 
 namespace ExpoTheExplorer.Systems.DaySystem
 {
@@ -15,6 +14,13 @@ namespace ExpoTheExplorer.Systems.DaySystem
     {
         public int dayIndex;
         public int ticketsRequiredForDay;
+
+        // This Day's own BoardDistributor balancing. Authored per Day rather than read
+        // from the shared BoardDistributionConfig asset: the asset is now only a seed
+        // template for new Days, and the Day is the single runtime authority (there is
+        // no "override" layer -- every Day carries a complete block).
+        public BoardDistributionJson boardDistribution;
+
         public TicketEntryJson[] ticketSequence;
         public BoardSpawnEntryJson[] boardTimeline;
 
@@ -43,15 +49,30 @@ namespace ExpoTheExplorer.Systems.DaySystem
         public float sideInclusionChanceOverride;
         public float drinkInclusionChanceOverride;
         public float modificationCountLambdaOverride;
-        public bool hasBoardDistributionOverride;
-        public float noiseLeakCountLambdaOverride;
-        public GuaranteedTicketCountMode guaranteedTicketCountModeOverride;
-        public int guaranteedTicketCountOverride;
-        public float guaranteedTicketCountLambdaOverride;
-        public float earlyTicketWeightDecayOverride;
-        public float urgentTimeThresholdSecondsOverride;
-        public int leakDepthOverride;
-        public int maxLeakCountOverride;
+    }
+
+    // Mirrors BoardDistributionConfig's serialized fields, minus the defensive clamping
+    // (the config's public getters already clamp on read, so clamping here too would be
+    // a second, competing rule). Lives under runtime, NOT editorMeta: BoardDistributor
+    // runs live at play time, and DayCatalogParser is contractually blind to editorMeta,
+    // which is exactly why the previous editorMeta-based board-distribution fields were
+    // written, saved, and then read by nothing at all.
+    [Serializable]
+    public class BoardDistributionJson
+    {
+        public float noiseLeakCountLambda;
+
+        // A string, not the enum itself: JsonUtility would serialize the enum as a bare
+        // ordinal, which is unreadable in a hand-edited Day file and silently degrades a
+        // typo to Manual(0). Parsed via Enum.TryParse, same as TicketEntryJson.patienceType.
+        public string guaranteedTicketCountMode;
+
+        public int guaranteedTicketCount;
+        public float guaranteedTicketCountLambda;
+        public float earlyTicketWeightDecay;
+        public float urgentTimeThresholdSeconds;
+        public int leakDepth;
+        public int maxLeakCount;
     }
 
     [Serializable]

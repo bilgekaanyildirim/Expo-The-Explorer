@@ -64,14 +64,32 @@ namespace ExpoTheExplorer.Tests.EditMode
                 y = 2,
             };
 
+            // Every value here is deliberately non-default: the round-trip test compares whole
+            // JsonUtility output, so a field left at its default would still pass if the model
+            // dropped it entirely. That is exactly how the star thresholds went unnoticed --
+            // the model had no fields for them and every Save silently zeroed all three.
             return new DayJson
             {
                 runtime = new DayRuntimeJson
                 {
                     dayIndex = 5,
                     ticketsRequiredForDay = 1,
+                    boardDistribution = new BoardDistributionJson
+                    {
+                        noiseLeakCountLambda = 0.1f,
+                        guaranteedTicketCountMode = "Poisson",
+                        guaranteedTicketCount = 2,
+                        guaranteedTicketCountLambda = 1.5f,
+                        earlyTicketWeightDecay = 0.25f,
+                        urgentTimeThresholdSeconds = 7f,
+                        leakDepth = 4,
+                        maxLeakCount = 6,
+                    },
                     ticketSequence = new[] { ticketEntry },
                     boardTimeline = new[] { boardSpawnEntry },
+                    star1Threshold = 100,
+                    star2Threshold = 200,
+                    star3Threshold = 300,
                 },
                 editorMeta = new DayEditorMetaJson
                 {
@@ -80,13 +98,40 @@ namespace ExpoTheExplorer.Tests.EditMode
                     sideInclusionChanceOverride = 0.25f,
                     drinkInclusionChanceOverride = 0.75f,
                     modificationCountLambdaOverride = 2f,
-                    hasBoardDistributionOverride = true,
-                    noiseLeakCountLambdaOverride = 0.1f,
-                    guaranteedTicketCountOverride = 2,
-                    leakDepthOverride = 4,
-                    maxLeakCountOverride = 6,
                 },
             };
+        }
+
+        [Test]
+        public void FromDayJson_ThenToDayJson_KeepsStarThresholdsAndBoardDistribution()
+        {
+            var model = DayEditorModel.FromDayJson(CreateFullDayJson(), catalog);
+
+            var runtime = model.ToDayJson().runtime;
+
+            Assert.AreEqual(100, runtime.star1Threshold);
+            Assert.AreEqual(200, runtime.star2Threshold);
+            Assert.AreEqual(300, runtime.star3Threshold);
+            Assert.AreEqual("Poisson", runtime.boardDistribution.guaranteedTicketCountMode);
+            Assert.AreEqual(7f, runtime.boardDistribution.urgentTimeThresholdSeconds);
+            Assert.AreEqual(4, runtime.boardDistribution.leakDepth);
+        }
+
+        // An old Day file has no boardDistribution block at all. The editor must still open
+        // it -- and hand back the designed defaults rather than CLR zeros, so re-saving it
+        // produces a Day the runtime parser will accept.
+        [Test]
+        public void FromDayJson_NoBoardDistributionBlock_FallsBackToDesignedDefaults()
+        {
+            var json = CreateFullDayJson();
+            json.runtime.boardDistribution = null;
+
+            var model = DayEditorModel.FromDayJson(json, catalog);
+
+            Assert.AreEqual(GuaranteedTicketCountMode.Manual, model.BoardDistribution.GuaranteedTicketCountMode);
+            Assert.AreEqual(1, model.BoardDistribution.GuaranteedTicketCount);
+            Assert.AreEqual(0.5f, model.BoardDistribution.EarlyTicketWeightDecay);
+            Assert.AreEqual(10f, model.BoardDistribution.UrgentTimeThresholdSeconds);
         }
 
         [Test]
