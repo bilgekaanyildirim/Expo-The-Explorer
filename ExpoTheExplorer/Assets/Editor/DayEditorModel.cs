@@ -46,8 +46,16 @@ namespace ExpoTheExplorer.Editor
         // are what the balance knobs above actually mean, and before this they could only be
         // seen on the shared config asset's inspector -- i.e. never for the Day being tuned.
         [BoxGroup("Board Distribution"), OnInspectorGUI, PropertyOrder(-2.45f)]
-        private void DrawLeakPreview() =>
-            DayEditorSettingsPreviews.DrawLeakPreview(BoardDistribution.MaxLeakCount, BoardDistribution.NoiseLeakCountLambda);
+        private void DrawBoardDistributionPreviews()
+        {
+            DayEditorSettingsPreviews.DrawLeakPreview(
+                BoardDistribution.MaxLeakCount, BoardDistribution.NoiseLeakCountLambda);
+
+            DayEditorSettingsPreviews.DrawGuaranteedTicketPreview(
+                BoardDistribution.GuaranteedTicketCountMode,
+                BoardDistribution.GuaranteedTicketCount,
+                BoardDistribution.GuaranteedTicketCountLambda);
+        }
 
         // Per-Day ticket play-time balancing (time limits + lookahead depth). Same story as
         // BoardDistribution above: plain nested box for now, proper grouping in a later

@@ -33,6 +33,45 @@ namespace ExpoTheExplorer.Editor
             }
         }
 
+        // Mirrors BoardDistributor.SelectGuaranteedTickets' budget line:
+        //     Poisson -> TruncatedPoisson.Sample(TicketSlotCount - 1, lambda) + 1
+        //     Manual  -> GuaranteedTicketCount
+        // The +1 is the part worth being careful about. The draw is over 0..SlotCount-1 and
+        // then shifted up, so the budget can never come out 0 -- GDD Section 4's "at least
+        // one ticket must always be completable" is enforced by that shift, not by a clamp.
+        // Dropping it here would show an impossible "0 tickets" row.
+        //
+        // This is the per-round BUDGET, not the final guaranteed count: a ticket whose time
+        // drops under Urgent Time Threshold Seconds is guaranteed regardless and may push
+        // past the budget, and selection is sticky across rounds (decisions.md D-001). The
+        // label says so, because "at most 3" would otherwise be the obvious wrong reading.
+        public static void DrawGuaranteedTicketPreview(
+            GuaranteedTicketCountMode mode, int guaranteedTicketCount, float guaranteedTicketCountLambda)
+        {
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("Guaranteed Ticket Preview (read-only)", EditorStyles.boldLabel);
+
+            if (mode == GuaranteedTicketCountMode.Manual)
+            {
+                var ticketWord = guaranteedTicketCount == 1 ? "ticket" : "tickets";
+                EditorGUILayout.LabelField($"Manual: always {guaranteedTicketCount} {ticketWord} per round.");
+            }
+            else
+            {
+                var probabilities = TruncatedPoisson.Probabilities(GameState.TicketSlotCount - 1, guaranteedTicketCountLambda);
+                for (var k = 0; k < probabilities.Length; k++)
+                {
+                    var tickets = k + 1;
+                    var label = tickets == 1 ? "1 ticket" : $"{tickets} tickets";
+                    EditorGUILayout.LabelField($"{label}: {Percent(probabilities[k])}");
+                }
+            }
+
+            EditorGUILayout.LabelField(
+                "Per-round budget. Tickets under the urgency threshold are guaranteed on top of this and can exceed it.",
+                EditorStyles.miniLabel);
+        }
+
         // Takes the resolved entries rather than either concrete weight type, so the Day
         // Editor's own model and the config asset's serialized list can both feed it.
         //
