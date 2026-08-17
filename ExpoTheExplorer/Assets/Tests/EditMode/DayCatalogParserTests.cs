@@ -242,8 +242,8 @@ namespace ExpoTheExplorer.Tests.EditMode
             var runtimeA = BuildMinimalRuntime(dayIndex: 1);
             var runtimeB = BuildMinimalRuntime(dayIndex: 1);
 
-            var dayJsonA = new DayJson { runtime = runtimeA, editorMeta = new DayEditorMetaJson { hasTicketGenerationOverride = true, sideInclusionChanceOverride = 0.9f } };
-            var dayJsonB = new DayJson { runtime = runtimeB, editorMeta = new DayEditorMetaJson { hasTicketGenerationOverride = false, sideInclusionChanceOverride = 0.1f } };
+            var dayJsonA = new DayJson { runtime = runtimeA, editorMeta = new DayEditorMetaJson { ticketGeneration = new TicketGenerationJson { sideInclusionChance = 0.9f } } };
+            var dayJsonB = new DayJson { runtime = runtimeB, editorMeta = new DayEditorMetaJson { ticketGeneration = new TicketGenerationJson { sideInclusionChance = 0.1f } } };
 
             var resultA = ParseSingle(dayJsonA, "day_a");
             var resultB = ParseSingle(dayJsonB, "day_b");

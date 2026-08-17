@@ -56,13 +56,16 @@ namespace ExpoTheExplorer.Tests.EditMode
         }
 
         [Test]
-        public void Generate_WithTicketGenerationOverride_ForcesInclusionExtremes()
+        public void Generate_WithDayTicketGenerationSettings_ForcesInclusionExtremes()
         {
             var editorMeta = SelectEveryFood(catalog);
-            editorMeta.hasTicketGenerationOverride = true;
-            editorMeta.sideInclusionChanceOverride = 0f;
-            editorMeta.drinkInclusionChanceOverride = 1f;
-            editorMeta.modificationCountLambdaOverride = 0f;
+            editorMeta.ticketGeneration = new TicketGenerationJson
+            {
+                sideInclusionChance = 0f,
+                drinkInclusionChance = 1f,
+                modificationCountLambda = 0f,
+                modificationAdditionChance = 0.5f,
+            };
 
             var result = DayContentGenerator.Generate(catalog, ticketConfig, editorMeta, ticketsRequiredForDay: 5, seed: 3);
 
@@ -91,10 +94,13 @@ namespace ExpoTheExplorer.Tests.EditMode
                 // Forcing a side onto every ticket is what makes the side assertion mean
                 // something -- at the default inclusion chance it could pass vacuously by
                 // never rolling a side at all.
-                hasTicketGenerationOverride = true,
-                sideInclusionChanceOverride = 1f,
-                drinkInclusionChanceOverride = 0f,
-                modificationCountLambdaOverride = 0f,
+                ticketGeneration = new TicketGenerationJson
+                {
+                    sideInclusionChance = 1f,
+                    drinkInclusionChance = 0f,
+                    modificationCountLambda = 0f,
+                    modificationAdditionChance = 0.5f,
+                },
             };
 
             var result = DayContentGenerator.Generate(selectiveCatalog, ticketConfig, editorMeta, ticketsRequiredForDay: 20, seed: 4);

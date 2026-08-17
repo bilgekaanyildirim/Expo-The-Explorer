@@ -223,14 +223,27 @@ uyardığı "aynı klon olmalı" tuzağı ve RNG-sıfırlama endişesi böylece 
 - [ ] **Açık:** EditMode testleri çalıştırılamadı (Unity proje kilidi). `dotnet build`
       → 0 hata, ve yeni dosyaların csproj'lere gerçekten kayıtlı olduğu doğrulandı.
 
-### Adım 4 — `editorMeta.ticketGeneration` (Generate ayarları, tam kapsam)
-- [ ] Alanlar `Override` ekinden ve toggle'dan arındırılır, hepsi her günde dolu (K1).
-- [ ] Bugün eksik olan `modificationAdditionChance` ve `mainDishWeights` eklenir —
-      "hangi ayarla üretildi" kaydının tam olması için (K2).
-- [ ] `mainDishWeights` JSON'da **food id** ile tutulur (`allowedFoodItemIds` ile
-      aynı kural), `FoodCatalog` üzerinden çözülür.
-- [ ] `DayContentGenerator`: artık koşulsuz olarak günün ayarlarını kullanır
-      (`hasTicketGenerationOverride` kontrolü kalkar).
+### Adım 4 — `editorMeta.ticketGeneration` (Generate ayarları, tam kapsam) ✅ 2026-08-17
+- [x] Toggle ve `Override` ekleri kalktı; `TicketGenerationJson` bloğu geldi.
+- [x] `modificationAdditionChance` + `mainDishWeights` eklendi — kayıt artık tam (K2).
+- [x] `mainDishWeights` food id ile tutuluyor, `DayContentGenerator.ResolveMainDishWeights`
+      çözüyor; kayıp id sessizce düşüyor (`ResolveFoodPool` ile aynı duruş).
+      `MainDishWeight`'a public ctor eklendi.
+- [x] `CloneWithOverrides` → `CloneForDayGeneration` (parametreler zorunlu).
+      **Klon burada korundu**, D-004'ün aksine: `namesDatabase` TextAsset'i JSON'a
+      giremiyor, ve bu yol yalnız authoring'de çalışıp klonu `finally`'de siliyor.
+- [x] **Bilinçli asimetri:** eksik blok burada günü düşürmüyor (runtime bloklarının
+      aksine) — `DayCatalogParser` `editorMeta`'yı zaten okumuyor, ve eski bir gün
+      açılabilir kalmalı. Yedek: SO'nun gerçek değerleri, sıfır değil.
+- [x] `day_00`/`day_01` asset'ten birebir migrate edildi (0.9 / 0.9 / 1.69 / 0.5 /
+      burger[ağırlık 1, λ 2]). **Davranış değişmiyor.**
+- [x] `decisions.md` D-006.
+- [x] **Kapsam genişlemesi:** `TicketGenerationConfigCloneWithOverridesTests` silinen
+      metodu test ediyordu, derlemede yakalandı, `...CloneForDayGenerationTests` olarak
+      yeniden yazıldı. *Ders:* sembol yeniden adlandırırken locate taraması alan adları
+      üzerinden değil, **sembolün kendi adı** üzerinden yapılmalı — bu oturumda aynı
+      tipte ikinci kaçaktı (ilki Adım 3'te `BoardDistributionTests`).
+- [ ] **Açık:** EditMode koşusu bekleniyor.
 
 ### Adım 5 — Day Editör UI (+ `BoardDistributionConfig`'in tasfiyesi)
 

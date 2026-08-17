@@ -101,10 +101,17 @@ namespace ExpoTheExplorer.Tests.EditMode
                 editorMeta = new DayEditorMetaJson
                 {
                     allowedFoodItemIds = new[] { main.Id, drink.Id },
-                    hasTicketGenerationOverride = true,
-                    sideInclusionChanceOverride = 0.25f,
-                    drinkInclusionChanceOverride = 0.75f,
-                    modificationCountLambdaOverride = 2f,
+                    ticketGeneration = new TicketGenerationJson
+                    {
+                        sideInclusionChance = 0.25f,
+                        drinkInclusionChance = 0.75f,
+                        modificationCountLambda = 2f,
+                        modificationAdditionChance = 0.8f,
+                        mainDishWeights = new[]
+                        {
+                            new MainDishWeightJson { foodItemId = main.Id, weight = 3f, modificationCountLambda = 1.5f },
+                        },
+                    },
                 },
             };
         }
@@ -125,6 +132,22 @@ namespace ExpoTheExplorer.Tests.EditMode
             Assert.AreEqual(11f, runtime.ticketRuntime.impatientTimeLimitSeconds);
             Assert.AreEqual(33f, runtime.ticketRuntime.patientTimeLimitSeconds);
             Assert.AreEqual(7, runtime.ticketRuntime.upcomingQueueSize);
+        }
+
+        // mainDishWeights is the only editorMeta field holding a food reference, so it is
+        // the one that can silently lose its identity on a round trip (id -> object -> id).
+        [Test]
+        public void FromDayJson_ThenToDayJson_KeepsMainDishWeights()
+        {
+            var model = DayEditorModel.FromDayJson(CreateFullDayJson(), catalog);
+
+            var generation = model.ToDayJson().editorMeta.ticketGeneration;
+
+            Assert.AreEqual(0.8f, generation.modificationAdditionChance);
+            Assert.AreEqual(1, generation.mainDishWeights.Length);
+            Assert.AreEqual(main.Id, generation.mainDishWeights[0].foodItemId);
+            Assert.AreEqual(3f, generation.mainDishWeights[0].weight);
+            Assert.AreEqual(1.5f, generation.mainDishWeights[0].modificationCountLambda);
         }
 
         // An old Day file has no boardDistribution block at all. The editor must still open

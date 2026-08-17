@@ -28,6 +28,18 @@ namespace ExpoTheExplorer.Data
         public FoodItemConfig Food => food;
         public float Weight => weight;
         public float ModificationCountLambda => modificationCountLambda;
+
+        // Serialized-by-Unity default ctor stays for the Inspector; this one exists so a
+        // Day's own authored weights (resolved from food ids in editorMeta) can be built in
+        // code and handed to CloneForDayGeneration.
+        public MainDishWeight() { }
+
+        public MainDishWeight(FoodItemConfig food, float weight, float modificationCountLambda)
+        {
+            this.food = food;
+            this.weight = weight;
+            this.modificationCountLambda = modificationCountLambda;
+        }
     }
 
     // Ticket-balancing knobs consumed by TicketFactory. Every default here is a
@@ -89,17 +101,28 @@ namespace ExpoTheExplorer.Data
                 impatientTimeLimitSeconds, normalTimeLimitSeconds, patientTimeLimitSeconds, upcomingQueueSize);
         }
 
-        // Used by DayContentGenerator (PR-6.5) to apply a Day's editorMeta overrides
-        // without mutating the shared base asset -- Instantiate (not SerializedObject)
-        // keeps this class Editor-independent. Only fields a caller passes a value for
-        // are overwritten; everything else carries over from the base asset unchanged.
-        public TicketGenerationConfig CloneWithOverrides(
-            float? sideInclusionChance = null, float? drinkInclusionChance = null, float? modificationCountLambda = null)
+        // Applies a Day's own generation settings on top of this asset for one Generate run
+        // (DayContentGenerator). Every parameter is required: there is no override layer any
+        // more -- a Day carries all five values, so nothing is left to inherit (D-006).
+        //
+        // Still an Instantiate-clone, unlike the board-distribution path in D-004, for one
+        // reason: TicketFactory needs namesDatabase, a TextAsset reference that cannot live
+        // in Day JSON. The clone is safe here because this runs only at authoring time and
+        // DayContentGenerator destroys it in a finally -- there is no per-Day runtime
+        // lifetime to leak.
+        public TicketGenerationConfig CloneForDayGeneration(
+            float sideInclusionChance,
+            float drinkInclusionChance,
+            float modificationCountLambda,
+            float modificationAdditionChance,
+            List<MainDishWeight> mainDishWeights)
         {
             var clone = Instantiate(this);
-            if (sideInclusionChance.HasValue) clone.sideInclusionChance = sideInclusionChance.Value;
-            if (drinkInclusionChance.HasValue) clone.drinkInclusionChance = drinkInclusionChance.Value;
-            if (modificationCountLambda.HasValue) clone.modificationCountLambda = modificationCountLambda.Value;
+            clone.sideInclusionChance = sideInclusionChance;
+            clone.drinkInclusionChance = drinkInclusionChance;
+            clone.modificationCountLambda = modificationCountLambda;
+            clone.modificationAdditionChance = modificationAdditionChance;
+            clone.mainDishWeights = mainDishWeights ?? new List<MainDishWeight>();
             return clone;
         }
 

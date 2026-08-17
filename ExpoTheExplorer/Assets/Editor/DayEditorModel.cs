@@ -597,7 +597,7 @@ namespace ExpoTheExplorer.Editor
                 Star1Threshold = runtime?.star1Threshold ?? 0,
                 Star2Threshold = runtime?.star2Threshold ?? 0,
                 Star3Threshold = runtime?.star3Threshold ?? 0,
-                EditorMeta = DayEditorMetaModel.FromJson(json?.editorMeta),
+                EditorMeta = DayEditorMetaModel.FromJson(json?.editorMeta, catalog),
             };
 
             return model;
@@ -726,7 +726,6 @@ namespace ExpoTheExplorer.Editor
     [Serializable]
     public class DayEditorMetaModel
     {
-        private const string TicketGenGroup = nameof(HasTicketGenerationOverride);
 
         // Drawn by DayEditorModel's own "Food Selection" section, not by Odin here: the UI
         // has to render a tile for every FoodCatalog item, and this plain serializable
@@ -735,33 +734,101 @@ namespace ExpoTheExplorer.Editor
         // serialized.
         [UnityEngine.HideInInspector] public List<string> AllowedFoodItemIds = new();
 
-        [ToggleGroup(TicketGenGroup, "Ticket Generation Override")] public bool HasTicketGenerationOverride;
-        [ToggleGroup(TicketGenGroup, "Ticket Generation Override")] public float SideInclusionChanceOverride;
-        [ToggleGroup(TicketGenGroup, "Ticket Generation Override")] public float DrinkInclusionChanceOverride;
-        [ToggleGroup(TicketGenGroup, "Ticket Generation Override")] public float ModificationCountLambdaOverride;
+        [BoxGroup("Ticket Generation"), HideLabel]
+        public DayEditorTicketGeneration TicketGeneration = new();
 
         public DayEditorMetaJson ToJson() => new()
         {
             allowedFoodItemIds = AllowedFoodItemIds.ToArray(),
-            hasTicketGenerationOverride = HasTicketGenerationOverride,
-            sideInclusionChanceOverride = SideInclusionChanceOverride,
-            drinkInclusionChanceOverride = DrinkInclusionChanceOverride,
-            modificationCountLambdaOverride = ModificationCountLambdaOverride,
+            ticketGeneration = TicketGeneration.ToJson(),
         };
 
-        public static DayEditorMetaModel FromJson(DayEditorMetaJson json)
+        public static DayEditorMetaModel FromJson(DayEditorMetaJson json, FoodCatalog catalog)
         {
             if (json == null) return new DayEditorMetaModel();
 
             return new DayEditorMetaModel
             {
                 AllowedFoodItemIds = (json.allowedFoodItemIds ?? Array.Empty<string>()).ToList(),
-                HasTicketGenerationOverride = json.hasTicketGenerationOverride,
-                SideInclusionChanceOverride = json.sideInclusionChanceOverride,
-                DrinkInclusionChanceOverride = json.drinkInclusionChanceOverride,
-                ModificationCountLambdaOverride = json.modificationCountLambdaOverride,
+                TicketGeneration = DayEditorTicketGeneration.FromJson(json.ticketGeneration, catalog),
             };
         }
+    }
+
+    // The settings this Day's ticketSequence was generated with. Authoring-only: nothing
+    // here changes how an already-generated Day plays, it just drives the next Generate and
+    // records what the last one used (D-006). Defaults mirror TicketGenerationConfig's
+    // declared initializers so a brand-new Day starts somewhere sensible.
+    [Serializable]
+    public class DayEditorTicketGeneration
+    {
+        [UnityEngine.Range(0f, 1f)] public float SideInclusionChance = 0.5f;
+        [UnityEngine.Range(0f, 1f)] public float DrinkInclusionChance = 0.5f;
+
+        [UnityEngine.Range(0f, 10f)]
+        [UnityEngine.Tooltip("Fallback Poisson rate for a Main dish missing from Main Dish Weights below -- a dish listed there uses its own rate instead.")]
+        public float ModificationCountLambda = MainDishWeight.DefaultModificationCountLambda;
+
+        [UnityEngine.Range(0f, 1f)]
+        [UnityEngine.Tooltip("Only consulted for Both-direction modifications; AdditionOnly/RemovalOnly get their direction from the modification itself.")]
+        public float ModificationAdditionChance = 0.5f;
+
+        [UnityEngine.Tooltip("Relative spawn weight per Main dish. A Main this Day serves but does not list here falls back to weight 1.")]
+        public List<DayEditorMainDishWeight> MainDishWeights = new();
+
+        // A Day file predating this block returns the defaults above rather than zeros --
+        // zeros would mean "never a side, never a drink, never a modification", which is a
+        // silently empty-looking Generate rather than an obviously broken one.
+        public static DayEditorTicketGeneration FromJson(TicketGenerationJson json, FoodCatalog catalog)
+        {
+            if (json == null) return new DayEditorTicketGeneration();
+
+            return new DayEditorTicketGeneration
+            {
+                SideInclusionChance = json.sideInclusionChance,
+                DrinkInclusionChance = json.drinkInclusionChance,
+                ModificationCountLambda = json.modificationCountLambda,
+                ModificationAdditionChance = json.modificationAdditionChance,
+                MainDishWeights = (json.mainDishWeights ?? Array.Empty<MainDishWeightJson>())
+                    .Select(w => DayEditorMainDishWeight.FromJson(w, catalog)).ToList(),
+            };
+        }
+
+        public TicketGenerationJson ToJson() => new()
+        {
+            sideInclusionChance = SideInclusionChance,
+            drinkInclusionChance = DrinkInclusionChance,
+            modificationCountLambda = ModificationCountLambda,
+            modificationAdditionChance = ModificationAdditionChance,
+            mainDishWeights = MainDishWeights.Select(w => w.ToJson()).ToArray(),
+        };
+    }
+
+    [Serializable]
+    public class DayEditorMainDishWeight
+    {
+        // Held as a FoodItemConfig rather than a raw id so the Day Editor can offer an
+        // object picker; ToJson writes the id back out, like every other food reference.
+        public FoodItemConfig Food;
+        public float Weight = MainDishWeight.DefaultWeight;
+        [UnityEngine.Range(0f, 10f)] public float ModificationCountLambda = MainDishWeight.DefaultModificationCountLambda;
+
+        // Same tolerance as DayEditorTicketEntry.FromJson: an id whose FoodItemConfig is
+        // gone leaves Food null (an empty slot in the editor) instead of dropping the row,
+        // so the designer sees that something was there and can repoint it.
+        public static DayEditorMainDishWeight FromJson(MainDishWeightJson json, FoodCatalog catalog) => new()
+        {
+            Food = string.IsNullOrEmpty(json.foodItemId) ? null : catalog.GetById(json.foodItemId),
+            Weight = json.weight,
+            ModificationCountLambda = json.modificationCountLambda,
+        };
+
+        public MainDishWeightJson ToJson() => new()
+        {
+            foodItemId = Food != null ? Food.Id : string.Empty,
+            weight = Weight,
+            modificationCountLambda = ModificationCountLambda,
+        };
     }
 
     // The Day's own BoardDistributor balancing. Field defaults mirror

@@ -52,10 +52,37 @@ namespace ExpoTheExplorer.Systems.DaySystem
         // resolved ticketSequence and never needs to know what was selectable.
         public string[] allowedFoodItemIds;
 
-        public bool hasTicketGenerationOverride;
-        public float sideInclusionChanceOverride;
-        public float drinkInclusionChanceOverride;
-        public float modificationCountLambdaOverride;
+        // How this Day's ticketSequence was generated. Purely a record plus the input for
+        // the next Generate run: the rolled sequence is already baked into runtime, so
+        // nothing here affects a Day being played. It lives in editorMeta for exactly that
+        // reason, and the point of keeping it is being able to come back to a Day months
+        // later and see -- and reuse -- the settings it was built with.
+        public TicketGenerationJson ticketGeneration;
+    }
+
+    // No "has..." toggle and no "Override" suffixes: a Day carries the complete set, there
+    // is no base to fall back to per-field (D-006). A Day file written before this block
+    // existed is the one exception, and the Day Editor fills it from the config asset --
+    // see DayEditorTicketGeneration.FromJson. Unlike the runtime blocks, an absent one here
+    // is not fatal: DayCatalogParser never reads editorMeta at all.
+    [Serializable]
+    public class TicketGenerationJson
+    {
+        public float sideInclusionChance;
+        public float drinkInclusionChance;
+        public float modificationCountLambda;
+        public float modificationAdditionChance;
+        public MainDishWeightJson[] mainDishWeights;
+    }
+
+    [Serializable]
+    public class MainDishWeightJson
+    {
+        // Food id, like every other food reference in Day JSON -- resolved against
+        // FoodCatalog, and simply dropped if the FoodItemConfig behind it is gone.
+        public string foodItemId;
+        public float weight;
+        public float modificationCountLambda;
     }
 
     // Mirrors BoardDistributionConfig's serialized fields, minus the defensive clamping

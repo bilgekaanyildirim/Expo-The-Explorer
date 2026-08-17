@@ -197,18 +197,18 @@
       "fries",
       "cola"
     ],
-    "hasTicketGenerationOverride": false,
-    "sideInclusionChanceOverride": 0.0,
-    "drinkInclusionChanceOverride": 0.0,
-    "modificationCountLambdaOverride": 0.0,
-    "hasBoardDistributionOverride": false,
-    "noiseLeakCountLambdaOverride": 0.0,
-    "guaranteedTicketCountModeOverride": 0,
-    "guaranteedTicketCountOverride": 0,
-    "guaranteedTicketCountLambdaOverride": 0.0,
-    "earlyTicketWeightDecayOverride": 0.0,
-    "urgentTimeThresholdSecondsOverride": 0.0,
-    "leakDepthOverride": 0,
-    "maxLeakCountOverride": 0
+    "ticketGeneration": {
+      "sideInclusionChance": 0.9,
+      "drinkInclusionChance": 0.9,
+      "modificationCountLambda": 1.69,
+      "modificationAdditionChance": 0.5,
+      "mainDishWeights": [
+        {
+          "foodItemId": "burger",
+          "weight": 1.0,
+          "modificationCountLambda": 2.0
+        }
+      ]
+    }
   }
 }

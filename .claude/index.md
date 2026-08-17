@@ -1,4 +1,4 @@
-<!-- stamp: 2026-08-17 systems:11 unmapped:0 unassigned-files:55 -->
+<!-- stamp: 2026-08-17 systems:11 unmapped:0 unassigned-files:54 -->
 # index — system to location, one screen
 
 Step 1 of `procedures/locate.md`: read this before anything else, and only
@@ -17,9 +17,9 @@ maps and never invents a name.
 | EconomySystem | core, editor | ExpoTheExplorer/Assets/Data/DataScripts/EconomyConfig.cs, ExpoTheExplorer/Assets/Scripts/Systems/EconomySystem/EconomyCalculator.cs (+3) | - | - | - | OK |
 | LivesSystem | core, ui | ExpoTheExplorer/Assets/Scripts/Systems/LivesSystem/ExpoTheExplorer.Systems.LivesSystem.asmdef, ExpoTheExplorer/Assets/Scripts/Systems/LivesSystem/LivesManager.cs (+3) | - | - | - | OK |
 | ProgressionSystem | core, ui | ExpoTheExplorer/Assets/Data/DataScripts/LevelProgressionConfig.cs, ExpoTheExplorer/Assets/Scripts/Systems/ProgressionSystem/ExpoTheExplorer.Systems.ProgressionSystem.asmdef (+9) | - | - | - | OK |
-| TicketSystem | core | ExpoTheExplorer/Assets/Scripts/Systems/TicketSystem/TicketFactory.cs, ExpoTheExplorer/Assets/Scripts/Systems/TicketSystem/TicketSlotManager.cs (+4) | - | - | - | OK |
+| TicketSystem | core | ExpoTheExplorer/Assets/Scripts/Systems/TicketSystem/TicketFactory.cs, ExpoTheExplorer/Assets/Scripts/Systems/TicketSystem/TicketSlotManager.cs (+5) | - | - | - | OK |
 | TraySystem | core | ExpoTheExplorer/Assets/Scripts/Systems/TraySystem/TrayManager.cs, ExpoTheExplorer/Assets/Scripts/Systems/TraySystem/ExpoTheExplorer.Systems.TraySystem.asmdef (+2) | - | - | - | OK |
 
 ## Gaps
-- `sys: ?` on 55 codemap line(s) — first: ExpoTheExplorer/Assets/Data/ExpoTheExplorer.Data.asmdef, ExpoTheExplorer/Assets/Data/DataScripts/BoardAnimationConfig.cs, ExpoTheExplorer/Assets/Data/DataScripts/DragFeelConfig.cs
+- `sys: ?` on 54 codemap line(s) — first: ExpoTheExplorer/Assets/Data/ExpoTheExplorer.Data.asmdef, ExpoTheExplorer/Assets/Data/DataScripts/BoardAnimationConfig.cs, ExpoTheExplorer/Assets/Data/DataScripts/DragFeelConfig.cs
 - 4 flagged codemap line(s) excluded from this table (STALE)

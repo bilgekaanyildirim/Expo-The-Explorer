@@ -25,7 +25,7 @@ namespace ExpoTheExplorer.Systems.DaySystem
             int seed)
         {
             var random = new Random(seed);
-            var ticketConfig = ApplyTicketGenerationOverrides(baseTicketConfig, editorMeta);
+            var ticketConfig = ResolveTicketGenerationConfig(baseTicketConfig, catalog, editorMeta);
 
             try
             {
@@ -100,17 +100,43 @@ namespace ExpoTheExplorer.Systems.DaySystem
             };
         }
 
-        private static TicketGenerationConfig ApplyTicketGenerationOverrides(TicketGenerationConfig baseConfig, DayEditorMetaJson editorMeta)
+        // A Day's own generation settings, applied unconditionally -- there is no
+        // "override on/off" any more (D-006). The one case that still falls back to the
+        // base asset is a Day file written before this block existed: returning baseConfig
+        // there means Generate keeps working on an old Day instead of rolling everything at
+        // zero probability, and the Day Editor writes the block out on the next Save.
+        private static TicketGenerationConfig ResolveTicketGenerationConfig(
+            TicketGenerationConfig baseConfig, FoodCatalog catalog, DayEditorMetaJson editorMeta)
         {
-            if (editorMeta is not { hasTicketGenerationOverride: true })
+            var generation = editorMeta?.ticketGeneration;
+            if (generation == null) return baseConfig;
+
+            return baseConfig.CloneForDayGeneration(
+                generation.sideInclusionChance,
+                generation.drinkInclusionChance,
+                generation.modificationCountLambda,
+                generation.modificationAdditionChance,
+                ResolveMainDishWeights(generation.mainDishWeights, catalog));
+        }
+
+        // Public because the Day Editor has to render the same resolved list the generator
+        // will actually use -- one rule, two authoring-time readers, rather than the id
+        // lookup written out twice (same reasoning as ResolveFoodPool).
+        public static List<MainDishWeight> ResolveMainDishWeights(MainDishWeightJson[] entries, FoodCatalog catalog)
+        {
+            var resolved = new List<MainDishWeight>();
+            foreach (var entry in entries ?? Array.Empty<MainDishWeightJson>())
             {
-                return baseConfig;
+                // An id left behind by a deleted/renamed FoodItemConfig drops out rather
+                // than becoming a null-Food entry TicketFactory would trip over -- the same
+                // stance ResolveFoodPool takes.
+                var food = catalog.GetById(entry.foodItemId);
+                if (food == null) continue;
+
+                resolved.Add(new MainDishWeight(food, entry.weight, entry.modificationCountLambda));
             }
 
-            return baseConfig.CloneWithOverrides(
-                sideInclusionChance: editorMeta.sideInclusionChanceOverride,
-                drinkInclusionChance: editorMeta.drinkInclusionChanceOverride,
-                modificationCountLambda: editorMeta.modificationCountLambdaOverride);
+            return resolved;
         }
     }
 }
