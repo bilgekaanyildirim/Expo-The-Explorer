@@ -29,7 +29,11 @@ namespace ExpoTheExplorer.Bootstrap
         [SerializeField] private EconomyConfig economyConfig;
         [SerializeField] private LivesConfig livesConfig;
         [SerializeField] private LevelProgressionConfig levelProgressionConfig;
-        [SerializeField] private BoardDistributionConfig boardDistributionConfig;
+
+        // No boardDistributionConfig field on purpose: board-distribution balancing is
+        // authored per Day and arrives with the Day (decisions.md D-004). The shared asset
+        // is now Day-Editor-only -- a seed for new Days. Wiring it here again would put a
+        // second authority back on the runtime path.
 
         public GameState State { get; private set; }
         public TicketSlotManager TicketSlotManager { get; private set; }
@@ -53,7 +57,9 @@ namespace ExpoTheExplorer.Bootstrap
         // RefreshDayTicketSequenceProvider) rather than once for the whole session --
         // its leakedTickets dedup state must not survive into a retried/new Day, or a
         // ticket that already leaked once in the PREVIOUS attempt would wrongly stay
-        // "already leaked" (never leak again) in this one.
+        // "already leaked" (never leak again) in this one. Since D-004 there is a second
+        // reason: each Day carries its own balancing, so a distributor built for the
+        // previous Day would keep applying that Day's numbers.
         private BoardDistributor boardDistributor;
 
         // Snapshot of SoftMoney/Xp/Level as of the moment the CURRENT day
@@ -315,7 +321,7 @@ namespace ExpoTheExplorer.Bootstrap
                 ? new DayTicketSequenceProvider(CurrentDay.TicketSequence, ticketGenerationConfig, ticketFactory)
                 : null;
             boardDistributor = CurrentDay != null
-                ? new BoardDistributor(State, boardDistributionConfig)
+                ? new BoardDistributor(State, CurrentDay.BoardDistribution)
                 : null;
         }
 

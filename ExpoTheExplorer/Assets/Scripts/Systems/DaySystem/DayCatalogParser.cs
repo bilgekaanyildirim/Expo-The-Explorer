@@ -98,7 +98,7 @@ namespace ExpoTheExplorer.Systems.DaySystem
         // cosmetic -- a silently zeroed block disables the urgent-ticket guarantee and
         // flattens the arrival-weighted lottery, which is precisely how the shared config
         // asset ended up with two of D-001's features quietly switched off.
-        private static ResolvedBoardDistribution ResolveBoardDistribution(BoardDistributionJson json, string fileName)
+        private static BoardDistributionSettings ResolveBoardDistribution(BoardDistributionJson json, string fileName)
         {
             if (json == null || string.IsNullOrEmpty(json.guaranteedTicketCountMode))
             {
@@ -118,7 +118,7 @@ namespace ExpoTheExplorer.Systems.DaySystem
                 return null;
             }
 
-            return new ResolvedBoardDistribution(
+            return new BoardDistributionSettings(
                 json.noiseLeakCountLambda,
                 mode,
                 json.guaranteedTicketCount,

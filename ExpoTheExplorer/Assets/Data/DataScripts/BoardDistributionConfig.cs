@@ -64,25 +64,26 @@ namespace ExpoTheExplorer.Data
         // Same defensive-clamp rationale as GuaranteedTicketCount.
         public int MaxLeakCount => Mathf.Clamp(maxLeakCount, 1, 10);
 
-        // Used by DayContentGenerator (PR-6.5) to apply a Day's editorMeta overrides
-        // without mutating the shared base asset -- Instantiate (not SerializedObject)
-        // keeps this class Editor-independent. Values are stored raw (unclamped) since
-        // the public getters above already clamp defensively on read.
-        public BoardDistributionConfig CloneWithOverrides(
-            float? noiseLeakCountLambda = null, int? guaranteedTicketCount = null, int? leakDepth = null, int? maxLeakCount = null,
-            GuaranteedTicketCountMode? guaranteedTicketCountMode = null, float? guaranteedTicketCountLambda = null,
-            float? earlyTicketWeightDecay = null, float? urgentTimeThresholdSeconds = null)
+        // This asset is no longer on the runtime path -- BoardDistributor is fed per-Day
+        // settings parsed from Day JSON (see BoardDistributionSettings, decisions.md D-004).
+        // What is left here is the authoring seed: the values a brand-new Day starts from
+        // in the Day Editor, plus this asset's Inspector preview. ToSettings exists so that
+        // seeding, and any tooling that wants to see what the asset would actually do, goes
+        // through the same clamping the runtime uses.
+        //
+        // The old CloneWithOverrides was deleted with the override layer it existed for: a
+        // Day now carries a complete block, so there is nothing to overlay onto a base.
+        public BoardDistributionSettings ToSettings()
         {
-            var clone = Instantiate(this);
-            if (noiseLeakCountLambda.HasValue) clone.noiseLeakCountLambda = noiseLeakCountLambda.Value;
-            if (guaranteedTicketCount.HasValue) clone.guaranteedTicketCount = guaranteedTicketCount.Value;
-            if (leakDepth.HasValue) clone.leakDepth = leakDepth.Value;
-            if (maxLeakCount.HasValue) clone.maxLeakCount = maxLeakCount.Value;
-            if (guaranteedTicketCountMode.HasValue) clone.guaranteedTicketCountMode = guaranteedTicketCountMode.Value;
-            if (guaranteedTicketCountLambda.HasValue) clone.guaranteedTicketCountLambda = guaranteedTicketCountLambda.Value;
-            if (earlyTicketWeightDecay.HasValue) clone.earlyTicketWeightDecay = earlyTicketWeightDecay.Value;
-            if (urgentTimeThresholdSeconds.HasValue) clone.urgentTimeThresholdSeconds = urgentTimeThresholdSeconds.Value;
-            return clone;
+            return new BoardDistributionSettings(
+                NoiseLeakCountLambda,
+                GuaranteedTicketCountMode,
+                GuaranteedTicketCount,
+                GuaranteedTicketCountLambda,
+                EarlyTicketWeightDecay,
+                UrgentTimeThresholdSeconds,
+                LeakDepth,
+                MaxLeakCount);
         }
 
 #if UNITY_EDITOR

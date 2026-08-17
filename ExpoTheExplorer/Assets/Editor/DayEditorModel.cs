@@ -807,7 +807,7 @@ namespace ExpoTheExplorer.Editor
             maxLeakCount = MaxLeakCount,
         };
 
-        public ResolvedBoardDistribution ToResolved() => new(
+        public BoardDistributionSettings ToResolved() => new(
             NoiseLeakCountLambda, GuaranteedTicketCountMode, GuaranteedTicketCount, GuaranteedTicketCountLambda,
             EarlyTicketWeightDecay, UrgentTimeThresholdSeconds, LeakDepth, MaxLeakCount);
     }

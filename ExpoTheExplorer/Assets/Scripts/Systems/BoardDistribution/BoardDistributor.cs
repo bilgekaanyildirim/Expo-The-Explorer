@@ -13,18 +13,22 @@ namespace ExpoTheExplorer.Systems.BoardDistribution
     // than holding a TicketSlotManager reference, so this only depends on Core
     // (Ticket) and Data (FoodItemConfig/ModificationConfig), not on
     // Systems.TicketSystem.
+    //
+    // Balancing arrives as plain BoardDistributionSettings, not as the config asset:
+    // it is authored per Day in Day JSON and resolved by DayCatalogParser, so this
+    // class no longer touches ScriptableObject at all (decisions.md D-004).
     public class BoardDistributor
     {
         private readonly GameState state;
-        private readonly BoardDistributionConfig config;
+        private readonly BoardDistributionSettings settings;
         private readonly Random random;
         private readonly HashSet<Ticket> leakedTickets = new();
         private readonly HashSet<Ticket> guaranteedTickets = new();
 
-        public BoardDistributor(GameState state, BoardDistributionConfig config, Random random = null)
+        public BoardDistributor(GameState state, BoardDistributionSettings settings, Random random = null)
         {
             this.state = state;
-            this.config = config;
+            this.settings = settings;
             this.random = random ?? new Random();
         }
 
@@ -113,15 +117,15 @@ namespace ExpoTheExplorer.Systems.BoardDistribution
             // assigned into a slot, so it can never be "urgent" yet.
             foreach (var ticket in activeTickets)
             {
-                if (ticket != null && ticket.State == TicketState.Active && ticket.RemainingSeconds < config.UrgentTimeThresholdSeconds)
+                if (ticket != null && ticket.State == TicketState.Active && ticket.RemainingSeconds < settings.UrgentTimeThresholdSeconds)
                 {
                     guaranteedTickets.Add(ticket);
                 }
             }
 
-            var budget = config.GuaranteedTicketCountMode == GuaranteedTicketCountMode.Poisson
-                ? TruncatedPoisson.Sample(GameState.TicketSlotCount - 1, config.GuaranteedTicketCountLambda, random) + 1
-                : config.GuaranteedTicketCount;
+            var budget = settings.GuaranteedTicketCountMode == GuaranteedTicketCountMode.Poisson
+                ? TruncatedPoisson.Sample(GameState.TicketSlotCount - 1, settings.GuaranteedTicketCountLambda, random) + 1
+                : settings.GuaranteedTicketCount;
 
             var slotsToFill = budget - guaranteedTickets.Count;
             if (slotsToFill > 0)
@@ -155,7 +159,7 @@ namespace ExpoTheExplorer.Systems.BoardDistribution
                 var totalWeight = 0d;
                 for (var i = 0; i < remaining.Count; i++)
                 {
-                    weights[i] = Math.Pow(config.EarlyTicketWeightDecay, i);
+                    weights[i] = Math.Pow(settings.EarlyTicketWeightDecay, i);
                     totalWeight += weights[i];
                 }
 
@@ -220,11 +224,11 @@ namespace ExpoTheExplorer.Systems.BoardDistribution
         {
             leakedTickets.IntersectWith(upcomingTickets);
 
-            var candidates = upcomingTickets.Take(config.LeakDepth).Where(t => !leakedTickets.Contains(t)).ToList();
+            var candidates = upcomingTickets.Take(settings.LeakDepth).Where(t => !leakedTickets.Contains(t)).ToList();
             if (candidates.Count == 0) return;
 
             var leakCount = Math.Min(
-                TruncatedPoisson.Sample(config.MaxLeakCount, config.NoiseLeakCountLambda, random),
+                TruncatedPoisson.Sample(settings.MaxLeakCount, settings.NoiseLeakCountLambda, random),
                 candidates.Count);
 
             for (var i = 0; i < leakCount; i++)

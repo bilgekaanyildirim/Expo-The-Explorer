@@ -171,16 +171,34 @@ runtime verisi.
       **0 hata** derlendi, ama bu testlerin geçtiği anlamına gelmez. Unity kapalıyken
       koşturulup bu kutu işaretlenecek.
 
-### Adım 2 — Runtime bağlantısı (board distribution)
-- [ ] `GameManager.RefreshDayTicketSequenceProvider`: `boardDistributionConfig`
-      yerine günün bloğundan çözülen config ile `BoardDistributor` kurar
-      (`CloneWithOverrides` mekanizması hazır, adı `Override`'dan arındırılır).
-- [ ] **Klon ömrü:** `Instantiate` edilen SO gün değişiminde / retry'da
-      `Destroy` edilmeli — `DayContentGenerator` bunu `finally` içinde
-      `DestroyImmediate` ile yapıyor, runtime'da aynı disiplin gerekir.
-- [ ] `[SerializeField] boardDistributionConfig` artık yalnız "yeni gün
-      şablonu"; runtime okumaz (K1).
-- [ ] Test: farklı `guaranteedTicketCount` taşıyan iki gün farklı davranıyor.
+### Adım 2 — Runtime bağlantısı (board distribution) ✅ 2026-08-17
+**Plandan sapma (onaylı):** klon yerine düz veri. Planın "SO'yu `Instantiate` et,
+ez, `Destroy` et" yolu yerine `Data`'ya `BoardDistributionSettings` konuldu ve
+`BoardDistributor` SO yerine onu alıyor. Böylece klon ömrü riski (aşağıdaki
+Riskler #2) **tamamen ortadan kalktı**, SO runtime yolundan çıktı ve CLAUDE.md
+Bölüm 5'in "Food Distribution Module Unity bağımlılığı taşımasın" maddesine
+yaklaşıldı. `BoardDistributionConfig.CloneWithOverrides` ölü kod olduğu için
+silindi (override katmanının artığıydı).
+
+- [x] `BoardDistributionSettings` (Data): 8 değer + clamp'lerin **tek** uygulandığı yer.
+- [x] `BoardDistributor`: ctor artık `BoardDistributionSettings` alıyor, SO'ya hiç
+      dokunmuyor.
+- [x] `DayDefinition`: `ResolvedBoardDistribution` kaldırıldı, yerine
+      `BoardDistributionSettings` — aynı 8 sayıyı iki tipte tutmak `data-source.md`'nin
+      yasakladığı çift kayıt olurdu.
+- [x] `GameManager`: `CurrentDay.BoardDistribution` ile kuruyor;
+      `[SerializeField] boardDistributionConfig` alanı **kaldırıldı**.
+- [x] `BoardDistributionConfig`: `ToSettings()` eklendi, `CloneWithOverrides` silindi;
+      artık yalnız Day Editör seed'i + Inspector preview'ı.
+- [x] Test: `GuaranteedTicketCountAuthoredInDayJson_ChangesHowManyTicketsGetCovered`
+      — gerçek JSON metninden gerçek parser'la geçip davranış farkını ölçüyor.
+      Mevcut "serialized zero" regression testleri artık yeni clamp yerini bekçiliyor.
+- [x] `BoardDistributionConfigCloneWithOverridesTests.cs` silindi (silinen kodu test ediyordu).
+- [x] `decisions.md` D-004 yazıldı; `fingerprint.md`'nin "Data authorities" satırı
+      board-distribution için dolduruldu (Adım 1 postflight'ının açık `N` maddesi kapandı).
+- [ ] **Açık:** EditMode testleri yine **çalıştırılamadı** (Unity proje kilidi).
+      `dotnet build` → **0 hata**. Playtest bekleniyor: bu adımla acil-ticket garantisi
+      ve loto rastgeleliği fiilen açıldı, oynanış değişti.
 
 ### Adım 3 — `runtime.ticketRuntime` bloğu + TicketFactory'nin güne bağlanması
 - [ ] Blok + parser + `DayDefinition` alanı (Adım 1 deseni).

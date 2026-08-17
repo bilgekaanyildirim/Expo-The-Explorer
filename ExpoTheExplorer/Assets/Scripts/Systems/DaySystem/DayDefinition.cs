@@ -19,7 +19,12 @@ namespace ExpoTheExplorer.Systems.DaySystem
         // purely to run it past DayValidator don't have to invent one; the runtime load
         // path (DayCatalogParser) always supplies it, and a Day file missing the block is
         // dropped rather than defaulted.
-        public ResolvedBoardDistribution BoardDistribution { get; }
+        //
+        // Deliberately the Data-layer BoardDistributionSettings rather than a DaySystem
+        // type of its own: BoardDistributor consumes it directly, and a second value type
+        // holding the same eight numbers would be exactly the duplicated authority the
+        // data-source procedure forbids.
+        public BoardDistributionSettings BoardDistribution { get; }
 
         public DayDefinition(
             int dayIndex,
@@ -29,7 +34,7 @@ namespace ExpoTheExplorer.Systems.DaySystem
             int star1Threshold = 0,
             int star2Threshold = 0,
             int star3Threshold = 0,
-            ResolvedBoardDistribution boardDistribution = null)
+            BoardDistributionSettings boardDistribution = null)
         {
             DayIndex = dayIndex;
             TicketsRequiredForDay = ticketsRequiredForDay;
@@ -39,42 +44,6 @@ namespace ExpoTheExplorer.Systems.DaySystem
             Star2Threshold = star2Threshold;
             Star3Threshold = star3Threshold;
             BoardDistribution = boardDistribution;
-        }
-    }
-
-    // Resolved counterpart of BoardDistributionJson: the enum is parsed, everything else
-    // carried across as authored. Deliberately does no clamping -- BoardDistributionConfig's
-    // getters are the single place those bounds are enforced, and a second copy of the rule
-    // here would be free to drift away from it.
-    public class ResolvedBoardDistribution
-    {
-        public float NoiseLeakCountLambda { get; }
-        public GuaranteedTicketCountMode GuaranteedTicketCountMode { get; }
-        public int GuaranteedTicketCount { get; }
-        public float GuaranteedTicketCountLambda { get; }
-        public float EarlyTicketWeightDecay { get; }
-        public float UrgentTimeThresholdSeconds { get; }
-        public int LeakDepth { get; }
-        public int MaxLeakCount { get; }
-
-        public ResolvedBoardDistribution(
-            float noiseLeakCountLambda,
-            GuaranteedTicketCountMode guaranteedTicketCountMode,
-            int guaranteedTicketCount,
-            float guaranteedTicketCountLambda,
-            float earlyTicketWeightDecay,
-            float urgentTimeThresholdSeconds,
-            int leakDepth,
-            int maxLeakCount)
-        {
-            NoiseLeakCountLambda = noiseLeakCountLambda;
-            GuaranteedTicketCountMode = guaranteedTicketCountMode;
-            GuaranteedTicketCount = guaranteedTicketCount;
-            GuaranteedTicketCountLambda = guaranteedTicketCountLambda;
-            EarlyTicketWeightDecay = earlyTicketWeightDecay;
-            UrgentTimeThresholdSeconds = urgentTimeThresholdSeconds;
-            LeakDepth = leakDepth;
-            MaxLeakCount = maxLeakCount;
         }
     }
 

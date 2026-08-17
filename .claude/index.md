@@ -1,4 +1,4 @@
-<!-- stamp: 2026-08-17 systems:11 unmapped:0 unassigned-files:59 -->
+<!-- stamp: 2026-08-17 systems:11 unmapped:0 unassigned-files:57 -->
 # index — system to location, one screen
 
 Step 1 of `procedures/locate.md`: read this before anything else, and only
@@ -8,9 +8,9 @@ maps and never invents a name.
 
 | system | shard(s) | entry files | scenes | prefabs | data | status |
 |---|---|---|---|---|---|---|
-| BoardDistribution | core | ExpoTheExplorer/Assets/Data/DataScripts/BoardDistributionConfig.cs, ExpoTheExplorer/Assets/Scripts/Systems/BoardDistribution/BoardDistributor.cs | - | - | - | OK |
+| BoardDistribution | core | ExpoTheExplorer/Assets/Data/DataScripts/BoardDistributionSettings.cs, ExpoTheExplorer/Assets/Scripts/Systems/BoardDistribution/BoardDistributor.cs (+2) | - | - | - | OK |
 | BoardUI | core, ui | ExpoTheExplorer/Assets/Scripts/UI/BoardView.cs, ExpoTheExplorer/Assets/Data/DataScripts/BoardVisualsConfig.cs | - | - | - | OK |
-| Bootstrap | core | ExpoTheExplorer/Assets/Scripts/Bootstrap/DebugTicketDeliveryController.cs | - | - | - | OK |
+| Bootstrap | core | ExpoTheExplorer/Assets/Scripts/Bootstrap/GameManager.cs, ExpoTheExplorer/Assets/Scripts/Bootstrap/DebugTicketDeliveryController.cs | - | - | - | OK |
 | DayEditor | core, editor | ExpoTheExplorer/Assets/Editor/DayEditorDayStartPreview.cs, ExpoTheExplorer/Assets/Editor/DayEditorModel.cs (+4) | - | - | - | OK |
 | DayLifecycle | core, ui | ExpoTheExplorer/Assets/Scripts/Systems/DayLifecycle/DayLifecycleManager.cs, ExpoTheExplorer/Assets/Scripts/Systems/DayLifecycle/ExpoTheExplorer.Systems.DayLifecycle.asmdef (+2) | - | - | - | OK |
 | DaySystem | core | ExpoTheExplorer/Assets/Scripts/Systems/DaySystem/DayBoardTimelinePlayer.cs, ExpoTheExplorer/Assets/Scripts/Systems/DaySystem/DayCatalogParser.cs (+11) | - | - | - | OK |
@@ -21,5 +21,5 @@ maps and never invents a name.
 | TraySystem | core | ExpoTheExplorer/Assets/Scripts/Systems/TraySystem/TrayManager.cs, ExpoTheExplorer/Assets/Scripts/Systems/TraySystem/ExpoTheExplorer.Systems.TraySystem.asmdef (+2) | - | - | - | OK |
 
 ## Gaps
-- `sys: ?` on 59 codemap line(s) — first: ExpoTheExplorer/Assets/Data/ExpoTheExplorer.Data.asmdef, ExpoTheExplorer/Assets/Data/DataScripts/BoardAnimationConfig.cs, ExpoTheExplorer/Assets/Data/DataScripts/DragFeelConfig.cs
-- 5 flagged codemap line(s) excluded from this table (STALE)
+- `sys: ?` on 57 codemap line(s) — first: ExpoTheExplorer/Assets/Data/ExpoTheExplorer.Data.asmdef, ExpoTheExplorer/Assets/Data/DataScripts/BoardAnimationConfig.cs, ExpoTheExplorer/Assets/Data/DataScripts/DragFeelConfig.cs
+- 4 flagged codemap line(s) excluded from this table (STALE)

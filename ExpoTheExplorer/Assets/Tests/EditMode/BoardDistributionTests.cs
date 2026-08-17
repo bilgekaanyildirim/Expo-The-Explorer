@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using ExpoTheExplorer.Core;
 using ExpoTheExplorer.Data;
 using ExpoTheExplorer.Systems.BoardDistribution;
+using ExpoTheExplorer.Systems.DaySystem;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
@@ -36,13 +37,14 @@ namespace ExpoTheExplorer.Tests.EditMode
             spawnedAssets.Clear();
         }
 
-        private FoodItemConfig CreateFoodItem(FoodCategory category = FoodCategory.Main)
+        private FoodItemConfig CreateFoodItem(FoodCategory category = FoodCategory.Main, string id = null)
         {
             var foodConfig = ScriptableObject.CreateInstance<FoodItemConfig>();
             spawnedAssets.Add(foodConfig);
 
             var serialized = new SerializedObject(foodConfig);
             serialized.FindProperty("category").enumValueIndex = (int)category;
+            if (id != null) serialized.FindProperty("id").stringValue = id;
             serialized.ApplyModifiedPropertiesWithoutUndo();
 
             return foodConfig;
@@ -65,26 +67,24 @@ namespace ExpoTheExplorer.Tests.EditMode
         // count. urgentTimeThresholdSeconds defaults to 0 so no test ticket
         // (all use timeLimitSeconds significantly above 0) is ever
         // accidentally treated as urgent unless a test opts in explicitly.
-        private BoardDistributionConfig CreateDistributionConfig(
+        // Builds the plain settings BoardDistributor now takes (D-004) instead of a
+        // ScriptableObject asset -- no CreateInstance, no SerializedObject reflection over
+        // private field names, and nothing for TearDown to destroy. Every call site keeps
+        // its named arguments unchanged; only what this returns moved.
+        private static BoardDistributionSettings CreateDistributionConfig(
             float noiseLeakCountLambda, int guaranteedTicketCount = 1, int leakDepth = 10, int maxLeakCount = 10,
             GuaranteedTicketCountMode guaranteedTicketCountMode = GuaranteedTicketCountMode.Manual,
             float guaranteedTicketCountLambda = 0f, float earlyTicketWeightDecay = 0f, float urgentTimeThresholdSeconds = 0f)
         {
-            var config = ScriptableObject.CreateInstance<BoardDistributionConfig>();
-            spawnedAssets.Add(config);
-
-            var serialized = new SerializedObject(config);
-            serialized.FindProperty("noiseLeakCountLambda").floatValue = noiseLeakCountLambda;
-            serialized.FindProperty("guaranteedTicketCountMode").enumValueIndex = (int)guaranteedTicketCountMode;
-            serialized.FindProperty("guaranteedTicketCount").intValue = guaranteedTicketCount;
-            serialized.FindProperty("guaranteedTicketCountLambda").floatValue = guaranteedTicketCountLambda;
-            serialized.FindProperty("earlyTicketWeightDecay").floatValue = earlyTicketWeightDecay;
-            serialized.FindProperty("urgentTimeThresholdSeconds").floatValue = urgentTimeThresholdSeconds;
-            serialized.FindProperty("leakDepth").intValue = leakDepth;
-            serialized.FindProperty("maxLeakCount").intValue = maxLeakCount;
-            serialized.ApplyModifiedPropertiesWithoutUndo();
-
-            return config;
+            return new BoardDistributionSettings(
+                noiseLeakCountLambda,
+                guaranteedTicketCountMode,
+                guaranteedTicketCount,
+                guaranteedTicketCountLambda,
+                earlyTicketWeightDecay,
+                urgentTimeThresholdSeconds,
+                leakDepth,
+                maxLeakCount);
         }
 
         private Ticket CreateTicket(List<FoodItemConfig> requiredItems, List<Modification> modifications = null, float timeLimitSeconds = 90f, long arrivalSequence = 0)
@@ -106,6 +106,102 @@ namespace ExpoTheExplorer.Tests.EditMode
             }
 
             return count;
+        }
+
+        // Closes the loop this whole change exists for (D-004): a number typed into a Day
+        // file has to end up changing what BoardDistributor does. Everything between --
+        // JSON text, DayCatalogParser, DayDefinition, BoardDistributionSettings -- is
+        // exercised for real here; only GameManager's MonoBehaviour wiring is out of reach
+        // of an EditMode test.
+        [Test]
+        public void GuaranteedTicketCountAuthoredInDayJson_ChangesHowManyTicketsGetCovered()
+        {
+            var burger = CreateFoodItem(FoodCategory.Main, id: "burger");
+            var fries = CreateFoodItem(FoodCategory.Main, id: "fries");
+            var cola = CreateFoodItem(FoodCategory.Main, id: "cola");
+            var catalog = CreateCatalog(burger);
+
+            var tickets = new[]
+            {
+                CreateTicket(new List<FoodItemConfig> { burger }, arrivalSequence: 0),
+                CreateTicket(new List<FoodItemConfig> { fries }, arrivalSequence: 1),
+                CreateTicket(new List<FoodItemConfig> { cola }, arrivalSequence: 2),
+            };
+
+            var coveredWithBudgetOne = CoveredTicketCount(ParseDayBoardDistribution(catalog, guaranteedTicketCount: 1), tickets);
+            var coveredWithBudgetThree = CoveredTicketCount(ParseDayBoardDistribution(catalog, guaranteedTicketCount: 3), tickets);
+
+            Assert.AreEqual(1, coveredWithBudgetOne, "A Day authored with guaranteedTicketCount 1 should cover exactly one ticket.");
+            Assert.AreEqual(3, coveredWithBudgetThree, "A Day authored with guaranteedTicketCount 3 should cover all three.");
+        }
+
+        // Runs the real parser over real JSON text rather than hand-building settings --
+        // a settings object built in-test would prove nothing about the Day file path.
+        // earlyTicketWeightDecay/urgentTimeThresholdSeconds/noiseLeakCountLambda are all 0
+        // so the only variable is the budget: deterministic earliest-first, no urgency
+        // override, no noise items to confuse the count.
+        private static BoardDistributionSettings ParseDayBoardDistribution(FoodCatalog catalog, int guaranteedTicketCount)
+        {
+            var dayJson = new DayJson
+            {
+                runtime = new DayRuntimeJson
+                {
+                    dayIndex = 0,
+                    ticketsRequiredForDay = 1,
+                    boardDistribution = new BoardDistributionJson
+                    {
+                        noiseLeakCountLambda = 0f,
+                        guaranteedTicketCountMode = "Manual",
+                        guaranteedTicketCount = guaranteedTicketCount,
+                        guaranteedTicketCountLambda = 0f,
+                        earlyTicketWeightDecay = 0f,
+                        urgentTimeThresholdSeconds = 0f,
+                        leakDepth = 10,
+                        maxLeakCount = 10,
+                    },
+                    ticketSequence = new[] { new TicketEntryJson { mainItemId = "burger", patienceType = "Normal" } },
+                },
+            };
+
+            var parsed = DayCatalogParser.ParseAll(
+                new[] { new DayJsonFile("test", JsonUtility.ToJson(dayJson)) }, catalog);
+
+            Assert.AreEqual(1, parsed.Count, "Day fixture failed to parse -- the test is broken, not the code.");
+            return parsed[0].BoardDistribution;
+        }
+
+        // A fresh board per call: the two budgets have to be measured independently, and
+        // BoardDistributor never un-spawns, so reusing one board would let the first run's
+        // items count toward the second.
+        private int CoveredTicketCount(BoardDistributionSettings settings, IReadOnlyList<Ticket> tickets)
+        {
+            var state = new GameState(gameConfig);
+            new BoardDistributor(state, settings).OnOrderPlaced(tickets, Array.Empty<Ticket>());
+
+            var covered = 0;
+            foreach (var ticket in tickets)
+            {
+                if (CountMatchingItemsOnBoard(state.Board, ticket.RequiredItems[0], ticket.Modifications) > 0) covered++;
+            }
+
+            return covered;
+        }
+
+        private FoodCatalog CreateCatalog(params FoodItemConfig[] items)
+        {
+            var catalog = ScriptableObject.CreateInstance<FoodCatalog>();
+            spawnedAssets.Add(catalog);
+
+            var serialized = new SerializedObject(catalog);
+            var property = serialized.FindProperty("items");
+            property.arraySize = items.Length;
+            for (var i = 0; i < items.Length; i++)
+            {
+                property.GetArrayElementAtIndex(i).objectReferenceValue = items[i];
+            }
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            return catalog;
         }
 
         [Test]
