@@ -48,13 +48,26 @@ namespace ExpoTheExplorer.Editor
         [BoxGroup("Board Distribution"), OnInspectorGUI, PropertyOrder(-2.45f)]
         private void DrawBoardDistributionPreviews()
         {
+            // Two columns, with no width given to either: GUILayout splits what is available.
+            // Fixed widths are what made the whole inspector overflow sideways earlier in this
+            // window's history (the food grid and the toolbar both did it), so none are used
+            // here. The columns come out uneven -- the leak list runs to MaxLeakCount rows
+            // while the guaranteed one is at most three -- which is fine.
+            EditorGUILayout.BeginHorizontal();
+
+            EditorGUILayout.BeginVertical();
             DayEditorSettingsPreviews.DrawLeakPreview(
                 BoardDistribution.MaxLeakCount, BoardDistribution.NoiseLeakCountLambda);
+            EditorGUILayout.EndVertical();
 
+            EditorGUILayout.BeginVertical();
             DayEditorSettingsPreviews.DrawGuaranteedTicketPreview(
                 BoardDistribution.GuaranteedTicketCountMode,
                 BoardDistribution.GuaranteedTicketCount,
                 BoardDistribution.GuaranteedTicketCountLambda);
+            EditorGUILayout.EndVertical();
+
+            EditorGUILayout.EndHorizontal();
         }
 
         // Per-Day ticket play-time balancing (time limits + lookahead depth). Same story as

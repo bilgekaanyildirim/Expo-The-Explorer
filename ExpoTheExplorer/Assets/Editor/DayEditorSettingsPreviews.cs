@@ -4,6 +4,7 @@ using System.Linq;
 using ExpoTheExplorer.Core;
 using ExpoTheExplorer.Data;
 using UnityEditor;
+using UnityEngine;
 
 namespace ExpoTheExplorer.Editor
 {
@@ -67,10 +68,21 @@ namespace ExpoTheExplorer.Editor
                 }
             }
 
+            // Word-wrapped on purpose: this sits in one of two side-by-side columns, and
+            // EditorStyles.miniLabel truncates rather than wraps. Half a sentence here would
+            // be worse than none -- the whole reason it exists is to stop the numbers above
+            // being read as "at most 3".
             EditorGUILayout.LabelField(
                 "Per-round budget. Tickets under the urgency threshold are guaranteed on top of this and can exceed it.",
-                EditorStyles.miniLabel);
+                WrappedMiniLabel);
         }
+
+        // Built once, lazily: GUI styles cannot be constructed during serialization or before
+        // the skin exists, so this cannot be a field initialiser.
+        private static GUIStyle wrappedMiniLabel;
+
+        private static GUIStyle WrappedMiniLabel =>
+            wrappedMiniLabel ??= new GUIStyle(EditorStyles.miniLabel) { wordWrap = true };
 
         // Takes the resolved entries rather than either concrete weight type, so the Day
         // Editor's own model and the config asset's serialized list can both feed it.
