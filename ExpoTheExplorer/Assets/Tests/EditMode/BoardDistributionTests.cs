@@ -159,6 +159,16 @@ namespace ExpoTheExplorer.Tests.EditMode
                         leakDepth = 10,
                         maxLeakCount = 10,
                     },
+                    // Required since D-005: a Day with no ticketRuntime block is dropped by
+                    // the parser. Irrelevant to what this test measures -- it only needs the
+                    // Day to load so the boardDistribution block can be read back off it.
+                    ticketRuntime = new TicketRuntimeJson
+                    {
+                        impatientTimeLimitSeconds = 45f,
+                        normalTimeLimitSeconds = 90f,
+                        patientTimeLimitSeconds = 150f,
+                        upcomingQueueSize = 10,
+                    },
                     ticketSequence = new[] { new TicketEntryJson { mainItemId = "burger", patienceType = "Normal" } },
                 },
             };
