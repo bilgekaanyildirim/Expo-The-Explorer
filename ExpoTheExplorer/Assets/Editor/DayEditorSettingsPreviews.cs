@@ -136,9 +136,15 @@ namespace ExpoTheExplorer.Editor
                     continue;
                 }
 
+                // Name on its own line, stats underneath, rather than one label|value pair.
+                // The pair form drops the value into Unity's value column, which strands the
+                // numbers on the far right of a wide window, far from the dish they describe.
+                // Name first (not stats first) so each dish reads as one block -- with more
+                // than one weight, a stats line above its name sits directly under the
+                // PREVIOUS dish's modification list and looks like it belongs to that one.
                 var chance = totalWeight > 0d ? Math.Max(0d, entry.Weight) / totalWeight : 0d;
+                EditorGUILayout.LabelField(entry.Food.DisplayName);
                 EditorGUILayout.LabelField(
-                    entry.Food.DisplayName,
                     $"Spawn chance: {Percent(chance)} — mod count λ (Poisson): {entry.ModificationCountLambda:F2}");
 
                 using (new EditorGUI.IndentLevelScope())
