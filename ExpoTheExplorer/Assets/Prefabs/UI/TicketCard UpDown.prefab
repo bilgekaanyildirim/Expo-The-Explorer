@@ -8,6 +8,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 505060318643641907, guid: 9d7dd84290aae41dfafe9774b34668cd, type: 3}
+      propertyPath: m_text
+      value: Kennedy
+      objectReference: {fileID: 0}
     - target: {fileID: 814110836261137415, guid: 9d7dd84290aae41dfafe9774b34668cd, type: 3}
       propertyPath: m_AnchorMax.y
       value: 0
@@ -186,7 +190,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3279117853196442240, guid: 9d7dd84290aae41dfafe9774b34668cd, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 0
+      value: -19065.31
       objectReference: {fileID: 0}
     - target: {fileID: 3279117853196442240, guid: 9d7dd84290aae41dfafe9774b34668cd, type: 3}
       propertyPath: m_LocalRotation.w
