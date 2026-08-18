@@ -18,9 +18,13 @@ namespace ExpoTheExplorer.Systems.ProgressionSystem
     //
     // Adım 1 moved the four scattered writers in here verbatim; Adım 2 added the
     // per-day spend ledger and made RevertToDayStart enforce the atomic-day rule
-    // (see that method). Everything a day pays out is provisional until the day
-    // is completed -- what makes it permanent is Adım 4's persistence, which does
-    // not exist yet: nothing is written to disk, so a session still starts at 0.
+    // (see that method); Adım 4 made the balances outlive the session.
+    //
+    // What a day pays out stays provisional until the day is COMPLETED -- that is
+    // the moment GameManager writes the profile to disk. Nothing else does, so
+    // quitting mid-day drops that day's earnings and a failed day never reaches
+    // the file at all. This class knows none of that: it is handed the restored
+    // balances through ApplyPersistedBalances and never touches the disk itself.
     public class Wallet
     {
         private readonly GameState state;

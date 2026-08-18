@@ -28,7 +28,7 @@
 | D | ~~`RetryCompletedDay` ödenen Continue'yu iade ediyor~~ ✅ | Adım 2 |
 | E | ~~Xp/Level'ın ikinci yazıcısı var~~ — konusuz kaldı (D-009) | ~~Adım 3~~ |
 | F | ~~Para ve Gem kalıcı değil (her oturum sıfırlanıyor)~~ ✅ | Adım 4 |
-| G | Ölü/yanlış yorumlar + sıfıra bölme riski | Adım 5 |
+| G | ~~Ölü/yanlış yorumlar + sıfıra bölme riski~~ ✅ | Adım 5 |
 | H | Her yemek aynı parayı ediyor; hız/sabır sabit bedeli de kısıyor | Adım 6 |
 
 Kapsam dışı (bilerek — bu planda yok, kaybolmasın diye kayıtta):
@@ -395,7 +395,7 @@ Diğer notlar:
 
 ---
 
-## Adım 5 — Ölü yorumlar ve küçük sağlamlık ⬜
+## Adım 5 — Ölü yorumlar ve küçük sağlamlık ✅ 2026-08-18
 
 Sorun G. Hepsi yorum/koruma seviyesinde, davranış değişmiyor:
 
@@ -415,6 +415,34 @@ Sorun G. Hepsi yorum/koruma seviyesinde, davranış değişmiyor:
 **Bitti kriteri:** yukarıdaki maddeler güncel; davranış testleri
 değişmeden geçer.
 **APPROVE gerekir mi:** Evet (`.cs`).
+
+**Sonuç (2026-08-18).** Beş yanlış ifade düzeltildi, hiçbiri davranışa
+dokunmuyor:
+1. `Wallet.cs` sınıf yorumu — "kalıcılık yok, diske hiçbir şey yazılmıyor"
+   diyordu. **Adım 2'de ben yazmıştım, Adım 4 bir adım sonra yalanladı.**
+2. `GameState.CurrentDayIndex` — "persistence lands in a later PR" yerine
+   artık "kalıcı değil, cüzdan kalıcı; Q4 açık; şema versiyonlu olduğu için
+   sonradan eklenmesi ucuz" diyor.
+3. `GameState.MaxLives` — `LivesConfig.ContinueRefillAmount` diye var
+   olmayan bir knob'a atıf yapıyordu. Anlattığı davranış gerçek, knob değil;
+   yorum "böyle bir ayar yok, her doldurma MaxLives'a gider" olarak
+   düzeltildi.
+4. `GameState.TicketsDeliveredToday` — "nothing consumes this reactively
+   yet" yanıltıcıydı: üç okuyucu var (`DayLifecycleManager`,
+   `TicketSlotManager`'ın DayCompleted payload'ı, `GameManager`'ın retry
+   snapshot'ı) ve tek yazıcısı `DayLifecycleManager`. Yorum artık bunu ve
+   "ikinci yazıcı çıkarsa sayaç ile fiş ayrışır" uyarısını taşıyor.
+5. `DayEditorWindow.cs` — bugün sildiğim `EconomyConfigEditor`'ü emsal
+   gösteriyordu; emsal yerine mekanizmanın kendi gerekçesi yazıldı.
+
+Kapsam dışı bırakılanlar: kodun her yerindeki `PR-6`/`PR-7`/`PR-9` tarihsel
+kısaltmaları (yanlış ifade değil, tutarlı isimlendirme) ve
+`DebugTicketDeliveryController.cs:8` (bayat, ama o dosyanın hâlâ istenip
+istenmediği kullanıcının kararı).
+
+**Sağlamlık maddesi yok:** planın tek kalemi `LevelManager.
+GetXpProgressRatio` sıfıra bölmesiydi, dosya D-009'da silindi. Slotu
+doldurmak için koruma uydurulmadı.
 
 ---
 

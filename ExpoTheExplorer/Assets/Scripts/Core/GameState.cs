@@ -33,11 +33,13 @@ namespace ExpoTheExplorer.Core
         }
 
         // The "out of" half of the X/Y lives HUD. Deliberately NOT derived from
-        // DefaultStartingLives at read time -- LivesManager.TryContinue can
-        // refill Lives to a different amount (LivesConfig.ContinueRefillAmount is
-        // intentionally a separate knob), so MaxLives is instead set explicitly
-        // by whoever grants a full refill (GameState's constructor for day start,
-        // LivesManager.TryContinue for a paid continue) and otherwise just holds.
+        // DefaultStartingLives at read time: MaxLives is set explicitly by whoever
+        // grants a full refill (GameState's constructor at day start,
+        // LivesManager's refill on a paid Continue or a retry) and otherwise just
+        // holds, so a future "continue refills to a different amount than the day
+        // started with" needs no change here. No such knob exists today --
+        // LivesConfig carries only the two Continue prices, and every refill goes
+        // to MaxLives.
         public int MaxLives
         {
             get => maxLives;
@@ -124,14 +126,23 @@ namespace ExpoTheExplorer.Core
         // whether they can afford it without needing its own GameState poll.
         public EventBus<int> LivesDepleted { get; } = new();
 
-        // Plain int, no event -- mirrors IsAwaitingContinue, nothing consumes
-        // this reactively yet (unlike Lives/SoftMoney/Gems, which each have a
-        // real HUD view today).
+        // Plain int, no event -- unlike Lives/SoftMoney/Gems, nothing BINDS to
+        // this, so there is no view to keep in sync. It is read plenty though:
+        // DayLifecycleManager exposes it as OrdersDeliveredCount, TicketSlotManager
+        // sends it as the DayCompleted payload, and GameManager snapshots it before
+        // a retry. Its single writer is DayLifecycleManager (RecordDelivery
+        // increments, ResetForNewDay zeroes) -- add a second one and the day's
+        // delivery count and its receipt can disagree.
         public int TicketsDeliveredToday { get; set; }
 
         // Which authored Day (position in GameManager's resolved Day catalog,
         // not the JSON dayIndex used only for sort order) the player is
-        // currently on. Defaults to 0 -- persistence lands in a later PR.
+        // currently on. Defaults to 0 and does NOT persist: the wallet is the
+        // only thing saved between sessions (economy-plan.md Adım 4), so every
+        // launch starts at the first Day. Whether it should resume where the
+        // player left off is still an open design question (DaySystem_Roadmap Q4);
+        // the profile schema is versioned, so adding the field later reads as 0 on
+        // existing saves -- which is exactly "start at Day 0".
         public int CurrentDayIndex
         {
             get => currentDayIndex;

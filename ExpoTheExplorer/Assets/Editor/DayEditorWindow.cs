@@ -104,7 +104,8 @@ namespace ExpoTheExplorer.Editor
 
         // Toolbar above the selected Day's Odin-drawn content: "+ New Day" plus the four config
         // asset fields (auto-discovered by AutoDiscoverConfigs, overridable here if it guessed
-        // wrong -- same escape-hatch precedent as EconomyConfigEditor's own auto-discovery).
+        // wrong -- the override exists because "find the first asset of this type in the project"
+        // is a guess, and a project with two of them would otherwise be stuck with the wrong one).
         protected override void OnBeginDrawEditors()
         {
             base.OnBeginDrawEditors();
