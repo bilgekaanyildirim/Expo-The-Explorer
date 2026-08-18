@@ -1,4 +1,4 @@
-<!-- stamp: 1c294df 2026-08-18 status: DEGRADED 9 stale, 0 orphan, 36 missing-role -->
+<!-- stamp: 848efa2 2026-08-18 status: DEGRADED 9 stale, 0 orphan, 36 missing-role -->
 ExpoTheExplorer/Assets/Data/ExpoTheExplorer.Data.asmdef | MISSING-role | sys: ? | api: asmdef ExpoTheExplorer.Data | dep?: - | used: ? | crit: ? | note: auto-added; AI must complete | h:eda37c7e
 ExpoTheExplorer/Assets/Data/DataScripts/BoardAnimationConfig.cs | MISSING-role | sys: ? | api: - | dep?: BoardView,Ticket | used: ? | crit: ? | note: auto-added; AI must complete | h:be19d65d
 ExpoTheExplorer/Assets/Data/DataScripts/BoardVisualsConfig.cs | board color config (checkerboard, placeholder, frame) | sys: BoardUI | api: - | dep: - | used: BoardView,DayEditorDayStartPreview,DayEditorModel,DayEditorWindow | crit: K3 | note: - | h:7f662692

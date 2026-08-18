@@ -13,8 +13,8 @@
      preflight + APPROVE döngüsüdür; adımlar sırayla yürütülür ve bir adım
      bitmeden sonrakine geçilmez. Bir adım bittiğinde buradaki kutusu
      işaretlenir. Bu dosya plan tutanağıdır, mimari otorite değil —
-     kalıcı kararlar bittiğinde `.claude/decisions.md`'ye D-010 olarak
-     yazılır (Adım 8). -->
+     kalıcı kararlar `.claude/decisions.md`'ye D-010 (tek yazıcı + atomik gün
+     + versiyonlu kalıcılık) ve D-011 (fiyat + üç kademe) olarak yazıldı. -->
 
 ## Amaç
 
@@ -621,7 +621,7 @@ alanı koddaki varsayılanlarıyla kendi serialize eder.
 
 ---
 
-## Adım 8 — Kayıt ⬜
+## Adım 8 — Kayıt ✅ 2026-08-18 *(Adım 7 hariç)*
 
 - `.claude/decisions.md` → **D-010**: gün-atomik ekonomi sözleşmesi,
   `Wallet`'ın tek yazıcı olması, profil v1 + migrasyon; `affects:` alanı
@@ -635,6 +635,29 @@ alanı koddaki varsayılanlarıyla kendi serialize eder.
   XP için anlatıyordu; D-009 o metni sildi, yani kural sıfırdan yazılacak.)
 - Codemap satırları + `build_index.py` + `check_blueprint.py` tekrar.
 - Postflight (`gates/postflight.md` formatı).
+
+**Sonuç (2026-08-18).** `decisions.md`'ye iki karar yazıldı:
+- **D-010** — Adım 1 + 2 + 4: `Wallet` tek yazıcı (derleyici zorlamalı),
+  gün-atomik sözleşme + D1 kırpması, versiyonlu profil kalıcılığı.
+  Planın "`Version != 1` ise reddet" formülasyonundan neden saptığım da
+  kayıtta.
+- **D-011** — Adım 6: yemek başına fiyat, sabit sipariş bedeli + orana
+  bağlı üç bahşiş kademesi; hız kademesi ve sabır decay makinesinin
+  silinmesi; oranların `EconomyConfig`'e taşınması; silinen
+  `EconomyConfigEditor`'ün artık kimsenin denetlemediği iki authoring
+  hatası.
+
+`ExpoTheExplorer/CLAUDE.md`'de bu değişikliklerle **yanlış hâle gelmiş iki
+madde** düzeltildi (Adım 5'in taramasında `.md` dosyaları yoktu, bunlar
+Adım 8'de çıktı):
+- Lives System: "can kaybı retry'ında kazanılan paradan feragat yok, çünkü
+  hiçbir şey commit edilmemişti" — Adım 2 bunu yalanladı.
+- Day Complete Retry maddesi: artık var olmayan `CaptureDayStartSnapshot`'a
+  atıf yapıyordu ve "`RetryDay` SoftMoney'e hiç dokunmaz" diyordu; ikisi de
+  yanlış.
+
+**Adım 7 (doğrulama) hâlâ açık** — Unity gerektiriyor, bu oturumdan
+yapılamıyor. Plan bu adım hariç kapandı.
 
 ---
 
