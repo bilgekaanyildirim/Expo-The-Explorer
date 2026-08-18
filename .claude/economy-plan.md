@@ -23,9 +23,9 @@
 | # | Sorun | Adım |
 |---|---|---|
 | A | Harita boşluğu: 5 sistem blueprint/index'te yok | Adım 0 |
-| B | SoftMoney/Gems'in tek yazıcısı yok (invariant ihlali) | Adım 1 |
-| C | Başarısız günde SoftMoney silinmiyor → para farmı | Adım 2 |
-| D | `RetryCompletedDay` ödenen Continue'yu iade ediyor | Adım 2 |
+| B | ~~SoftMoney/Gems'in tek yazıcısı yok (invariant ihlali)~~ ✅ | Adım 1 |
+| C | ~~Başarısız günde SoftMoney silinmiyor → para farmı~~ ✅ | Adım 2 |
+| D | ~~`RetryCompletedDay` ödenen Continue'yu iade ediyor~~ ✅ | Adım 2 |
 | E | ~~Xp/Level'ın ikinci yazıcısı var~~ — konusuz kaldı (D-009) | ~~Adım 3~~ |
 | F | Para ve Gem kalıcı değil (her oturum sıfırlanıyor) | Adım 4 |
 | G | Ölü/yanlış yorumlar + sıfıra bölme riski | Adım 5 |
@@ -225,7 +225,7 @@ Plandan sapan/eklenen noktalar:
 
 ---
 
-## Adım 2 — Gün-atomik para kuralı ⬜
+## Adım 2 — Gün-atomik para kuralı ✅ 2026-08-18
 
 Sorunlar C ve D. Yukarıdaki **sözleşme** burada koda dönüşür.
 
@@ -270,6 +270,30 @@ Yeni testler (`Tests/EditMode/WalletTests.cs`):
 **Bitti kriteri:** yukarıdaki dört test yeşil; `GameManager`'da doğrudan
 para ataması kalmadı.
 **APPROVE gerekir mi:** Evet.
+
+**Sonuç (2026-08-18).** `Wallet` artık `dayStartGems` snapshot'ı ve iki
+harcama defteri (`softMoneySpentThisDay`/`gemsSpentThisDay`) tutuyor;
+`RevertToDayStart` her iki para için `max(0, snapshot − harcanan)`
+uyguluyor. `OnDayRetried` handler'ı ve `DayRetried` aboneliği yeniden
+kuruldu (Sorun C'nin fiili çözümü buydu — olay yayınlanıyordu ama
+dinleyicisi yoktu). `RetryCompletedDay` zaten `RevertToDayStart` çağırdığı
+için Sorun D kendiliğinden kapandı.
+
+Notlar:
+- **Defter retry'de sıfırlanmıyor**, yalnızca `CaptureDayStart`'ta (gün
+  başı / gün ilerleme). Aynı günün iki denemesinde alınan iki Continue de
+  harcanmış sayılıyor ve ikisi de o günün tek taban çizgisine göre
+  ölçülüyor.
+- `TrySpend...` negatif maliyeti reddediyor (harcama, para ekleme yoluna
+  dönüşemesin); sıfır maliyet hâlâ `true` dönüyor, yani "bedava Continue"
+  authorable kalıyor.
+- Adım 1'de tripwire olarak koyduğum `RevertToDayStart_LeavesGemsUntouched`
+  testinin **beklenen sayısı değişmedi** (Gems'in kazanç yolu olmadığı için
+  "dokunulmuyor" ile "harcama iade edilmiyor" bakiyeden ayırt edilemiyor);
+  yalnızca adı ve gerekçesi değişti → `..._DoesNotRefundGemsSpentThisDay`.
+- 7 yeni test. **Unity'de koşulmadı** — bu oturumda Unity yok.
+- D2 (`PlayerProgressService`) hâlâ "sonra": senkron tutulacak ikinci nesne
+  yok, `GameManager` tek cüzdanı çağırıyor.
 
 ---
 

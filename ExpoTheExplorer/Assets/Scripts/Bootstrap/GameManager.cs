@@ -103,6 +103,7 @@ namespace ExpoTheExplorer.Bootstrap
             // board playback too, not just later deliveries/cancellations.
             State.TicketAssigned.Subscribe(OnTicketAssigned);
             State.TicketDelivered.Subscribe(OnTicketDelivered);
+            State.DayRetried.Subscribe(OnDayRetried);
             ApplyDayStartBoardPreSeed();
             TicketSlotManager.FillEmptySlots();
         }
@@ -111,6 +112,7 @@ namespace ExpoTheExplorer.Bootstrap
         {
             State.TicketAssigned.Unsubscribe(OnTicketAssigned);
             State.TicketDelivered.Unsubscribe(OnTicketDelivered);
+            State.DayRetried.Unsubscribe(OnDayRetried);
         }
 
         // Paused while awaiting Continue (GDD Section 6 — Lives depleted, day
@@ -175,6 +177,21 @@ namespace ExpoTheExplorer.Bootstrap
         {
             LivesManager.LoseLife();
             DayLifecycleManager.RecordFailure();
+        }
+
+        // The day ended in failure and is being replayed, so this attempt's
+        // earnings are taken back and its spending is not (economy-plan.md Adım 2
+        // -- "a day attempt is atomic"). Without this the day's income survived a
+        // failed day, which made repeatedly losing a day a way to farm money.
+        //
+        // Wired to DayRetried rather than called from RetryDay directly because
+        // the event already exists for exactly this and RetryDay is also reachable
+        // from UI. Note a paid Continue never publishes DayRetried, so continuing
+        // correctly keeps what the day has earned so far -- only abandoning the
+        // attempt gives it up.
+        private void OnDayRetried(int _)
+        {
+            wallet.RevertToDayStart();
         }
 
         // Free alternative to the paid Continue flow (GameOverPopupView) --

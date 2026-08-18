@@ -6,9 +6,10 @@ using UnityEngine;
 
 namespace ExpoTheExplorer.Tests.EditMode
 {
-    // Adım 1 is a behaviour-neutral move, so these lock in what the code did
-    // BEFORE the Wallet existed -- if any of them changes meaning later, that is
-    // Adım 2 deliberately changing the rules, not a refactor drifting.
+    // Two layers here. The spend/earn cases came from Adım 1, which was a
+    // behaviour-neutral move and locked in what the scattered writers already did.
+    // The revert cases are Adım 2's atomic-day rule and DO change behaviour on
+    // purpose: earnings taken back, spending never refunded, clamped at 0 (D1).
     //
     // Balances are seeded by assigning GameState directly, which the test
     // assembly alone may do (Core/AssemblyInfo.cs) -- and Gems have no earn path
@@ -142,12 +143,14 @@ namespace ExpoTheExplorer.Tests.EditMode
             Assert.AreEqual(75, state.SoftMoney);
         }
 
-        // Adım 1's deliberate boundary: RetryCompletedDay never touched Gems, so
-        // neither does this. Adım 2 is where both currencies get the atomic
-        // day-attempt rule (earnings reverted, spending NOT refunded, clamped at
-        // 0) -- if this test starts failing, that is the change arriving.
+        // Gems reach the revert through the spend ledger now (Adım 2) rather than
+        // being skipped entirely (Adım 1). The EXPECTED NUMBER is identical either
+        // way -- Gems have no earn path in the game, so "untouched" and "spending
+        // is not refunded" cannot be told apart by the balance alone. Only the
+        // reason changed, which is worth saying out loud so nobody reads the
+        // unchanged 6 as proof that nothing happened here.
         [Test]
-        public void RevertToDayStart_LeavesGemsUntouched()
+        public void RevertToDayStart_DoesNotRefundGemsSpentThisDay()
         {
             var state = new GameState(gameConfig) { Gems = 10 };
             var wallet = new Wallet(state);
@@ -156,6 +159,111 @@ namespace ExpoTheExplorer.Tests.EditMode
             wallet.RevertToDayStart();
 
             Assert.AreEqual(6, state.Gems);
+        }
+
+        // Sorun C: this is the farm that used to exist. Losing a day kept the
+        // money it had earned, so failing on purpose paid.
+        [Test]
+        public void RevertToDayStart_TakesBackWhatTheDayEarned()
+        {
+            var state = new GameState(gameConfig) { SoftMoney = 1000 };
+            var wallet = new Wallet(state);
+            wallet.CaptureDayStart();
+
+            wallet.EarnSoftMoney(300);
+            wallet.RevertToDayStart();
+
+            Assert.AreEqual(1000, state.SoftMoney);
+        }
+
+        // Sorun D: the other half of the rule. A paid Continue is gone for good,
+        // even though the attempt it bought is being thrown away.
+        [Test]
+        public void RevertToDayStart_DoesNotRefundSoftMoneySpentThisDay()
+        {
+            var state = new GameState(gameConfig) { SoftMoney = 1000 };
+            var wallet = new Wallet(state);
+            wallet.CaptureDayStart();
+
+            wallet.EarnSoftMoney(300);
+            Assert.IsTrue(wallet.TrySpendSoftMoney(250));
+            wallet.RevertToDayStart();
+
+            Assert.AreEqual(750, state.SoftMoney);
+        }
+
+        // Decision D1. The player started the day with 100, earned 200, then spent
+        // 250 on a Continue. The earnings vanish with the revert, so the purchase
+        // comes out of the day-start balance and takes all of it -- but never
+        // leaves them in debt.
+        [Test]
+        public void RevertToDayStart_WhenContinueWasFundedByTheDaysEarnings_ClampsAtZero()
+        {
+            var state = new GameState(gameConfig) { SoftMoney = 100 };
+            var wallet = new Wallet(state);
+            wallet.CaptureDayStart();
+
+            wallet.EarnSoftMoney(200);
+            Assert.IsTrue(wallet.TrySpendSoftMoney(250));
+            wallet.RevertToDayStart();
+
+            Assert.AreEqual(0, state.SoftMoney);
+        }
+
+        // The ledger survives a retry on purpose: both Continues stay spent, and
+        // both are measured against the one day-start baseline rather than against
+        // whatever the previous revert left behind.
+        [Test]
+        public void RevertToDayStart_AcrossTwoRetriesOfTheSameDay_KeepsBothContinuesSpent()
+        {
+            var state = new GameState(gameConfig) { SoftMoney = 1000 };
+            var wallet = new Wallet(state);
+            wallet.CaptureDayStart();
+
+            Assert.IsTrue(wallet.TrySpendSoftMoney(250));
+            wallet.RevertToDayStart();
+            Assert.AreEqual(750, state.SoftMoney);
+
+            Assert.IsTrue(wallet.TrySpendSoftMoney(250));
+            wallet.RevertToDayStart();
+
+            Assert.AreEqual(500, state.SoftMoney);
+        }
+
+        // ...but a real day change does clear it, or yesterday's spending would
+        // keep being subtracted from every day that follows.
+        [Test]
+        public void CaptureDayStart_ClearsTheSpendLedger()
+        {
+            var state = new GameState(gameConfig) { SoftMoney = 1000 };
+            var wallet = new Wallet(state);
+            wallet.CaptureDayStart();
+
+            Assert.IsTrue(wallet.TrySpendSoftMoney(250));
+            wallet.RevertToDayStart();
+            Assert.AreEqual(750, state.SoftMoney);
+
+            wallet.CaptureDayStart(); // next day begins
+            wallet.EarnSoftMoney(100);
+            wallet.RevertToDayStart();
+
+            Assert.AreEqual(750, state.SoftMoney);
+        }
+
+        // A day where nothing was earned and nothing was spent must come out
+        // exactly where it went in -- the clamp must not quietly zero a balance
+        // just because a revert happened.
+        [Test]
+        public void RevertToDayStart_WithNoActivity_LeavesBothBalancesAlone()
+        {
+            var state = new GameState(gameConfig) { SoftMoney = 400, Gems = 7 };
+            var wallet = new Wallet(state);
+            wallet.CaptureDayStart();
+
+            wallet.RevertToDayStart();
+
+            Assert.AreEqual(400, state.SoftMoney);
+            Assert.AreEqual(7, state.Gems);
         }
 
         // Spending through the Wallet must still travel via GameState's setters,

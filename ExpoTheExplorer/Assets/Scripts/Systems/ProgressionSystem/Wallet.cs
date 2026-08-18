@@ -1,3 +1,4 @@
+using System;
 using ExpoTheExplorer.Core;
 
 namespace ExpoTheExplorer.Systems.ProgressionSystem
@@ -15,19 +16,27 @@ namespace ExpoTheExplorer.Systems.ProgressionSystem
     // events HUD views bind to). This class owns the RULES for changing them,
     // not the values.
     //
-    // Adım 1 is a pure move: every method below is the code that used to sit in
-    // GameManager and LivesManager, verbatim. The day-attempt spend ledger and
-    // the max(0, ...) clamp arrive in Adım 2; until then RevertToDayStart does
-    // exactly what RetryCompletedDay did before it.
+    // Adım 1 moved the four scattered writers in here verbatim; Adım 2 added the
+    // per-day spend ledger and made RevertToDayStart enforce the atomic-day rule
+    // (see that method). Everything a day pays out is provisional until the day
+    // is completed -- what makes it permanent is Adım 4's persistence, which does
+    // not exist yet: nothing is written to disk, so a session still starts at 0.
     public class Wallet
     {
         private readonly GameState state;
 
-        // Snapshot of SoftMoney as of the moment the current day began. NOT
-        // re-captured on a life-loss retry, so it survives any number of retries
-        // of the same day as the true pre-day baseline (the behaviour
-        // GameManager.dayStartSoftMoney had before this class existed).
+        // Both balances as of the moment the current day began. NOT re-captured
+        // on a life-loss retry, so they survive any number of retries of the same
+        // day as the true pre-day baseline.
         private int dayStartSoftMoney;
+        private int dayStartGems;
+
+        // Everything SPENT since the day began -- the half of the atomic-day rule
+        // that is never given back. Like the snapshots these deliberately do NOT
+        // reset on a retry: two paid Continues across two failed attempts of the
+        // same day are both still spent, measured against the one baseline above.
+        private int softMoneySpentThisDay;
+        private int gemsSpentThisDay;
 
         public Wallet(GameState state)
         {
@@ -49,40 +58,58 @@ namespace ExpoTheExplorer.Systems.ProgressionSystem
 
         // Returns false and spends NOTHING when the player can't afford it --
         // the check and the deduction have to sit together, which is exactly why
-        // callers can no longer be trusted with the setter.
+        // callers can no longer be trusted with the setter. A negative cost is
+        // refused outright so spending cannot be used to add money; a zero cost
+        // still succeeds, so a free Continue stays authorable.
         public bool TrySpendSoftMoney(int cost)
         {
-            if (state.SoftMoney < cost) return false;
+            if (cost < 0 || state.SoftMoney < cost) return false;
 
             state.SoftMoney -= cost;
+            softMoneySpentThisDay += cost;
             return true;
         }
 
         public bool TrySpendGems(int cost)
         {
-            if (state.Gems < cost) return false;
+            if (cost < 0 || state.Gems < cost) return false;
 
             state.Gems -= cost;
+            gemsSpentThisDay += cost;
             return true;
         }
 
+        // The one place a new day's baseline is set: snapshot both balances and
+        // wipe the spend ledger. Called by GameManager on the first day and on
+        // every advance -- never by a retry, which is what keeps a retried day
+        // measured against the day it actually started from.
         public void CaptureDayStart()
         {
             dayStartSoftMoney = state.SoftMoney;
+            dayStartGems = state.Gems;
+            softMoneySpentThisDay = 0;
+            gemsSpentThisDay = 0;
         }
 
-        // Rolls SoftMoney back to the day-start snapshot: the voluntary "redo a
-        // day I already won for a better star score" path, so replaying cannot
-        // stack income on top of what the day already paid out.
+        // "A day attempt is atomic" (economy-plan.md): a day's economic result is
+        // provisional until the day is completed successfully. On a failed day
+        // (GameManager.OnDayRetried) or a voluntary redo of a won one
+        // (RetryCompletedDay), everything EARNED that day is taken back and
+        // everything SPENT stays spent:
         //
-        // Gems are deliberately untouched, because RetryCompletedDay never
-        // touched them either. Taking Gems back here would be a behaviour change
-        // wearing a refactor's clothes -- Adım 2 is where the "a day attempt is
-        // atomic" rule (earnings reverted, spending not refunded, clamped at 0)
-        // lands for both currencies at once.
+        //     balance = max(0, dayStartBalance - spentThisDay)
+        //
+        // The clamp is decision D1, approved 2026-08-18. It matters when a player
+        // funds a Continue with money earned that same day: the earnings vanish
+        // with the revert, so the purchase is effectively paid out of the
+        // day-start balance, and a big enough purchase can take all of it. They
+        // end the day poorer than they began it, but never in debt. The
+        // alternative -- letting only the day-start balance fund a Continue --
+        // was rejected as one more rule for the player to learn.
         public void RevertToDayStart()
         {
-            state.SoftMoney = dayStartSoftMoney;
+            state.SoftMoney = Math.Max(0, dayStartSoftMoney - softMoneySpentThisDay);
+            state.Gems = Math.Max(0, dayStartGems - gemsSpentThisDay);
         }
     }
 }
