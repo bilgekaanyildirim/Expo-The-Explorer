@@ -14,7 +14,7 @@ maps and never invents a name.
 | DayEditor | editor | ExpoTheExplorer/Assets/Editor/DayEditorDayStartPreview.cs, ExpoTheExplorer/Assets/Editor/DayEditorSpriteGUI.cs (+3) | - | - | - | OK |
 | DayLifecycle | core, ui | ExpoTheExplorer/Assets/Scripts/Systems/DayLifecycle/DayLifecycleManager.cs, ExpoTheExplorer/Assets/Scripts/Systems/DayLifecycle/ExpoTheExplorer.Systems.DayLifecycle.asmdef (+2) | - | - | - | OK |
 | DaySystem | core | ExpoTheExplorer/Assets/Scripts/Systems/DaySystem/DayBoardTimelinePlayer.cs, ExpoTheExplorer/Assets/Scripts/Systems/DaySystem/DayCatalogParser.cs (+9) | - | - | - | OK |
-| EconomySystem | core, editor | ExpoTheExplorer/Assets/Data/DataScripts/EconomyConfig.cs, ExpoTheExplorer/Assets/Scripts/Systems/EconomySystem/EconomyCalculator.cs (+3) | - | - | - | OK |
+| EconomySystem | core | ExpoTheExplorer/Assets/Data/DataScripts/EconomyConfig.cs, ExpoTheExplorer/Assets/Scripts/Systems/EconomySystem/EconomyCalculator.cs (+2) | - | - | - | OK |
 | LivesSystem | core, ui | ExpoTheExplorer/Assets/Scripts/Systems/LivesSystem/ExpoTheExplorer.Systems.LivesSystem.asmdef, ExpoTheExplorer/Assets/Scripts/Systems/LivesSystem/LivesManager.cs (+3) | - | - | - | OK |
 | ProgressionSystem | core, ui | ExpoTheExplorer/Assets/Scripts/Systems/ProgressionSystem/Wallet.cs, ExpoTheExplorer/Assets/Scripts/Systems/ProgressionSystem/ExpoTheExplorer.Systems.ProgressionSystem.asmdef (+6) | - | - | - | OK |
 | TicketSystem | core, ui | ExpoTheExplorer/Assets/Scripts/Systems/TicketSystem/TicketSlotManager.cs, ExpoTheExplorer/Assets/Data/DataScripts/TicketCardVisualsConfig.cs (+6) | - | - | - | OK |

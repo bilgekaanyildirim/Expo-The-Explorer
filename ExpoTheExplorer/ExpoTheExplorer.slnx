@@ -9,6 +9,7 @@
   <Project Path="Unity.2D.Psdimporter.Editor.csproj" />
   <Project Path="Unity.VisualScripting.Core.Editor.csproj" />
   <Project Path="Unity.PerformanceTesting.Editor.csproj" />
+  <Project Path="ExpoTheExplorer.Systems.ProgressionSystem.csproj" />
   <Project Path="Unity.Burst.csproj" />
   <Project Path="Unity.VisualScripting.Flow.Editor.csproj" />
   <Project Path="Unity.2D.SpriteShape.Editor.csproj" />
@@ -48,7 +49,6 @@
   <Project Path="Unity.VisualScripting.SettingsProvider.Editor.csproj" />
   <Project Path="Assembly-CSharp.csproj" />
   <Project Path="Unity.2D.Common.Runtime.csproj" />
-  <Project Path="ExpoTheExplorer.Systems.ProgressionSystem.csproj" />
   <Project Path="ExpoTheExplorer.Core.csproj" />
   <Project Path="Unity.InputSystem.TestFramework.csproj" />
   <Project Path="Unity.VisualScripting.Shared.Editor.csproj" />
