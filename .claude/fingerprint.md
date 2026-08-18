@@ -47,15 +47,22 @@
   (`GameState.TicketSlotCount`), board grid 6x5 = 30 cells as a starting point
   (parametric, per ExpoTheExplorer/CLAUDE.md Section 4), upcoming-ticket
   lookahead default 10.
-- **Persistence:** answered, and the answer is **nothing persists**. Xp/Level was
-  the only state ever written to disk and it is gone (decisions.md D-009), so no
-  code path reads or writes `player_profile.json` any more; every session starts
-  from `GameState`'s constructor. `PlayerProfileStore` still exists as the
-  load/save boundary (`Application.persistentDataPath`) with `PlayerProfile`
-  empty. Whatever re-opens persistence owes a version number with its first
-  field — the root CLAUDE.md invariant requires one and none was ever written.
-  Candidates: `CurrentDayIndex` (DaySystem_Roadmap Q4), SoftMoney/Gems
-  (`.claude/economy-plan.md` step 4).
+- **Persistence:** the **wallet, and only the wallet** (SoftMoney + Gems), in
+  `player_profile.json` under `Application.persistentDataPath`
+  (`.claude/economy-plan.md` Adım 4, 2026-08-18). Authority for the starting
+  balances is that file, not `GameState`'s constructor, which now only supplies
+  the 0/0 a brand-new player gets. Write path: `GameState.DayCompleted` →
+  `GameManager.SaveProfile`, plus `RetryCompletedDay` (which must correct a figure
+  already banked). A failed day never writes — by contract, its earnings were
+  never permanent. Read path: `GameManager.Awake` → `PlayerProfileStore.Load` →
+  `Wallet.ApplyPersistedBalances` (the wallet is the single writer, so even
+  loading goes through it).
+  Schema: `PlayerProfileStore.CurrentVersion = 1`, stamped on every Save. `Load`
+  accepts versions 1..CurrentVersion and refuses 0 (unversioned, meaning unknown)
+  or anything newer — so a future field addition reads an existing v1 wallet
+  instead of deleting it. **Still NOT persisted:** `CurrentDayIndex`
+  (DaySystem_Roadmap Q4) — a gameplay decision, and cheap to add later precisely
+  because the version field exists and a missing field reads as 0 = Day 0.
 - **Network model:** none
 - **Performance budget:** OPEN <per target platform: target frame rate → ms/frame,
   memory ceiling, load-time ceiling — the cost model's "frame budget" and the

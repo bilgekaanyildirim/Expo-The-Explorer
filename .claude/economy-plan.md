@@ -27,7 +27,7 @@
 | C | ~~Başarısız günde SoftMoney silinmiyor → para farmı~~ ✅ | Adım 2 |
 | D | ~~`RetryCompletedDay` ödenen Continue'yu iade ediyor~~ ✅ | Adım 2 |
 | E | ~~Xp/Level'ın ikinci yazıcısı var~~ — konusuz kaldı (D-009) | ~~Adım 3~~ |
-| F | Para ve Gem kalıcı değil (her oturum sıfırlanıyor) | Adım 4 |
+| F | ~~Para ve Gem kalıcı değil (her oturum sıfırlanıyor)~~ ✅ | Adım 4 |
 | G | Ölü/yanlış yorumlar + sıfıra bölme riski | Adım 5 |
 | H | Her yemek aynı parayı ediyor; hız/sabır sabit bedeli de kısıyor | Adım 6 |
 
@@ -306,7 +306,7 @@ bir şey kalmadı — bu adım atlanır.
 
 ---
 
-## Adım 4 — Para ve Gem kalıcılığı + profil versiyonu ⬜
+## Adım 4 — Para ve Gem kalıcılığı + profil versiyonu ✅ 2026-08-18
 
 Sorun F. Bugün `PlayerProfile` **boş** (D-009'dan sonra `Xp`/`Level` alanları
 da gitti) ve hiç kimse `Load`/`Save` çağırmıyor; SoftMoney ve Gems her
@@ -357,6 +357,41 @@ turunda para alanlarının korunması; bozuk JSON'da mevcut davranışın
 **Bitti kriteri:** oyunu kapat/aç → SoftMoney ve Gems korunuyor; eski
 profil dosyası hatasız v1'e taşınıyor.
 **APPROVE gerekir mi:** Evet.
+
+**Sonuç (2026-08-18).** `PlayerProfile` = `Version` + `SoftMoney` + `Gems`.
+`PlayerProfileStore.CurrentVersion = 1`, her `Save` damgalıyor.
+`GameManager.Awake` yükleyip `wallet.ApplyPersistedBalances(...)` çağırıyor
+(setter'lar `internal` olduğu için yükleme de cüzdandan geçmek zorunda);
+`OnDayCompleted` handler'ı ve `DayCompleted` aboneliği geri kuruldu (D-009
+silmişti), diske yazan tek yer o ve `RetryCompletedDay`.
+
+Plandan sapan iki karar:
+- **Versiyon politikası plandan farklı.** Plan "`Version == 0` görürse
+  varsayılana düş" diyordu; ben `Load`'u **1..CurrentVersion kabul, 0 ve
+  daha yeni red** yaptım. Planın formülasyonu v2 alanı eklendiği gün
+  gerçek oyuncunun v1 cüzdanını silerdi — eski dosya okunabilir, sadece
+  yeni alanı yoktur ve `JsonUtility` onu 0 bırakır. `0`'ı kabul etmek de
+  olmaz: o zaman "versiyonsuz eski kayıt" ile "gerçekten 0 para" ayırt
+  edilemez, ki versiyon alanının varlık sebebi tam olarak bu.
+- **`CurrentDayIndex` bu adıma alınmadı.** Plan "iki migrasyon çıkmasın"
+  diye bunları birleştirmeyi öneriyordu; versiyon alanı bir kez var
+  olduğunda o gerekçe düşüyor (v1 dosyası alanı taşımaz → 0 → "Day 0'dan
+  başla", ki doğru varsayılan bu). Oyunun bıraktığın günden devam etmesi
+  bir oyun tasarımı kararı (DaySystem_Roadmap Q4), kullanıcıya bırakıldı.
+
+Diğer notlar:
+- `ApplyPersistedBalances` yükleme sonrası `CaptureDayStart` çağırıyor;
+  yoksa oturumun ilk retry'ı cüzdanı 0'a çevirirdi. Negatif değerler
+  (elle düzenlenmiş dosya) 0'a kırpılıyor.
+- Başarısız gün **diske yazmıyor** — commit edilmiş bir şey yok. Gün
+  ortasında çıkmak o günün kazancını kaybettirir, sözleşme bu.
+- `Save`, verilen instance'a `Version` **yazıyor** (kopya damgalamak
+  store'un payload'ı tanımasını gerektirirdi). Mevcut
+  `Save_WhenCalledTwice_OverwritesRatherThanAppending` testi bu yüzden
+  kırılıyordu, kaydettiği instance ile karşılaştıracak şekilde düzeltildi.
+- 5 yeni store testi + 3 cüzdan testi. **Unity'de koşulmadı.**
+- `fingerprint.md` Persistence maddesi ve `CLAUDE.md` Progression bölümü
+  "hiçbir şey kalıcı değil" diyordu, ikisi de güncellendi.
 
 ---
 

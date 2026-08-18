@@ -67,6 +67,11 @@ namespace ExpoTheExplorer.Bootstrap
         // now, so a `State.SoftMoney = x` here would not compile.
         private Wallet wallet;
 
+        // The one thing this game writes to disk (Adım 4). Private on purpose:
+        // saving is triggered from the two places below that own the "a day
+        // attempt is atomic" contract, and a second caller would quietly break it.
+        private PlayerProfileStore profileStore;
+
         // Position in dayCatalog, not a Day's JSON dayIndex (that only decides
         // sort order) -- null until a Day catalog exists (PR-7), so every
         // consumer falls back to the pre-Day-system GameConfig behavior.
@@ -79,16 +84,20 @@ namespace ExpoTheExplorer.Bootstrap
 
             State = new GameState(gameConfig);
 
-            // Nothing is loaded from disk: the only thing that ever persisted was
-            // Xp/Level, and that system is gone. PlayerProfileStore is still there
-            // as the save boundary, unwired, waiting for the first piece of state
-            // that actually needs to survive a session (CurrentDayIndex, then the
-            // wallet -- see .claude/economy-plan.md).
+            // The wallet is the only thing that survives a session (Adım 4).
+            // Order matters: construct the wallet, then apply the loaded profile
+            // through it -- GameState's balance setters are internal to
+            // ProgressionSystem, so this class cannot seed them itself, and
+            // ApplyPersistedBalances re-takes the day-start snapshot so the first
+            // retry of the session reverts to the RESTORED balance, not to 0.
             //
-            // Constructed straight after State because its own constructor takes
-            // the day-start snapshot, and because LivesManager below cannot charge
-            // for a Continue without it.
+            // A missing, corrupt or unversioned file loads as 0/0 (see
+            // PlayerProfileStore), which is also what a brand-new player gets.
+            profileStore = new PlayerProfileStore();
             wallet = new Wallet(State);
+
+            var profile = profileStore.Load();
+            wallet.ApplyPersistedBalances(profile.SoftMoney, profile.Gems);
 
             ticketFactory = new TicketFactory(ticketGenerationConfig);
             LivesManager = new LivesManager(State, livesConfig, wallet);
@@ -104,6 +113,7 @@ namespace ExpoTheExplorer.Bootstrap
             State.TicketAssigned.Subscribe(OnTicketAssigned);
             State.TicketDelivered.Subscribe(OnTicketDelivered);
             State.DayRetried.Subscribe(OnDayRetried);
+            State.DayCompleted.Subscribe(OnDayCompleted);
             ApplyDayStartBoardPreSeed();
             TicketSlotManager.FillEmptySlots();
         }
@@ -113,6 +123,7 @@ namespace ExpoTheExplorer.Bootstrap
             State.TicketAssigned.Unsubscribe(OnTicketAssigned);
             State.TicketDelivered.Unsubscribe(OnTicketDelivered);
             State.DayRetried.Unsubscribe(OnDayRetried);
+            State.DayCompleted.Unsubscribe(OnDayCompleted);
         }
 
         // Paused while awaiting Continue (GDD Section 6 — Lives depleted, day
@@ -194,6 +205,28 @@ namespace ExpoTheExplorer.Bootstrap
             wallet.RevertToDayStart();
         }
 
+        // The day's earnings stop being provisional the instant its goal is
+        // reached, so this is the only place a wallet reaches disk on the winning
+        // path (economy-plan.md Adım 4). Nothing is written on a failed day
+        // precisely because nothing about it is permanent -- which is also why
+        // quitting mid-day loses that day's income rather than banking it.
+        private void OnDayCompleted(int _)
+        {
+            SaveProfile();
+        }
+
+        // Builds the profile from GameState's public getters rather than asking
+        // the wallet for its numbers: the wallet owns the RULES for changing
+        // balances, GameState holds the values.
+        private void SaveProfile()
+        {
+            profileStore.Save(new PlayerProfile
+            {
+                SoftMoney = State.SoftMoney,
+                Gems = State.Gems,
+            });
+        }
+
         // Free alternative to the paid Continue flow (GameOverPopupView) --
         // abandons the current day attempt and restarts it at the same
         // difficulty (difficulty scale-down on retry is a still-open GDD
@@ -230,6 +263,13 @@ namespace ExpoTheExplorer.Bootstrap
         public void RetryCompletedDay()
         {
             wallet.RevertToDayStart();
+
+            // Writes the reverted balance back to disk, unlike the failed-day
+            // retry path: this day already COMPLETED, so OnDayCompleted has
+            // already banked the higher figure and the file would keep paying it
+            // out on the next launch if we left it alone.
+            SaveProfile();
+
             RefreshDayTicketSequenceProvider();
 
             State.Board.Clear();

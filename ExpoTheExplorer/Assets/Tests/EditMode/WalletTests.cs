@@ -266,6 +266,50 @@ namespace ExpoTheExplorer.Tests.EditMode
             Assert.AreEqual(7, state.Gems);
         }
 
+        [Test]
+        public void ApplyPersistedBalances_SeedsBothBalances()
+        {
+            var state = new GameState(gameConfig);
+            var wallet = new Wallet(state);
+
+            wallet.ApplyPersistedBalances(640, 12);
+
+            Assert.AreEqual(640, state.SoftMoney);
+            Assert.AreEqual(12, state.Gems);
+        }
+
+        // The save file is plain JSON on a user's disk. A hand-edited negative
+        // balance should read as broke, not as a debt that every later revert
+        // would faithfully restore.
+        [Test]
+        public void ApplyPersistedBalances_ClampsNegativesToZero()
+        {
+            var state = new GameState(gameConfig);
+            var wallet = new Wallet(state);
+
+            wallet.ApplyPersistedBalances(-500, -3);
+
+            Assert.AreEqual(0, state.SoftMoney);
+            Assert.AreEqual(0, state.Gems);
+        }
+
+        // The day the player is about to play starts from the RESTORED balance. If
+        // loading left the snapshot at the pre-load 0, their first retry of the
+        // session would revert the whole wallet to nothing.
+        [Test]
+        public void ApplyPersistedBalances_ReCapturesDayStart_SoTheFirstRetryDoesNotWipeTheWallet()
+        {
+            var state = new GameState(gameConfig);
+            var wallet = new Wallet(state);
+
+            wallet.ApplyPersistedBalances(640, 12);
+            wallet.EarnSoftMoney(200);
+            wallet.RevertToDayStart();
+
+            Assert.AreEqual(640, state.SoftMoney);
+            Assert.AreEqual(12, state.Gems);
+        }
+
         // Spending through the Wallet must still travel via GameState's setters,
         // or the HUD views bound to these events would silently stop updating.
         [Test]

@@ -44,6 +44,26 @@ namespace ExpoTheExplorer.Systems.ProgressionSystem
             CaptureDayStart();
         }
 
+        // Seeds both balances from a loaded PlayerProfile (economy-plan.md Adım 4).
+        // The load path has to come through here for the same reason every other
+        // write does: GameState's setters are internal to this assembly, so
+        // GameManager physically cannot apply a profile itself.
+        //
+        // Re-captures the day-start baseline afterwards, because the day the player
+        // is about to play starts from the RESTORED balance -- leaving the snapshot
+        // at the pre-load 0 would make the first retry of the session revert their
+        // whole wallet to zero.
+        //
+        // Negative values are clamped to 0: the file is plain JSON on a user's
+        // disk, and a hand-edited negative balance should read as broke rather
+        // than as debt that every later revert would preserve.
+        public void ApplyPersistedBalances(int softMoney, int gems)
+        {
+            state.SoftMoney = Math.Max(0, softMoney);
+            state.Gems = Math.Max(0, gems);
+            CaptureDayStart();
+        }
+
         // Earning is one-directional on purpose: a negative amount is ignored
         // rather than quietly subtracting, so this can never become a second
         // spending path behind TrySpend's affordability check. Not a behaviour
