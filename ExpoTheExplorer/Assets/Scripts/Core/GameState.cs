@@ -35,7 +35,7 @@ namespace ExpoTheExplorer.Core
         }
 
         // The "out of" half of the X/Y lives HUD. Deliberately NOT derived from
-        // GameConfig.StartingLives at read time -- LivesManager.TryContinue can
+        // DefaultStartingLives at read time -- LivesManager.TryContinue can
         // refill Lives to a different amount (LivesConfig.ContinueRefillAmount is
         // intentionally a separate knob), so MaxLives is instead set explicitly
         // by whoever grants a full refill (GameState's constructor for day start,
@@ -167,9 +167,11 @@ namespace ExpoTheExplorer.Core
 
         public EventBus<int> CurrentDayIndexChanged { get; } = new();
 
-        // Fires exactly once per day, the moment TicketsDeliveredToday reaches
-        // GameConfig.TicketsRequiredPerDay (GDD Section 11 -- Daily Goal Mode).
-        // Payload is the final count that triggered it.
+        // Fires exactly once per day, the moment TicketSlotManager empties the
+        // last active slot with the Day's authored ticket sequence exhausted
+        // (GDD Section 11 -- Daily Goal Mode). The goal is the Day's own
+        // sequence length, not a global count. Payload is the final delivered
+        // count that triggered it.
         public EventBus<int> DayCompleted { get; } = new();
 
         // Fires when the player abandons the current day attempt via the free
@@ -179,14 +181,21 @@ namespace ExpoTheExplorer.Core
 
         public BoardGrid Board { get; }
 
+        // GDD Section 6 fixes the starting life count at 3; it is a locked design
+        // rule rather than a balancing knob, so it lives here instead of in a
+        // config asset. The wallet/level seeds below are plain zero for the same
+        // reason -- a fresh player owns nothing, and Xp/Level are immediately
+        // overwritten from the persisted profile by GameManager.Awake anyway.
+        public const int DefaultStartingLives = 3;
+
         public GameState(GameConfig config)
         {
-            Lives = config.StartingLives;
-            MaxLives = config.StartingLives;
-            SoftMoney = config.StartingSoftMoney;
-            Gems = config.StartingGems;
-            Xp = config.StartingXp;
-            Level = config.StartingLevel;
+            Lives = DefaultStartingLives;
+            MaxLives = DefaultStartingLives;
+            SoftMoney = 0;
+            Gems = 0;
+            Xp = 0;
+            Level = 0;
             Board = new BoardGrid(config);
         }
     }

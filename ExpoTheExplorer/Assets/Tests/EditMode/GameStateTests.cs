@@ -31,16 +31,24 @@ namespace ExpoTheExplorer.Tests.EditMode
         }
 
         [Test]
-        public void NewGameState_TakesStartingResourcesFromConfig()
+        public void NewGameState_StartsAtDefaultLivesAndAnEmptyWallet()
         {
             var state = new GameState(config);
 
-            Assert.AreEqual(config.StartingLives, state.Lives);
-            Assert.AreEqual(config.StartingLives, state.MaxLives);
-            Assert.AreEqual(config.StartingSoftMoney, state.SoftMoney);
-            Assert.AreEqual(config.StartingGems, state.Gems);
-            Assert.AreEqual(config.StartingXp, state.Xp);
-            Assert.AreEqual(config.StartingLevel, state.Level);
+            Assert.AreEqual(GameState.DefaultStartingLives, state.Lives);
+            Assert.AreEqual(GameState.DefaultStartingLives, state.MaxLives);
+            Assert.AreEqual(0, state.SoftMoney);
+            Assert.AreEqual(0, state.Gems);
+            Assert.AreEqual(0, state.Xp);
+            Assert.AreEqual(0, state.Level);
+        }
+
+        // Guards the GDD Section 6 locked rule (3 lives) against a silent edit
+        // to the constant now that it is no longer designer-visible in GameConfig.
+        [Test]
+        public void DefaultStartingLives_IsThree()
+        {
+            Assert.AreEqual(3, GameState.DefaultStartingLives);
         }
 
         [Test]

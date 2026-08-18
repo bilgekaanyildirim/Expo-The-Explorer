@@ -74,9 +74,9 @@ namespace ExpoTheExplorer.Systems.LivesSystem
         public void RetryDay() => RefillLivesAndResume();
 
         // Refills Lives back to MaxLives -- MaxLives already holds whatever
-        // GameConfig.StartingLives the day began with (nothing else mutates
-        // it), so Continue reads as a full bar without needing its own
-        // separate "refill amount" knob.
+        // life count the day began with (GameState.DefaultStartingLives, and
+        // nothing else mutates it), so Continue reads as a full bar without
+        // needing its own separate "refill amount" knob.
         private void RefillLivesAndResume()
         {
             state.Lives = state.MaxLives;

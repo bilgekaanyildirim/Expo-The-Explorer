@@ -10,24 +10,7 @@ namespace ExpoTheExplorer.Data
         [SerializeField] private int boardWidth = 6;
         [SerializeField] private int boardHeight = 5;
 
-        [Header("Starting Resources")]
-        [SerializeField] private int startingLives = 3;
-        [SerializeField] private int startingSoftMoney = 0;
-        [SerializeField] private int startingGems = 0;
-        [SerializeField] private int startingXp = 0;
-        [SerializeField] private int startingLevel = 0;
-
-        [Header("Daily Goal")]
-        [Tooltip("Successful deliveries required to complete a day (GDD Section 11 -- Daily Goal Mode). Placeholder, not balanced.")]
-        [SerializeField] private int ticketsRequiredPerDay = 10;
-
         public int BoardWidth => boardWidth;
         public int BoardHeight => boardHeight;
-        public int StartingLives => startingLives;
-        public int StartingSoftMoney => startingSoftMoney;
-        public int StartingGems => startingGems;
-        public int StartingXp => startingXp;
-        public int StartingLevel => startingLevel;
-        public int TicketsRequiredPerDay => ticketsRequiredPerDay;
     }
 }

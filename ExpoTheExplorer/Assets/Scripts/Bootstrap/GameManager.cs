@@ -79,10 +79,10 @@ namespace ExpoTheExplorer.Bootstrap
 
             State = new GameState(gameConfig);
 
-            // Loads whatever was last committed to disk, falling back to this
-            // session's config-seeded Xp/Level (not hardcoded 0/0) when there's no
-            // save yet -- so GameConfig.StartingXp/StartingLevel round-trips
-            // correctly even once a designer sets StartingLevel to a nonzero value.
+            // Loads whatever was last committed to disk, falling back to the fresh
+            // GameState's Xp/Level (0/0) when there's no save yet. The fallback is
+            // read off State rather than written as a literal so that a future
+            // "start at level N" seed only has to change GameState's constructor.
             // Nothing calls Save() yet -- the real commit trigger (day completed
             // successfully) doesn't exist in the game yet and is wired up in a
             // later PR.
