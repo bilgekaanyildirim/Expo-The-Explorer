@@ -59,7 +59,12 @@ namespace ExpoTheExplorer.Systems.TicketSystem
             TryAddRandomItem(pool, FoodCategory.Drink, config.DrinkInclusionChance, requiredItems);
 
             var lambda = ResolveModificationCountLambda(main);
-            var modificationCount = TruncatedPoisson.Sample(main.AvailableModifications.Count, lambda, random);
+            // Two independent ceilings meet here: what the dish CAN carry, and what the
+            // designer allows it to carry. The smaller one is the truncation point, so a
+            // MaxModificationCount above the dish's own list is a no-op rather than a way
+            // to roll modifications that do not exist.
+            var maxModifications = Math.Min(main.AvailableModifications.Count, ResolveMaxModificationCount(main));
+            var modificationCount = TruncatedPoisson.Sample(maxModifications, lambda, random);
             var chosenMods = ChooseModifications(main.AvailableModifications, modificationCount);
             var modifications = chosenMods.Select(CreateModification).ToList();
 
@@ -121,6 +126,20 @@ namespace ExpoTheExplorer.Systems.TicketSystem
             }
 
             return config.ModificationCountLambda;
+        }
+
+        // Falls back to the shared default rather than to a config-wide field, the same
+        // shape ResolveWeight takes: a dish missing from the list has no per-dish
+        // authoring at all, and the ceiling that means "unrestricted" for it is simply
+        // its own AvailableModifications count, which Create's Math.Min already applies.
+        private int ResolveMaxModificationCount(FoodItemConfig food)
+        {
+            foreach (var entry in config.MainDishWeights)
+            {
+                if (entry.Food == food) return entry.MaxModificationCount;
+            }
+
+            return MainDishWeight.DefaultMaxModificationCount;
         }
 
         // Uniform random subset without replacement, via a partial Fisher-Yates

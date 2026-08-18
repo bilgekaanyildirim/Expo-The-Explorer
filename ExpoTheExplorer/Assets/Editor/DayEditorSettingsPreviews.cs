@@ -93,7 +93,7 @@ namespace ExpoTheExplorer.Editor
         // and it is flagged here rather than in DayValidator because the weights live in
         // editorMeta, which DayDefinition does not carry.
         public static void DrawMainDishPreview(
-            IReadOnlyList<(FoodItemConfig Food, float Weight, float ModificationCountLambda)> entries,
+            IReadOnlyList<(FoodItemConfig Food, float Weight, float ModificationCountLambda, int MaxModificationCount)> entries,
             IReadOnlyList<FoodItemConfig> allowedFoods = null)
         {
             EditorGUILayout.Space();
@@ -149,27 +149,42 @@ namespace ExpoTheExplorer.Editor
 
                 using (new EditorGUI.IndentLevelScope())
                 {
-                    DrawModCountBreakdown(entry.Food, entry.ModificationCountLambda);
+                    DrawModCountBreakdown(entry.Food, entry.ModificationCountLambda, entry.MaxModificationCount);
                 }
 
                 EditorGUILayout.Space(4);
             }
         }
 
-        private static void DrawModCountBreakdown(FoodItemConfig food, float lambda)
+        // Mirrors TicketFactory.Create's truncation point exactly -- Math.Min of what the
+        // dish can carry and what the designer capped it at. Rows above the cap are not
+        // drawn at all rather than listed at 0%: the cap IS the top of the distribution,
+        // and a tail of zeroes would read as "possible but unlikely".
+        private static void DrawModCountBreakdown(FoodItemConfig food, float lambda, int maxModificationCount)
         {
-            var n = food.AvailableModifications.Count;
-            if (n == 0)
+            var available = food.AvailableModifications.Count;
+            if (available == 0)
             {
                 EditorGUILayout.LabelField("0 mods: 100% (no modifications configured)");
                 return;
             }
+
+            var n = Math.Min(available, MainDishWeight.NormalizeMaxModificationCount(maxModificationCount));
 
             var probabilities = TruncatedPoisson.Probabilities(n, lambda);
             for (var k = 0; k <= n; k++)
             {
                 var label = k == 1 ? "1 mod" : $"{k} mods";
                 EditorGUILayout.LabelField($"{label}: {Percent(probabilities[k])}");
+            }
+
+            // Only worth saying when the cap is what did the truncating; when the dish's own
+            // list is the shorter of the two, the rows above already say everything.
+            if (n < available)
+            {
+                EditorGUILayout.LabelField(
+                    $"Capped at {n} of {available} available modifications by Max Modification Count.",
+                    WrappedMiniLabel);
             }
         }
 

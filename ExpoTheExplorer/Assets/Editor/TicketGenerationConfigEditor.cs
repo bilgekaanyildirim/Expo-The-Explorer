@@ -21,7 +21,8 @@ namespace ExpoTheExplorer.Editor
 
             var config = (TicketGenerationConfig)target;
             DayEditorSettingsPreviews.DrawMainDishPreview(
-                config.MainDishWeights.Select(w => (w.Food, w.Weight, w.ModificationCountLambda)).ToList());
+                config.MainDishWeights
+                    .Select(w => (w.Food, w.Weight, w.ModificationCountLambda, w.MaxModificationCount)).ToList());
         }
     }
 }

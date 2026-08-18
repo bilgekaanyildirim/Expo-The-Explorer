@@ -20,3 +20,9 @@ MonoBehaviour:
   patientModificationBoxColor: {r: 0.6980392, g: 0.9137255, b: 0.6980392, a: 1}
   additionSprite: {fileID: 21300000, guid: c7a5200686652421bbd889babac702d3, type: 3}
   removalSprite: {fileID: 21300000, guid: ff4f5c842c37d435dbf342ca1570aaf8, type: 3}
+  timerSegmentSeconds: 5
+  timerFillColor: {r: 0.4941176, g: 0.8156863, b: 0.4941176, a: 1}
+  timerWarningColor: {r: 1, g: 0.7686275, b: 0.4196078, a: 1}
+  timerCriticalColor: {r: 1, g: 0.4823529, b: 0.4823529, a: 1}
+  timerWarningRatio: 0.666
+  timerCriticalRatio: 0.3

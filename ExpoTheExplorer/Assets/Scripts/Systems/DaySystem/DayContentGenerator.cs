@@ -133,7 +133,8 @@ namespace ExpoTheExplorer.Systems.DaySystem
                 var food = catalog.GetById(entry.foodItemId);
                 if (food == null) continue;
 
-                resolved.Add(new MainDishWeight(food, entry.weight, entry.modificationCountLambda));
+                resolved.Add(new MainDishWeight(
+                    food, entry.weight, entry.modificationCountLambda, entry.maxModificationCount));
             }
 
             return resolved;

@@ -14,19 +14,30 @@ namespace ExpoTheExplorer.UI
     // reference wired up in the Inspector (the Canvas/card hierarchy is built by
     // hand in the Editor, not procedurally), so this script only ever changes
     // .sprite/.text/.SetActive on those existing references. Never creates or
-    // destroys structural GameObjects except cloning modificationRowTemplate.
+    // destroys structural GameObjects except cloning the two authored templates,
+    // modificationRowTemplate and timerDividerTemplate — both are counts only the
+    // ticket knows (its modifications, its time limit), so neither can be laid out
+    // in the Editor ahead of time.
     //
     // Polls its slot every frame instead of binding to GameState.TicketDelivered/
     // TicketCancelled: those events fire BEFORE TicketSlotManager reassigns the
     // slot, and FillEmptySlots (initial population) never fires anything at all —
     // neither event can tell this view what's actually in the slot right now.
-    // The same per-frame check drives the numeric timer, which has no event at
+    // The same per-frame check drives the timer bar, which has no event at
     // all since RemainingSeconds is mutated directly every frame.
     public class TicketCardView : MonoBehaviour
     {
+        // Safety valve, not a design number: authored data decides how many ticks a
+        // bar gets (limit / segment seconds), and this only stops a nonsense pair —
+        // a huge limit against a tiny segment — from spawning thousands of objects.
+        private const int MaxTimerDividers = 64;
+
         [SerializeField] private Image background;
         [SerializeField] private TMP_Text customerNameText;
-        [SerializeField] private TMP_Text timeRemainingText;
+        [Tooltip("Filled (Horizontal, Origin Left) Image drained by the ticket's remaining time. Sits inside the timer bar's track, which draws the outline around it.")]
+        [SerializeField] private Image timerFillImage;
+        [Tooltip("Inactive divider tick, cloned once per segment boundary. Must be a sibling AFTER the fill so the ticks draw over it, and anchored to the track's left edge with a vertical stretch — only its horizontal offset is moved. Keep its width equal to the track sprite's outline, or the ticks read as a different line weight.")]
+        [SerializeField] private RectTransform timerDividerTemplate;
         [SerializeField] private Image dishImage;
         [SerializeField] private Transform modificationsListParent;
         [SerializeField] private ModificationSlotView modificationRowTemplate;
@@ -45,6 +56,7 @@ namespace ExpoTheExplorer.UI
         private bool trayAnimating;
         private RectTransform rectTransform;
         private readonly List<ModificationSlotView> modificationRows = new();
+        private readonly List<RectTransform> timerDividers = new();
 
         // True while either this card's own delivery transition or its
         // paired WorldTrayView's delivery/scatter animation is playing —
@@ -80,6 +92,7 @@ namespace ExpoTheExplorer.UI
             // Editor, which silently hides every real modification row too.
             modificationsListParent.gameObject.SetActive(true);
             modificationRowTemplate.gameObject.SetActive(false);
+            timerDividerTemplate.gameObject.SetActive(false);
             RebuildContent(null);
         }
 
@@ -92,7 +105,8 @@ namespace ExpoTheExplorer.UI
             var missing = new List<string>();
             if (background == null) missing.Add(nameof(background));
             if (customerNameText == null) missing.Add(nameof(customerNameText));
-            if (timeRemainingText == null) missing.Add(nameof(timeRemainingText));
+            if (timerFillImage == null) missing.Add(nameof(timerFillImage));
+            if (timerDividerTemplate == null) missing.Add(nameof(timerDividerTemplate));
             if (dishImage == null) missing.Add(nameof(dishImage));
             if (modificationsListParent == null) missing.Add(nameof(modificationsListParent));
             if (modificationRowTemplate == null) missing.Add(nameof(modificationRowTemplate));
@@ -205,7 +219,8 @@ namespace ExpoTheExplorer.UI
             if (ticket == null)
             {
                 customerNameText.text = string.Empty;
-                timeRemainingText.text = string.Empty;
+                timerFillImage.fillAmount = 0f;
+                ClearTimerDividers();
                 dishImage.enabled = false;
                 sideImage.gameObject.SetActive(false);
                 drinkImage.gameObject.SetActive(false);
@@ -233,12 +248,62 @@ namespace ExpoTheExplorer.UI
             var drink = ticket.RequiredItems.FirstOrDefault(item => item.Category == FoodCategory.Drink);
             SetOptionalImage(drinkImage, drink);
 
+            RebuildTimerDividers(ticket);
             RefreshTimer(ticket);
         }
 
+        // Runs every frame, so both writes are deliberately left to Image's own
+        // setters: fillAmount and color each early-out on an unchanged value, so a
+        // card only dirties its graphic on the frames the bar actually moves.
         private void RefreshTimer(Ticket ticket)
         {
-            timeRemainingText.text = TicketCardFormatting.FormatRemainingTime(ticket.RemainingSeconds);
+            var remainingRatio = ticket.TimeLimitSeconds > 0f
+                ? Mathf.Clamp01(ticket.RemainingSeconds / ticket.TimeLimitSeconds)
+                : 0f;
+
+            timerFillImage.fillAmount = remainingRatio;
+            timerFillImage.color = owner.TimerFillColorFor(remainingRatio);
+        }
+
+        // The bar spans the ticket's WHOLE time limit, so a tick belongs at
+        // boundary/limit along it, measured from the track's left edge.
+        //
+        // Deliberately NOT an even split of the bar into n pieces: a limit that
+        // isn't a whole multiple of the segment length (nothing authored today —
+        // 45/90/150 against 15) has to end with one shorter final section, because
+        // spreading the ticks evenly would put them on the wrong seconds.
+        private void RebuildTimerDividers(Ticket ticket)
+        {
+            ClearTimerDividers();
+
+            var segmentSeconds = owner.TimerSegmentSeconds;
+            var timeLimit = ticket.TimeLimitSeconds;
+            if (segmentSeconds <= 0f || timeLimit <= 0f) return;
+
+            var track = (RectTransform)timerDividerTemplate.parent;
+
+            // Read straight off the track's own sizeDelta (fixed anchors, no layout
+            // group driving it), so this is already right on the frame the card is
+            // built — nothing here has to wait for a layout pass.
+            var trackWidth = track.rect.width;
+
+            for (var section = 1; section * segmentSeconds < timeLimit && timerDividers.Count < MaxTimerDividers; section++)
+            {
+                var divider = Instantiate(timerDividerTemplate, track);
+                divider.gameObject.SetActive(true);
+
+                // Rounded to whole units instead of left on the exact fraction. A
+                // tick that lands mid-unit gets smeared across two pixels, and since
+                // every boundary falls on a different fraction each one would smear
+                // by a different amount and read as a different line weight. The
+                // template is already anchored to the track's left edge, so only the
+                // offset moves.
+                var normalized = section * segmentSeconds / timeLimit;
+                divider.anchoredPosition = new Vector2(
+                    Mathf.Round(normalized * trackWidth), divider.anchoredPosition.y);
+
+                timerDividers.Add(divider);
+            }
         }
 
         private void SetDishImage(FoodItemConfig main)
@@ -277,6 +342,15 @@ namespace ExpoTheExplorer.UI
                 Destroy(row.gameObject);
             }
             modificationRows.Clear();
+        }
+
+        private void ClearTimerDividers()
+        {
+            foreach (var divider in timerDividers)
+            {
+                Destroy(divider.gameObject);
+            }
+            timerDividers.Clear();
         }
     }
 }

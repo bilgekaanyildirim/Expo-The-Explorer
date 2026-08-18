@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 46ba04b6383a94d58b8c36415988e9b7
+guid: 5d2b8e4a6c1f47390be85a7c3d961f28
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -3766080000172859765
-    second: Hotdog_0
+      213: -4198736521094783326
+    second: TicketTimerBarFill_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -48,7 +48,7 @@ TextureImporter:
   compressionQuality: 50
   spriteMode: 1
   spriteExtrude: 1
-  spriteMeshType: 0
+  spriteMeshType: 1
   alignment: 0
   spritePivot: {x: 0.5, y: 0.5}
   spritePixelsToUnits: 100
@@ -75,7 +75,7 @@ TextureImporter:
     maxTextureSize: 2048
     resizeAlgorithm: 0
     textureFormat: -1
-    textureCompression: 1
+    textureCompression: 0
     compressionQuality: 50
     crunchedCompression: 0
     allowsAlphaSplitting: 0
@@ -88,7 +88,7 @@ TextureImporter:
     maxTextureSize: 2048
     resizeAlgorithm: 0
     textureFormat: -1
-    textureCompression: 1
+    textureCompression: 0
     compressionQuality: 50
     crunchedCompression: 0
     allowsAlphaSplitting: 0
@@ -101,7 +101,7 @@ TextureImporter:
     maxTextureSize: 2048
     resizeAlgorithm: 0
     textureFormat: -1
-    textureCompression: 1
+    textureCompression: 0
     compressionQuality: 50
     crunchedCompression: 0
     allowsAlphaSplitting: 0
@@ -113,13 +113,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: Hotdog_0
+      name: TicketTimerBarFill_0
       rect:
         serializedVersion: 2
         x: 0
         y: 0
-        width: 1304
-        height: 886
+        width: 440
+        height: 50
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -128,8 +128,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: b8e5ef181323cbbc0800000000000000
-      internalID: -3766080000172859765
+      spriteID: e93b6d15a2c4780e0800000000000000
+      internalID: -4198736521094783326
       vertices: []
       indices: 
       edges: []
@@ -138,7 +138,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 5e97eb03825dee720800000000000000
+    spriteID: 27c5a9f83b16de400800000000000000
     internalID: 0
     vertices: []
     indices: 
@@ -148,7 +148,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      Hotdog_0: -3766080000172859765
+      TicketTimerBarFill_0: -4198736521094783326
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

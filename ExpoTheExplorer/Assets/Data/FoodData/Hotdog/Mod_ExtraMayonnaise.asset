@@ -10,9 +10,9 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f83e5b40d0a3b4c3aa09277af96774c1, type: 3}
-  m_Name: Mod_ExtraKetchup
+  m_Name: Mod_ExtraMayonnaise
   m_EditorClassIdentifier: ExpoTheExplorer.Data::ExpoTheExplorer.Data.ModificationConfig
-  id: extraketchup
-  displayName: Extra Ketchup
-  icon: {fileID: 21300000, guid: 57c70203947dc4c89b2660ca6f42b1e8, type: 3}
+  id: extramayonnaise
+  displayName: Extra Mayonnaise
+  icon: {fileID: 21300000, guid: b25d12b0f1f1a470c9cae0964dcd9059, type: 3}
   allowedDirection: 0

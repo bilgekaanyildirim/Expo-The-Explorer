@@ -15,30 +15,56 @@ namespace ExpoTheExplorer.Data
         public const float DefaultWeight = 1f;
         public const float DefaultModificationCountLambda = 1f;
 
+        // 10 is "no cap of my own" in practice: no dish in the project has anywhere near
+        // ten modifications, and TicketFactory truncates to AvailableModifications.Count
+        // anyway, so a fresh entry behaves exactly as it did before this field existed.
+        public const int DefaultMaxModificationCount = 10;
+
         [SerializeField] private FoodItemConfig food;
         [SerializeField] private float weight = DefaultWeight;
 
         [Tooltip("Poisson rate λ — the EXPECTED average modification count for this dish's tickets. The " +
-                 "distribution is truncated to k = 0..AvailableModifications.Count and renormalized. λ = 0 " +
-                 "always yields 0 modifications; a λ larger than the available count piles mass onto the " +
+                 "distribution is truncated to k = 0..Max Modification Count and renormalized. λ = 0 " +
+                 "always yields 0 modifications; a λ larger than the ceiling piles mass onto the " +
                  "maximum. Overrides TicketGenerationConfig.ModificationCountLambda, which only applies as a " +
                  "fallback to Main dishes missing from this list entirely.")]
         [SerializeField, Range(0f, 10f)] private float modificationCountLambda = DefaultModificationCountLambda;
 
+        [Tooltip("Hard ceiling on this dish's modification count — the Poisson truncation point, the same " +
+                 "role Max Leak Count plays for the noise-leak roll. The effective ceiling is the SMALLER of " +
+                 "this and the dish's own AvailableModifications count, so raising it can never invent a " +
+                 "modification the dish does not have. To make a dish never carry modifications, set λ = 0 " +
+                 "rather than lowering this (the range starts at 1 so that 0 stays readable as 'unauthored').")]
+        [SerializeField, Range(1, 10)] private int maxModificationCount = DefaultMaxModificationCount;
+
         public FoodItemConfig Food => food;
         public float Weight => weight;
         public float ModificationCountLambda => modificationCountLambda;
+
+        // Normalized on read rather than on write: this value arrives from two directions
+        // (Unity's own YAML for the seed asset, Day JSON via the ctor below), and clamping
+        // at each entry point would be two competing rules for one field.
+        public int MaxModificationCount => NormalizeMaxModificationCount(maxModificationCount);
+
+        // A Day file or asset written before this field existed carries no value for it,
+        // which deserializes to 0 — and 0 read literally means "this dish never gets a
+        // modification", a silent balance change on every already-authored Day. Every
+        // reader of that legacy data routes through here, so the rule cannot drift: the
+        // Day Editor's own model calls it too, for the value it shows on the slider.
+        public static int NormalizeMaxModificationCount(int value) =>
+            value < 1 ? DefaultMaxModificationCount : value;
 
         // Serialized-by-Unity default ctor stays for the Inspector; this one exists so a
         // Day's own authored weights (resolved from food ids in editorMeta) can be built in
         // code and handed to CloneForDayGeneration.
         public MainDishWeight() { }
 
-        public MainDishWeight(FoodItemConfig food, float weight, float modificationCountLambda)
+        public MainDishWeight(FoodItemConfig food, float weight, float modificationCountLambda, int maxModificationCount)
         {
             this.food = food;
             this.weight = weight;
             this.modificationCountLambda = modificationCountLambda;
+            this.maxModificationCount = maxModificationCount;
         }
     }
 

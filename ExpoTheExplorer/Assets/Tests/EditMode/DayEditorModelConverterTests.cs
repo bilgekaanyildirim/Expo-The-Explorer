@@ -106,7 +106,7 @@ namespace ExpoTheExplorer.Tests.EditMode
                         modificationAdditionChance = 0.8f,
                         mainDishWeights = new[]
                         {
-                            new MainDishWeightJson { foodItemId = main.Id, weight = 3f, modificationCountLambda = 1.5f },
+                            new MainDishWeightJson { foodItemId = main.Id, weight = 3f, modificationCountLambda = 1.5f, maxModificationCount = 2 },
                         },
                     },
                 },
@@ -142,6 +142,23 @@ namespace ExpoTheExplorer.Tests.EditMode
             Assert.AreEqual(main.Id, generation.mainDishWeights[0].foodItemId);
             Assert.AreEqual(3f, generation.mainDishWeights[0].weight);
             Assert.AreEqual(1.5f, generation.mainDishWeights[0].modificationCountLambda);
+            Assert.AreEqual(2, generation.mainDishWeights[0].maxModificationCount);
+        }
+
+        // A Day authored before maxModificationCount existed carries no value for it. The
+        // editor must not hand that 0 straight back on Save: the slider starts at 1, and a
+        // saved 0 would be a cap the runtime normalizes away -- the file and the game would
+        // disagree about the same dish.
+        [Test]
+        public void FromDayJson_MainDishWeightWithoutMaxModificationCount_SavesTheDefault()
+        {
+            var dayJson = CreateFullDayJson();
+            dayJson.editorMeta.ticketGeneration.mainDishWeights[0].maxModificationCount = 0;
+
+            var model = DayEditorModel.FromDayJson(dayJson, catalog);
+
+            var generation = model.ToDayJson().editorMeta.ticketGeneration;
+            Assert.AreEqual(MainDishWeight.DefaultMaxModificationCount, generation.mainDishWeights[0].maxModificationCount);
         }
 
         // An old Day file has no boardDistribution block at all. The editor must still open

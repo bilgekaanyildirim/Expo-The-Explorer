@@ -316,7 +316,7 @@ namespace ExpoTheExplorer.Editor
         private void DrawMainDishPreview() =>
             DayEditorSettingsPreviews.DrawMainDishPreview(
                 EditorMeta.TicketGeneration.MainDishWeights
-                    .Select(w => (w.Food, w.Weight, w.ModificationCountLambda)).ToList(),
+                    .Select(w => (w.Food, w.Weight, w.ModificationCountLambda, w.MaxModificationCount)).ToList(),
                 sharedCatalog != null ? AllowedFoodPool : null);
 
         // Which foods exist in this Day: drives Generate's pool AND the ticket editor's
@@ -876,6 +876,15 @@ namespace ExpoTheExplorer.Editor
         public float Weight = MainDishWeight.DefaultWeight;
         [PropertyRange(0f, 10f)] public float ModificationCountLambda = MainDishWeight.DefaultModificationCountLambda;
 
+        // Directly under the lambda on purpose: the two are one setting read together --
+        // the rate and the ceiling it is truncated at. Ranges from 1, not 0, for the same
+        // reason MaxLeakCount does: 0 is reserved as "this Day file predates the field"
+        // (see MainDishWeight.NormalizeMaxModificationCount). "Never any modifications"
+        // is authored as lambda 0, which this list already supports.
+        [PropertyRange(1, 10)]
+        [UnityEngine.Tooltip("Hard ceiling on this dish's modification count. The effective ceiling is the smaller of this and the dish's own available modifications, so raising it past that does nothing.")]
+        public int MaxModificationCount = MainDishWeight.DefaultMaxModificationCount;
+
         // Same tolerance as DayEditorTicketEntry.FromJson: an id whose FoodItemConfig is
         // gone leaves Food null (an empty slot in the editor) instead of dropping the row,
         // so the designer sees that something was there and can repoint it.
@@ -884,6 +893,10 @@ namespace ExpoTheExplorer.Editor
             Food = string.IsNullOrEmpty(json.foodItemId) ? null : catalog.GetById(json.foodItemId),
             Weight = json.weight,
             ModificationCountLambda = json.modificationCountLambda,
+            // Through the shared normalizer rather than a local clamp: an old Day's 0 has
+            // to become the default here too, or the slider would sit at an out-of-range
+            // value and the next Save would write the cap the runtime never applied.
+            MaxModificationCount = MainDishWeight.NormalizeMaxModificationCount(json.maxModificationCount),
         };
 
         public MainDishWeightJson ToJson() => new()
@@ -891,6 +904,7 @@ namespace ExpoTheExplorer.Editor
             foodItemId = Food != null ? Food.Id : string.Empty,
             weight = Weight,
             modificationCountLambda = ModificationCountLambda,
+            maxModificationCount = MaxModificationCount,
         };
     }
 

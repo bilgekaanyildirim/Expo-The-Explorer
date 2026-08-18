@@ -76,6 +76,12 @@ namespace ExpoTheExplorer.Systems.DaySystem
         public string foodItemId;
         public float weight;
         public float modificationCountLambda;
+
+        // Absent in a Day file written before this field existed, which deserializes to 0.
+        // That is NOT clamped here -- MainDishWeight.NormalizeMaxModificationCount owns the
+        // "0 means unauthored, use the default" rule for every reader, so re-stating it in
+        // the schema would be a second, competing rule (same stance as BoardDistributionJson).
+        public int maxModificationCount;
     }
 
     // Mirrors BoardDistributionConfig's serialized fields, minus the defensive clamping
