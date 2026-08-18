@@ -3,7 +3,10 @@
 
 *v0.5: Powerup 3 (Gürültü Temizleme) onaylandı; powerup kazanım/kullanım kuralları netleşti (meta-ilerleme + Gem).*
 *v0.6: Etkileşim yöntemi netleşti — Drag & Drop birincil etkileşim olarak onaylandı (bkz. Bölüm 5).*
-*v0.7: Powerup sistemi geliştirme kapsamı dışına alındı (ertelendi, tasarım saklanıyor). Sonsuz Mod tasarımdan kaldırıldı — tek mod Günlük Hedef Modu. Can bitip gün yeniden oynanınca o günde kazanılan Level XP'sinin kaybedildiği netleşti (bkz. Bölüm 6, 10).*
+*v0.7: Powerup sistemi geliştirme kapsamı dışına alındı (ertelendi, tasarım saklanıyor). Sonsuz Mod tasarımdan kaldırıldı — tek mod Günlük Hedef Modu. Can bitip gün yeniden oynanınca o günde kazanılan Level XP'sinin kaybedildiği netleşti (bkz. Bölüm 6, 10). ~~(v1.0'da geçersiz: XP sistemi kaldırıldı.)~~*
+*v0.9: Bahşişten **sabır azalma katsayısı kaldırıldı** — bahşiş yalnızca sipariş bedeli, bahşiş oranı ve hız kademesinden hesaplanıyor. Sabır tipi artık parayı değil, süre sınırını ~~ve XP çarpanını~~ etkiliyor (bkz. Bölüm 8, 9, 10).*
+*v1.0: **XP / Level sistemi tasarımdan tamamen kaldırıldı.** Deneyim puanı, level eşikleri, level rozeti ve level'a bağlı ödüller yok; bunlara dair kod, config ve UI projeden silindi (`.claude/decisions.md` D-009). Sabır tipi artık yalnızca süre sınırını belirliyor (XP çarpanı kalmadı), retry'da kaybedilen bir kazanım yok ve oyunda şu an oturumlar arası kalıcı hiçbir veri tutulmuyor. Meta-ilerlemenin yerini **Day dizisi** aldı (bkz. Bölüm 11, `docs/DaySystem_Roadmap.md`).*
+*v0.8: Her yemeğin kendi fiyatı olduğu netleşti. Bir teslimatın parası ikiye ayrıldı: **sipariş bedeli** (yemek fiyatlarının toplamı, sabit ve garanti) + **bahşiş** (tek değişken parça, sipariş bedeliyle orantılı). Hız ve sabır artık yalnızca bahşişi çarpar (bkz. Bölüm 9, 10).*
 
 ---
 
@@ -24,12 +27,12 @@
 ```
 BİLET GELİR → BOARD'A YEMEK DAĞILIR → OYUNCU DOĞRU YEMEKLERİ
 TEPSİYE TOPLAR → TEPSİ DOLUP DOĞRULANIRSA → BİLET TESLİM EDİLİR
-(Para + XP + Bahşiş kazanılır) → YENİ BİLET GELİR → (döngü tekrar eder)
+(Para + Bahşiş kazanılır) → YENİ BİLET GELİR → (döngü tekrar eder)
 ```
 
 Yanlış yerleştirme olursa: **CAN AZALIR → YERLEŞTİRİLEN YEMEKLER BOARD'A GERİ DAĞILIR → OYUNCU YENİDEN TOPLAMAK ZORUNDADIR**
 
-Bu döngü saniyeler içinde tekrar eder ve oyunun "moment-to-moment" gerilimini oluşturur. Üstüne binen sistemler (sabır tipleri, hız bonusu, level/ekonomi) bu temel döngüyü anlamlandırır ve uzun vadeli motivasyon sağlar.
+Bu döngü saniyeler içinde tekrar eder ve oyunun "moment-to-moment" gerilimini oluşturur. Üstüne binen sistemler (sabır tipleri, hız bonusu, ekonomi, Day dizisi) bu temel döngüyü anlamlandırır ve uzun vadeli motivasyon sağlar.
 
 ---
 
@@ -106,7 +109,7 @@ Birincil etkileşim yöntemi **drag & drop** olarak onaylandı. Mobilde küçük
 - Geçersiz bırakmada **snap-back** (öğenin board'daki konumuna geri dönme) animasyonu gösterilecek.
 - **Yerleştirilen her ürün, tepsi alanında anında görünür** — yani tepsi, oyuncunun o ana kadar topladığı ürünleri gerçek zamanlı olarak gösterir (bir sonraki düzeltmeye bkz: bu bir "önizleme" değil, oyuncunun aktif olarak doldurduğu gerçek tepsidir).
 - Tepsi sayacı `x/y` şeklinde ilerler (bkz. Bölüm 3 — sadece ürün sayısı, modifikasyonlar dahil değil).
-- **Tepsi doluyor ve tüm öğeler doğruysa:** Bilet otomatik olarak teslim edilir → Para + XP + (hıza bağlı) bahşiş kazanılır.
+- **Tepsi doluyor ve tüm öğeler doğruysa:** Bilet otomatik olarak teslim edilir → Para + (hıza bağlı) bahşiş kazanılır.
 - **Tepsi doluyor ama bir öğe yanlışsa:** Can azalır, tepsideki tüm öğeler board'a geri dağılır, oyuncu yeniden toplamaya başlar.
 
 ### ✅ Çözüldü — Kontrol Zamanlaması
@@ -132,7 +135,7 @@ Bu üçlü, oyunun üç ana zorluk kaynağını (ürün toplama, zaman baskısı
 ### ✅ Çözüldü — Powerup Kazanım ve Kullanım Kuralları
 
 Powerup'lar iki yoldan elde edilir:
-1. **Meta-ilerleme yoluyla:** Belli bir miktarda powerup, belirli etkinlikler (events) tamamlandığında ya da **level atlandıkça** ödül olarak verilir.
+1. **Meta-ilerleme yoluyla:** Belli bir miktarda powerup, belirli etkinlikler (events) tamamlandığında ödül olarak verilir. *(v1.0: "level atlandıkça" kazanım yolu geçersiz — level sistemi yok. Powerup sistemi zaten ertelenmiş durumda; hayata geçerse yeni bir kazanım tetiği tanımlanmalı, doğal aday Day tamamlama.)*
 2. **Gem ile satın alma:** Oyuncu, Gem harcayarak ek powerup satın alabilir (bkz. Bölüm 10).
 
 *(Bu, powerup'ların sınırsız bir kaynak olmadığını, hem ilerlemeyle kazanılan hem de Gem ile desteklenen bir "stok" sistemi olduğunu gösteriyor.)*
@@ -151,9 +154,9 @@ Meta-ilerleme yoluyla verilen powerup miktarı, hangi etkinliklerin ödüllendir
 
 Can sıfırlanınca **o gün biter** ve oyuncu o günü **yeniden oynamak zorunda kalır**. Ancak tekrar denemede **zorluk biraz düşürülür** (örn. daha az gürültü, biraz daha uzun süreler) — amaç, oyuncunun şevkinin tamamen kırılmaması. Ayrıca oyuncu **Gem harcayarak canını doldurup mevcut günde devam edebilir** ("continue" mekaniği, bkz. Bölüm 10).
 
-### ✅ Çözüldü — Retry'da XP Kaybı
+### ❌ Geçersiz (v1.0) — Retry'da XP Kaybı
 
-Can sıfırlanıp gün yeniden oynanacağı zaman: **o gün içinde kazanılmış olan Level XP'si kaybedilir** (kalıcı hale gelmez) ve gün/bölüm baştan oynanır. Yani XP, sadece gün **başarıyla tamamlandığında** oyuncunun kalıcı profiline işlenir (bkz. Bölüm 10) — başarısız bir gün denemesi, o denemede kazanılan XP'yi geri almaz, hiç kazandırmamış gibi davranır. Bu, "continue" mekaniğiyle karıştırılmamalı: Gem ile devam etmek günü **bitirmeden** sürdürmeyi sağlar (bu durumda gün hâlâ tamamlanabilir ve XP kazanılabilir); can tamamen tükenip gün **retry** olduğunda ise o denemenin XP'si silinir.
+Bu kural, XP/Level sistemine bağlıydı ve o sistem oyundan tamamen kaldırıldığı için **artık geçerli değil** (bkz. Bölüm 10, `.claude/decisions.md` D-009). Bugünkü davranış: can sıfırlanınca gün baştan oynanır ve oyuncu yalnızca o denemedeki ilerlemeyi kaybeder — kalıcı profile işlenip geri alınan bir kazanım yoktur, çünkü kalıcı profile işlenen hiçbir şey yoktur. "Continue" mekaniğiyle farkı da sadeleşti: Gem ile devam etmek günü bitirmeden sürdürmeyi sağlar, retry ise günü baştan başlatır; para tarafındaki tek geri alma, başarılı bir günü gönüllü olarak yeniden oynamakta (bkz. Bölüm 11 — Day Complete "Retry").
 
 ### Açık soru:
 Zorluk düşürme tam olarak nasıl uygulanacak — hangi parametre (gürültü oranı, süre, bilet sıklığı) ne kadar düşürülecek? Bu, dengeleme (balancing) aşamasında somutlaştırılmalı.
@@ -178,23 +181,45 @@ Süre dolduğunda: **can azalır ve bilet iptal edilir** (bilet slotundan kaldı
 
 Her müşterinin 3 sabır tipi vardır:
 
-| Tip | Süre | Bahşiş Davranışı |
+| Tip | Süre | Ekonomik Etki (v0.9) |
 |---|---|---|
-| **Sabırsız** | Kısa süre sınırı | Başlangıçta **yüksek bahşiş potansiyeli**, ama zaman geçtikçe bahşiş **hızla azalır** |
-| **Normal** | Orta süre sınırı | Orta seviye bahşiş, ılımlı azalma eğrisi |
-| **Sabırlı** | Uzun süre sınırı | Düşük/orta bahşiş potansiyeli ama azalma eğrisi çok yavaş — acele gerektirmez |
+| **Sabırsız** | Kısa süre sınırı | Zaman baskısı yüksek — hız kademesini tutturmak zor |
+| **Normal** | Orta süre sınırı | Orta zaman baskısı |
+| **Sabırlı** | Uzun süre sınırı | Rahat zaman — acele gerektirmez |
+
+**v0.9 — sabır tipi bahşişi doğrudan etkilemez.** Sabır tipinin ekonomik
+ağırlığı tek bir dolaylı yoldan gelir: verdiği süre sınırı, hangi hız
+kademesini yakalayabileceğini belirler. Bahşiş formülünde sabır katsayısı
+yoktur (bkz. Bölüm 9). *(v1.0: ikinci yol olan XP çarpanı, XP sistemiyle
+birlikte kaldırıldı — sabır tipinin süre dışında hiçbir etkisi kalmadı,
+bkz. Bölüm 13 soru 22.)*
 
 Bu sistem oyuncuyu her an **önceliklendirme** yapmaya zorlar: aynı anda birden fazla bilet varsa, sabırsız müşteriye önce mi yetişmeli yoksa yüksek öğe sayılı sabırlı bileti mi hazırlamalı?
 
 **Görsel gösterim (v0.2 — prototiple doğrulandı):** Sabır tipi, bilet kartının **sabit kenar rengiyle** belirtilir (örn. kırmızı = sabırsız, yeşil = sabırlı, krem/nötr = normal). Bu renk oturum boyunca değişmez; sadece süre sayısı ve zaman barı azalır.
 
-### ✅ Çözüldü — Bahşiş Azalma Eğrisi
+### ⛔ Geçersiz (v0.9) — Bahşiş Azalma Eğrisi
+
+**Bu karar v0.9'da kaldırıldı:** bahşiş artık zamanla kademeli olarak
+azalmıyor; sabır tipinin bahşiş üzerinde hiçbir çarpanı yok. Geç kalan
+oyuncu bahşişi **hız kademesi** üzerinden kaybeder (Standart kademe =
+çarpan yok), sipariş bedelini ise hiçbir koşulda kaybetmez (bkz. Bölüm
+9). Aşağıdaki özgün karar, tasarımın nereden geldiğini kaybetmemek için
+kayıtta bırakılmıştır — **uygulanmıyor.**
+
+<details>
+<summary>v0.2–v0.8 arası geçerli olan özgün karar</summary>
 
 Bahşiş azalma eğrisi **kademelidir** (lineer değil). Açıklama:
 - **Lineer** olsaydı: bahşiş, süre geçtikçe sabit bir oranla, düz bir çizgi gibi sürekli azalırdı (örn. her saniye %1 düşer).
 - **Kademeli** (seçilen yaklaşım): bahşiş, belirli zaman eşiklerine ulaşıldığında aniden bir basamak düşer ve o seviyede sabit kalır — örn. ilk 10 saniye %100 bahşiş, sonra aniden %70'e düşer, sonra %40'a, vb.
 
 **Eşikler dinamiktir** — sabit saniye değerleri değil, bilet karmaşıklığına (öğe sayısına) göre ölçeklenir. Bu ilke, Bölüm 9'daki hız kademesi eşikleri için de aynı şekilde geçerlidir.
+
+</details>
+
+**Not:** Eşiklerin öğe sayısıyla ölçeklenmesi ilkesi ölmedi — Bölüm 9'daki
+**hız kademesi** eşikleri için aynen geçerli olmaya devam ediyor.
 
 ---
 
@@ -209,8 +234,28 @@ Teslimat hızına göre 3 kademeli bir bahşiş çarpanı sistemi:
 Bu sistem, sabır sistemiyle birlikte çalışarak toplam bahşiş formülünü oluşturur:
 
 ```
-Toplam Bahşiş = Baz Bahşiş × Hız Kademesi Çarpanı × Sabır Tipi Azalma Katsayısı
+Baz Bahşiş    = Sipariş Bedeli × Bahşiş Oranı
+Toplam Bahşiş = Baz Bahşiş × Hız Kademesi Çarpanı
 ```
+
+### ✅ Çözüldü — Sipariş bedeli sabittir, yalnızca bahşiş değişkendir (v0.8)
+
+Bir teslimatın kazancı iki parçadan oluşur ve **yalnızca ikincisi** hıza/sabıra göre değişir:
+
+| Parça | Nasıl hesaplanır | Değişken mi? |
+|---|---|---|
+| **Sipariş Bedeli** | Bilette istenen yemeklerin **fiyatlarının toplamı** | Hayır — başarılı her teslimatta tam ödenir |
+| **Bahşiş** | `Sipariş Bedeli × Bahşiş Oranı × Hız Çarpanı` | Evet — tek değişken parça |
+
+```
+Teslimat Kazancı = Sipariş Bedeli + Bahşiş
+```
+
+- **Her yemeğin kendi fiyatı vardır** ve bu fiyat yemeğin içerik verisinde yazılıdır, koda gömülmez. Burger, patates ve kola aynı parayı etmez.
+- Bahşiş fiyatla **orantılıdır**: pahalı bir siparişi hızlı yetiştirmek, ucuz bir siparişi aynı hızda yetiştirmekten daha çok bahşiş getirir. "Bahşiş Oranı" tek bir global denge ayarıdır (örn. %20) — fiyat yemekte, oran ekonomi ayarlarında durur.
+- Hız kademesi artık **yalnızca bahşişi** çarpar, sipariş bedelini asla azaltmaz. Bahşişin alt sınırı **sıfırdır**: geç kalan oyuncu bahşişi kaybedebilir ama yemeğin parasını her zaman alır.
+- **Sabır tipi bahşiş formülünde yer almaz (v0.9).** Bahşişi belirleyen tek değişken hız kademesidir; sabır tipi parayı yalnızca dolaylı etkiler — verdiği süre, hangi kademeyi yakalayabileceğini belirler (bkz. Bölüm 8). *(v1.0: eskiden ikinci bir ödül yolu olan XP çarpanı kaldırıldı.)*
+- Öğe sayısı artık kazancı doğrudan belirlemez (fiyat toplamı zaten karmaşıklıkla birlikte büyür); ancak hız ve sabır **eşikleri** öğe sayısıyla ölçeklenmeye devam eder — bu kural değişmedi (bkz. Bölüm 8 ve yukarısı).
 
 ### ✅ Çözüldü — Kademe Eşikleri
 
@@ -222,15 +267,18 @@ Kademe eşikleri **dinamiktir** — sabit bir yüzde/saniye değeri değil, bile
 
 **Not:** Prototip HUD'unda 3 ayrı kaynak görülüyor: **Health** (Can), **Soft Money** (Para) ve **Gem**. Gem'in rolü netleşti (aşağıda).
 
-- **Soft Money (Para):** Her başarılı teslimatta kazanılır. Doğrudan ekonomik ödül (ileride meta-oyun için harcanabilir, bkz. Bölüm 12).
+- **Soft Money (Para):** Her başarılı teslimatta kazanılır — **sipariş bedeli (sabit) + bahşiş (değişken)** olarak iki parça hâlinde (bkz. Bölüm 9). Sipariş bedeli, bilette istenen yemeklerin fiyat toplamıdır ve teslimat gerçekleştiği sürece tam ödenir; bahşiş bu bedele oranlıdır ve hıza/sabıra göre değişir. Doğrudan ekonomik ödül (ileride meta-oyun için harcanabilir, bkz. Bölüm 12).
 - **Gem:** Ayrı bir **sert para birimi**. Kullanım alanları:
   1. **Powerup satın almak/doldurmak** (bkz. Bölüm 5.2)
   2. **"Devam et" (continue):** Can bitip gün başarısız olduğunda, Gem harcayarak canı doldurup mevcut günde devam etmek (bkz. Bölüm 6)
-- **Deneyim Puanı (XP):** Her başarılı teslimatta kazanılır, oyuncu **level**ını yükseltir.
-- **Level:** XP eşikleri aşıldıkça artar. **İlerleme tek bir oyuncu profili üzerinden kalıcıdır** — oyun **meta-progression'lı** bir yapıya sahiptir (oturum/gün bazlı sıfırlanmaz). **Ancak bu kalıcılık, günün başarıyla tamamlanmasına bağlıdır:** can bitip gün retry olduğunda, o denemede kazanılan XP kalıcı profile hiç işlenmemiş sayılır ve kaybedilir (bkz. Bölüm 6 — Retry'da XP Kaybı). Level'ın etkisi netleştirilmeli — öneriler:
-  - Zorluk eğrisinin kilit açması (yeni yemek/modifikasyon tipleri, daha karmaşık biletler)
-  - Kozmetik ödüller (restoran/karakter görünümü)
-  - Meta-oyun sistemine erişim (bkz. Bölüm 12)
+### ❌ Kaldırıldı (v1.0) — Deneyim Puanı (XP) / Level
+
+Oyunda **XP ve oyuncu Level'ı yoktur.** Daha önce tasarlanan "her teslimatta XP kazan, eşik aştıkça level atla, ilerleme kalıcı profile işlensin" yapısı — XP eşik tablosu, sabır tipine bağlı XP çarpanı, level rozeti ve level'a bağlı ödüller dahil — tasarımdan ve koddan tamamen çıkarıldı (`.claude/decisions.md` D-009). Level'ın üstleneceği düşünülen roller şu an başka yerlerde:
+
+  - **Zorluk eğrisi ve içerik kilidi:** elle tasarlanan **Day dizisi** taşıyor (her Day kendi board dağılımını, bilet dizisini ve süre sınırlarını getiriyor — bkz. Bölüm 11, `docs/DaySystem_Roadmap.md`).
+  - **Kozmetik ödüller / meta-oyun erişimi:** hâlâ açık, ama artık bir level eşiğine değil, Day ilerlemesine bağlanmalı (bkz. Bölüm 12).
+
+**Kalıcılık notu:** XP kaldırılınca oyunda diske yazılan tek veri de kalkmış oldu — şu an oyun oturumlar arası **hiçbir şey saklamıyor** (para, can ve hangi Day'de olunduğu dahil). Kayıt sınırı (`PlayerProfile`/`PlayerProfileStore`) kodda duruyor ama boş ve bağlı değil; ilk doldurulacak alan büyük ihtimalle oyuncunun hangi Day'de olduğu.
 
 ---
 
@@ -238,7 +286,7 @@ Kademe eşikleri **dinamiktir** — sabit bir yüzde/saniye değeri değil, bile
 
 ### ✅ Çözüldü — Tek Mod: Günlük Hedef Modu
 
-Oyunda **tek bir mod** vardır: **Günlük Hedef Modu.** Her "gün" belirli sayıda sipariş tamamlanması gerekir; hedefe ulaşınca gün biter, sonuç ekranı (skor, bahşiş toplamı, XP) gösterilir. Can biterse gün başarısız sayılır ve yeniden oynanır — bkz. Bölüm 6.
+Oyunda **tek bir mod** vardır: **Günlük Hedef Modu.** Her "gün" belirli sayıda sipariş tamamlanması gerekir; hedefe ulaşınca gün biter, sonuç ekranı (yıldız, sipariş bedeli toplamı, bahşiş toplamı) gösterilir. Can biterse gün başarısız sayılır ve yeniden oynanır — bkz. Bölüm 6.
 
 *(v0.7: Önceki sürümde önerilen "Sonsuz Mod" tasarımdan tamamen kaldırıldı — böyle bir mod geliştirilmeyecek. Bu karar, sonsuz mod'a bağlı zorluk artışı ve mod-arası progression paylaşımı sorularını da geçersiz kılıyor.)*
 
@@ -264,14 +312,14 @@ Uzun vadeli oynanabilirlik için düşünülen ek katman:
 
 | Ekran Öğesi | İşlev |
 |---|---|
-| Üst HUD | Level rozeti (altıgen), Health, Soft Money, Gem göstergeleri |
+| Üst HUD | Health, Soft Money, Gem göstergeleri *(v1.0: altıgen level rozeti ve XP çubuğu sahneden kaldırıldı)* |
 | 3 sabit bilet slotu | Müşteri + kalan süre + ana yemek + modifikasyon (ikon+X/+) + yan ürün/içecek + zaman barı; kenar rengi = sabır tipi |
 | Tepsi alanı | Her slotun altında; oyuncu yerleştirdikçe ürünler burada birikir (bkz. Bölüm 5) |
 | Board | Sabit bir grid (şu an 6 sütun × 5 satır — üretim sırasında görsel/mekaniksel olarak ayarlanabilir) — mutfaktan gelen tüm yemek öğelerinin dağıldığı ana alan |
 | Powerup ikonları | 3 adet, alt kısımda (bkz. Bölüm 5.2) |
 | Sonuç feedback'i | Doğru teslimat / yanlış teslimat için ayrı, net görsel-işitsel geri bildirim |
 | Alt navigasyon | MARKT ve MAP butonları (meta-oyun erişimi, bkz. Bölüm 12) |
-| Gün/Oturum sonu ekranı | Toplam bahşiş, tamamlanan sipariş sayısı, kazanılan XP |
+| Gün/Oturum sonu ekranı | Toplam bahşiş, tamamlanan sipariş sayısı, yıldız derecesi |
 
 **Mobil özel notlar:**
 - Dokunmatik hedefler (yemek öğeleri, tepsi alanı) parmak boyutuna uygun minimum dokunma alanına sahip olmalı.
@@ -284,7 +332,7 @@ Uzun vadeli oynanabilirlik için düşünülen ek katman:
 
 ## 14. Açık Tasarım Soruları — Özet Liste
 
-*(v0.7: Sonsuz Mod tasarımdan kaldırıldığı için ona bağlı sorular listeden silindi; powerup sistemi ertelendiği için ilgili madde "kapsam dışı" olarak işaretlendi; retry'da XP kaybı netleşti.)*
+*(v0.7: Sonsuz Mod tasarımdan kaldırıldığı için ona bağlı sorular listeden silindi; powerup sistemi ertelendiği için ilgili madde "kapsam dışı" olarak işaretlendi; retry'da XP kaybı netleşti — bu son madde v1.0'da geçersiz kaldı, XP sistemi kaldırıldı.)*
 
 1. ~~Modifikasyonlar tepsi sayacında ayrı öğe mi, yoksa ana yemeğin durumu mu?~~ **Çözüldü.** (bkz. Bölüm 3)
 2. ~~Board'daki yemek sayısına üst sınır var mı?~~ **Öneri sunuldu: üst sınır = grid kapasitesi.** (bkz. Bölüm 4)
@@ -293,8 +341,8 @@ Uzun vadeli oynanabilirlik için düşünülen ek katman:
 5. ~~Süre bilet bazlı mı, süre dolunca ne oluyor?~~ **Çözüldü: bilet bazlı; can azalır + bilet iptal edilir.** (bkz. Bölüm 7)
 6. ~~Sabır tipi görsel gösterimi + bahşiş azalma eğrisi?~~ **Çözüldü: sabit kenar rengi; eğri kademeli, eşikler dinamik.** (bkz. Bölüm 8)
 7. ~~Hız kademesi eşikleri sabit mi, dinamik mi?~~ **Çözüldü: dinamik.** (bkz. Bölüm 9)
-8. ~~Level ilerlemesi kalıcı mı?~~ **Çözüldü: kalıcı, meta-progression'lı — ama sadece gün başarıyla tamamlanınca.** (bkz. Bölüm 10)
-9. ~~Can bitip retry olduğunda o günün XP'sine ne oluyor?~~ **Çözüldü: kaybedilir, kalıcı profile işlenmez, gün baştan oynanır.** (bkz. Bölüm 6, 10)
+8. ~~Level ilerlemesi kalıcı mı?~~ **Geçersiz (v1.0): level sistemi kaldırıldı.** Kalıcı ilerlemenin taşıyıcısı artık Day dizisi; hangi Day'de olunduğunun kaydedilmesi ayrı bir iş olarak duruyor. (bkz. Bölüm 10)
+9. ~~Can bitip retry olduğunda o günün XP'sine ne oluyor?~~ **Geçersiz (v1.0): XP yok, kaybedilecek bir kazanım da yok.** (bkz. Bölüm 6, 10)
 10. Tepsi doluluk sayacı (`x/y`) nihai UI'da nerede gösterilecek — özelliğin var olacağı kesin, konumu üretim sırasında belirlenecek.
 11. ~~Tamamlanmış tepsi önizleme kutusundan sonra teslimat otomatik mi?~~ **Bu soru artık geçersiz: "önizleme kutusu" kavramı yanlıştı, o alan tepsinin kendisi. Otomatik kontrol/gönderim çözümü geçerliliğini koruyor.** (bkz. Bölüm 5, 5.1)
 12. ~~Gem, Soft Money'den farklı ne amaçla kullanılacak?~~ **Çözüldü: powerup satın alma + "devam et" (continue) mekaniği.** (bkz. Bölüm 10)
@@ -303,6 +351,11 @@ Uzun vadeli oynanabilirlik için düşünülen ek katman:
 15. ~~Powerup 3'ün içeriği ne olacak?~~ **Çözüldü: Gürültü Temizleme onaylandı.** (bkz. Bölüm 5.2)
 16. ~~Powerup kazanım/kullanım kuralları + miktar/maliyet sayıları?~~ **Kapsam dışı (ertelendi):** Powerup sistemi şu anki fazda geliştirilmeyecek; bu soru geliştirme tekrar kapsama alındığında ele alınacak. (bkz. Bölüm 5.2)
 17. Can biterse uygulanacak zorluk düşürme somut olarak neye karşılık geliyor (hangi parametre ne kadar düşüyor)?
+18. ~~Bir teslimatın parası tamamen hıza/sabıra mı bağlı?~~ **Çözüldü (v0.8): hayır — sipariş bedeli sabit ve garanti, yalnızca bahşiş değişken ve bahşiş fiyatla orantılı.** (bkz. Bölüm 9, 10)
+19. Modifikasyonlar sipariş bedelini değiştiriyor mu (örn. "ekstra köfte" siparişi pahalılaştırıyor mu)? — **Açık.** Şu anki karar: fiyat yalnızca yemeğin kendisinden gelir, modifikasyonlar bedeli değiştirmez; ekstra malzemenin ücretlendirilmesi ayrı bir tasarım kararıdır.
+20. Bahşiş Oranı'nın somut değeri ne olacak (v0.8 formülündeki tek global katsayı)? — üretim sırasında dengelenecek.
+21. ~~Sabır tipi bahşişi nasıl etkiliyor?~~ **Çözüldü (v0.9): etkilemiyor.** Bahşiş = Sipariş Bedeli × Bahşiş Oranı × Hız Çarpanı. Sabır tipi yalnızca süreyi belirler. (bkz. Bölüm 8, 9)
+22. Sabır tipinin para tarafında hiç ağırlığı olmaması isteniyor mu, yoksa **sabit bir bahşiş çarpanı** mı verilmeli (kademeli azalma değil, tipe bağlı düz katsayı)? — **Açık, ve v1.0 ile daha keskin:** XP çarpanı kaldırıldığı için sabır tipinin süre dışında hiçbir etkisi kalmadı.
 
 ---
 

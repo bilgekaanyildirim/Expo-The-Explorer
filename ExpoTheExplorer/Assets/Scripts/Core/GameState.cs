@@ -15,8 +15,6 @@ namespace ExpoTheExplorer.Core
         private int maxLives;
         private int softMoney;
         private int gems;
-        private int xp;
-        private int level;
         private int currentDayIndex;
 
         // Setters publish on every actual change (LivesManager.LoseLife/TryContinue,
@@ -73,38 +71,10 @@ namespace ExpoTheExplorer.Core
             }
         }
 
-        // Level only ever increases in this game (constructor seed and the
-        // profile-load overwrite in GameManager.Awake both assign a stored
-        // value, no code path decrements it), so LevelChanged firing already
-        // IS the "leveled up" signal -- no separate LevelUp event needed.
-        public int Xp
-        {
-            get => xp;
-            set
-            {
-                if (xp == value) return;
-                xp = value;
-                XpChanged.Publish(xp);
-            }
-        }
-
-        public int Level
-        {
-            get => level;
-            set
-            {
-                if (level == value) return;
-                level = value;
-                LevelChanged.Publish(level);
-            }
-        }
-
         public EventBus<int> LivesChanged { get; } = new();
         public EventBus<int> MaxLivesChanged { get; } = new();
         public EventBus<int> SoftMoneyChanged { get; } = new();
         public EventBus<int> GemsChanged { get; } = new();
-        public EventBus<int> XpChanged { get; } = new();
-        public EventBus<int> LevelChanged { get; } = new();
 
         // Set by LivesManager.LoseLife the instant Lives hits 0, cleared again by
         // LivesManager.TryContinue (GDD Section 6 — day ends, Gems refill lives
@@ -147,8 +117,8 @@ namespace ExpoTheExplorer.Core
         public EventBus<int> LivesDepleted { get; } = new();
 
         // Plain int, no event -- mirrors IsAwaitingContinue, nothing consumes
-        // this reactively yet (unlike Lives/SoftMoney/Gems/Xp/Level, which each
-        // have a real HUD view or LevelManager consumer today).
+        // this reactively yet (unlike Lives/SoftMoney/Gems, which each have a
+        // real HUD view today).
         public int TicketsDeliveredToday { get; set; }
 
         // Which authored Day (position in GameManager's resolved Day catalog,
@@ -183,9 +153,9 @@ namespace ExpoTheExplorer.Core
 
         // GDD Section 6 fixes the starting life count at 3; it is a locked design
         // rule rather than a balancing knob, so it lives here instead of in a
-        // config asset. The wallet/level seeds below are plain zero for the same
-        // reason -- a fresh player owns nothing, and Xp/Level are immediately
-        // overwritten from the persisted profile by GameManager.Awake anyway.
+        // config asset. The wallet seeds below are plain zero for the same
+        // reason -- a fresh player owns nothing, and nothing is persisted across
+        // sessions today, so every run starts from these values.
         public const int DefaultStartingLives = 3;
 
         public GameState(GameConfig config)
@@ -194,8 +164,6 @@ namespace ExpoTheExplorer.Core
             MaxLives = DefaultStartingLives;
             SoftMoney = 0;
             Gems = 0;
-            Xp = 0;
-            Level = 0;
             Board = new BoardGrid(config);
         }
     }

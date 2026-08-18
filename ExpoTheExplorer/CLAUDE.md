@@ -18,7 +18,7 @@ The rules here are derived from GDD v0.5. GDD source: `docs/Expo_the_Explorer_GD
 
 ```
 Ticket arrives -> Food spawns onto the board -> Player collects the correct items into the tray
--> When tray is full, a batch check runs -> If correct: ticket delivered (Money + XP + Tip)
+-> When tray is full, a batch check runs -> If correct: ticket delivered (Money + Tip)
 -> New ticket arrives -> (loop repeats)
 
 If incorrect: Life lost -> Tray contents scatter back onto the board -> Player re-collects
@@ -61,7 +61,7 @@ These are fixed design decisions — don't second-guess them during implementati
 - A wrong delivery or a ticket timing out reduces lives.
 - When lives run out: **the day ends**, the player replays the day, but difficulty is scaled down slightly on retry (exact parameters not yet locked — see Open Questions).
 - Players can spend Gems to refill lives and continue the current day ("continue" mechanic).
-- **On retry, XP earned during that day attempt is lost:** any Level XP gained in the failed day is discarded (never committed to the persistent profile) and the day is replayed from the start. This is distinct from the Gem "continue" mechanic — continuing keeps the day alive (so XP earned still counts once the day completes successfully); only a full life-loss retry wipes that attempt's XP. See Progression below.
+- A life-loss retry replays the day from the start and costs the player nothing beyond the lost progress — there is no earned-currency forfeit on this path, because nothing has been committed anywhere yet. (An earlier rule forfeited the attempt's XP here; the XP/Level system was removed from the game, `decisions.md` D-009.)
 
 ### Time Limit
 - Time is **per-ticket**, each ticket has its own countdown.
@@ -75,38 +75,58 @@ These are fixed design decisions — don't second-guess them during implementati
 
 ### Customer Patience System
 - 3 patience types, shown via border color (red = impatient, green = patient, cream/neutral = normal), **fixed for the ticket's lifetime**.
-- Tip decay curve is **stepped** (not linear) — drops suddenly at time thresholds, then holds flat.
-- Thresholds are **dynamic**: they scale with ticket complexity (item count), not fixed seconds.
+- **Patience does not enter the tip formula.** The stepped tip-decay curve was removed — patience affects money only indirectly, through the time limit it grants (which decides what speed tier is reachable). Since the XP/Level system was removed (`decisions.md` D-009), the per-patience **XP multiplier** that used to be its second effect is gone too: patience now feeds nothing but the ticket's time limit.
+- Consequence to keep visible: `EconomyConfig`'s three decay-step curves and `PatienceDecayStep` become dead data/code under this rule — see economy-plan.md step 6.
+- The "thresholds are **dynamic**, scaling with item count rather than fixed seconds" principle is not dead — it still governs the **speed-tier** thresholds (see Speed Bonus).
+
+### Food Pricing / Order Value
+- **Every food item carries its own base price**, authored per item in its food config (`FoodItemConfig`) — content data, so it is never hardcoded and never derived from item count. A burger, fries and a cola are not worth the same.
+- A delivery pays in two parts, and only the second one varies:
+
+  | Part | How it's computed | Variable? |
+  |---|---|---|
+  | **Order Value** | sum of the base prices of the ticket's required items | No — a successful delivery always pays it in full |
+  | **Tip** | `Order Value x TipRate x Speed Tier Multiplier` | Yes — the only variable part |
+
+  `Delivery payout = Order Value + Tip`
+- The tip is **proportional to the order's price by construction**: a fast delivery on an expensive order tips more than the same speed on a cheap one. `TipRate` is one global knob on `EconomyConfig` (e.g. 0.2 = a standard-speed, no-decay delivery tips 20% of the order) — the price lives per food, the rate does not.
+- **Speed scales the tip only** — never Order Value — and the tip floors at 0: a late player can lose the entire tip but never claws back the food's own price. **Patience is not a factor** (see Customer Patience System); speed tier is the single variable in the tip.
+- `EconomyConfig.baseTipPerItem` (a flat value per required item) is **replaced** by this model — item count no longer sets what a delivery is worth, the summed prices do. Item count still scales the speed-tier and patience-decay *thresholds*; that rule is unchanged.
+- A food item with no authored price is a **content bug** (a free dish), not a valid default — surface it in validation rather than silently paying 0.
 
 ### Speed Bonus
 - 3 tiers: Lightning / Fast / Standard, each with a different tip multiplier.
-- Formula: `Total Tip = Base Tip x Speed Tier Multiplier x Patience Decay Coefficient`
+- Formula: `Tip = Order Value x TipRate x Speed Tier Multiplier` — the multiplier applies to the **tip**, never to the fixed Order Value (see Food Pricing / Order Value above). Standard tier = no multiplier, so a slow delivery still tips `Order Value x TipRate`.
 - Tier thresholds are also dynamic (scale with item count).
 
 ### Progression
-- 3 resources: **Soft Money** (earned per delivery), **Gem** (hard currency — powerup purchases + continue), **XP/Level** (persistent, meta-progression, does not reset per session).
-- Persistence is **conditional on successfully completing the day**: XP earned during a day only commits to the player's permanent profile once that day is completed. If the day ends in a life-loss retry, that attempt's XP is discarded (see Lives System above) — it never touches the persistent total.
+- 2 resources: **Soft Money** (earned per delivery, as Order Value + Tip — see Food Pricing / Order Value) and **Gem** (hard currency — powerup purchases + continue).
+- **There is no XP or player Level.** The system existed and was removed on the user's instruction (`decisions.md` D-009): no experience points, no level curve, no level-up rewards, no level HUD. Do not reintroduce any of it — "level" is not a word that appears in gameplay code (the sequential-content concept is a **Day**, see `docs/DaySystem_Roadmap.md`).
+- **Nothing currently persists between sessions.** XP/Level was the only thing ever written to disk, so every run starts fresh: wallet at 0, lives full, Day 0. `PlayerProfile`/`PlayerProfileStore` survive as the save boundary, unwired, for whichever lands first — persisting `CurrentDayIndex` or the wallet (`.claude/economy-plan.md` Adım 2).
 - **Only one game mode exists: Daily Goal Mode.** There is no Endless Mode — a prior design draft mentioned one; it has been removed from scope entirely. Do not build, reference, or leave hooks for an endless/survival mode.
 
 ### Day Complete Popup / Star Rating
-- Shown when `GameState.DayCompleted` fires. It's a receipt-style breakdown of the day, not a new currency: "Orders delivered" = the day's summed `BaseTip` (guaranteed per-item value), "Tips" = the summed speed/patience multiplier bonus on top of that (`TotalTip - BaseTip`), "Total" = both combined, which already equals the SoftMoney gained that day.
+- Shown when `GameState.DayCompleted` fires. It's a receipt-style breakdown of the day, not a new currency: "Orders delivered" = the day's summed **Order Value** (the guaranteed food price of everything delivered), "Tips" = the day's summed **Tip**, "Total" = both combined, which already equals the SoftMoney gained that day. Under this model the Tips row can never go negative — the speed multiplier only ever scales the tip up from its base, and nothing eats into Order Value.
 - **3-star rating is one star per life still held: no lives lost = 3 stars, one lost = 2, two lost = 1.** Lives start at 3, so 3+ losses in a single day is only reachable by paying Gems to continue — that refills lives but does not reset the day's failure count, since it is still the same attempt, and such a run finishes with 0 stars. Stars therefore measure accuracy only; speed and tip performance affect the money earned, not the rating. See `DayLifecycleManager.StarCount`, `decisions.md` D-008.
 - Authored per-day score thresholds (`star1Threshold`/`star2Threshold`/`star3Threshold`) were **removed** with this change — they were hand-tuned numbers that had to be re-balanced for every Day, and both shipped Days had been sitting at 0/0/0, silently awarding 3 stars for any result.
 - "Orders failed" counts a life loss from either cause (wrong delivery or ticket timeout) via `GameManager.HandleLifeLoss`. It currently carries **no score penalty** — failed orders don't subtract from `Total`. Revisit if/when a penalty formula is designed.
 - "Go Back" has nowhere to navigate yet (single-scene project, no menu system) — left `interactable = false`, same as `GameOverPopupView`'s disabled Main Menu button. Wire it once a menu/day-select scene exists.
-- A "Retry" button (always interactable, even at 3 stars) lets the player redo a day that already succeeded, for a better star score. This is a **voluntary redo, not a free bonus round**: `GameManager.RetryCompletedDay` rolls SoftMoney and the Xp/Level `OnDayCompleted` already committed to disk back to a snapshot taken when the day started (`CaptureDayStartSnapshot`), so replaying can't stack extra income/XP on top of what the day already paid out. Lives refill in full, same as the life-loss `RetryDay` path. Distinct from `RetryDay`: that one is the free life-loss-failure path and never touches SoftMoney/Xp (there was nothing to commit yet).
+- A "Retry" button (always interactable, even at 3 stars) lets the player redo a day that already succeeded, for a better star score. This is a **voluntary redo, not a free bonus round**: `GameManager.RetryCompletedDay` rolls SoftMoney back to a snapshot taken when the day started (`CaptureDayStartSnapshot`), so replaying can't stack extra income on top of what the day already paid out. Lives refill in full, same as the life-loss `RetryDay` path. Distinct from `RetryDay`: that one is the free life-loss-failure path and never touches SoftMoney.
 
 ### Powerup System — DEFERRED, NOT CURRENTLY BEING BUILT
 - Design is locked (kept below for reference) but implementation is **out of scope for the current development phase**. Do not create PowerupSystem code, UI, or wiring unless the user explicitly reopens this scope.
 - 3 fixed powerups: (1) Auto-Collect — auto-places required-pool items into the correct trays, (2) Time Reset — refreshes active ticket timers, (3) Noise Clear — temporarily fades noise items / highlights required-pool items.
-- Earned via: meta-progression (level-up/event rewards) + Gem purchases. Exact numbers not locked — moot for now since this system isn't being built yet.
+- Earned via: event rewards + Gem purchases. (The original design also granted them on level-up; there is no level system any more, so that source is void — if powerups are ever built, they need a new earn trigger.) Exact numbers not locked — moot for now since this system isn't being built yet.
 
 ## 4. Open Questions — Ask Before Touching These
 
 These parameters aren't locked yet. If an implementation needs one of these values, write it as a **placeholder/config value** (don't embed a magic number) and flag it to the user rather than guessing:
 
 - Difficulty scale-down on life loss: which parameter (noise ratio / time / ticket frequency) drops by how much?
-- Powerup economy: how many powerups per level-up, which events reward them, Gem cost, daily use cap. **Deferred, not a current blocker** — Powerup System isn't being implemented right now (see Section 3), so this only needs an answer whenever that scope reopens.
+- Powerup economy: what grants powerups now that level-up is gone, which events reward them, Gem cost, daily use cap. **Deferred, not a current blocker** — Powerup System isn't being implemented right now (see Section 3), so this only needs an answer whenever that scope reopens.
+- Do modifications change an order's price (should "extra patty" cost the customer more)? Current decision: **no** — price comes from the food item alone. Charging for add-ons is a separate design call.
+- What is `TipRate` actually worth? (the single global coefficient in the tip formula — balance during production)
+- Should patience carry any weight in the money at all? Current decision: **no**. If it should, the natural form is a flat per-patience tip multiplier, not a decay curve. Note this question got sharper with the XP system's removal: patience now affects nothing but the ticket's time limit, so it is the one design lever with no second effect left.
 - Where does the tray fill counter (x/y) sit in the final UI?
 - Board grid size (6x5 is a starting point, not locked — **keep this parametric/serializable**, don't hardcode it).
 
@@ -132,9 +152,9 @@ The principles from GDD Section 15 are binding:
         EconomySystem/       // tip/speed/patience formulas
         PowerupSystem/
         LivesSystem/
-        ProgressionSystem/   // XP/Level/Gem/SoftMoney
+        ProgressionSystem/   // player profile save boundary (currently unwired)
       UI/               // display + input only, reactively bound to state
-      Data/             // ScriptableObject configs (food types, modifications, level thresholds)
+      Data/             // ScriptableObject configs (food types, modifications, economy/lives knobs)
     Editor/             // Day Editor tooling (not shipped in builds)
     Tests/
       EditMode/         // unit tests for Core and Systems

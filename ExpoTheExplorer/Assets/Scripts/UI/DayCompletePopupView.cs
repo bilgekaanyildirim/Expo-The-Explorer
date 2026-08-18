@@ -94,7 +94,7 @@ namespace ExpoTheExplorer.UI
 
         // Always interactable, even at 3 stars -- a player can want a redo
         // regardless of score. GameManager.RetryCompletedDay handles rolling
-        // this attempt's SoftMoney/Xp/Level gains back off before replaying.
+        // this attempt's SoftMoney gains back off before replaying.
         private void OnRetryClicked()
         {
             gameManager.RetryCompletedDay();

@@ -1,4 +1,4 @@
-<!-- stamp: 2026-08-13T08:18Z source-sig:empty scenes:0 prefabs:0 generator:python-fallback status: OK -->
+<!-- stamp: 2026-08-18T12:50Z source-sig:empty scenes:0 prefabs:0 generator:python-fallback status: OK -->
 # unitymap — scene and prefab structure
 
 Read this instead of opening a `.unity`/`.prefab` file. Tree indentation is

@@ -39,8 +39,6 @@ namespace ExpoTheExplorer.Tests.EditMode
             Assert.AreEqual(GameState.DefaultStartingLives, state.MaxLives);
             Assert.AreEqual(0, state.SoftMoney);
             Assert.AreEqual(0, state.Gems);
-            Assert.AreEqual(0, state.Xp);
-            Assert.AreEqual(0, state.Level);
         }
 
         // Guards the GDD Section 6 locked rule (3 lives) against a silent edit
@@ -51,54 +49,32 @@ namespace ExpoTheExplorer.Tests.EditMode
             Assert.AreEqual(3, GameState.DefaultStartingLives);
         }
 
+        // These two used to sit on Xp/Level. They are kept, pointed at SoftMoney,
+        // because what they actually guard is the publish-only-on-change setter
+        // pattern every reactive GameState field shares -- deleting them with the
+        // XP system would have taken that guard with it.
         [Test]
-        public void Xp_SetToDifferentValue_PublishesXpChangedWithNewValue()
+        public void SoftMoney_SetToDifferentValue_PublishesSoftMoneyChangedWithNewValue()
         {
             var state = new GameState(config);
 
             int? published = null;
-            state.XpChanged.Subscribe(xp => published = xp);
+            state.SoftMoneyChanged.Subscribe(softMoney => published = softMoney);
 
-            state.Xp = 50;
+            state.SoftMoney = 50;
 
             Assert.AreEqual(50, published);
         }
 
         [Test]
-        public void Xp_SetToSameValue_DoesNotPublishXpChanged()
+        public void SoftMoney_SetToSameValue_DoesNotPublishSoftMoneyChanged()
         {
             var state = new GameState(config);
 
             var publishCount = 0;
-            state.XpChanged.Subscribe(_ => publishCount++);
+            state.SoftMoneyChanged.Subscribe(_ => publishCount++);
 
-            state.Xp = state.Xp;
-
-            Assert.AreEqual(0, publishCount);
-        }
-
-        [Test]
-        public void Level_SetToDifferentValue_PublishesLevelChangedWithNewValue()
-        {
-            var state = new GameState(config);
-
-            int? published = null;
-            state.LevelChanged.Subscribe(level => published = level);
-
-            state.Level = 4;
-
-            Assert.AreEqual(4, published);
-        }
-
-        [Test]
-        public void Level_SetToSameValue_DoesNotPublishLevelChanged()
-        {
-            var state = new GameState(config);
-
-            var publishCount = 0;
-            state.LevelChanged.Subscribe(_ => publishCount++);
-
-            state.Level = state.Level;
+            state.SoftMoney = state.SoftMoney;
 
             Assert.AreEqual(0, publishCount);
         }

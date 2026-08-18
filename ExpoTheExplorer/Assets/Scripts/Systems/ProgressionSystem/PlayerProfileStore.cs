@@ -6,10 +6,12 @@ namespace ExpoTheExplorer.Systems.ProgressionSystem
 {
     // Load/save boundary for PlayerProfile. Deliberately ignorant of GameState --
     // callers build a PlayerProfile from whatever they want persisted and hand it
-    // in, so this class doesn't need to change when the profile grows (SoftMoney/
-    // Gems joining Xp/Level, etc.). No caller invokes Save yet: the real commit
-    // trigger (day completed successfully) doesn't exist in the game yet and is
-    // deferred to a later PR.
+    // in, so this class doesn't need to change when the profile grows (a Day index,
+    // then the wallet). Nothing calls Load or Save today: the XP/Level system that
+    // used to be its only caller was removed, and PlayerProfile is empty until the
+    // first piece of genuinely persistent state lands (see PlayerProfile's note).
+    // The file-format behavior below -- missing file and corrupt file both fall
+    // back instead of throwing -- is what this class exists to keep.
     public class PlayerProfileStore
     {
         private readonly string filePath;

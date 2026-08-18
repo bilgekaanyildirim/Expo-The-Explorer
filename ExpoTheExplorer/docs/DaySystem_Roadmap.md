@@ -7,7 +7,7 @@ Bu roadmap, 2026-08-07 tarihli kod tabanı incelemesine ve sonrasında yapılan 
 ## Terminoloji Kararı
 
 - **"Day"** kelimesi bu sistemde kullanılacak — "chapter/level/stage" değil. Gerekçe: kod tabanında zaten `DayLifecycleManager`, `DayCompleted`, `DayRetried`, `TicketsRequiredPerDay` gibi bir "gün" kavramı var; bu roadmap onu **tekil/sonsuz bir gün**den **sıralı, elle tasarlanmış Day'ler dizisi**ne genişletiyor.
-- **"Level" kelimesi bu sistem için KULLANILMAYACAK.** Kod tabanında `LevelManager`, `LevelProgressionConfig`, `LevelView`, `state.Level`, `LevelUp` event'i zaten oyuncu XP-seviyesi anlamında var (bkz. `docs/LevelSystem_Roadmap.md`). Bu iki sistem birbirinden tamamen bağımsız — günlük konuşmada "level" kelimesi bölüm/Day anlamında geçebilir, ama kod/sınıf/alan isimlerinde geçmeyecek.
+- **"Level" kelimesi bu sistem için KULLANILMAYACAK.** Bu kural yazıldığında gerekçe, kod tabanında `LevelManager`/`LevelView`/`state.Level`'in oyuncu XP-seviyesi anlamında zaten var olmasıydı. **2026-08-18: o sistem tamamen silindi** (`.claude/decisions.md` D-009), yani isim çakışması artık yok — ama kural aynen duruyor: bölüm/aşama kavramının adı **Day**'dir, kod/sınıf/alan isimlerinde "level" geçmeyecek.
 
 ## İnceleme Bulguları (özet)
 
@@ -26,7 +26,7 @@ Bu roadmap, 2026-08-07 tarihli kod tabanı incelemesine ve sonrasında yapılan 
 
 - **Powerup System** — zaten deferred (CLAUDE.md Section 3).
 - **Endless Mode** — GDD'den kaldırıldı, geri gelmiyor. Bu roadmap onu geri getirmiyor; mevcut "pratikte sonsuz davranan tek gün" durumunu kapatıp Daily Goal Mode'u **Day dizisi** olarak yapılandırıyor.
-- **Oyuncu XP/Level sistemi** (`docs/LevelSystem_Roadmap.md`) — ayrı sistem, bu roadmap'te değiştirilmiyor. `DayCompleted`/`DayRetried` event imzaları/publish noktaları değişmeyecek, `LevelManager`'ın subscribe'ları bozulmayacak.
+- ~~**Oyuncu XP/Level sistemi**~~ — **2026-08-18: bu sistem oyundan tamamen kaldırıldı** (`.claude/decisions.md` D-009); `LevelSystem_Roadmap.md`, `LevelManager` ve `GameManager`'daki `DayCompleted`/`DayRetried` handler'ları silindi. `DayCompleted` hâlâ publish ediliyor ve `DayCompletePopupView` onu dinliyor; `DayRetried`'ın şu an hiç abonesi yok.
 - **Zorluk düşürme sayılarının kesin tuning'i** — CLAUDE.md Açık Soru olarak kalıyor; bu roadmap sadece zorluk parametresinin **nerede** authored olacağını netleştirir (Day'in kendi retry variant'ı — bkz. Q3), sayıları kilitlemez.
 
 ## Açık Sorular — Cevaplandı
@@ -38,10 +38,10 @@ Bu roadmap, 2026-08-07 tarihli kod tabanı incelemesine ve sonrasında yapılan 
   - Oynanamaz Day riski artık rastgelelik simülasyonu gerektirmeyen, **tam deterministik** bir `DayValidator` ile yakalanır (bkz. aşağıda) — runtime'la %100 aynı sonucu verir, sapma riski yok.
 - **Q2 — Son authored Day'den sonra ne olur → CEVAPLANDI.** Şu an ne main menu ne de gün-sonu popup'ı var. Kararlaştırılan davranış: gün-sonu popup'ındaki "Continue" butonu, son Day tamamlandığında **devre dışı** kalır — sadece "Main Menu" seçeneği aktif olur. Main menu normalde "Continue Day X" yazısı gösterir; tüm authored Day'ler bitmişse bu yazı **"End of Days"** olur. Bkz. yeni **PR-9**.
 - **Q3 — Retry zorluk düşürme nereye oturacak → CEVAPLANDI.** Her Day'in kendi authored **"retry variant"ı** olacak — tasarımcı Day başına retry zorluğunu elle ayarlar (ayrı global bir `DifficultyScaler` değil).
-- **Q4 — Day ilerlemesi kalıcı mı → CEVAPLANDI: Evet.** `CurrentDayIndex`, mevcut `PlayerProfile` JSON'una (XP/Level'ın yanına) eklenecek.
+- **Q4 — Day ilerlemesi kalıcı mı → CEVAPLANDI: Evet, ama HENÜZ YAPILMADI.** `CurrentDayIndex`, `PlayerProfile` JSON'una eklenecek. *(2026-08-18 güncellemesi: XP/Level kaldırılınca `PlayerProfile` tamamen boşaldı ve `GameManager` artık onu hiç yüklemiyor — yani bu alan eklendiğinde kalıcılığın bağlantısı da sıfırdan kurulacak ve root `CLAUDE.md` invariantı gereği yanına bir `Version` alanı gerekiyor. Bkz. `.claude/economy-plan.md` Adım 4.)*
 
 **Not — iki ayrı JSON kategorisi, birbirine karıştırılmayacak:**
-- **(A) Oyuncu ilerleme kaydı** (`PlayerProfile`, mevcut dosya): `Xp`, `Level`, ve artık `CurrentDayIndex` — oyuncunun *hangi Day'de olduğunu* işaretleyen tek bir sayı.
+- **(A) Oyuncu ilerleme kaydı** (`PlayerProfile`, mevcut dosya): bugün **boş**; içine girecek ilk alan `CurrentDayIndex` — oyuncunun *hangi Day'de olduğunu* işaretleyen tek bir sayı. (Eskiden `Xp`/`Level` taşıyordu, D-009'da silindi.)
 - **(B) Day içerik verisi** (yeni, bu roadmap'in konusu): her Day'in biletleri/board spawn timeline'ı — Day başına **ayrı bir `.json` dosyası**. (A) ile (B) hiçbir zaman aynı dosyada birleşmez; biri oyuncu kaydı, biri tasarımcı-authored içerik.
 
 ## Kilitli Kararlar

@@ -7,6 +7,12 @@ using UnityEngine.TestTools;
 
 namespace ExpoTheExplorer.Tests.EditMode
 {
+    // PlayerProfile carries no fields while XP/Level is gone and nothing else has
+    // been made persistent yet, so these tests assert the store's FILE behavior
+    // (missing / empty / corrupt / round-trip / directory creation) rather than a
+    // payload. The fallback cases assert reference identity -- that the caller's
+    // own instance comes back, not a silently substituted default -- which is the
+    // part that would actually break a future profile carrying real state.
     public class PlayerProfileStoreTests
     {
         private string testFilePath;
@@ -33,8 +39,7 @@ namespace ExpoTheExplorer.Tests.EditMode
 
             var profile = store.Load();
 
-            Assert.AreEqual(0, profile.Xp);
-            Assert.AreEqual(0, profile.Level);
+            Assert.IsNotNull(profile);
         }
 
         [Test]
@@ -47,8 +52,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             PlayerProfile profile = null;
             Assert.DoesNotThrow(() => profile = store.Load());
 
-            Assert.AreEqual(0, profile.Xp);
-            Assert.AreEqual(0, profile.Level);
+            Assert.IsNotNull(profile);
         }
 
         [Test]
@@ -59,19 +63,18 @@ namespace ExpoTheExplorer.Tests.EditMode
 
             var profile = store.Load();
 
-            Assert.AreEqual(0, profile.Xp);
-            Assert.AreEqual(0, profile.Level);
+            Assert.IsNotNull(profile);
         }
 
         [Test]
         public void Load_WhenFileDoesNotExist_WithFallback_ReturnsFallback()
         {
             var store = new PlayerProfileStore(testFilePath);
+            var fallback = new PlayerProfile();
 
-            var profile = store.Load(new PlayerProfile { Xp = 120, Level = 4 });
+            var profile = store.Load(fallback);
 
-            Assert.AreEqual(120, profile.Xp);
-            Assert.AreEqual(4, profile.Level);
+            Assert.AreSame(fallback, profile);
         }
 
         [Test]
@@ -79,49 +82,50 @@ namespace ExpoTheExplorer.Tests.EditMode
         {
             File.WriteAllText(testFilePath, string.Empty);
             var store = new PlayerProfileStore(testFilePath);
+            var fallback = new PlayerProfile();
 
-            var profile = store.Load(new PlayerProfile { Xp = 33, Level = 1 });
+            var profile = store.Load(fallback);
 
-            Assert.AreEqual(33, profile.Xp);
-            Assert.AreEqual(1, profile.Level);
+            Assert.AreSame(fallback, profile);
         }
 
         [Test]
-        public void Load_WhenFileIsCorruptedJson_WithFallback_ReturnsFallbackNotHardcodedZeros()
+        public void Load_WhenFileIsCorruptedJson_WithFallback_ReturnsFallbackNotASubstitutedDefault()
         {
             File.WriteAllText(testFilePath, "{ not valid json");
             var store = new PlayerProfileStore(testFilePath);
+            var fallback = new PlayerProfile();
 
             LogAssert.Expect(LogType.Error, new System.Text.RegularExpressions.Regex("Failed to load player profile"));
-            var profile = store.Load(new PlayerProfile { Xp = 77, Level = 2 });
+            var profile = store.Load(fallback);
 
-            Assert.AreEqual(77, profile.Xp);
-            Assert.AreEqual(2, profile.Level);
+            Assert.AreSame(fallback, profile);
         }
 
         [Test]
-        public void Save_ThenLoad_RoundTripsXpAndLevel()
+        public void Save_ThenLoad_RoundTripsWithoutFallingBack()
         {
             var store = new PlayerProfileStore(testFilePath);
-            store.Save(new PlayerProfile { Xp = 450, Level = 3 });
+            store.Save(new PlayerProfile());
 
-            var reloaded = new PlayerProfileStore(testFilePath).Load();
+            Assert.IsTrue(File.Exists(testFilePath));
 
-            Assert.AreEqual(450, reloaded.Xp);
-            Assert.AreEqual(3, reloaded.Level);
+            var fallback = new PlayerProfile();
+            var reloaded = new PlayerProfileStore(testFilePath).Load(fallback);
+
+            // A real file was read, so the fallback must NOT be what comes back.
+            Assert.IsNotNull(reloaded);
+            Assert.AreNotSame(fallback, reloaded);
         }
 
         [Test]
-        public void Save_WhenCalledTwice_LatestValuesWin()
+        public void Save_WhenCalledTwice_OverwritesRatherThanAppending()
         {
             var store = new PlayerProfileStore(testFilePath);
-            store.Save(new PlayerProfile { Xp = 100, Level = 1 });
-            store.Save(new PlayerProfile { Xp = 999, Level = 9 });
+            store.Save(new PlayerProfile());
+            store.Save(new PlayerProfile());
 
-            var reloaded = store.Load();
-
-            Assert.AreEqual(999, reloaded.Xp);
-            Assert.AreEqual(9, reloaded.Level);
+            Assert.AreEqual(JsonUtility.ToJson(new PlayerProfile()), File.ReadAllText(testFilePath));
         }
 
         [Test]
@@ -130,7 +134,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             var nestedPath = Path.Combine(Application.temporaryCachePath, $"profile_test_dir_{Guid.NewGuid()}", "player_profile.json");
             var store = new PlayerProfileStore(nestedPath);
 
-            Assert.DoesNotThrow(() => store.Save(new PlayerProfile { Xp = 10, Level = 1 }));
+            Assert.DoesNotThrow(() => store.Save(new PlayerProfile()));
 
             Assert.IsTrue(File.Exists(nestedPath));
 

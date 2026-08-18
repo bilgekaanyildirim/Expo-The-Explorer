@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using ExpoTheExplorer.Core;
 using ExpoTheExplorer.Data;
@@ -9,7 +8,6 @@ using ExpoTheExplorer.Systems.DayLifecycle;
 using ExpoTheExplorer.Systems.DaySystem;
 using ExpoTheExplorer.Systems.EconomySystem;
 using ExpoTheExplorer.Systems.LivesSystem;
-using ExpoTheExplorer.Systems.ProgressionSystem;
 using ExpoTheExplorer.Systems.TicketSystem;
 using ExpoTheExplorer.Systems.TraySystem;
 using UnityEngine;
@@ -28,7 +26,6 @@ namespace ExpoTheExplorer.Bootstrap
         [SerializeField] private FoodCatalog foodCatalog;
         [SerializeField] private EconomyConfig economyConfig;
         [SerializeField] private LivesConfig livesConfig;
-        [SerializeField] private LevelProgressionConfig levelProgressionConfig;
 
         // No boardDistributionConfig field on purpose: board-distribution balancing is
         // authored per Day and arrives with the Day (decisions.md D-004). The shared asset
@@ -39,8 +36,6 @@ namespace ExpoTheExplorer.Bootstrap
         public TicketSlotManager TicketSlotManager { get; private set; }
         public TrayManager TrayManager { get; private set; }
         public LivesManager LivesManager { get; private set; }
-        public PlayerProfileStore PlayerProfileStore { get; private set; }
-        public LevelManager LevelManager { get; private set; }
         public DayLifecycleManager DayLifecycleManager { get; private set; }
 
         private TicketFactory ticketFactory;
@@ -57,14 +52,13 @@ namespace ExpoTheExplorer.Bootstrap
         // previous Day would keep applying that Day's numbers.
         private BoardDistributor boardDistributor;
 
-        // Snapshot of SoftMoney/Xp/Level as of the moment the CURRENT day
-        // began (captured in Awake for day 0, re-captured in AdvanceToNextDay
-        // for every day after) -- NOT re-captured by RetryDay, so it still
-        // holds the true pre-day baseline across any number of life-loss
-        // retries of the same day. RetryCompletedDay rolls back to this so a
-        // voluntary "redo for better stars" after a success can't stack
-        // extra income on top of what the day already paid out.
-        private PlayerProfile dayStartProfile;
+        // Snapshot of SoftMoney as of the moment the CURRENT day began
+        // (captured in Awake for day 0, re-captured in AdvanceToNextDay for
+        // every day after) -- NOT re-captured by RetryDay, so it still holds
+        // the true pre-day baseline across any number of life-loss retries of
+        // the same day. RetryCompletedDay rolls back to this so a voluntary
+        // "redo for better stars" after a success can't stack extra income on
+        // top of what the day already paid out.
         private int dayStartSoftMoney;
 
         // Position in dayCatalog, not a Day's JSON dayIndex (that only decides
@@ -79,17 +73,11 @@ namespace ExpoTheExplorer.Bootstrap
 
             State = new GameState(gameConfig);
 
-            // Loads whatever was last committed to disk, falling back to the fresh
-            // GameState's Xp/Level (0/0) when there's no save yet. The fallback is
-            // read off State rather than written as a literal so that a future
-            // "start at level N" seed only has to change GameState's constructor.
-            // Nothing calls Save() yet -- the real commit trigger (day completed
-            // successfully) doesn't exist in the game yet and is wired up in a
-            // later PR.
-            PlayerProfileStore = new PlayerProfileStore(Path.Combine(Application.persistentDataPath, "player_profile.json"));
-            var profile = PlayerProfileStore.Load(new PlayerProfile { Xp = State.Xp, Level = State.Level });
-            State.Xp = profile.Xp;
-            State.Level = profile.Level;
+            // Nothing is loaded from disk: the only thing that ever persisted was
+            // Xp/Level, and that system is gone. PlayerProfileStore is still there
+            // as the save boundary, unwired, waiting for the first piece of state
+            // that actually needs to survive a session (CurrentDayIndex, then the
+            // wallet -- see .claude/economy-plan.md).
             CaptureDayStartSnapshot();
 
             ticketFactory = new TicketFactory(ticketGenerationConfig);
@@ -100,14 +88,11 @@ namespace ExpoTheExplorer.Bootstrap
             economyCalculator = new EconomyCalculator(economyConfig);
             dayCatalog = DayCatalogParser.ParseAll(new DayJsonSource().LoadAll(), foodCatalog);
             RefreshDayTicketSequenceProvider();
-            LevelManager = new LevelManager(State, levelProgressionConfig, PlayerProfileStore, profile);
 
             // Subscribe before the initial fill so the first 3 tickets trigger
             // board playback too, not just later deliveries/cancellations.
             State.TicketAssigned.Subscribe(OnTicketAssigned);
             State.TicketDelivered.Subscribe(OnTicketDelivered);
-            State.DayCompleted.Subscribe(OnDayCompleted);
-            State.DayRetried.Subscribe(OnDayRetried);
             ApplyDayStartBoardPreSeed();
             TicketSlotManager.FillEmptySlots();
         }
@@ -116,8 +101,6 @@ namespace ExpoTheExplorer.Bootstrap
         {
             State.TicketAssigned.Unsubscribe(OnTicketAssigned);
             State.TicketDelivered.Unsubscribe(OnTicketDelivered);
-            State.DayCompleted.Unsubscribe(OnDayCompleted);
-            State.DayRetried.Unsubscribe(OnDayRetried);
         }
 
         // Paused while awaiting Continue (GDD Section 6 — Lives depleted, day
@@ -171,9 +154,6 @@ namespace ExpoTheExplorer.Bootstrap
             var tipResult = economyCalculator.CalculateTip(delivery.Ticket);
             State.SoftMoney += Mathf.RoundToInt(tipResult.TotalTip);
             DayLifecycleManager.RecordDelivery(tipResult);
-
-            var xpResult = LevelManager.CalculateXp(delivery.Ticket);
-            LevelManager.AddXp(Mathf.RoundToInt(xpResult.TotalXp));
         }
 
         // Both life-loss paths (TicketSlotManager's timeout, TrayManager's wrong
@@ -184,24 +164,6 @@ namespace ExpoTheExplorer.Bootstrap
         {
             LivesManager.LoseLife();
             DayLifecycleManager.RecordFailure();
-        }
-
-        // The day's Xp/Level gains become permanent the instant the daily goal
-        // is reached (GDD Section 10/11) -- Continue never fires DayCompleted
-        // or DayRetried, only a real Retry does, so currency-continue
-        // correctly leaves earned XP untouched either way. TicketSlotManager
-        // already set IsDayComplete itself before publishing this (see its
-        // AssignTicket) -- nothing left to pause here.
-        private void OnDayCompleted(int _)
-        {
-            LevelManager.CommitProgress();
-        }
-
-        // Wipes this attempt's Xp/Level gains back to the last commit (CLAUDE.md
-        // Section 3 -- Progression/Lives System: retry discards the day's XP).
-        private void OnDayRetried(int _)
-        {
-            LevelManager.DiscardToLastCommitted();
         }
 
         // Free alternative to the paid Continue flow (GameOverPopupView) --
@@ -234,14 +196,12 @@ namespace ExpoTheExplorer.Bootstrap
         // Voluntary redo of a day that already succeeded (Day Complete
         // popup's Retry button, for a better star score) -- distinct from
         // RetryDay, which is the free life-loss-failure path. Rolls SoftMoney
-        // and the Xp/Level OnDayCompleted already committed to disk back to
-        // dayStartProfile/dayStartSoftMoney, so replaying for stars can't
-        // stack income on top of what the day already paid out. Mirrors
-        // RetryDay's reset order otherwise, including a full Lives refill.
+        // back to dayStartSoftMoney, so replaying for stars can't stack income
+        // on top of what the day already paid out. Mirrors RetryDay's reset
+        // order otherwise, including a full Lives refill.
         public void RetryCompletedDay()
         {
             State.SoftMoney = dayStartSoftMoney;
-            LevelManager.RevertToDayStart(dayStartProfile);
             RefreshDayTicketSequenceProvider();
 
             State.Board.Clear();
@@ -254,7 +214,7 @@ namespace ExpoTheExplorer.Bootstrap
 
         // Free-win path: the day's goal was hit (GameManager.OnDayCompleted
         // already paused ticket production). Mirrors RetryDay's reset order
-        // but deliberately skips LivesManager -- Lives/Xp are NOT reset on a
+        // but deliberately skips LivesManager -- Lives are NOT reset on a
         // successful advance, only a failed retry pays that cost (CLAUDE.md
         // Section 3) -- and never publishes DayRetried.
         public bool AdvanceToNextDay()
@@ -283,7 +243,6 @@ namespace ExpoTheExplorer.Bootstrap
         // day doesn't move the baseline RetryCompletedDay rolls back to.
         private void CaptureDayStartSnapshot()
         {
-            dayStartProfile = new PlayerProfile { Xp = State.Xp, Level = State.Level };
             dayStartSoftMoney = State.SoftMoney;
         }
 

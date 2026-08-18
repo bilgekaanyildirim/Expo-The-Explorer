@@ -21,18 +21,23 @@
     per Day in `editorMeta`, runtime values (time limits, upcoming-queue size)
     still come from `TicketGenerationConfig.asset`. Scheduled to be resolved by
     `.claude/day-config-plan.md` steps 3–4.
-  - everything else (Xp/Level/SoftMoney/Gems, lives, board grid state, tray
-    contents, economy curve) → OPEN. `.claude/economy-plan.md` step 1 is where
-    the Wallet single-writer question is being settled.
+  - everything else (SoftMoney/Gems, lives, board grid state, tray contents,
+    economy curve) → OPEN. `.claude/economy-plan.md` step 1 is where the Wallet
+    single-writer question is being settled. (Xp/Level dropped off this list
+    with the XP system's removal, decisions.md D-009.)
 - **Scale magnitudes (n):** OPEN <how many units/bullets/tiles/UI elements at once —
   the cost model's n comes from here>. Known fixed points: 3 active ticket slots
   (`GameState.TicketSlotCount`), board grid 6x5 = 30 cells as a starting point
   (parametric, per ExpoTheExplorer/CLAUDE.md Section 4), upcoming-ticket
   lookahead default 10.
-- **Persistence:** partially answered — Xp/Level persist to
-  `player_profile.json` via `PlayerProfileStore` (`Application.persistentDataPath`).
-  Versioning scheme: OPEN — no version number is written today, which the root
-  CLAUDE.md invariant requires. SoftMoney/Gems persistence: OPEN
+- **Persistence:** answered, and the answer is **nothing persists**. Xp/Level was
+  the only state ever written to disk and it is gone (decisions.md D-009), so no
+  code path reads or writes `player_profile.json` any more; every session starts
+  from `GameState`'s constructor. `PlayerProfileStore` still exists as the
+  load/save boundary (`Application.persistentDataPath`) with `PlayerProfile`
+  empty. Whatever re-opens persistence owes a version number with its first
+  field — the root CLAUDE.md invariant requires one and none was ever written.
+  Candidates: `CurrentDayIndex` (DaySystem_Roadmap Q4), SoftMoney/Gems
   (`.claude/economy-plan.md` step 4).
 - **Network model:** none
 - **Performance budget:** OPEN <per target platform: target frame rate → ms/frame,

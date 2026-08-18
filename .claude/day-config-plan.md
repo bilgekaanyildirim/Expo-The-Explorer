@@ -383,6 +383,7 @@ yanlış ölçüyordu, toolbar küçülemiyordu).
 
 ## Kapsam dışı (bilerek)
 
-`GameConfig`, `EconomyConfig`, `LivesConfig`, `LevelProgressionConfig` ve
-görsel config'ler bu planda yok. Board grid boyutu (CLAUDE.md Açık Sorular)
+`GameConfig`, `EconomyConfig`, `LivesConfig` ve görsel config'ler bu planda
+yok. *(`LevelProgressionConfig` de bu listedeydi; XP/Level sistemiyle birlikte
+tamamen silindi — `decisions.md` D-009.)* Board grid boyutu (CLAUDE.md Açık Sorular)
 per-day yapılabilir bir aday ama bu planın parçası değil.
