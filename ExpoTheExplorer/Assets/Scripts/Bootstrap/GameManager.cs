@@ -8,6 +8,7 @@ using ExpoTheExplorer.Systems.DayLifecycle;
 using ExpoTheExplorer.Systems.DaySystem;
 using ExpoTheExplorer.Systems.EconomySystem;
 using ExpoTheExplorer.Systems.LivesSystem;
+using ExpoTheExplorer.Systems.ProgressionSystem;
 using ExpoTheExplorer.Systems.TicketSystem;
 using ExpoTheExplorer.Systems.TraySystem;
 using UnityEngine;
@@ -60,14 +61,11 @@ namespace ExpoTheExplorer.Bootstrap
         // previous Day would keep applying that Day's numbers.
         private BoardDistributor boardDistributor;
 
-        // Snapshot of SoftMoney as of the moment the CURRENT day began
-        // (captured in Awake for day 0, re-captured in AdvanceToNextDay for
-        // every day after) -- NOT re-captured by RetryDay, so it still holds
-        // the true pre-day baseline across any number of life-loss retries of
-        // the same day. RetryCompletedDay rolls back to this so a voluntary
-        // "redo for better stars" after a success can't stack extra income on
-        // top of what the day already paid out.
-        private int dayStartSoftMoney;
+        // The single writer of SoftMoney/Gems (economy-plan.md Adım 1). It also
+        // owns the day-start snapshot this class used to keep in a field of its
+        // own -- GameState's balance setters are internal to ProgressionSystem
+        // now, so a `State.SoftMoney = x` here would not compile.
+        private Wallet wallet;
 
         // Position in dayCatalog, not a Day's JSON dayIndex (that only decides
         // sort order) -- null until a Day catalog exists (PR-7), so every
@@ -86,10 +84,14 @@ namespace ExpoTheExplorer.Bootstrap
             // as the save boundary, unwired, waiting for the first piece of state
             // that actually needs to survive a session (CurrentDayIndex, then the
             // wallet -- see .claude/economy-plan.md).
-            CaptureDayStartSnapshot();
+            //
+            // Constructed straight after State because its own constructor takes
+            // the day-start snapshot, and because LivesManager below cannot charge
+            // for a Continue without it.
+            wallet = new Wallet(State);
 
             ticketFactory = new TicketFactory(ticketGenerationConfig);
-            LivesManager = new LivesManager(State, livesConfig);
+            LivesManager = new LivesManager(State, livesConfig, wallet);
             DayLifecycleManager = new DayLifecycleManager(State);
             TicketSlotManager = new TicketSlotManager(State, CreateNextTicket, HandleLifeLoss);
             TrayManager = new TrayManager(State, slotIndex => TicketSlotManager.DeliverTicket(slotIndex), HandleLifeLoss);
@@ -161,7 +163,7 @@ namespace ExpoTheExplorer.Bootstrap
         private void OnTicketDelivered((int SlotIndex, Ticket Ticket) delivery)
         {
             var payout = economyCalculator.CalculatePayout(delivery.Ticket);
-            State.SoftMoney += Mathf.RoundToInt(payout.Total);
+            wallet.EarnSoftMoney(Mathf.RoundToInt(payout.Total));
             DayLifecycleManager.RecordDelivery(payout);
         }
 
@@ -205,12 +207,12 @@ namespace ExpoTheExplorer.Bootstrap
         // Voluntary redo of a day that already succeeded (Day Complete
         // popup's Retry button, for a better star score) -- distinct from
         // RetryDay, which is the free life-loss-failure path. Rolls SoftMoney
-        // back to dayStartSoftMoney, so replaying for stars can't stack income
-        // on top of what the day already paid out. Mirrors RetryDay's reset
-        // order otherwise, including a full Lives refill.
+        // back to the Wallet's day-start snapshot, so replaying for stars can't
+        // stack income on top of what the day already paid out. Mirrors
+        // RetryDay's reset order otherwise, including a full Lives refill.
         public void RetryCompletedDay()
         {
-            State.SoftMoney = dayStartSoftMoney;
+            wallet.RevertToDayStart();
             RefreshDayTicketSequenceProvider();
 
             State.Board.Clear();
@@ -235,7 +237,7 @@ namespace ExpoTheExplorer.Bootstrap
             }
 
             State.CurrentDayIndex = nextIndex;
-            CaptureDayStartSnapshot();
+            wallet.CaptureDayStart();
             RefreshDayTicketSequenceProvider();
 
             State.Board.Clear();
@@ -245,14 +247,6 @@ namespace ExpoTheExplorer.Bootstrap
             DayLifecycleManager.ResetForNewDay();
 
             return true;
-        }
-
-        // Captured once per day (Awake for day 0, here for every day after)
-        // -- NOT re-captured by RetryDay, so a life-loss retry of the SAME
-        // day doesn't move the baseline RetryCompletedDay rolls back to.
-        private void CaptureDayStartSnapshot()
-        {
-            dayStartSoftMoney = State.SoftMoney;
         }
 
         // No fallback: an authored Day is required (PR-7) -- until then this

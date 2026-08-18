@@ -1,5 +1,6 @@
 using ExpoTheExplorer.Core;
 using ExpoTheExplorer.Data;
+using ExpoTheExplorer.Systems.ProgressionSystem;
 
 namespace ExpoTheExplorer.Systems.LivesSystem
 {
@@ -18,10 +19,19 @@ namespace ExpoTheExplorer.Systems.LivesSystem
         private readonly GameState state;
         private readonly LivesConfig config;
 
-        public LivesManager(GameState state, LivesConfig config)
+        // The paid-Continue prices are charged through the Wallet, not by
+        // touching GameState directly: SoftMoney/Gems have exactly one writer
+        // (root CLAUDE.md invariant), and since Adım 1 the setters are internal
+        // to ProgressionSystem, so this class could not assign them even if it
+        // tried. New one-directional arrow LivesSystem -> ProgressionSystem;
+        // ProgressionSystem knows nothing about lives.
+        private readonly Wallet wallet;
+
+        public LivesManager(GameState state, LivesConfig config, Wallet wallet)
         {
             this.state = state;
             this.config = config;
+            this.wallet = wallet;
         }
 
         // Exposes the balancing knobs so UI (e.g. a Continue/Game Over popup)
@@ -49,9 +59,8 @@ namespace ExpoTheExplorer.Systems.LivesSystem
         // can't afford ContinueSoftMoneyCost.
         public bool TryContinueWithSoftMoney()
         {
-            if (state.SoftMoney < config.ContinueSoftMoneyCost) return false;
+            if (!wallet.TrySpendSoftMoney(config.ContinueSoftMoneyCost)) return false;
 
-            state.SoftMoney -= config.ContinueSoftMoneyCost;
             RefillLivesAndResume();
             return true;
         }
@@ -61,9 +70,8 @@ namespace ExpoTheExplorer.Systems.LivesSystem
         // afford ContinueGemCost.
         public bool TryContinueWithGems()
         {
-            if (state.Gems < config.ContinueGemCost) return false;
+            if (!wallet.TrySpendGems(config.ContinueGemCost)) return false;
 
-            state.Gems -= config.ContinueGemCost;
             RefillLivesAndResume();
             return true;
         }

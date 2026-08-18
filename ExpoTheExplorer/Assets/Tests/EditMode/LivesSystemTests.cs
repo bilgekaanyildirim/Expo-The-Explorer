@@ -1,6 +1,7 @@
 using ExpoTheExplorer.Core;
 using ExpoTheExplorer.Data;
 using ExpoTheExplorer.Systems.LivesSystem;
+using ExpoTheExplorer.Systems.ProgressionSystem;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
@@ -39,7 +40,7 @@ namespace ExpoTheExplorer.Tests.EditMode
         {
             var state = new GameState(gameConfig);
             var startingLives = state.Lives;
-            var manager = new LivesManager(state, livesConfig);
+            var manager = new LivesManager(state, livesConfig, new Wallet(state));
 
             manager.LoseLife();
 
@@ -52,7 +53,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             var state = new GameState(gameConfig);
             state.Lives = 1;
             state.Gems = 7;
-            var manager = new LivesManager(state, livesConfig);
+            var manager = new LivesManager(state, livesConfig, new Wallet(state));
 
             int? publishedGems = null;
             state.LivesDepleted.Subscribe(gems => publishedGems = gems);
@@ -69,7 +70,7 @@ namespace ExpoTheExplorer.Tests.EditMode
         {
             var state = new GameState(gameConfig);
             state.Lives = 1;
-            var manager = new LivesManager(state, livesConfig);
+            var manager = new LivesManager(state, livesConfig, new Wallet(state));
             manager.LoseLife();
 
             var publishCount = 0;
@@ -87,7 +88,7 @@ namespace ExpoTheExplorer.Tests.EditMode
         {
             var state = new GameState(gameConfig);
             state.Lives = 3;
-            var manager = new LivesManager(state, livesConfig);
+            var manager = new LivesManager(state, livesConfig, new Wallet(state));
 
             var published = false;
             state.LivesDepleted.Subscribe(_ => published = true);
@@ -108,7 +109,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             state.IsAwaitingContinue = true;
             state.SoftMoney = 0;
             state.Gems = 0;
-            var manager = new LivesManager(state, livesConfig);
+            var manager = new LivesManager(state, livesConfig, new Wallet(state));
 
             manager.RetryDay();
 
@@ -127,7 +128,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             state.Lives = 0;
             state.IsAwaitingContinue = true;
             state.Gems = 10;
-            var manager = new LivesManager(state, livesConfig);
+            var manager = new LivesManager(state, livesConfig, new Wallet(state));
 
             var result = manager.TryContinueWithGems();
 
@@ -145,7 +146,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             state.Lives = 0;
             state.IsAwaitingContinue = true;
             state.Gems = 4;
-            var manager = new LivesManager(state, livesConfig);
+            var manager = new LivesManager(state, livesConfig, new Wallet(state));
 
             var result = manager.TryContinueWithGems();
 
@@ -164,7 +165,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             state.Lives = 0;
             state.IsAwaitingContinue = true;
             state.SoftMoney = 500;
-            var manager = new LivesManager(state, livesConfig);
+            var manager = new LivesManager(state, livesConfig, new Wallet(state));
 
             var result = manager.TryContinueWithSoftMoney();
 
@@ -182,7 +183,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             state.Lives = 0;
             state.IsAwaitingContinue = true;
             state.SoftMoney = 100;
-            var manager = new LivesManager(state, livesConfig);
+            var manager = new LivesManager(state, livesConfig, new Wallet(state));
 
             var result = manager.TryContinueWithSoftMoney();
 

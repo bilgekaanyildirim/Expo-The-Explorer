@@ -28,8 +28,12 @@
 - DayEditor — custom EditorWindow tooling for authoring Day JSON content (ticket sequence, Day Start board timeline) — depends on: DaySystem, TicketSystem
 - BoardUI — runtime board grid rendering + drag/drop (BoardView, board-visual config assets) — depends on: -
 - EconomySystem — delivery payout formula (order value from food prices + a tip stepped through three tiers keyed on remaining-time ratio) + its balancing config — depends on: -
-- ProgressionSystem — player-profile save boundary (JSON load/save + fallback on missing/corrupt file, currently unwired and carrying no fields) and the owning system of the wallet HUD (SoftMoneyView/GemsView); SoftMoney/Gems ownership itself moves here with `Wallet` (economy-plan Adım 1) — depends on: -
-- LivesSystem — life loss on wrong delivery/timeout + paid continue (SoftMoney or Gems) — depends on: -
+- ProgressionSystem — the single writer of SoftMoney/Gems (`Wallet`), the player-profile save boundary (JSON load/save + fallback on missing/corrupt file, currently unwired and carrying no fields), and the owning system of the wallet HUD (SoftMoneyView/GemsView) — depends on: -
+- LivesSystem — life loss on wrong delivery/timeout + paid continue (SoftMoney or Gems) — depends on: ProgressionSystem
+<!-- LivesSystem -> ProgressionSystem, added 2026-08-18 (economy-plan Adım 1):
+     the two paid-Continue prices are charged through Wallet, because GameState's
+     balance setters are internal to ProgressionSystem now. One-directional --
+     ProgressionSystem references nothing in LivesSystem. -->
 - DayLifecycle — per-day receipt bookkeeping (base tip / bonus tip / failed orders) feeding the Day Complete popup — depends on: EconomySystem
 - TraySystem — per-slot tray contents, batched order validation, scatter-back-to-board — depends on: -
 

@@ -142,7 +142,7 @@ kopyayı gösterdiği için preflight/codemap guard'ları doğrulama yapamaz.
 
 ---
 
-## Adım 1 — `Wallet`: SoftMoney/Gems için tek yazıcı ⬜
+## Adım 1 — `Wallet`: SoftMoney/Gems için tek yazıcı ✅ 2026-08-18
 
 Sorun B. Bugün `SoftMoney`'nin üç yazıcısı var: `GameManager`
 payout (`GameManager.cs:171`), `GameManager` rollback (`:242`),
@@ -192,6 +192,36 @@ Adım 2'nin hata yüzeyi küçülür.
 **Bitti kriteri:** `grep -rn "State.SoftMoney *=" Scripts` yalnızca
 `Wallet.cs` içinde eşleşir; EditMode testleri geçer.
 **APPROVE gerekir mi:** Evet (`.cs` + `.asmdef`).
+
+**Sonuç (2026-08-18).** Üretim kodunda SoftMoney/Gems'e yazan **tek yer**
+`Wallet.cs` (artı `GameState`'in kendi kurucusu, Core içi). Yazıcılar
+kapatıldı: `GameManager` ödeme + `RetryCompletedDay`, `LivesManager`'ın iki
+Continue'su. Zorlama derleyicide: setter'lar `internal`, yeni
+`Core/AssemblyInfo.cs` yalnızca `ProgressionSystem` (+ `Tests.EditMode`)
+friend.
+
+Plandan sapan/eklenen noktalar:
+- **Xp/Level çekincesi düştü.** Plan "setter'ları internal yapınca
+  `GameManager.Awake`'in profil ataması derlenmez" diyordu; D-009 o kodu
+  zaten sildiği için adım yalnızca SoftMoney/Gems'e indi ve gerçekten
+  davranış-nötr kaldı.
+- **`Tests.EditMode` de friend oldu.** `GameStateTests` setter'ın
+  publish-on-change sözleşmesini test etmek için doğrudan yazıyor; bunu
+  cüzdana çevirmek Core'un sözleşmesi yerine cüzdanı test etmek olurdu.
+  `LivesSystemTests`'in 9 kurulum satırı yeni kurucuya taşındı.
+- **`GameManager.dayStartSoftMoney` ve `CaptureDayStartSnapshot` silindi**
+  (plan bunu Adım 2'ye yazmıştı); snapshot artık `Wallet`'ın içinde, iki
+  çağrı yeri `wallet.CaptureDayStart()` diyor.
+- **`RevertToDayStart` yalnızca SoftMoney'i geri alıyor** — Gems bilinçli
+  olarak dokunulmadı, `WalletTests.RevertToDayStart_LeavesGemsUntouched`
+  bunun tripwire'ı. Adım 2 o testi bilerek değiştirecek.
+- `EarnSoftMoney` negatif/0 miktarı yok sayıyor, böylece kazanç yolu gizli
+  bir harcama yoluna dönüşemiyor (davranış değişikliği değil: tek çağıran
+  teslimat ödemesi ve o hiç negatif olamıyor).
+- Yeni ok **LivesSystem → ProgressionSystem** blueprint'e işlendi
+  (bu kez preflight'ta önceden beyan edilerek).
+- 13 test: `WalletTests.cs` (yeni). **Unity'de koşulmadı** — bu oturumda
+  Unity yok.
 
 ---
 

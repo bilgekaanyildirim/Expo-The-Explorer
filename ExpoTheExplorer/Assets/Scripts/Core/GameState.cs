@@ -17,8 +17,8 @@ namespace ExpoTheExplorer.Core
         private int gems;
         private int currentDayIndex;
 
-        // Setters publish on every actual change (LivesManager.LoseLife/TryContinue,
-        // GameManager's tip payout) so HUD views (LivesView, SoftMoneyView, GemsView)
+        // Setters publish on every actual change (LivesManager for lives, Wallet
+        // for the two balances) so HUD views (LivesView, SoftMoneyView, GemsView)
         // can bind via LivesChanged/SoftMoneyChanged/GemsChanged instead of polling
         // GameState in Update.
         public int Lives
@@ -49,10 +49,18 @@ namespace ExpoTheExplorer.Core
             }
         }
 
+        // Read by anyone, written by ONE thing: the setters are `internal` and
+        // Core/AssemblyInfo.cs makes them visible only to ProgressionSystem,
+        // whose Wallet is the single writer (root CLAUDE.md invariant, enforced
+        // by the compiler since economy-plan.md Adım 1). Bootstrap, LivesSystem
+        // and UI all live in other assemblies, so an accidental
+        // `State.SoftMoney = x` there is a build error, not a second authority.
+        // The value and its change event stay here; only the rules for changing
+        // it moved out.
         public int SoftMoney
         {
             get => softMoney;
-            set
+            internal set
             {
                 if (softMoney == value) return;
                 softMoney = value;
@@ -63,7 +71,7 @@ namespace ExpoTheExplorer.Core
         public int Gems
         {
             get => gems;
-            set
+            internal set
             {
                 if (gems == value) return;
                 gems = value;

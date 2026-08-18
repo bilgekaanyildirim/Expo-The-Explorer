@@ -3,7 +3,8 @@
     "rootNamespace": "ExpoTheExplorer.Systems.LivesSystem",
     "references": [
         "ExpoTheExplorer.Core",
-        "ExpoTheExplorer.Data"
+        "ExpoTheExplorer.Data",
+        "ExpoTheExplorer.Systems.ProgressionSystem"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
