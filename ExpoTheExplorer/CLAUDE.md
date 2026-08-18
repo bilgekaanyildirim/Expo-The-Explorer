@@ -75,9 +75,9 @@ These are fixed design decisions — don't second-guess them during implementati
 
 ### Customer Patience System
 - 3 patience types, shown via border color (red = impatient, green = patient, cream/neutral = normal), **fixed for the ticket's lifetime**.
-- **Patience does not enter the tip formula.** The stepped tip-decay curve was removed — patience affects money only indirectly, through the time limit it grants (which decides what speed tier is reachable). Since the XP/Level system was removed (`decisions.md` D-009), the per-patience **XP multiplier** that used to be its second effect is gone too: patience now feeds nothing but the ticket's time limit.
+- **Patience does not enter the tip formula.** The stepped tip-decay curve was removed — patience affects money only indirectly, through the time limit it grants (a longer limit means more timer-bar segments before the tip starts stepping down). Since the XP/Level system was removed (`decisions.md` D-009), the per-patience **XP multiplier** that used to be its second effect is gone too: patience now feeds nothing but the ticket's time limit.
 - Consequence to keep visible: `EconomyConfig`'s three decay-step curves and `PatienceDecayStep` become dead data/code under this rule — see economy-plan.md step 6.
-- The "thresholds are **dynamic**, scaling with item count rather than fixed seconds" principle is not dead — it still governs the **speed-tier** thresholds (see Speed Bonus).
+- The "thresholds scale with item count rather than fixed seconds" principle is **void** as of the timer-bar decay rule below: the tip's only time thresholds are now the bar's own segment ticks, which are wall-clock and identical for every ticket. Item count still shapes a ticket indirectly (more items take longer to gather, so more segments elapse), but nothing scales a threshold BY item count any more.
 
 ### Food Pricing / Order Value
 - **Every food item carries its own base price**, authored per item in its food config (`FoodItemConfig`) — content data, so it is never hardcoded and never derived from item count. A burger, fries and a cola are not worth the same.
@@ -86,18 +86,29 @@ These are fixed design decisions — don't second-guess them during implementati
   | Part | How it's computed | Variable? |
   |---|---|---|
   | **Order Value** | sum of the base prices of the ticket's required items | No — a successful delivery always pays it in full |
-  | **Tip** | `Order Value x TipRate x Speed Tier Multiplier` | Yes — the only variable part |
+  | **Tip** | `Order Value x TipRate`, where `TipRate` steps down as the ticket's timer bar drains | Yes — the only variable part |
 
   `Delivery payout = Order Value + Tip`
-- The tip is **proportional to the order's price by construction**: a fast delivery on an expensive order tips more than the same speed on a cheap one. `TipRate` is one global knob on `EconomyConfig` (e.g. 0.2 = a standard-speed, no-decay delivery tips 20% of the order) — the price lives per food, the rate does not.
-- **Speed scales the tip only** — never Order Value — and the tip floors at 0: a late player can lose the entire tip but never claws back the food's own price. **Patience is not a factor** (see Customer Patience System); speed tier is the single variable in the tip.
-- `EconomyConfig.baseTipPerItem` (a flat value per required item) is **replaced** by this model — item count no longer sets what a delivery is worth, the summed prices do. Item count still scales the speed-tier and patience-decay *thresholds*; that rule is unchanged.
+- The tip is **proportional to the order's price by construction**: a fast delivery on an expensive order tips more than the same speed on a cheap one. `TipRate` is one global knob on `EconomyConfig` (e.g. 0.2 = an on-time delivery tips 20% of the order) — the price lives per food, the rate does not.
+- **Elapsed time scales the tip only** — never Order Value — and the tip floors at 0: a late player can lose the entire tip but never claws back the food's own price. **Patience is not a factor** (see Customer Patience System); the timer bar's drain is the single variable in the tip.
+- `EconomyConfig.baseTipPerItem` (a flat value per required item) is **replaced** by this model — item count no longer sets what a delivery is worth, the summed prices do.
 - A food item with no authored price is a **content bug** (a free dish), not a valid default — surface it in validation rather than silently paying 0.
 
-### Speed Bonus
-- 3 tiers: Lightning / Fast / Standard, each with a different tip multiplier.
-- Formula: `Tip = Order Value x TipRate x Speed Tier Multiplier` — the multiplier applies to the **tip**, never to the fixed Order Value (see Food Pricing / Order Value above). Standard tier = no multiplier, so a slow delivery still tips `Order Value x TipRate`.
-- Tier thresholds are also dynamic (scale with item count).
+### Tip Tiers — thirds of the ticket's own timer
+- **The old 3-tier speed bonus (Lightning / Fast / Standard) was removed** — the enum, its three multipliers and its two seconds-per-item thresholds are gone. An earlier GDD marked it locked; the user replaced it (GDD v1.1) because those thresholds were invisible to the player while the timer bar sits right there on the card.
+- The replacement is still **three tiers, but keyed on the fraction of the ticket's OWN time limit that is left** — and they are exactly the thresholds that already recolor the timer bar. **The colour the player sees IS the tip tier:**
+
+  | Remaining | Bar | Tip rate |
+  |---|---|---|
+  | `> WarningRatio` (0.666) | green | `TipRateFull` |
+  | `> CriticalRatio` (0.333), `<= WarningRatio` | orange | `TipRateWarning` |
+  | `<= CriticalRatio` (0.333) | red | `TipRateCritical` |
+
+  `Tip = Order Value x (that tier's rate)`. Order Value is never touched.
+- Because the thresholds are **ratios of each ticket's own limit, they scale per patience type for free**: an Impatient 45s ticket drops a tier every 15s, a Patient 150s one every 50s. This is the concrete mechanism behind "patience affects money only through the time limit it grants".
+- **Single authority:** `WarningRatio`/`CriticalRatio` and the three rates all live on **`EconomyConfig`** (user's instruction), because they decide money. `TicketCardsView` reads the ratios from there via `GameManager.EconomyConfig` and keeps only the three *colours* in `TicketCardVisualsConfig` — one number can never let the bar and the wallet disagree about where a tier starts.
+- `TicketCardVisualsConfig.TimerSegmentSeconds` is **purely cosmetic** — it only spaces the divider ticks drawn along the bar and has no effect on any payout. Do not wire money to it.
+- Nothing here scales with item count. A bigger order reaches a lower tier only because it genuinely takes longer to gather.
 
 ### Progression
 - 2 resources: **Soft Money** (earned per delivery, as Order Value + Tip — see Food Pricing / Order Value) and **Gem** (hard currency — powerup purchases + continue).

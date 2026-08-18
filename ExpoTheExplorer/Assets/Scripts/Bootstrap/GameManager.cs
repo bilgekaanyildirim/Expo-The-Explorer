@@ -32,6 +32,14 @@ namespace ExpoTheExplorer.Bootstrap
         // is now Day-Editor-only -- a seed for new Days. Wiring it here again would put a
         // second authority back on the runtime path.
 
+        // Exposed for the ticket card's timer bar: the two ratios that decide
+        // where it changes colour are the SAME ones that decide the tip tier, and
+        // they live on EconomyConfig because they decide money (CLAUDE.md — Tip
+        // Tiers). TicketCardsView reads them through here rather than keeping its
+        // own copy next to the bar's colours, so the colour on screen and the tip
+        // actually paid can never disagree about where a tier starts.
+        public EconomyConfig EconomyConfig => economyConfig;
+
         public GameState State { get; private set; }
         public TicketSlotManager TicketSlotManager { get; private set; }
         public TrayManager TrayManager { get; private set; }
@@ -145,15 +153,16 @@ namespace ExpoTheExplorer.Bootstrap
             TrayManager.OnTicketAssigned(assignment.SlotIndex);
         }
 
-        // Applies the Economy Module's tip formula (GDD Section 9) to SoftMoney
-        // the instant a ticket is delivered — TicketDelivered fires with the
-        // ticket that just left, still holding its final RemainingSeconds, so
-        // elapsed delivery time is read from that same instance.
+        // Banks the Economy Module's payout (GDD Section 9 — Order Value + the
+        // tier's tip) the instant a ticket is delivered. TicketDelivered fires
+        // with the ticket that just left, still holding its final
+        // RemainingSeconds, so the tier is read from that same instance -- which
+        // is the only moment the delivered ticket's remaining time still exists.
         private void OnTicketDelivered((int SlotIndex, Ticket Ticket) delivery)
         {
-            var tipResult = economyCalculator.CalculateTip(delivery.Ticket);
-            State.SoftMoney += Mathf.RoundToInt(tipResult.TotalTip);
-            DayLifecycleManager.RecordDelivery(tipResult);
+            var payout = economyCalculator.CalculatePayout(delivery.Ticket);
+            State.SoftMoney += Mathf.RoundToInt(payout.Total);
+            DayLifecycleManager.RecordDelivery(payout);
         }
 
         // Both life-loss paths (TicketSlotManager's timeout, TrayManager's wrong

@@ -8,6 +8,11 @@ using UnityEngine;
 
 namespace ExpoTheExplorer.Tests.EditMode
 {
+    // Builds configs/food via SerializedObject because every knob is a private
+    // SerializeField. Ratios here are deliberately 0.5/0.25 against a 100s limit
+    // rather than the shipped 0.666/0.333: boundary tests need the threshold
+    // second to be exactly representable, so a float comparison at the boundary
+    // is testing the rule and not testing float arithmetic.
     public class EconomySystemTests
     {
         private readonly List<Object> spawnedAssets = new();
@@ -23,214 +28,221 @@ namespace ExpoTheExplorer.Tests.EditMode
         }
 
         private EconomyConfig CreateEconomyConfig(
-            float baseTipPerItem = 10f,
-            float lightningMultiplier = 2f,
-            float fastMultiplier = 1.5f,
-            float standardMultiplier = 1f,
-            float lightningSecondsPerItem = 3f,
-            float fastSecondsPerItem = 6f)
+            float warningRatio = 0.5f,
+            float criticalRatio = 0.25f,
+            float tipRateFull = 0.2f,
+            float tipRateWarning = 0.1f,
+            float tipRateCritical = 0.05f)
         {
             var config = ScriptableObject.CreateInstance<EconomyConfig>();
             spawnedAssets.Add(config);
 
             var serialized = new SerializedObject(config);
-            serialized.FindProperty("baseTipPerItem").floatValue = baseTipPerItem;
-            serialized.FindProperty("lightningMultiplier").floatValue = lightningMultiplier;
-            serialized.FindProperty("fastMultiplier").floatValue = fastMultiplier;
-            serialized.FindProperty("standardMultiplier").floatValue = standardMultiplier;
-            serialized.FindProperty("lightningSecondsPerItem").floatValue = lightningSecondsPerItem;
-            serialized.FindProperty("fastSecondsPerItem").floatValue = fastSecondsPerItem;
+            serialized.FindProperty("warningRatio").floatValue = warningRatio;
+            serialized.FindProperty("criticalRatio").floatValue = criticalRatio;
+            serialized.FindProperty("tipRateFull").floatValue = tipRateFull;
+            serialized.FindProperty("tipRateWarning").floatValue = tipRateWarning;
+            serialized.FindProperty("tipRateCritical").floatValue = tipRateCritical;
             serialized.ApplyModifiedPropertiesWithoutUndo();
 
             return config;
         }
 
-        private static string DecayStepsFieldFor(PatienceType patienceType)
+        private FoodItemConfig CreateFood(int basePrice)
         {
-            return patienceType switch
-            {
-                PatienceType.Impatient => "impatientDecaySteps",
-                PatienceType.Patient => "patientDecaySteps",
-                _ => "normalDecaySteps",
-            };
-        }
+            var food = ScriptableObject.CreateInstance<FoodItemConfig>();
+            spawnedAssets.Add(food);
 
-        private void SetPatienceDecaySteps(EconomyConfig config, PatienceType patienceType, params (float threshold, float coefficient)[] steps)
-        {
-            var serialized = new SerializedObject(config);
-            var stepsProperty = serialized.FindProperty(DecayStepsFieldFor(patienceType));
-            stepsProperty.ClearArray();
-            for (var i = 0; i < steps.Length; i++)
-            {
-                stepsProperty.InsertArrayElementAtIndex(i);
-                var stepElement = stepsProperty.GetArrayElementAtIndex(i);
-                stepElement.FindPropertyRelative("secondsPerItemThreshold").floatValue = steps[i].threshold;
-                stepElement.FindPropertyRelative("decayCoefficient").floatValue = steps[i].coefficient;
-            }
-
+            var serialized = new SerializedObject(food);
+            serialized.FindProperty("basePrice").intValue = basePrice;
             serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            return food;
         }
 
-        private Ticket CreateTicket(int itemCount, PatienceType patienceType, float timeLimitSeconds, float elapsedSeconds)
+        private Ticket CreateTicket(
+            IReadOnlyList<FoodItemConfig> requiredItems,
+            float timeLimitSeconds = 100f,
+            float remainingSeconds = 100f,
+            PatienceType patienceType = PatienceType.Normal)
         {
-            var requiredItems = new List<FoodItemConfig>(new FoodItemConfig[itemCount]);
-            var ticket = new Ticket("Test Customer", patienceType, requiredItems, new List<Modification>(), timeLimitSeconds)
+            return new Ticket("Test Customer", patienceType, requiredItems, new List<Modification>(), timeLimitSeconds)
             {
-                RemainingSeconds = timeLimitSeconds - elapsedSeconds
+                RemainingSeconds = remainingSeconds
             };
-            return ticket;
         }
 
         [Test]
-        public void CalculateTip_BaseTip_ScalesWithRequiredItemCount()
+        public void CalculatePayout_OrderValue_IsSummedItemPrices_NotItemCount()
         {
-            var config = CreateEconomyConfig(baseTipPerItem: 10f);
-            var calculator = new EconomyCalculator(config);
+            var calculator = new EconomyCalculator(CreateEconomyConfig());
+            var ticket = CreateTicket(new[] { CreateFood(14), CreateFood(4), CreateFood(3) });
 
-            var oneItem = calculator.CalculateTip(CreateTicket(1, PatienceType.Normal, 100f, elapsedSeconds: 0f));
-            var threeItems = calculator.CalculateTip(CreateTicket(3, PatienceType.Normal, 100f, elapsedSeconds: 0f));
+            var result = calculator.CalculatePayout(ticket);
 
-            Assert.AreEqual(10f, oneItem.BaseTip, 0.0001f);
-            Assert.AreEqual(30f, threeItems.BaseTip, 0.0001f);
+            Assert.AreEqual(21, result.OrderValue);
         }
 
         [Test]
-        public void CalculateTip_ElapsedAtOrUnderLightningThreshold_IsLightningTier()
+        public void CalculatePayout_TwoTicketsSameItemCount_DifferentPrices_PayDifferently()
         {
-            var config = CreateEconomyConfig(lightningSecondsPerItem: 3f, fastSecondsPerItem: 6f);
-            var calculator = new EconomyCalculator(config);
+            var calculator = new EconomyCalculator(CreateEconomyConfig());
 
-            // itemCount=2 -> Lightning threshold = 3*2 = 6 seconds.
-            var result = calculator.CalculateTip(CreateTicket(2, PatienceType.Normal, 100f, elapsedSeconds: 6f));
+            var cheap = calculator.CalculatePayout(CreateTicket(new[] { CreateFood(3), CreateFood(3) }));
+            var pricey = calculator.CalculatePayout(CreateTicket(new[] { CreateFood(14), CreateFood(8) }));
 
-            Assert.AreEqual(SpeedTier.Lightning, result.SpeedTier);
-            Assert.AreEqual(config.LightningMultiplier, result.SpeedMultiplier, 0.0001f);
+            Assert.AreEqual(6, cheap.OrderValue);
+            Assert.AreEqual(22, pricey.OrderValue);
+            Assert.Greater(pricey.Total, cheap.Total);
         }
 
         [Test]
-        public void CalculateTip_ElapsedBetweenThresholds_IsFastTier()
+        public void CalculatePayout_AboveWarningRatio_IsFullTier()
         {
-            var config = CreateEconomyConfig(lightningSecondsPerItem: 3f, fastSecondsPerItem: 6f);
-            var calculator = new EconomyCalculator(config);
+            var calculator = new EconomyCalculator(CreateEconomyConfig());
+            var ticket = CreateTicket(new[] { CreateFood(10) }, timeLimitSeconds: 100f, remainingSeconds: 60f);
 
-            // itemCount=2 -> Lightning threshold=6, Fast threshold=12.
-            var result = calculator.CalculateTip(CreateTicket(2, PatienceType.Normal, 100f, elapsedSeconds: 7f));
+            var result = calculator.CalculatePayout(ticket);
 
-            Assert.AreEqual(SpeedTier.Fast, result.SpeedTier);
-            Assert.AreEqual(config.FastMultiplier, result.SpeedMultiplier, 0.0001f);
+            Assert.AreEqual(TipTier.Full, result.Tier);
+            Assert.AreEqual(0.2f, result.TipRate, 0.0001f);
+            Assert.AreEqual(2f, result.Tip, 0.0001f);
+            Assert.AreEqual(12f, result.Total, 0.0001f);
+        }
+
+        // Inclusive bound, matching TicketCardsView.TimerFillColorFor -- a ratio
+        // sitting exactly on the threshold must not land in a different bucket
+        // than the colour the bar shows at that same instant.
+        [Test]
+        public void CalculatePayout_ExactlyAtWarningRatio_IsWarningTier()
+        {
+            var calculator = new EconomyCalculator(CreateEconomyConfig());
+            var ticket = CreateTicket(new[] { CreateFood(10) }, timeLimitSeconds: 100f, remainingSeconds: 50f);
+
+            var result = calculator.CalculatePayout(ticket);
+
+            Assert.AreEqual(TipTier.Warning, result.Tier);
+            Assert.AreEqual(1f, result.Tip, 0.0001f);
         }
 
         [Test]
-        public void CalculateTip_ElapsedBeyondBothThresholds_IsStandardTier_WithNoMultiplier()
+        public void CalculatePayout_ExactlyAtCriticalRatio_IsCriticalTier()
         {
-            var config = CreateEconomyConfig(lightningSecondsPerItem: 3f, fastSecondsPerItem: 6f, standardMultiplier: 1f);
-            var calculator = new EconomyCalculator(config);
+            var calculator = new EconomyCalculator(CreateEconomyConfig());
+            var ticket = CreateTicket(new[] { CreateFood(10) }, timeLimitSeconds: 100f, remainingSeconds: 25f);
 
-            // itemCount=2 -> Fast threshold=12.
-            var result = calculator.CalculateTip(CreateTicket(2, PatienceType.Normal, 100f, elapsedSeconds: 13f));
+            var result = calculator.CalculatePayout(ticket);
 
-            Assert.AreEqual(SpeedTier.Standard, result.SpeedTier);
-            Assert.AreEqual(1f, result.SpeedMultiplier, 0.0001f);
+            Assert.AreEqual(TipTier.Critical, result.Tier);
+            Assert.AreEqual(0.5f, result.Tip, 0.0001f);
         }
 
+        // The whole point of authoring ratios instead of seconds: 20s left is
+        // "nearly out" on a 45s ticket and "barely started" on a 150s one, so the
+        // same wall-clock remainder must NOT produce the same tier.
         [Test]
-        public void CalculateTip_SpeedThresholds_ScaleWithItemCount_NotFixedSeconds()
+        public void CalculatePayout_SameRemainingSeconds_DifferentTimeLimit_DifferentTier()
         {
-            var config = CreateEconomyConfig(lightningSecondsPerItem: 3f, fastSecondsPerItem: 6f);
-            var calculator = new EconomyCalculator(config);
+            var calculator = new EconomyCalculator(CreateEconomyConfig());
 
-            // Same 4s elapsed: 1-item threshold is 3s (already past it, so Fast),
-            // 2-item threshold is 6s (still within it, so Lightning).
-            var oneItem = calculator.CalculateTip(CreateTicket(1, PatienceType.Normal, 100f, elapsedSeconds: 4f));
-            var twoItems = calculator.CalculateTip(CreateTicket(2, PatienceType.Normal, 100f, elapsedSeconds: 4f));
+            var shortTicket = calculator.CalculatePayout(
+                CreateTicket(new[] { CreateFood(10) }, timeLimitSeconds: 45f, remainingSeconds: 20f));
+            var longTicket = calculator.CalculatePayout(
+                CreateTicket(new[] { CreateFood(10) }, timeLimitSeconds: 150f, remainingSeconds: 20f));
 
-            Assert.AreEqual(SpeedTier.Fast, oneItem.SpeedTier);
-            Assert.AreEqual(SpeedTier.Lightning, twoItems.SpeedTier);
+            Assert.AreEqual(TipTier.Warning, shortTicket.Tier);
+            Assert.AreEqual(TipTier.Critical, longTicket.Tier);
         }
 
+        // Item count must not scale any threshold (it did under the old speed
+        // tiers). Same times, wildly different order size -> same tier.
         [Test]
-        public void CalculateTip_PatienceDecay_IsFullBeforeFirstThreshold()
+        public void CalculatePayout_ItemCount_DoesNotScaleTierThresholds()
         {
-            var config = CreateEconomyConfig();
-            SetPatienceDecaySteps(config, PatienceType.Impatient, (2f, 0.7f), (4f, 0.4f));
-            var calculator = new EconomyCalculator(config);
+            var calculator = new EconomyCalculator(CreateEconomyConfig());
 
-            var result = calculator.CalculateTip(CreateTicket(1, PatienceType.Impatient, 100f, elapsedSeconds: 1f));
+            var oneItem = calculator.CalculatePayout(
+                CreateTicket(new[] { CreateFood(10) }, timeLimitSeconds: 100f, remainingSeconds: 40f));
+            var fiveItems = calculator.CalculatePayout(
+                CreateTicket(
+                    new[] { CreateFood(2), CreateFood(2), CreateFood(2), CreateFood(2), CreateFood(2) },
+                    timeLimitSeconds: 100f,
+                    remainingSeconds: 40f));
 
-            Assert.AreEqual(1f, result.PatienceDecayCoefficient, 0.0001f);
+            Assert.AreEqual(oneItem.Tier, fiveItems.Tier);
+            Assert.AreEqual(oneItem.TipRate, fiveItems.TipRate, 0.0001f);
         }
 
+        // Patience feeds the payout only through the time limit it grants. Hold
+        // the limit and the remainder fixed and the type must not matter at all.
         [Test]
-        public void CalculateTip_PatienceDecay_HoldsFlatBetweenSteps_InsteadOfInterpolating()
+        public void CalculatePayout_PatienceType_DoesNotAffectPayoutDirectly()
         {
-            var config = CreateEconomyConfig();
-            SetPatienceDecaySteps(config, PatienceType.Impatient, (2f, 0.7f), (4f, 0.4f));
-            var calculator = new EconomyCalculator(config);
+            var calculator = new EconomyCalculator(CreateEconomyConfig());
 
-            var atFirstStep = calculator.CalculateTip(CreateTicket(1, PatienceType.Impatient, 100f, elapsedSeconds: 2f));
-            var stillHoldingBeforeSecondStep = calculator.CalculateTip(CreateTicket(1, PatienceType.Impatient, 100f, elapsedSeconds: 3f));
+            var impatient = calculator.CalculatePayout(
+                CreateTicket(new[] { CreateFood(10) }, timeLimitSeconds: 100f, remainingSeconds: 40f, patienceType: PatienceType.Impatient));
+            var patient = calculator.CalculatePayout(
+                CreateTicket(new[] { CreateFood(10) }, timeLimitSeconds: 100f, remainingSeconds: 40f, patienceType: PatienceType.Patient));
 
-            Assert.AreEqual(0.7f, atFirstStep.PatienceDecayCoefficient, 0.0001f);
-            Assert.AreEqual(0.7f, stillHoldingBeforeSecondStep.PatienceDecayCoefficient, 0.0001f);
+            Assert.AreEqual(impatient.Tier, patient.Tier);
+            Assert.AreEqual(impatient.Total, patient.Total, 0.0001f);
         }
 
+        // The guaranteed half of the contract: however late the delivery, and even
+        // with the critical rate authored at 0, the food's own price is paid whole.
         [Test]
-        public void CalculateTip_PatienceDecay_DropsAtNextThreshold_AndHoldsThereafter()
+        public void CalculatePayout_LatestPossibleDelivery_StillPaysOrderValueInFull()
         {
-            var config = CreateEconomyConfig();
-            SetPatienceDecaySteps(config, PatienceType.Impatient, (2f, 0.7f), (4f, 0.4f));
-            var calculator = new EconomyCalculator(config);
+            var calculator = new EconomyCalculator(CreateEconomyConfig(tipRateCritical: 0f));
+            var ticket = CreateTicket(new[] { CreateFood(14), CreateFood(4) }, timeLimitSeconds: 100f, remainingSeconds: 0f);
 
-            var atSecondStep = calculator.CalculateTip(CreateTicket(1, PatienceType.Impatient, 100f, elapsedSeconds: 4f));
-            var wellPastLastStep = calculator.CalculateTip(CreateTicket(1, PatienceType.Impatient, 100f, elapsedSeconds: 100f));
+            var result = calculator.CalculatePayout(ticket);
 
-            Assert.AreEqual(0.4f, atSecondStep.PatienceDecayCoefficient, 0.0001f);
-            Assert.AreEqual(0.4f, wellPastLastStep.PatienceDecayCoefficient, 0.0001f);
+            Assert.AreEqual(TipTier.Critical, result.Tier);
+            Assert.AreEqual(0f, result.Tip, 0.0001f);
+            Assert.AreEqual(18f, result.Total, 0.0001f);
+            Assert.GreaterOrEqual(result.Total, result.OrderValue);
         }
 
+        // An unauthored/zero limit reads as "no time left" rather than dividing by
+        // zero into a free Full-tier tip.
         [Test]
-        public void CalculateTip_PatienceDecayThresholds_ScaleWithItemCount()
+        public void CalculatePayout_ZeroTimeLimit_IsCriticalTier_NotFull()
         {
-            var config = CreateEconomyConfig();
-            SetPatienceDecaySteps(config, PatienceType.Impatient, (2f, 0.7f));
-            var calculator = new EconomyCalculator(config);
+            var calculator = new EconomyCalculator(CreateEconomyConfig());
+            var ticket = CreateTicket(new[] { CreateFood(10) }, timeLimitSeconds: 0f, remainingSeconds: 0f);
 
-            // Same 3s elapsed: 1-item threshold is 2s (already crossed -> decayed),
-            // 2-item threshold is 4s (not yet crossed -> still full tip).
-            var oneItem = calculator.CalculateTip(CreateTicket(1, PatienceType.Impatient, 100f, elapsedSeconds: 3f));
-            var twoItems = calculator.CalculateTip(CreateTicket(2, PatienceType.Impatient, 100f, elapsedSeconds: 3f));
+            var result = calculator.CalculatePayout(ticket);
 
-            Assert.AreEqual(0.7f, oneItem.PatienceDecayCoefficient, 0.0001f);
-            Assert.AreEqual(1f, twoItems.PatienceDecayCoefficient, 0.0001f);
+            Assert.AreEqual(TipTier.Critical, result.Tier);
         }
 
+        // A Day authored against a food asset that was later deleted already
+        // survives elsewhere in the pipeline; a delivery must not be the one place
+        // that throws over it.
         [Test]
-        public void CalculateTip_PatienceTypeWithEmptyStepsList_DefaultsToFullTip()
+        public void CalculatePayout_NullRequiredItem_IsSkipped_NotThrown()
         {
-            var config = CreateEconomyConfig();
-            SetPatienceDecaySteps(config, PatienceType.Impatient, (2f, 0.7f));
-            var calculator = new EconomyCalculator(config);
+            var calculator = new EconomyCalculator(CreateEconomyConfig());
+            var ticket = CreateTicket(new[] { CreateFood(10), null, CreateFood(5) });
 
-            var result = calculator.CalculateTip(CreateTicket(1, PatienceType.Patient, 100f, elapsedSeconds: 50f));
+            var result = calculator.CalculatePayout(ticket);
 
-            Assert.AreEqual(1f, result.PatienceDecayCoefficient, 0.0001f);
+            Assert.AreEqual(15, result.OrderValue);
         }
 
+        // An item nobody priced contributes nothing -- a content bug that
+        // validation surfaces, deliberately not papered over with a fallback price.
         [Test]
-        public void CalculateTip_TotalTip_IsProductOfBaseTipSpeedMultiplierAndPatienceDecay()
+        public void CalculatePayout_UnpricedItem_ContributesZero()
         {
-            var config = CreateEconomyConfig(baseTipPerItem: 10f, fastMultiplier: 1.5f, lightningSecondsPerItem: 1f, fastSecondsPerItem: 6f);
-            SetPatienceDecaySteps(config, PatienceType.Normal, (2f, 0.5f));
-            var calculator = new EconomyCalculator(config);
+            var calculator = new EconomyCalculator(CreateEconomyConfig());
+            var ticket = CreateTicket(new[] { CreateFood(10), CreateFood(0) });
 
-            // itemCount=1 -> Fast tier (elapsed 3 > lightning threshold 1, <= fast threshold 6),
-            // and past the 2s decay threshold -> coefficient 0.5.
-            var result = calculator.CalculateTip(CreateTicket(1, PatienceType.Normal, 100f, elapsedSeconds: 3f));
+            var result = calculator.CalculatePayout(ticket);
 
-            Assert.AreEqual(10f, result.BaseTip, 0.0001f);
-            Assert.AreEqual(1.5f, result.SpeedMultiplier, 0.0001f);
-            Assert.AreEqual(0.5f, result.PatienceDecayCoefficient, 0.0001f);
-            Assert.AreEqual(10f * 1.5f * 0.5f, result.TotalTip, 0.0001f);
+            Assert.AreEqual(10, result.OrderValue);
         }
     }
 }

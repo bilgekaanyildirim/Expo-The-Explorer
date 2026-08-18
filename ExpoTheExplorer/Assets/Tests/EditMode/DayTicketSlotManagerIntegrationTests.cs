@@ -143,8 +143,8 @@ namespace ExpoTheExplorer.Tests.EditMode
             var state = new GameState(gameConfig);
             var slotManager = new TicketSlotManager(state, NextOrNull, () => { });
             var dayLifecycle = new DayLifecycleManager(state);
-            var sampleTip = new DeliveryTipResult(baseTip: 10f, speedTier: SpeedTier.Standard, speedMultiplier: 1f, patienceDecayCoefficient: 1f);
-            state.TicketDelivered.Subscribe(_ => dayLifecycle.RecordDelivery(sampleTip));
+            var samplePayout = new DeliveryPayoutResult(orderValue: 10, tier: TipTier.Critical, tipRate: 0f);
+            state.TicketDelivered.Subscribe(_ => dayLifecycle.RecordDelivery(samplePayout));
 
             var dayCompletedCount = 0;
             state.DayCompleted.Subscribe(_ => dayCompletedCount++);

@@ -58,6 +58,9 @@ namespace ExpoTheExplorer.Data
         [SerializeField] private Sprite sprite;
         [SerializeField] private FoodCategory category;
 
+        [Tooltip("What this item is worth on a delivered ticket. A ticket's Order Value is the sum of its required items' base prices and is paid in full on every successful delivery; the speed tier only scales the tip on top of it (ExpoTheExplorer/CLAUDE.md — Food Pricing / Order Value). Authored per item on purpose: a burger, fries and a cola are not worth the same. Left at 0 this item is a free dish, which is a content bug rather than a valid default.")]
+        [SerializeField, Min(0)] private int basePrice;
+
         [Tooltip("Modifications that can appear on a ticket for this item. Only meaningful for Main category items — leave empty for Side/Drink (GDD Section 3.2).")]
         [SerializeField] private List<ModificationConfig> availableModifications = new();
 
@@ -71,6 +74,7 @@ namespace ExpoTheExplorer.Data
         public string DisplayName => displayName;
         public Sprite Sprite => sprite;
         public FoodCategory Category => category;
+        public int BasePrice => basePrice;
         public IReadOnlyList<ModificationConfig> AvailableModifications => availableModifications;
         public IReadOnlyList<SpriteLayer> SpriteLayers => spriteLayers;
         public float OverallScale => overallScale;

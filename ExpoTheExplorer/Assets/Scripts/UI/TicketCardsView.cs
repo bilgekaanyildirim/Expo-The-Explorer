@@ -41,6 +41,34 @@ namespace ExpoTheExplorer.UI
 
         public Sprite DirectionSpriteFor(bool isAddition) => isAddition ? visualsConfig.AdditionSprite : visualsConfig.RemovalSprite;
 
+        // How wide one divided section of a card's timer bar is, in seconds. The
+        // card turns this into tick positions itself, since only it knows the
+        // ticket's own time limit that the bar is scaled against. PURELY
+        // COSMETIC -- these ticks are decoration and mark nothing the player is
+        // paid for; the tier boundaries are the two ratios below, which are a
+        // different thing entirely and live on EconomyConfig.
+        public float TimerSegmentSeconds => visualsConfig.TimerSegmentSeconds;
+
+        // Keyed on the fraction of the ticket's own limit that is left, not on
+        // PatienceType and not on an absolute second count: a 45s Impatient
+        // ticket and a 150s Patient one should read as "running out" at the same
+        // point in their own life, not at the same wall-clock remainder.
+        //
+        // The thresholds come from EconomyConfig, not from visualsConfig, because
+        // they are the same two ratios that pick the tip tier (CLAUDE.md — Tip
+        // Tiers): this method and EconomyCalculator.ResolveTipTier compare against
+        // one authored value each, in the same order and with the same inclusive
+        // bound, so the colour on screen IS the tier being paid. Only the colours
+        // themselves stay a visual choice.
+        public Color TimerFillColorFor(float remainingRatio)
+        {
+            var economy = gameManager.EconomyConfig;
+
+            if (remainingRatio <= economy.CriticalRatio) return visualsConfig.TimerCriticalColor;
+            if (remainingRatio <= economy.WarningRatio) return visualsConfig.TimerWarningColor;
+            return visualsConfig.TimerFillColor;
+        }
+
         private readonly List<TicketCardView> cards = new();
 
         // Looked up by WorldTrayView (via its own TicketCardsView reference)

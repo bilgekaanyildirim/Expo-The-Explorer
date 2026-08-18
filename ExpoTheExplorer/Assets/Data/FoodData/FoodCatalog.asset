@@ -11,8 +11,14 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ccdcbdef18ae4ce4a4e84f0834bfd0f9, type: 3}
   m_Name: FoodCatalog
-  m_EditorClassIdentifier:
+  m_EditorClassIdentifier: 
   items:
   - {fileID: 11400000, guid: 42176f966e5b42f9a88679094dea6ece, type: 2}
   - {fileID: 11400000, guid: 74ef939a951842f1a1df3b333925ba87, type: 2}
   - {fileID: 11400000, guid: a89170f46f354337a660e293f9fca685, type: 2}
+  - {fileID: 11400000, guid: df48727b1f4574966a250ce95289de45, type: 2}
+  - {fileID: 11400000, guid: a01a3a3b5adb0482eaa881cfa3805bb1, type: 2}
+  - {fileID: 11400000, guid: 24580daa2b37040329334255f90dc3e1, type: 2}
+  - {fileID: 11400000, guid: 9c64fb5f0507a4686bc36922ef787a15, type: 2}
+  - {fileID: 11400000, guid: fdc141f131e2d4935b18982e0f67528e, type: 2}
+  - {fileID: 11400000, guid: 78cedc5bf8fb2413094849f94cf2154b, type: 2}

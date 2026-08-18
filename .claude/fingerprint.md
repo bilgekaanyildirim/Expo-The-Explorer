@@ -21,8 +21,25 @@
     per Day in `editorMeta`, runtime values (time limits, upcoming-queue size)
     still come from `TicketGenerationConfig.asset`. Scheduled to be resolved by
     `.claude/day-config-plan.md` steps 3–4.
-  - everything else (SoftMoney/Gems, lives, board grid state, tray contents,
-    economy curve) → OPEN. `.claude/economy-plan.md` step 1 is where the Wallet
+  - a food item's price — the Order Value half of a delivery's payout → **the
+    `FoodItemConfig` asset itself** (`basePrice`, added 2026-08-18). One
+    authority per food and no parallel price table; the tip RATE stays on
+    `EconomyConfig` while the price never does. No reader yet —
+    `EconomyCalculator` picks it up in `.claude/economy-plan.md` Adım 6's
+    formula slice. Established by the pricing decision in
+    ExpoTheExplorer/CLAUDE.md "Food Pricing / Order Value" (GDD v0.8/v0.9).
+  - the tip tier thresholds — the two remaining-time ratios that decide BOTH
+    the timer bar's colour and which of three tip rates a delivery earns →
+    **`EconomyConfig`** (`warningRatio`/`criticalRatio`, moved there 2026-08-18
+    from `TicketCardVisualsConfig` on the user's instruction, because they
+    decide money). Readers: `EconomyCalculator.ResolveTipTier` and
+    `TicketCardsView.TimerFillColorFor` (the latter via
+    `GameManager.EconomyConfig`) — two readers, one authored value, so the
+    colour on screen cannot drift from the tip paid. The three rates live
+    beside them. `TicketCardVisualsConfig.timerSegmentSeconds` is NOT an
+    economy authority: it spaces cosmetic tick marks only.
+  - everything else (SoftMoney/Gems, lives, board grid state, tray contents)
+    → OPEN. `.claude/economy-plan.md` step 1 is where the Wallet
     single-writer question is being settled. (Xp/Level dropped off this list
     with the XP system's removal, decisions.md D-009.)
 - **Scale magnitudes (n):** OPEN <how many units/bullets/tiles/UI elements at once —

@@ -5,6 +5,7 @@
 *v0.6: Etkileşim yöntemi netleşti — Drag & Drop birincil etkileşim olarak onaylandı (bkz. Bölüm 5).*
 *v0.7: Powerup sistemi geliştirme kapsamı dışına alındı (ertelendi, tasarım saklanıyor). Sonsuz Mod tasarımdan kaldırıldı — tek mod Günlük Hedef Modu. Can bitip gün yeniden oynanınca o günde kazanılan Level XP'sinin kaybedildiği netleşti (bkz. Bölüm 6, 10). ~~(v1.0'da geçersiz: XP sistemi kaldırıldı.)~~*
 *v0.9: Bahşişten **sabır azalma katsayısı kaldırıldı** — bahşiş yalnızca sipariş bedeli, bahşiş oranı ve hız kademesinden hesaplanıyor. Sabır tipi artık parayı değil, süre sınırını ~~ve XP çarpanını~~ etkiliyor (bkz. Bölüm 8, 9, 10).*
+*v1.1: **3 kademeli Hız Bonusu (Yıldırım/Hızlı/Standart) kaldırıldı.** Yerine yine üç kademe geldi, ama eşikleri **biletin kendi süresinin üçte birleri** (kalan oran 0.666 ve 0.333) — yani zamanlama barının rengini değiştiren eşiklerin ta kendisi. Oyuncunun gördüğü renk = aldığı bahşiş kademesi. Gerekçe: eski kademelerin "saniye/öğe" eşikleri oyuncuya görünmüyordu (bkz. Bölüm 9).*
 *v1.0: **XP / Level sistemi tasarımdan tamamen kaldırıldı.** Deneyim puanı, level eşikleri, level rozeti ve level'a bağlı ödüller yok; bunlara dair kod, config ve UI projeden silindi (`.claude/decisions.md` D-009). Sabır tipi artık yalnızca süre sınırını belirliyor (XP çarpanı kalmadı), retry'da kaybedilen bir kazanım yok ve oyunda şu an oturumlar arası kalıcı hiçbir veri tutulmuyor. Meta-ilerlemenin yerini **Day dizisi** aldı (bkz. Bölüm 11, `docs/DaySystem_Roadmap.md`).*
 *v0.8: Her yemeğin kendi fiyatı olduğu netleşti. Bir teslimatın parası ikiye ayrıldı: **sipariş bedeli** (yemek fiyatlarının toplamı, sabit ve garanti) + **bahşiş** (tek değişken parça, sipariş bedeliyle orantılı). Hız ve sabır artık yalnızca bahşişi çarpar (bkz. Bölüm 9, 10).*
 
@@ -223,20 +224,42 @@ Bahşiş azalma eğrisi **kademelidir** (lineer değil). Açıklama:
 
 ---
 
-## 9. Hız Bonusu (3 Kademeli)
+## 9. Bahşiş Kademeleri (biletin süresinin üçte birleri)
 
-Teslimat hızına göre 3 kademeli bir bahşiş çarpanı sistemi:
+*(v1.1: bu bölüm eskiden "Hız Bonusu (3 Kademeli)" idi. Kademe sayısı yine üç,
+ama eşikleri tamamen değişti — gerekçe aşağıda.)*
 
-1. **Yıldırım Teslimat** (çok hızlı) — En yüksek bahşiş çarpanı
-2. **Hızlı Teslimat** (ortalama hızın üzerinde) — Orta bahşiş çarpanı
-3. **Standart Teslimat** (süre sınırına yakın ama zamanında) — Baz bahşiş, çarpan yok
+Bahşiş oranı, biletin **kalan süresinin kendi süre sınırına oranına** göre üç
+kademeden birini alır. Bu iki eşik, zamanlama barının rengini değiştiren
+eşiklerin ta kendisidir — **oyuncunun gördüğü renk, aldığı bahşiş kademesidir:**
 
-Bu sistem, sabır sistemiyle birlikte çalışarak toplam bahşiş formülünü oluşturur:
+| Kalan oran | Bar rengi | Bahşiş oranı |
+|---|---|---|
+| `> 0.666` | yeşil | `TipRateFull` |
+| `0.333 – 0.666` | turuncu | `TipRateWarning` |
+| `<= 0.333` | kırmızı | `TipRateCritical` |
 
 ```
-Baz Bahşiş    = Sipariş Bedeli × Bahşiş Oranı
-Toplam Bahşiş = Baz Bahşiş × Hız Kademesi Çarpanı
+Kalan oran = kalan süre / biletin süre sınırı
+Bahşiş     = Sipariş Bedeli × (kademenin oranı)
 ```
+
+**Eşikler oran olduğu için sabır tipine göre kendiliğinden ölçeklenir:** 45
+saniyelik sabırsız bilet her 15 saniyede bir kademe düşer, 150 saniyelik
+sabırlı bilet her 50 saniyede. Bölüm 10'daki "sabır tipi parayı yalnızca
+verdiği süre üzerinden etkiler" ifadesinin somut mekanizması budur.
+
+**Neden eski kademeler kaldırıldı:** Yıldırım/Hızlı/Standart eşikleri
+"saniye/öğe × öğe sayısı" ile hesaplanıyordu — oyuncunun ekranda göremediği,
+bilete göre değişen görünmez sınırlardı. Yeni eşikler zaten barda renk olarak
+görünüyor.
+
+**Öğe sayısı hiçbir eşiği ölçeklemez.** Büyük sipariş daha alt kademeye
+düşebilir, ama yalnızca gerçekten toplanması uzun sürdüğü için.
+
+**Not — salt görsel olan ayar:** `TicketCardVisualsConfig.TimerSegmentSeconds`
+(varsayılan 5 sn) yalnızca bar üzerindeki bölme tiklerinin sıklığını belirler;
+hiçbir ödemeye etki etmez. Kademe eşikleri yukarıdaki iki orandır.
 
 ### ✅ Çözüldü — Sipariş bedeli sabittir, yalnızca bahşiş değişkendir (v0.8)
 
@@ -340,7 +363,7 @@ Uzun vadeli oynanabilirlik için düşünülen ek katman:
 4. ~~Can bitince oyun tamamen mi bitiyor?~~ **Çözüldü: o gün biter, zorluk düşürülerek yeniden oynanır; Gem ile devam etme opsiyonu var.** (bkz. Bölüm 6)
 5. ~~Süre bilet bazlı mı, süre dolunca ne oluyor?~~ **Çözüldü: bilet bazlı; can azalır + bilet iptal edilir.** (bkz. Bölüm 7)
 6. ~~Sabır tipi görsel gösterimi + bahşiş azalma eğrisi?~~ **Çözüldü: sabit kenar rengi; eğri kademeli, eşikler dinamik.** (bkz. Bölüm 8)
-7. ~~Hız kademesi eşikleri sabit mi, dinamik mi?~~ **Çözüldü: dinamik.** (bkz. Bölüm 9)
+7. ~~Hız kademesi eşikleri sabit mi, dinamik mi?~~ **Soru v1.1'de geçersiz kaldı:** hız kademesi sistemi tamamen kaldırıldı, yerine barın dilimlerine bağlı kademeli oran düşüşü geldi. Yeni eşikler duvar saati ve tek tip. (bkz. Bölüm 9)
 8. ~~Level ilerlemesi kalıcı mı?~~ **Geçersiz (v1.0): level sistemi kaldırıldı.** Kalıcı ilerlemenin taşıyıcısı artık Day dizisi; hangi Day'de olunduğunun kaydedilmesi ayrı bir iş olarak duruyor. (bkz. Bölüm 10)
 9. ~~Can bitip retry olduğunda o günün XP'sine ne oluyor?~~ **Geçersiz (v1.0): XP yok, kaybedilecek bir kazanım da yok.** (bkz. Bölüm 6, 10)
 10. Tepsi doluluk sayacı (`x/y`) nihai UI'da nerede gösterilecek — özelliğin var olacağı kesin, konumu üretim sırasında belirlenecek.
@@ -355,6 +378,7 @@ Uzun vadeli oynanabilirlik için düşünülen ek katman:
 19. Modifikasyonlar sipariş bedelini değiştiriyor mu (örn. "ekstra köfte" siparişi pahalılaştırıyor mu)? — **Açık.** Şu anki karar: fiyat yalnızca yemeğin kendisinden gelir, modifikasyonlar bedeli değiştirmez; ekstra malzemenin ücretlendirilmesi ayrı bir tasarım kararıdır.
 20. Bahşiş Oranı'nın somut değeri ne olacak (v0.8 formülündeki tek global katsayı)? — üretim sırasında dengelenecek.
 21. ~~Sabır tipi bahşişi nasıl etkiliyor?~~ **Çözüldü (v0.9): etkilemiyor.** Bahşiş = Sipariş Bedeli × Bahşiş Oranı × Hız Çarpanı. Sabır tipi yalnızca süreyi belirler. (bkz. Bölüm 8, 9)
+23. Üç kademenin oranları (`TipRateFull`/`TipRateWarning`/`TipRateCritical`, öneri 0.20/0.15/0.10) ve iki eşik (0.666/0.333) somut olarak ne olacak? — üretim sırasında dengelenecek; beşi de `EconomyConfig`'te serialize alan, Inspector'dan ayarlanır.
 22. Sabır tipinin para tarafında hiç ağırlığı olmaması isteniyor mu, yoksa **sabit bir bahşiş çarpanı** mı verilmeli (kademeli azalma değil, tipe bağlı düz katsayı)? — **Açık, ve v1.0 ile daha keskin:** XP çarpanı kaldırıldığı için sabır tipinin süre dışında hiçbir etkisi kalmadı.
 
 ---

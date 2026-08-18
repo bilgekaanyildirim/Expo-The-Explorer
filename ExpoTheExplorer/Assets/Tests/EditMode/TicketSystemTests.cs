@@ -114,7 +114,20 @@ namespace ExpoTheExplorer.Tests.EditMode
             return genConfig;
         }
 
-        private void SetMainDishWeights(TicketGenerationConfig genConfig, params (FoodItemConfig food, float weight, float modificationCountLambda)[] entries)
+        // Every suite below except the two cap tests is about weight or lambda, so it gets
+        // the "no cap of my own" default. Spelled as an overload rather than a per-entry
+        // default (a params tuple cannot carry one) so those tests stay readable and cannot
+        // accidentally assert against a literal 0, which the getter would rescue anyway.
+        private void SetMainDishWeights(
+            TicketGenerationConfig genConfig,
+            params (FoodItemConfig food, float weight, float modificationCountLambda)[] entries) =>
+            SetMainDishWeights(genConfig, entries
+                .Select(e => (e.food, e.weight, e.modificationCountLambda, MainDishWeight.DefaultMaxModificationCount))
+                .ToArray());
+
+        private void SetMainDishWeights(
+            TicketGenerationConfig genConfig,
+            params (FoodItemConfig food, float weight, float modificationCountLambda, int maxModificationCount)[] entries)
         {
             var serialized = new SerializedObject(genConfig);
             var listProperty = serialized.FindProperty("mainDishWeights");
@@ -126,6 +139,7 @@ namespace ExpoTheExplorer.Tests.EditMode
                 element.FindPropertyRelative("food").objectReferenceValue = entries[i].food;
                 element.FindPropertyRelative("weight").floatValue = entries[i].weight;
                 element.FindPropertyRelative("modificationCountLambda").floatValue = entries[i].modificationCountLambda;
+                element.FindPropertyRelative("maxModificationCount").intValue = entries[i].maxModificationCount;
             }
             serialized.ApplyModifiedPropertiesWithoutUndo();
         }
@@ -450,8 +464,8 @@ namespace ExpoTheExplorer.Tests.EditMode
             manager.FillEmptySlots(); // consumes all 3 -- provider is now exhausted
 
             var dayLifecycle = new DayLifecycleManager(state);
-            var sampleTip = new DeliveryTipResult(baseTip: 10f, speedTier: SpeedTier.Standard, speedMultiplier: 1f, patienceDecayCoefficient: 1f);
-            state.TicketDelivered.Subscribe(_ => dayLifecycle.RecordDelivery(sampleTip));
+            var samplePayout = new DeliveryPayoutResult(orderValue: 10, tier: TipTier.Critical, tipRate: 0f);
+            state.TicketDelivered.Subscribe(_ => dayLifecycle.RecordDelivery(samplePayout));
 
             var dayCompletedCount = 0;
             state.DayCompleted.Subscribe(_ => dayCompletedCount++);
@@ -708,6 +722,47 @@ namespace ExpoTheExplorer.Tests.EditMode
             SetMainDishWeights(genConfig, (main, 1f, ExtremeLambda));
 
             AssertIncludedModificationsMatchDirection(genConfig, pool, expectedIsAddition: true, seedCount: 20);
+        }
+
+        // The cap is the Poisson truncation point, so an extreme lambda -- which otherwise
+        // piles all the mass onto the top of the distribution -- lands on the cap instead
+        // of on the dish's full modification list. That is the whole point of the field:
+        // "as many as possible, but never more than N".
+        [Test]
+        public void TicketFactory_Create_MaxModificationCount_CapsTheCountBelowAvailableModifications()
+        {
+            var mods = new List<ModificationConfig> { CreateModification(), CreateModification(), CreateModification(), CreateModification() };
+            var main = CreateFoodItem(FoodCategory.Main, mods);
+            var pool = new List<FoodItemConfig> { main };
+            var genConfig = CreateGenerationConfig(modificationCountLambda: 0f);
+            SetMainDishWeights(genConfig, (main, 1f, ExtremeLambda, 2));
+
+            for (var seed = 0; seed < 50; seed++)
+            {
+                var factory = new TicketFactory(genConfig, new System.Random(seed));
+                var ticket = factory.Create(pool, "Test Customer", PatienceType.Normal);
+                Assert.AreEqual(2, ticket.Modifications.Count);
+            }
+        }
+
+        // The dish's own list is the other half of the Math.Min. A cap above it must not
+        // widen the roll -- there is nothing there to roll -- so this is the case that
+        // catches the cap being used as the truncation point on its own.
+        [Test]
+        public void TicketFactory_Create_MaxModificationCountAboveAvailable_StillCapsAtAvailable()
+        {
+            var mods = new List<ModificationConfig> { CreateModification(), CreateModification() };
+            var main = CreateFoodItem(FoodCategory.Main, mods);
+            var pool = new List<FoodItemConfig> { main };
+            var genConfig = CreateGenerationConfig(modificationCountLambda: 0f);
+            SetMainDishWeights(genConfig, (main, 1f, ExtremeLambda, 10));
+
+            for (var seed = 0; seed < 50; seed++)
+            {
+                var factory = new TicketFactory(genConfig, new System.Random(seed));
+                var ticket = factory.Create(pool, "Test Customer", PatienceType.Normal);
+                Assert.AreEqual(mods.Count, ticket.Modifications.Count);
+            }
         }
 
         [Test]

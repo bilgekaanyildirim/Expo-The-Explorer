@@ -13,7 +13,7 @@
      preflight + APPROVE döngüsüdür; adımlar sırayla yürütülür ve bir adım
      bitmeden sonrakine geçilmez. Bir adım bittiğinde buradaki kutusu
      işaretlenir. Bu dosya plan tutanağıdır, mimari otorite değil —
-     kalıcı kararlar bittiğinde `.claude/decisions.md`'ye D-004 olarak
+     kalıcı kararlar bittiğinde `.claude/decisions.md`'ye D-010 olarak
      yazılır (Adım 8). -->
 
 ## Amaç
@@ -332,22 +332,45 @@ değişmeden geçer.
 ## Adım 6 — Yemek fiyatlandırması: sabit bedel + oranlı bahşiş ⬜
 
 Sorun H. 2026-08-18'de alınan tasarım kararının koda geçmesi. Karar metni
-`ExpoTheExplorer/CLAUDE.md` → "Food Pricing / Order Value" ve GDD v0.8
-Bölüm 9'da yazılı; burada yalnızca uygulaması var.
+`ExpoTheExplorer/CLAUDE.md` → "Food Pricing / Order Value" + "Tip Decay —
+the timer bar's segments" ve GDD v1.1 Bölüm 9'da yazılı; burada yalnızca
+uygulaması var.
 
 **Sözleşme.** Bir teslimatın kazancı iki parçadır ve yalnızca ikincisi
 değişkendir:
 
 ```
 Sipariş Bedeli = Σ (bilette istenen her yemeğin BasePrice'ı)     // sabit, garanti
-Bahşiş         = Sipariş Bedeli × TipRate × HızÇarpanı
+Kalan oran     = kalan süre / biletin süre sınırı
+Kademe         = kalan <= CriticalRatio ? Critical
+               : kalan <= WarningRatio  ? Warning : Full
+Bahşiş         = Sipariş Bedeli × Kademenin oranı
 Teslimat       = Sipariş Bedeli + Bahşiş
 ```
 
-**Sabır katsayısı formülde yok** (2026-08-18 kararı, GDD v0.9). Bahşişin
-tek değişkeni hız kademesidir; Standart kademe çarpansızdır, yani en yavaş
-teslimat bile `Bedel × TipRate` kadar bahşiş verir. Hız yalnızca bahşişi
-çarpar, sipariş bedeli hiçbir koşulda kısılmaz.
+| Kalan oran | Bar | Bahşiş oranı |
+|---|---|---|
+| `> 0.666` | yeşil | `TipRateFull` (0.20) |
+| `0.333 – 0.666` | turuncu | `TipRateWarning` (0.15) |
+| `<= 0.333` | kırmızı | `TipRateCritical` (0.10) |
+
+**Üç kademe, ve eşikler barın renk eşiklerinin ta kendisi** — oyuncunun
+gördüğü renk, aldığı bahşiş kademesi. Eşikler *oran* olduğu için sabır
+tipine göre kendiliğinden ölçeklenir: 45 sn'lik sabırsız bilet her 15
+saniyede, 150 sn'lik sabırlı her 50 saniyede bir kademe düşer. Sipariş
+bedeli hiçbir kademede kısılmaz.
+
+Ne sabır katsayısı (v0.9'da kaldırıldı) ne de eski hız kademesi (v1.1'de
+kaldırıldı) formülde var; öğe sayısı da hiçbir eşiği ölçeklemiyor.
+
+Kullanıcı kararı (2026-08-18): **iki oran `EconomyConfig`'e taşınır**, çünkü
+parayı belirliyorlar. `TicketCardsView` oranları `gameManager.EconomyConfig`
+üzerinden okur, görsel config'te yalnızca üç *renk* kalır — tek sayı, yani
+bar ile cüzdan bir kademenin nerede başladığı konusunda ayrışamaz.
+`TimerSegmentSeconds` **salt kozmetik** (bar üzerindeki bölme tikleri) ve
+görsel config'te kalır; hiçbir ödemeye bağlanmaz. *(Bu, planın önceki
+sürümündeki "her N dilimde bir üstel düşüş" kuralının yerini alır — o kural
+kullanıcının 3'te-bir açıklamasıyla geçersiz kaldı.)*
 
 Sabır tipi para tarafından çıktı; D-009'dan sonra geriye **tek** etkisi
 kaldı: biletin süre sınırı (`TicketRuntimeSettings`, D-005). İkinci etkisi
@@ -355,23 +378,54 @@ olan XP çarpanı, XP sistemiyle birlikte silindi — yani sabır tipi artık
 süre dışında hiçbir şeyi ödüllendirmiyor (bkz. D5 açık kararı).
 
 Veri:
-- `Data/DataScripts/FoodItemConfig.cs` — yeni `basePrice` alanı (`int`,
-  `[Min(0)]`) + `BasePrice` property'si. Para her yerde `int`; bedeli de
-  int tutmak teslimat başına ikinci bir yuvarlama kaynağı doğurmaz.
-- `Data/DataScripts/EconomyConfig.cs` — `baseTipPerItem` **silinir**,
-  yerine `tipRate` gelir (tek global katsayı, öneri 0.2).
-- Asset'ler: `Food_Burger` / `Food_Fries` / `Food_Cola` fiyatlandırılır,
-  `EconomyConfig.asset`'e `tipRate` yazılır. **Sayıları kullanıcı verir**
-  — placeholder uydurulmaz (root CLAUDE.md invariantı: içerik verisi
-  koddan değil veriden gelir).
+- ✅ **2026-08-18** dokuz yemeğin fiyatı Inspector'dan girildi ve diske
+  yazıldı: Burger 14, Hotdog 8, üç milkshake 8, Fries 4, üç gazlı 3.
+- ✅ **2026-08-18** `Data/DataScripts/FoodItemConfig.cs` — `basePrice` alanı
+  (`int`, `[Min(0)]`, tooltip'li) + `BasePrice` property'si eklendi. Para her
+  yerde `int`; bedeli de int tutmak teslimat başına ikinci bir yuvarlama
+  kaynağı doğurmaz. `FoodItemConfigEditor` `DrawDefaultInspector()` çağırdığı
+  için alan Inspector'da kendiliğinden görünüyor, editör dosyasına
+  dokunulmadı. Henüz **okuyucusu yok** — formül dilimi aşağıda.
+- `Data/DataScripts/EconomyConfig.cs` — **silinen:** `baseTipPerItem`, üç
+  hız çarpanı (`lightningMultiplier`/`fastMultiplier`/`standardMultiplier`),
+  iki eşik (`lightningSecondsPerItem`/`fastSecondsPerItem`), üç decay
+  listesi ve `PatienceDecayStep` sınıfı. **Gelen beş alan:** `tipRateFull`
+  (0.20), `tipRateWarning` (0.15), `tipRateCritical` (0.10),
+  `warningRatio` (0.666), `criticalRatio` (0.333). Beşi de serialize,
+  Inspector'dan ayarlanır; varsayılanlar dosyanın kendi "placeholder, not
+  balanced" duruşuyla aynı.
+- `Data/DataScripts/TicketCardVisualsConfig.cs` — `timerWarningRatio` ve
+  `timerCriticalRatio` **çıkar** (ekonomiye taşındı). `timerSegmentSeconds`
+  ve üç renk **kalır** — birincisi salt kozmetik.
+- `Scripts/UI/TicketCardsView.cs` — `TimerFillColorFor` eşikleri
+  `gameManager.EconomyConfig`'ten, renkleri görsel config'ten okur.
+  `gameManager` referansı zaten serialize alan olarak var, dolayısıyla
+  **yeni sahne wiring'i çıkmaz**. Day Editör önizlemesi bu iki oranı hiç
+  okumuyor (yalnızca sprite/renk kullanıyor), o yüzden editör tarafında
+  hiçbir uyarlama gerekmiyor.
+- `Scripts/Bootstrap/GameManager.cs` — `EconomyConfig` getter'ı açılır
+  (UI'ın dilim uzunluğunu okuyabilmesi için).
+- Asset'ler: **dokuz** yemek fiyatlandırılır — `Burger/Food_Burger`,
+  `Hotdog/Food_Hotdog`, `Sides/Food_Fries` ve altı içecek
+  (`Beverages/Food_Cola`, `Food_Fanta`, `Food_Sprite`,
+  `Food_BluberryMilkshake`, `Food_StawberryMilkshake`,
+  `Food_VanillaMilkshake`) — artı `EconomyConfig.asset`'e `tipRate`.
+  **Sayıları kullanıcı verir** — placeholder uydurulmaz (root CLAUDE.md
+  invariantı: içerik verisi koddan değil veriden gelir). *(Plan ilk
+  yazıldığında üç yemek vardı; `be8fa0d` ile Hotdog ve beş içecek eklendi.)*
 
 Kod:
 - `EconomySystem/EconomyCalculator.cs` — `CalculateTip` yukarıdaki
-  formüle döner. `DeliveryTipResult` alan adları gerçeği söyleyecek
-  şekilde değişir: `BaseTip` → `OrderValue`, `TotalTip` → `Total`, yeni
-  `Tip` alanı; `PatienceDecayCoefficient` alanı **kalkar**.
-  (`BaseTip` adı yeni modelde yanlış — "baz bahşiş" değil, "yemeğin
-  fiyatı".)
+  formüle döner. `DeliveryTipResult` → **`DeliveryPayoutResult`**: artık
+  yalnızca bahşiş taşımıyor. Alanlar `OrderValue` (int), `TipRateApplied`,
+  `Tier` (yeni `TipTier` enum'u: `Full`/`Warning`/`Critical`), `TipRate`,
+  `Tip`, `Total`. Kalkanlar: `BaseTip`, `TotalTip`,
+  `PatienceDecayCoefficient`, `SpeedTier`, `SpeedMultiplier`.
+  (`Tier`/`TipRate`, eski struct'ın `SpeedTier`'ı UI'a "Fast x1.5"
+  gösterebilmek için taşımasıyla aynı gerekçe — ve bu kez kademe barın
+  rengiyle birebir aynı şey.)
+- **Hız kademesi makinesi silinir:** eski `SpeedTier` enum'u,
+  `ResolveSpeedTier`, `ResolveSpeedMultiplier`.
 - **Ölü sabır-decay makinesi silinir:** `EconomyCalculator.
   ResolvePatienceDecayCoefficient` + `ResolveDecaySteps`,
   `EconomyConfig`'in üç eğrisi (`impatientDecaySteps`/`normalDecaySteps`/
@@ -395,10 +449,15 @@ varsayılan değil — sessizce 0 ödemek yerine görünür kılınır.
 
 Testler:
 - `EconomySystemTests` — (1) Sipariş Bedeli fiyatların toplamıdır, öğe
-  sayısının değil (farklı fiyatlı üç öğeyle); (2) Standart kademe →
-  `Bahşiş = Bedel × TipRate` (çarpan yok, ama bahşiş de sıfır değil);
-  (3) Lightning bahşişi çarpar ama **bedeli değiştirmez**; (4) sabır tipi
-  değişince kazanç değişmiyor ← yeni kuralın kilidi.
+  sayısının değil (farklı fiyatlı üç öğeyle); (2) kalan oran eşiğin
+  üstündeyken `Bahşiş = Bedel × TipRateFull`; (3) tam `WarningRatio`'da
+  Warning kademesi (sınır dahil, `<=` semantiği barın renk mantığıyla
+  aynı); (4) tam `CriticalRatio`'da Critical; (5) **aynı kalan saniye,
+  farklı süre sınırı → farklı kademe** (oran tabanlı olmanın kilidi:
+  45 sn'lik bilette 20 sn kalması Warning, 150 sn'likte Full);
+  (6) en alt kademede bile `Total >= Bedel`; (7) sabır tipi *doğrudan*
+  kazanca girmiyor (aynı süre sınırı + aynı kalan → aynı kazanç);
+  (8) öğe sayısı hiçbir eşiği ölçeklemiyor ← v1.1'in kilidi.
 - `DayLifecycleManagerTests` — `TipsValue` negatif olamaz.
 - **Silinen testler:** `CalculateTip_BaseTip_ScalesWithRequiredItemCount`
   (öğe sayısı artık kazancı belirlemiyor; fiyat toplamı testiyle
@@ -407,18 +466,27 @@ Testler:
   `..._DropsAtNextThreshold...`, `..._ThresholdsScaleWithItemCount`,
   `..._PatienceTypeWithEmptyStepsList_DefaultsToFullTip`) ile
   `SetPatienceDecaySteps`/`DecayStepsFieldFor` yardımcıları.
-- **Kalan testler:** hız kademesi eşiklerinin öğe sayısıyla ölçeklendiğini
-  doğrulayanlar aynen durur — o kural değişmedi.
+- **Silinen testler (2. grup, v1.1):** dört hız kademesi testi
+  (`..._IsLightningTier`, `..._IsFastTier`,
+  `..._IsStandardTier_WithNoMultiplier`,
+  `..._SpeedThresholds_ScaleWithItemCount_NotFixedSeconds`) — eşiklerin öğe
+  sayısıyla ölçeklenmesi kuralı v1.1'de kalktı, yerine (8) numaralı test
+  tam tersini çiviliyor.
+- `DayTicketSlotManagerIntegrationTests` ve `TicketSystemTests` —
+  `DeliveryTipResult`/`SpeedTier` kurdukları yerler yeni struct'a çevrilir.
 
 **Adım 1'e bağımlı değil** (Adım 1 "parayı kim yazıyor", bu "ne kadar"
 sorusu). Sıranın burada olması, Adım 1 sonrası ödemenin zaten tek
 noktadan — `Wallet` — geçiyor olması içindir.
 
-**Bitti kriteri:** `grep -rn "baseTipPerItem\|DecayStep\|PatienceDecay"`
-boş; üç yemek asset'inin fiyatı yazılı; yukarıdaki testler yeşil; hiçbir
-kod yolunda hız sipariş bedelini çarpmıyor ve sabır tipi kazanca hiç
-girmiyor.
-**APPROVE gerekir mi:** Evet (`.cs` + `.asset`).
+**Bitti kriteri:** `grep -rn "baseTipPerItem\|DecayStep\|PatienceDecay\|SpeedTier"`
+boş; iki oran tek bir yerde (`EconomyConfig`) authored ve hem bar rengi hem
+bahşiş oradan okuyor; `TimerSegmentSeconds` hiçbir ödeme yolunda geçmiyor;
+dokuz yemek asset'inin
+fiyatı yazılı (✅ girildi); yukarıdaki testler yeşil; hiçbir kod yolunda
+sipariş bedeli çarpılmıyor, sabır tipi ve öğe sayısı kazanca hiç girmiyor.
+**APPROVE gerekir mi:** Evet (`.cs`). `.asset` yazılmaz — Unity dört yeni
+alanı koddaki varsayılanlarıyla kendi serialize eder.
 
 ---
 
@@ -438,11 +506,11 @@ girmiyor.
 
 ## Adım 8 — Kayıt ⬜
 
-- `.claude/decisions.md` → **D-009**: gün-atomik ekonomi sözleşmesi,
+- `.claude/decisions.md` → **D-010**: gün-atomik ekonomi sözleşmesi,
   `Wallet`'ın tek yazıcı olması, profil v1 + migrasyon; `affects:` alanı
-  dokunulan tüm dosyalarla. (Plan ilk yazıldığında "D-004" deniyordu;
-  o id D-001…D-008 ile dolu, sıradaki boş id D-009.)
-- `.claude/decisions.md` → **D-010**: yemek başına fiyat + sabit sipariş
+  dokunulan tüm dosyalarla. (Plan ilk yazıldığında "D-004", sonra "D-009"
+  deniyordu; D-009'u XP/Level kaldırma kararı aldı, sıradaki boş id D-010.)
+- `.claude/decisions.md` → **D-011**: yemek başına fiyat + sabit sipariş
   bedeli / oranlı bahşiş (Adım 6); `EconomyConfig.baseTipPerItem`'ın
   kaldırılması ve "Tips satırı negatif olamaz" sonucu.
 - Proje `CLAUDE.md`: "Progression" bölümüne SoftMoney'in gün-şartlı commit
@@ -457,8 +525,8 @@ girmiyor.
 
 | Kod | Karar | Öneri | Ne zaman |
 |---|---|---|---|
-| D1 | Geri almada `max(0, ...)` kırpması mı, kazanılan parayla Continue'yu engellemek mi? | Kırpma | Adım 2 başı |
+| ~~D1~~ | Geri almada `max(0, ...)` kırpması mı, kazanılan parayla Continue'yu engellemek mi? | ✅ **Kırpma** — kullanıcı onayladı 2026-08-18 | ~~Adım 2 başı~~ |
 | D2 | `PlayerProgressService` şimdi mi, gerekirse sonra mı? | Sonra | Adım 4 başı |
-| D3 | Üç yemeğin fiyatları ve `tipRate` ne olacak? | Kullanıcı verir (uydurulmaz) | Adım 6 başı |
+| D3 | **Dokuz** yemeğin fiyatları ve `tipRate` ne olacak? | Kullanıcı Inspector'dan girer; `tipRate` hâlâ açık | Adım 6, formül dilimi |
 | D4 | Modifikasyonlar sipariş bedelini değiştiriyor mu? | Hayır — fiyat yalnızca yemekten | Adım 6 başı |
-| D5 | Sabır tipinin para tarafında hiç ağırlığı olmaması mı, yoksa XP'deki gibi tipe bağlı düz bir bahşiş çarpanı mı? | Şu anki karar: hiç ağırlığı yok | Adım 6 başı |
+| ~~D5~~ | Sabır tipinin para tarafında hiç ağırlığı olmaması mı, yoksa tipe bağlı düz bir bahşiş çarpanı mı? | ✅ **Hiç ağırlığı yok** — kullanıcı onayladı 2026-08-18 | ~~Adım 6 başı~~ |

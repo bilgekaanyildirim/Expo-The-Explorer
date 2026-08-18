@@ -16,6 +16,7 @@ MonoBehaviour:
   displayName: Burger
   sprite: {fileID: 21300000, guid: 8219fedc0259c4500918c7c405c3d17f, type: 3}
   category: 0
+  basePrice: 14
   availableModifications:
   - {fileID: 11400000, guid: 520299ab8e2a46099af12eeae558b73d, type: 2}
   - {fileID: 11400000, guid: a4df3305487e48bc87894f35d7e82e1a, type: 2}

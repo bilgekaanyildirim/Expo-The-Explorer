@@ -1,75 +1,52 @@
-using System;
-using System.Collections.Generic;
 using UnityEngine;
 
 namespace ExpoTheExplorer.Data
 {
-    // One held step of a patience type's tip decay curve (GDD Section 8): once
-    // elapsed time crosses this step's threshold, the tip multiplier drops to
-    // DecayCoefficient and holds flat until the next step's threshold — this is
-    // what makes the curve stepped rather than linear. Steps within a curve are
-    // expected to be authored in ascending SecondsPerItemThreshold order —
-    // EconomyCalculator walks them in list order and does not sort defensively
-    // (same convention as TicketGenerationConfig.MainDishWeights).
-    [Serializable]
-    public class PatienceDecayStep
-    {
-        [Tooltip("Elapsed-time-per-required-item threshold — actual threshold = this x the ticket's item count (GDD Section 8: thresholds scale with ticket complexity, not fixed seconds).")]
-        [SerializeField] private float secondsPerItemThreshold;
-
-        [Tooltip("Tip multiplier held from this threshold until the next step's threshold (or forever, if this is the last step).")]
-        [SerializeField, Range(0f, 1f)] private float decayCoefficient = 1f;
-
-        public float SecondsPerItemThreshold => secondsPerItemThreshold;
-        public float DecayCoefficient => decayCoefficient;
-    }
-
-    // Tip/speed/patience balancing knobs consumed by EconomyCalculator (GDD
-    // Section 9 / CLAUDE.md Section 5 — Economy Module). Every default here is a
-    // placeholder, not a design decision — the GDD locks the SHAPE of the tip
-    // formula and the fact that both speed-tier and patience-decay thresholds
-    // scale with ticket item count, but never states concrete numbers. Tune from
-    // the Inspector once real balancing starts (same posture as
-    // TicketGenerationConfig).
+    // Tip balancing knobs consumed by EconomyCalculator (GDD Section 9 /
+    // CLAUDE.md Section 5 — Economy Module). Every default here is a
+    // placeholder, not a design decision: the GDD locks the SHAPE of the payout
+    // (fixed Order Value from food prices + a tip that steps down through three
+    // tiers) but never states concrete numbers. Tune from the Inspector once
+    // real balancing starts (same posture as TicketGenerationConfig).
+    //
+    // What this file deliberately does NOT hold: the food prices that make up
+    // Order Value (they live per item on FoodItemConfig) and the timer bar's
+    // divider spacing (TicketCardVisualsConfig.TimerSegmentSeconds, which is
+    // purely cosmetic and must never be wired to a payout).
     [CreateAssetMenu(fileName = "EconomyConfig", menuName = "ExpoTheExplorer/Data/Economy Config")]
     public class EconomyConfig : ScriptableObject
     {
-        [Header("Base Tip — placeholder, not balanced")]
-        [Tooltip("Base Tip = this x the ticket's required item count. The GDD's tip formula (Section 9) never defines Base Tip itself — this scales it with complexity so bigger orders aren't worth the same as small ones.")]
-        [SerializeField] private float baseTipPerItem = 10f;
+        // The two ratios below are the single authority for BOTH the tip tier and
+        // the timer bar's colour (TicketCardsView reads them through
+        // GameManager.EconomyConfig). They live here, on the economy config,
+        // because they decide money -- keeping a second copy next to the bar's
+        // colours is what would let the colour the player sees drift away from
+        // the tip they actually get.
+        [Header("Tip Tier Thresholds — fraction of the ticket's OWN limit still left")]
+        [Tooltip("At or below this remaining-time fraction the tip drops to Tip Rate Warning and the bar turns to its warning colour. A ratio rather than a second count, so every patience type steps down at the same point in its own life: a 45s Impatient ticket and a 150s Patient one both drop a tier at two thirds remaining.")]
+        [SerializeField, Range(0f, 1f)] private float warningRatio = 0.666f;
 
-        [Header("Speed Bonus Tiers (GDD Section 9) — placeholders, not balanced")]
-        [SerializeField] private float lightningMultiplier = 2f;
-        [SerializeField] private float fastMultiplier = 1.5f;
-        [Tooltip("GDD Section 9: Standard delivery is base tip with no multiplier.")]
-        [SerializeField] private float standardMultiplier = 1f;
+        [Tooltip("At or below this remaining-time fraction the tip drops to Tip Rate Critical and the bar turns to its critical colour. Takes precedence over Warning Ratio wherever both would apply, so authoring this ABOVE Warning Ratio makes the warning tier unreachable rather than throwing.")]
+        [SerializeField, Range(0f, 1f)] private float criticalRatio = 0.333f;
 
-        [Tooltip("Elapsed-time-per-item threshold at or below which a delivery counts as Lightning. Actual threshold = this x item count (GDD Section 9: dynamic, scales with complexity).")]
-        [SerializeField] private float lightningSecondsPerItem = 3f;
+        // Tip = Order Value x one of these three, and nothing else: no speed
+        // tier (removed, GDD v1.1), no patience coefficient (removed, GDD v0.9),
+        // no item-count scaling. Order Value itself is never multiplied by any
+        // of them -- a late delivery loses tip, never the food's own price.
+        [Header("Tip Rates — placeholders, not balanced")]
+        [Tooltip("Tip as a fraction of Order Value while the ticket still has more than Warning Ratio of its time left (bar is green). 0.2 = a fresh delivery tips 20% of the order.")]
+        [SerializeField, Min(0f)] private float tipRateFull = 0.2f;
 
-        [Tooltip("Elapsed-time-per-item threshold at or below which a delivery counts as Fast (must be > LightningSecondsPerItem). Anything slower is Standard.")]
-        [SerializeField] private float fastSecondsPerItem = 6f;
+        [Tooltip("Tip fraction once remaining time is at or below Warning Ratio (bar is orange).")]
+        [SerializeField, Min(0f)] private float tipRateWarning = 0.15f;
 
-        // One curve per patience type, as a fixed set of 3 fields rather than a
-        // PatienceType-keyed list: GDD Section 8 locks the count at exactly 3
-        // patience types, and Core.PatienceType lives in the Core assembly,
-        // which itself depends on Data (GameState references FoodItemConfig) —
-        // Data referencing Core back would be circular. EconomyCalculator (in
-        // the EconomySystem assembly, which can see both) maps PatienceType to
-        // the matching field below.
-        [Header("Patience Decay Curves (GDD Section 8) — placeholders, not balanced")]
-        [SerializeField] private List<PatienceDecayStep> impatientDecaySteps = new();
-        [SerializeField] private List<PatienceDecayStep> normalDecaySteps = new();
-        [SerializeField] private List<PatienceDecayStep> patientDecaySteps = new();
+        [Tooltip("Tip fraction once remaining time is at or below Critical Ratio (bar is red). Set this to 0 for 'a last-second delivery earns the food's price and no tip at all'.")]
+        [SerializeField, Min(0f)] private float tipRateCritical = 0.1f;
 
-        public float BaseTipPerItem => baseTipPerItem;
-        public float LightningMultiplier => lightningMultiplier;
-        public float FastMultiplier => fastMultiplier;
-        public float StandardMultiplier => standardMultiplier;
-        public float LightningSecondsPerItem => lightningSecondsPerItem;
-        public float FastSecondsPerItem => fastSecondsPerItem;
-        public IReadOnlyList<PatienceDecayStep> ImpatientDecaySteps => impatientDecaySteps;
-        public IReadOnlyList<PatienceDecayStep> NormalDecaySteps => normalDecaySteps;
-        public IReadOnlyList<PatienceDecayStep> PatientDecaySteps => patientDecaySteps;
+        public float WarningRatio => warningRatio;
+        public float CriticalRatio => criticalRatio;
+        public float TipRateFull => tipRateFull;
+        public float TipRateWarning => tipRateWarning;
+        public float TipRateCritical => tipRateCritical;
     }
 }

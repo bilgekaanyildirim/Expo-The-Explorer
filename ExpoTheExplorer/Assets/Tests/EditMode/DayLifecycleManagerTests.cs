@@ -9,8 +9,10 @@ namespace ExpoTheExplorer.Tests.EditMode
 {
     public class DayLifecycleManagerTests
     {
-        private static readonly DeliveryTipResult SampleTip =
-            new DeliveryTipResult(baseTip: 10f, speedTier: SpeedTier.Standard, speedMultiplier: 1f, patienceDecayCoefficient: 1f);
+        // A tip-free delivery: Total == OrderValue == 10, so tests that only care
+        // about the delivery COUNT don't have to reason about the tip split.
+        private static readonly DeliveryPayoutResult SamplePayout =
+            new DeliveryPayoutResult(orderValue: 10, tier: TipTier.Critical, tipRate: 0f);
 
         private GameConfig gameConfig;
 
@@ -63,8 +65,8 @@ namespace ExpoTheExplorer.Tests.EditMode
             var state = new GameState(gameConfig);
             var manager = new DayLifecycleManager(state);
 
-            manager.RecordDelivery(SampleTip);
-            manager.RecordDelivery(SampleTip);
+            manager.RecordDelivery(SamplePayout);
+            manager.RecordDelivery(SamplePayout);
 
             Assert.AreEqual(2, state.TicketsDeliveredToday);
         }
@@ -82,9 +84,9 @@ namespace ExpoTheExplorer.Tests.EditMode
             var published = false;
             state.DayCompleted.Subscribe(_ => published = true);
 
-            manager.RecordDelivery(SampleTip);
-            manager.RecordDelivery(SampleTip);
-            manager.RecordDelivery(SampleTip);
+            manager.RecordDelivery(SamplePayout);
+            manager.RecordDelivery(SamplePayout);
+            manager.RecordDelivery(SamplePayout);
 
             Assert.IsFalse(published);
         }
@@ -94,8 +96,8 @@ namespace ExpoTheExplorer.Tests.EditMode
         {
             var state = new GameState(gameConfig);
             var manager = new DayLifecycleManager(state);
-            manager.RecordDelivery(SampleTip);
-            manager.RecordDelivery(SampleTip);
+            manager.RecordDelivery(SamplePayout);
+            manager.RecordDelivery(SamplePayout);
 
             manager.ResetForNewDay();
 
@@ -105,17 +107,34 @@ namespace ExpoTheExplorer.Tests.EditMode
         }
 
         [Test]
-        public void RecordDelivery_SplitsBaseTipAndBonusIntoSeparateTotals()
+        public void RecordDelivery_SplitsOrderValueAndTipIntoSeparateTotals()
         {
             var state = new GameState(gameConfig);
             var manager = new DayLifecycleManager(state);
-            var tip = new DeliveryTipResult(baseTip: 20f, speedTier: SpeedTier.Lightning, speedMultiplier: 1.5f, patienceDecayCoefficient: 1f);
+            var payout = new DeliveryPayoutResult(orderValue: 20, tier: TipTier.Full, tipRate: 0.5f);
 
-            manager.RecordDelivery(tip); // TotalTip = 30 -> bonus = 10
+            manager.RecordDelivery(payout); // Tip = 10 -> Total = 30
 
             Assert.AreEqual(20, manager.OrdersDeliveredValue);
             Assert.AreEqual(10, manager.TipsValue);
             Assert.AreEqual(30, manager.Total);
+        }
+
+        // Under the old model the tip line was TotalTip - BaseTip, which went
+        // NEGATIVE whenever a patience coefficient below 1 pulled the total under
+        // its own base. The tip is now its own non-negative addend, so the receipt
+        // cannot show a negative Tips row however late the delivery was.
+        [Test]
+        public void RecordDelivery_WorstTier_LeavesTipsValueAtZero_NeverNegative()
+        {
+            var state = new GameState(gameConfig);
+            var manager = new DayLifecycleManager(state);
+
+            manager.RecordDelivery(new DeliveryPayoutResult(orderValue: 25, tier: TipTier.Critical, tipRate: 0f));
+
+            Assert.AreEqual(25, manager.OrdersDeliveredValue);
+            Assert.AreEqual(0, manager.TipsValue);
+            Assert.AreEqual(25, manager.Total);
         }
 
         [Test]

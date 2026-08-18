@@ -20,10 +20,14 @@
 - Bootstrap — central runtime composition root / game flow orchestration (GameManager) — depends on: DaySystem, BoardDistribution, TicketSystem
 - DaySystem — Day content authoring/parsing/playback (ticket-sequence rolling, Day Start board replay, JSON schema, validation) — depends on: TicketSystem
 - BoardDistribution — live required-pool + noise-pool board food spawning (probabilistic guaranteed-ticket selection) — depends on: -
-- TicketSystem — active-slot ticket lifecycle (assignment/delivery/cancellation) + ticket generation — depends on: -
+- TicketSystem — active-slot ticket lifecycle (assignment/delivery/cancellation) + ticket generation — depends on: EconomySystem
+<!-- TicketSystem -> EconomySystem, added 2026-08-18: the ticket card's timer bar
+     reads EconomyConfig's two tier ratios (they colour the bar AND pick the tip
+     tier, so one authored value has to serve both). One-directional --
+     EconomySystem references nothing in TicketSystem. -->
 - DayEditor — custom EditorWindow tooling for authoring Day JSON content (ticket sequence, Day Start board timeline) — depends on: DaySystem, TicketSystem
 - BoardUI — runtime board grid rendering + drag/drop (BoardView, board-visual config assets) — depends on: -
-- EconomySystem — delivery tip formula (base x speed tier x patience decay) + its balancing config — depends on: -
+- EconomySystem — delivery payout formula (order value from food prices + a tip stepped through three tiers keyed on remaining-time ratio) + its balancing config — depends on: -
 - ProgressionSystem — player-profile save boundary (JSON load/save + fallback on missing/corrupt file, currently unwired and carrying no fields) and the owning system of the wallet HUD (SoftMoneyView/GemsView); SoftMoney/Gems ownership itself moves here with `Wallet` (economy-plan Adım 1) — depends on: -
 - LivesSystem — life loss on wrong delivery/timeout + paid continue (SoftMoney or Gems) — depends on: -
 - DayLifecycle — per-day receipt bookkeeping (base tip / bonus tip / failed orders) feeding the Day Complete popup — depends on: EconomySystem
