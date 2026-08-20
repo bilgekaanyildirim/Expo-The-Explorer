@@ -1,61 +1,67 @@
 using System.Collections.Generic;
-using ExpoTheExplorer.Bootstrap;
-using ExpoTheExplorer.Core;
 using TMPro;
 using UnityEngine;
 
 namespace ExpoTheExplorer.UI
 {
-    // Top HUD readout for GameState.Lives, shown as "current/max" (e.g. "3/3").
-    // Reactive, not polled: binds to LivesChanged and MaxLivesChanged (both
-    // fired by their property setters on every actual change -- LoseLife only
-    // moves Lives, TryContinue can move both) instead of re-stringifying every
-    // frame. Distinct from LivesDepleted, which only fires once, the instant
-    // Lives hits 0.
+    // Top HUD readout for lives, shown as "current/max" (e.g. "3/3"). In the day
+    // scene it is reactive, not polled: it binds to LivesChanged and MaxLivesChanged
+    // (both fired by their property setters on every actual change -- LoseLife only
+    // moves Lives, TryContinue can move both). Distinct from LivesDepleted, which
+    // fires once, the instant Lives hits 0.
+    //
+    // Since D-013 the HUD Canvas is one prefab shared by both scenes, so this view
+    // reads through HudWalletSource rather than holding a GameManager, and since
+    // D-014 it does not know that two modes exist: it subscribes to the source's
+    // forwarded lives event and renders. On the main screen that event never fires,
+    // which is correct -- nothing there can cost a life.
+    //
+    // D-014 also made the main screen's number REAL. Lives are persisted now, so the
+    // source reports the player's saved remaining lives there instead of the
+    // DefaultStartingLives placeholder this view used to display as a constant "3/3".
     public class LivesView : MonoBehaviour
     {
-        [SerializeField] private GameManager gameManager;
+        [SerializeField] private HudWalletSource walletSource;
         [SerializeField] private TMP_Text livesText;
 
-        private GameState state;
-
-        // Subscribes from Start(), not Awake() -- Unity's Awake() order across
-        // different GameObjects is unspecified, and GameManager.Awake (which
-        // sets State) may not have run yet, throwing a NullReferenceException
-        // on gameManager.State. Start() is always safe: Unity runs every
-        // object's Awake() before any object's Start() in a given frame (same
-        // reason BoardView only ever touches gameManager.State from Start).
+        // Start(), not Awake() — Unity's Awake() order across different GameObjects
+        // is unspecified, and GameManager.Awake (which sets State) may not have run
+        // yet. Start() is always safe: every object's Awake() runs before any
+        // object's Start(). HudWalletSource resolves lazily for exactly this reason,
+        // so asking it anything from here is what keeps that guarantee.
         private void Start()
         {
             if (!ValidateReferences()) return;
 
-            state = gameManager.State;
-            state.LivesChanged.Subscribe(Refresh);
-            state.MaxLivesChanged.Subscribe(Refresh);
-            Refresh(state.Lives);
+            // One bus, fed by both of GameState's lives events inside the source --
+            // this label cannot act on half of "current/max", so splitting them here
+            // would buy nothing.
+            walletSource.LivesChanged.Subscribe(OnLivesChanged);
+            Refresh();
         }
 
         private void OnDestroy()
         {
-            if (state == null) return;
-            state.LivesChanged.Unsubscribe(Refresh);
-            state.MaxLivesChanged.Unsubscribe(Refresh);
+            if (walletSource != null) walletSource.LivesChanged.Unsubscribe(OnLivesChanged);
         }
 
-        // Payload is ignored -- whichever half changed, the label always
-        // needs both current values to re-render "current/max".
-        private void Refresh(int _)
+        // The one place a payload is deliberately dropped, and it is confined to this
+        // adapter line: whichever half changed, the label re-renders both, so the new
+        // value alone cannot drive it.
+        private void OnLivesChanged(int _) => Refresh();
+
+        private void Refresh()
         {
-            livesText.text = $"{state.Lives}/{state.MaxLives}";
+            livesText.text = $"{walletSource.Lives}/{walletSource.MaxLives}";
         }
 
-        // Every field here is wired by hand in the Editor — a missing one
-        // should fail loudly with a clear pointer to which field, not a bare
-        // NullReferenceException.
+        // Both fields are wired inside the PREFAB (walletSource points at the canvas
+        // root beside it), so they are prefab data and need no per-scene override —
+        // a missing one should still fail loudly with a clear pointer to which field.
         private bool ValidateReferences()
         {
             var missing = new List<string>();
-            if (gameManager == null) missing.Add(nameof(gameManager));
+            if (walletSource == null) missing.Add(nameof(walletSource));
             if (livesText == null) missing.Add(nameof(livesText));
 
             if (missing.Count == 0) return true;

@@ -1,19 +1,37 @@
 using System;
 using System.IO;
+using ExpoTheExplorer.Core;
 using UnityEngine;
 
 namespace ExpoTheExplorer.Systems.ProgressionSystem
 {
-    // Load/save boundary for PlayerProfile. Deliberately ignorant of GameState --
+    // Load/save boundary for PlayerProfile. Ignorant of GameState's SHAPE --
     // callers build a PlayerProfile from whatever they want persisted and hand it
-    // in, so this class doesn't need to change when the profile grows. The
-    // file-format behaviour here -- missing, corrupt and unrecognised-version
-    // files all fall back instead of throwing -- is what this class exists to keep.
+    // in, so Save doesn't change when the profile grows. The file-format behaviour
+    // here -- missing, corrupt and unrecognised-version files all fall back instead
+    // of throwing -- is what this class exists to keep.
+    //
+    // It does read one compile-time constant from Core, GameState.DefaultStartingLives,
+    // because "a file older than v3 means the player had full lives" and "a brand-new
+    // player starts with full lives" are both SCHEMA facts and belong here. The
+    // alternative was a second copy of that number living beside the first, which the
+    // single-authority invariant rules out.
     public class PlayerProfileStore
     {
         // Root CLAUDE.md invariant: "save data carries a version number;
         // unversioned saves are never written". Every Save stamps this.
-        public const int CurrentVersion = 1;
+        //
+        // v1: Version + SoftMoney + Gems (economy-plan.md Adım 4).
+        // v2: + CurrentDayIndex (decisions.md D-012). A v1 file lacks it and reads
+        //     it as 0, which is precisely "start at the first Day", so v2 needed no
+        //     upgrade branch -- the version RANGE check below is what carries that
+        //     file forward intact instead of discarding a real player's wallet.
+        // v3: + Lives (decisions.md D-014). The FIRST field where 0 is not a safe
+        //     default: an older file lacks Lives, would read 0, and 0 lives is a dead
+        //     player rather than a fresh one. So this one gets a real upgrade in
+        //     UpgradeToCurrent below -- the case the invariant's version number exists
+        //     for.
+        public const int CurrentVersion = 3;
 
         private const string FileName = "player_profile.json";
 
@@ -39,21 +57,55 @@ namespace ExpoTheExplorer.Systems.ProgressionSystem
             if (!File.Exists(filePath))
             {
                 Debug.Log($"No player profile found at {filePath}; using defaults.");
-                return fallback ?? new PlayerProfile();
+                return fallback ?? Defaults();
             }
 
             try
             {
                 var json = File.ReadAllText(filePath);
                 var profile = JsonUtility.FromJson<PlayerProfile>(json);
-                if (profile == null) return fallback ?? new PlayerProfile();
+                if (profile == null) return fallback ?? Defaults();
 
-                return IsVersionReadable(profile.Version) ? profile : fallback ?? new PlayerProfile();
+                if (!IsVersionReadable(profile.Version)) return fallback ?? Defaults();
+
+                UpgradeToCurrent(profile);
+                return profile;
             }
             catch (Exception e)
             {
                 Debug.LogError($"Failed to load player profile at {filePath}: {e.Message}");
-                return fallback ?? new PlayerProfile();
+                return fallback ?? Defaults();
+            }
+        }
+
+        // What a brand-new player gets, and what every fallback path returns when the
+        // caller supplied none. Money and day index are plain zero -- own nothing,
+        // start at the first Day -- but lives must be FULL, because 0 lives is a dead
+        // player and a fresh profile would otherwise be unplayable.
+        private static PlayerProfile Defaults()
+        {
+            return new PlayerProfile { Lives = GameState.DefaultStartingLives };
+        }
+
+        // Brings a readable older file up to the current schema, in place. This is the
+        // explicit per-version upgrade PlayerProfile's comment demands for any field
+        // whose absent-reads-as-0 is not a safe default -- do not replace it with a
+        // field initializer on PlayerProfile: that would work by relying on JsonUtility
+        // leaving absent fields alone, which is implicit, untestable from the file's
+        // point of view, and silently wrong the day someone constructs a profile
+        // another way.
+        //
+        // Only fields ADDED by a version are touched, never the ones the file already
+        // carries -- a v2 file's SoftMoney, Gems and CurrentDayIndex must survive this
+        // untouched, which is exactly what PlayerProfileStoreTests pins down against a
+        // literal v2 payload.
+        private static void UpgradeToCurrent(PlayerProfile profile)
+        {
+            if (profile.Version >= CurrentVersion) return;
+
+            if (profile.Version < 3)
+            {
+                profile.Lives = GameState.DefaultStartingLives;
             }
         }
 

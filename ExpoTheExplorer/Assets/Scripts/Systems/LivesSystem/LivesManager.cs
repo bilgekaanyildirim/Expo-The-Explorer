@@ -1,3 +1,4 @@
+using System;
 using ExpoTheExplorer.Core;
 using ExpoTheExplorer.Data;
 using ExpoTheExplorer.Systems.ProgressionSystem;
@@ -76,10 +77,28 @@ namespace ExpoTheExplorer.Systems.LivesSystem
             return true;
         }
 
-        // Free day-reset primitive (GameManager.RetryDay) -- refills Lives the
-        // same way a paid Continue does, just with no affordability check
-        // since abandoning the day and starting over doesn't cost anything.
+        // Free day-reset primitive (GameManager.RetryDay, and the abandon-for-the-
+        // main-screen path) -- refills Lives the same way a paid Continue does, just
+        // with no affordability check since abandoning the day and starting over
+        // doesn't cost anything.
         public void RetryDay() => RefillLivesAndResume();
+
+        // Seeds Lives from a loaded PlayerProfile (decisions.md D-014). Lives are
+        // persisted now, and they come through HERE rather than GameManager assigning
+        // State.Lives itself for one reason: this class is the single writer of Lives.
+        // Nothing in the compiler stops GameManager doing it -- GameState.Lives has a
+        // public setter, unlike the balances -- so this is a deliberate choice, and it
+        // mirrors Wallet.ApplyPersistedBalances so both loads read the same way.
+        //
+        // Clamped to 1..MaxLives rather than trusted. A saved 0 would be a player
+        // dead on arrival with no way to act, and a value above MaxLives would show a
+        // life bar fuller than the game admits exists; PlayerProfileStore already
+        // upgrades pre-v3 files to full lives, so anything out of range here is a
+        // hand-edited or corrupt file, not a version we know.
+        public void ApplyPersistedLives(int lives)
+        {
+            state.Lives = Math.Clamp(lives, 1, state.MaxLives);
+        }
 
         // Refills Lives back to MaxLives -- MaxLives already holds whatever
         // life count the day began with (GameState.DefaultStartingLives, and

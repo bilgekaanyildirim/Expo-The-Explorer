@@ -101,11 +101,25 @@ namespace ExpoTheExplorer.Bootstrap
 
             ticketFactory = new TicketFactory(ticketGenerationConfig);
             LivesManager = new LivesManager(State, livesConfig, wallet);
+
+            // Lives persist too since D-014, and like the balances they are applied
+            // through their own single writer rather than assigned here. Has to follow
+            // the LivesManager construction above and precede anything that can cost a
+            // life, which the first ticket fill at the end of this method can.
+            LivesManager.ApplyPersistedLives(profile.Lives);
             DayLifecycleManager = new DayLifecycleManager(State);
             TicketSlotManager = new TicketSlotManager(State, CreateNextTicket, HandleLifeLoss);
             TrayManager = new TrayManager(State, slotIndex => TicketSlotManager.DeliverTicket(slotIndex), HandleLifeLoss);
             economyCalculator = new EconomyCalculator(economyConfig);
             dayCatalog = DayCatalogParser.ParseAll(new DayJsonSource().LoadAll(), foodCatalog);
+
+            // Which Day to open comes from the profile now that the main screen
+            // exists (D-012), so it has to be applied AFTER the catalog is parsed
+            // (the clamp needs its Count) and BEFORE the provider/distributor are
+            // built off CurrentDay. A v1 save has no such field and reads 0, which
+            // is exactly the old behaviour: start at the first Day.
+            State.CurrentDayIndex = ResolveStartingDayIndex(profile.CurrentDayIndex);
+
             RefreshDayTicketSequenceProvider();
 
             // Subscribe before the initial fill so the first 3 tickets trigger
@@ -224,7 +238,77 @@ namespace ExpoTheExplorer.Bootstrap
             {
                 SoftMoney = State.SoftMoney,
                 Gems = State.Gems,
+                CurrentDayIndex = State.CurrentDayIndex,
+                Lives = State.Lives,
             });
+        }
+
+        // A persisted index is a claim about a catalog that may have changed since
+        // it was written -- a Day can be deleted, or the file can come from a build
+        // with more content -- so it is clamped rather than trusted. Landing on the
+        // last authored Day is the safe failure: the alternative is CurrentDay
+        // resolving to null and CreateNextTicket throwing on the first slot fill.
+        private int ResolveStartingDayIndex(int persistedIndex)
+        {
+            if (dayCatalog == null || dayCatalog.Count == 0) return 0;
+            if (persistedIndex <= 0) return 0;
+
+            return Math.Min(persistedIndex, dayCatalog.Count - 1);
+        }
+
+        // Day Complete popup's "Go Back". The day is finished, so what the main
+        // screen should offer next is the NEXT Day -- that index is persisted here
+        // and the scene is then dropped.
+        //
+        // Deliberately NOT AdvanceToNextDay: that method also clears the board,
+        // discards trays and refills slots, which would (a) be thrown away
+        // microseconds later as the scene unloads and (b) cascade TicketAssigned
+        // through views that are already tearing down. Only the index needs to
+        // survive; everything else is rebuilt by Awake in the fresh day scene.
+        //
+        // No wallet work: this day already completed, so OnDayCompleted banked its
+        // earnings, and the next day's baseline is re-taken by ApplyPersistedBalances
+        // when the day scene next loads.
+        public void ReturnToMainScreenFromCompletedDay()
+        {
+            var nextIndex = State.CurrentDayIndex + 1;
+            if (dayCatalog != null && nextIndex < dayCatalog.Count)
+            {
+                State.CurrentDayIndex = nextIndex;
+            }
+
+            SaveProfile();
+            SceneFlow.LoadMainScreen();
+        }
+
+        // Game Over popup's "Main Menu": the player walks out of an attempt they
+        // failed. Settled exactly the way the free Retry settles it --
+        // RevertToDayStart, so the attempt's earnings are taken back and its
+        // spending is not -- and the day index is deliberately left alone, so the
+        // main screen still offers this same Day.
+        //
+        // Unlike a retry this REACHES DISK, which is the one place D-012 changes an
+        // older rule ("a failed day never writes"). It has to: there is no later
+        // DayCompleted to correct the figure, and without the write a Continue
+        // bought with Gems during an attempt the player then abandons would be
+        // silently refunded by walking out -- making paid Continues free for anyone
+        // who ends up leaving. The write can only ever record money already spent,
+        // never money earned, so it cannot bank a failed day's income.
+        public void ReturnToMainScreenAbandoningDay()
+        {
+            wallet.RevertToDayStart();
+
+            // Refills lives BEFORE the save, and this line is load-bearing since
+            // D-014 made lives persistent. This path is only reachable from the Game
+            // Over popup, i.e. with Lives at 0 -- persisting that would hand the
+            // player a save file they cannot play out of: 0 lives on launch, dead
+            // before the first ticket, forever. Abandoning an attempt resets it the
+            // same way the free Retry does, so the next attempt starts full either
+            // way; the only difference is where the player goes next.
+            LivesManager.RetryDay();
+
+            SaveProfile();
+            SceneFlow.LoadMainScreen();
         }
 
         // Free alternative to the paid Continue flow (GameOverPopupView) --
@@ -264,12 +348,6 @@ namespace ExpoTheExplorer.Bootstrap
         {
             wallet.RevertToDayStart();
 
-            // Writes the reverted balance back to disk, unlike the failed-day
-            // retry path: this day already COMPLETED, so OnDayCompleted has
-            // already banked the higher figure and the file would keep paying it
-            // out on the next launch if we left it alone.
-            SaveProfile();
-
             RefreshDayTicketSequenceProvider();
 
             State.Board.Clear();
@@ -278,6 +356,17 @@ namespace ExpoTheExplorer.Bootstrap
             TicketSlotManager.ResetSlotsForNewDay();
             LivesManager.RetryDay();
             DayLifecycleManager.ResetForNewDay();
+
+            // Writes the reverted balance back to disk, unlike the failed-day
+            // retry path: this day already COMPLETED, so OnDayCompleted has
+            // already banked the higher figure and the file would keep paying it
+            // out on the next launch if we left it alone.
+            //
+            // Deliberately LAST since D-014, where it used to be first: lives are
+            // persisted now, and RetryDay above refills them, so saving before that
+            // line would write the pre-refill count and hand the player back a
+            // half-empty life bar if they quit mid-redo.
+            SaveProfile();
         }
 
         // Free-win path: the day's goal was hit (GameManager.OnDayCompleted
@@ -290,11 +379,21 @@ namespace ExpoTheExplorer.Bootstrap
             var nextIndex = State.CurrentDayIndex + 1;
             if (dayCatalog == null || nextIndex >= dayCatalog.Count)
             {
-                return false; // last authored Day -- PR-9 decides what the UI shows
+                // Last authored Day. The caller decides what to show --
+                // DayCompletePopupView sends the player to the main screen rather
+                // than leaving them on a finished day with the popup gone.
+                return false;
             }
 
             State.CurrentDayIndex = nextIndex;
             wallet.CaptureDayStart();
+
+            // Persists the new index, not new money: OnDayCompleted already banked
+            // this balance and nothing has changed it since. Without this write,
+            // quitting during the day the player just advanced INTO would relaunch
+            // them onto the day they had already beaten.
+            SaveProfile();
+
             RefreshDayTicketSequenceProvider();
 
             State.Board.Clear();

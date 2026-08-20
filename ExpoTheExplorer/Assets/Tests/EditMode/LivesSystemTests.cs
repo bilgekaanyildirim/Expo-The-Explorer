@@ -35,6 +35,47 @@ namespace ExpoTheExplorer.Tests.EditMode
             serialized.ApplyModifiedPropertiesWithoutUndo();
         }
 
+        // ApplyPersistedLives (decisions.md D-014). Lives are saved now, and they come
+        // back through LivesManager because it is their single writer -- these cases
+        // pin the CLAMP, which is what stands between a corrupt or hand-edited file and
+        // a player who cannot act.
+        [Test]
+        public void ApplyPersistedLives_WithinRange_RestoresTheSavedCount()
+        {
+            var state = new GameState(gameConfig);
+            var manager = new LivesManager(state, livesConfig, new Wallet(state));
+
+            manager.ApplyPersistedLives(1);
+
+            Assert.AreEqual(1, state.Lives);
+        }
+
+        // A saved 0 is a player dead on arrival with no way to act, so it is refused
+        // rather than restored. PlayerProfileStore already upgrades pre-v3 files to full
+        // lives, so a 0 arriving here means a corrupt or hand-edited file.
+        [Test]
+        public void ApplyPersistedLives_Zero_ClampsToOne()
+        {
+            var state = new GameState(gameConfig);
+            var manager = new LivesManager(state, livesConfig, new Wallet(state));
+
+            manager.ApplyPersistedLives(0);
+
+            Assert.AreEqual(1, state.Lives);
+        }
+
+        // Above MaxLives would draw a life bar fuller than the game admits exists.
+        [Test]
+        public void ApplyPersistedLives_AboveMaxLives_ClampsToMaxLives()
+        {
+            var state = new GameState(gameConfig);
+            var manager = new LivesManager(state, livesConfig, new Wallet(state));
+
+            manager.ApplyPersistedLives(state.MaxLives + 5);
+
+            Assert.AreEqual(state.MaxLives, state.Lives);
+        }
+
         [Test]
         public void LoseLife_DecrementsLives()
         {

@@ -38,7 +38,20 @@
     colour on screen cannot drift from the tip paid. The three rates live
     beside them. `TicketCardVisualsConfig.timerSegmentSeconds` is NOT an
     economy authority: it spaces cosmetic tick marks only.
-  - everything else (SoftMoney/Gems, lives, board grid state, tray contents)
+  - which Day the player is on → **`player_profile.json`**
+    (`PlayerProfile.CurrentDayIndex`, added 2026-08-19 by decisions.md D-012). It is
+    a POSITION in the resolved Day catalog, not a Day file's own `dayIndex` (that
+    only decides sort order). Runtime mirror: `GameState.CurrentDayIndex`, whose
+    single writer stays `GameManager` (day advance, the loaded-and-clamped value in
+    `Awake`, and the completed-day exit to the main screen). Readers:
+    `GameManager.CurrentDay` and `MainScreenView` (display only, from the file).
+  - lives → runtime `GameState.Lives`, persisted in **`player_profile.json`**
+    (`PlayerProfile.Lives`, added 2026-08-19 by decisions.md D-014). Single writer:
+    `LivesManager` — life loss, both paid Continues, the free retry/abandon refill,
+    and the load itself via `ApplyPersistedLives` (clamped 1..MaxLives). `MaxLives`
+    is not persisted: nothing varies it. Readers: `GameOverPopupView`,
+    `DayLifecycleManager.StarCount`, and `LivesView` through `HudWalletSource`.
+  - everything else (SoftMoney/Gems, board grid state, tray contents)
     → OPEN. `.claude/economy-plan.md` step 1 is where the Wallet
     single-writer question is being settled. (Xp/Level dropped off this list
     with the XP system's removal, decisions.md D-009.)
@@ -47,22 +60,44 @@
   (`GameState.TicketSlotCount`), board grid 6x5 = 30 cells as a starting point
   (parametric, per ExpoTheExplorer/CLAUDE.md Section 4), upcoming-ticket
   lookahead default 10.
-- **Persistence:** the **wallet, and only the wallet** (SoftMoney + Gems), in
+- **Persistence:** the **wallet** (SoftMoney + Gems), **the day index** and **lives**, in
   `player_profile.json` under `Application.persistentDataPath`
-  (`.claude/economy-plan.md` Adım 4, 2026-08-18). Authority for the starting
-  balances is that file, not `GameState`'s constructor, which now only supplies
-  the 0/0 a brand-new player gets. Write path: `GameState.DayCompleted` →
-  `GameManager.SaveProfile`, plus `RetryCompletedDay` (which must correct a figure
-  already banked). A failed day never writes — by contract, its earnings were
-  never permanent. Read path: `GameManager.Awake` → `PlayerProfileStore.Load` →
-  `Wallet.ApplyPersistedBalances` (the wallet is the single writer, so even
-  loading goes through it).
-  Schema: `PlayerProfileStore.CurrentVersion = 1`, stamped on every Save. `Load`
+  (`.claude/economy-plan.md` Adım 4, 2026-08-18; `CurrentDayIndex` added by
+  decisions.md D-012 and `Lives` by D-014, both 2026-08-19; D-012 closes
+  DaySystem_Roadmap Q4). Authority for
+  the starting balances is that file, not `GameState`'s constructor, which now only
+  supplies the 0/0 a brand-new player gets. With two scenes and no persistent one,
+  this file is also **the hand-off between them**: the main screen reads it directly
+  because there is no `GameState` in that scene.
+  Write path — four places, all in `GameManager`: `GameState.DayCompleted` →
+  `SaveProfile`; `RetryCompletedDay` (corrects a figure already banked);
+  `AdvanceToNextDay` (the new index, so quitting mid-day cannot relaunch onto an
+  already-beaten day); and `ReturnToMainScreenAbandoningDay`, which writes the
+  REVERTED wallet. That last one is the one place a **failed** attempt reaches disk,
+  and it narrows the older "a failed day never writes" rule rather than dropping it:
+  it can only ever record money already SPENT (revert takes the earnings back), and
+  it exists because walking out of an attempt would otherwise refund a Gem-paid
+  Continue. Read path: `GameManager.Awake` → `PlayerProfileStore.Load` →
+  `Wallet.ApplyPersistedBalances` for the balances (the wallet is their single
+  writer, so even loading goes through it) and `ResolveStartingDayIndex` for the
+  index, which CLAMPS it against the parsed Day catalog — an index past the last
+  authored Day would otherwise resolve `CurrentDay` to null and throw on the first
+  ticket. Second reader, never a second writer: `MainScreenView.Start`.
+  Schema: `PlayerProfileStore.CurrentVersion = 3`, stamped on every Save. `Load`
   accepts versions 1..CurrentVersion and refuses 0 (unversioned, meaning unknown)
-  or anything newer — so a future field addition reads an existing v1 wallet
-  instead of deleting it. **Still NOT persisted:** `CurrentDayIndex`
-  (DaySystem_Roadmap Q4) — a gameplay decision, and cheap to add later precisely
-  because the version field exists and a missing field reads as 0 = Day 0.
+  or anything newer. v2 shipped with no migration code — a v1 file simply lacks
+  `CurrentDayIndex` and reads it as 0 = Day 0, where a v1 player always started.
+  **v3 is the first version that needed a real one**: an older file lacks `Lives`,
+  would read 0, and 0 lives is a dead player rather than a fresh one, so
+  `UpgradeToCurrent` fills it from `GameState.DefaultStartingLives` and touches
+  nothing the file already carried. `Defaults()` is its sibling for a player with no
+  file at all: zero money, FULL lives. `MaxLives` is deliberately NOT persisted —
+  nothing varies it. **Lives are written by two ordering-sensitive paths**:
+  abandoning a failed day refills BEFORE saving (it is only reachable at 0 lives, so
+  saving first writes an unplayable file), and `RetryCompletedDay` saves LAST for the
+  same reason.
+  Runtime authority for all four values stays `GameState`; a ScriptableObject home
+  was designed and rejected as too costly for the gain (decisions.md D-014).
 - **Network model:** none
 - **Performance budget:** OPEN <per target platform: target frame rate → ms/frame,
   memory ceiling, load-time ceiling — the cost model's "frame budget" and the

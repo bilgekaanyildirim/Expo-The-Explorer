@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using ExpoTheExplorer.Core;
 using ExpoTheExplorer.Systems.ProgressionSystem;
 using NUnit.Framework;
 using UnityEngine;
@@ -13,7 +14,12 @@ namespace ExpoTheExplorer.Tests.EditMode
     // instance comes back rather than a silently substituted default. The version
     // cases came with Adım 4, when the profile started carrying a real wallet, and
     // they pin down which files are readable: versioned ones from 1 up to this
-    // build, and nothing else.
+    // build, and nothing else. v2 (decisions.md D-012) added CurrentDayIndex, which
+    // turned the "older but versioned schema" case from a hypothetical into the
+    // actual migration path a v1 player takes. v3 (decisions.md D-014) added Lives and
+    // brought the first REAL upgrade with it -- absent-reads-as-0 is not survivable for
+    // that field -- so the v2-payload case below is the one that guards a shipped save
+    // file against losing its money to a schema change.
     public class PlayerProfileStoreTests
     {
         private string testFilePath;
@@ -158,6 +164,20 @@ namespace ExpoTheExplorer.Tests.EditMode
             Assert.AreEqual(7, reloaded.Gems);
         }
 
+        // The v2 field (decisions.md D-012). It is what makes the main screen's
+        // "Play" open the day the player left off on rather than always Day 0, so a
+        // silent round-trip failure here would look like progress being lost.
+        [Test]
+        public void SaveThenLoad_PreservesTheCurrentDayIndex()
+        {
+            var store = new PlayerProfileStore(testFilePath);
+            store.Save(new PlayerProfile { SoftMoney = 10, Gems = 1, CurrentDayIndex = 4 });
+
+            var reloaded = new PlayerProfileStore(testFilePath).Load();
+
+            Assert.AreEqual(4, reloaded.CurrentDayIndex);
+        }
+
         // The whole reason the invariant demands a version field: without one,
         // "an old file whose numbers mean something else" and "a player who
         // genuinely has 0" are the same bytes. An unversioned file is refused
@@ -189,9 +209,13 @@ namespace ExpoTheExplorer.Tests.EditMode
             Assert.AreEqual(0, profile.SoftMoney);
         }
 
-        // The reason Load accepts a RANGE rather than only CurrentVersion: the day
-        // a v2 field is added, this exact case is a real player's saved wallet, and
-        // refusing it would delete their money.
+        // The reason Load accepts a RANGE rather than only CurrentVersion, and no
+        // longer a hypothetical: v2 added CurrentDayIndex (decisions.md D-012), so
+        // the file below is exactly what a player who has been playing since v1 has
+        // on disk. Refusing it would delete their money. The missing field reading
+        // as 0 is also the whole migration -- 0 means "the first Day", which is
+        // precisely where a v1 player was always sent on launch, so there is
+        // nothing to upgrade.
         [Test]
         public void Load_WhenFileIsAnOlderButVersionedSchema_StillReadsTheFieldsItHas()
         {
@@ -202,6 +226,54 @@ namespace ExpoTheExplorer.Tests.EditMode
 
             Assert.AreEqual(500, profile.SoftMoney);
             Assert.AreEqual(9, profile.Gems);
+            Assert.AreEqual(0, profile.CurrentDayIndex, "a v1 file has no day index; it must read as Day 0");
+        }
+
+        // The v2 -> v3 migration, written against a LITERAL v2 payload rather than a
+        // round-tripped object, because the thing under test is what an already-shipped
+        // file means. This is the shape of a real save that existed on disk when v3
+        // landed, day index and all: everything it already carried must survive
+        // untouched, and only the field v3 ADDED may be filled in.
+        [Test]
+        public void Load_WhenFileIsV2_KeepsItsFieldsAndFillsLivesWithTheStartingCount()
+        {
+            File.WriteAllText(testFilePath, "{\"Version\":2,\"SoftMoney\":319,\"Gems\":4,\"CurrentDayIndex\":1}");
+            var store = new PlayerProfileStore(testFilePath);
+
+            var profile = store.Load();
+
+            Assert.AreEqual(319, profile.SoftMoney, "a v2 file's money must survive the upgrade untouched");
+            Assert.AreEqual(4, profile.Gems);
+            Assert.AreEqual(1, profile.CurrentDayIndex);
+            Assert.AreEqual(GameState.DefaultStartingLives, profile.Lives,
+                "0 lives would be a player dead on arrival, so the upgrade must fill this in");
+        }
+
+        // The opposite guard: a genuine v3 file's Lives is data, not something to
+        // overwrite. Without this, an upgrade that ran unconditionally would silently
+        // refill every player's lives on every launch.
+        [Test]
+        public void Load_WhenFileIsCurrentVersion_DoesNotOverwriteLives()
+        {
+            var store = new PlayerProfileStore(testFilePath);
+            store.Save(new PlayerProfile { SoftMoney = 10, Gems = 1, CurrentDayIndex = 2, Lives = 1 });
+
+            var reloaded = new PlayerProfileStore(testFilePath).Load();
+
+            Assert.AreEqual(1, reloaded.Lives);
+        }
+
+        // A brand-new player has no file at all, and 0 lives would make that profile
+        // unplayable -- so the no-file default is full lives, unlike money and day
+        // index which are legitimately zero.
+        [Test]
+        public void Load_WhenFileDoesNotExist_DefaultsToFullLivesButNoMoney()
+        {
+            var profile = new PlayerProfileStore(testFilePath).Load();
+
+            Assert.AreEqual(GameState.DefaultStartingLives, profile.Lives);
+            Assert.AreEqual(0, profile.SoftMoney);
+            Assert.AreEqual(0, profile.CurrentDayIndex);
         }
 
         [Test]

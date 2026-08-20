@@ -137,12 +137,13 @@ namespace ExpoTheExplorer.Core
 
         // Which authored Day (position in GameManager's resolved Day catalog,
         // not the JSON dayIndex used only for sort order) the player is
-        // currently on. Defaults to 0 and does NOT persist: the wallet is the
-        // only thing saved between sessions (economy-plan.md Adım 4), so every
-        // launch starts at the first Day. Whether it should resume where the
-        // player left off is still an open design question (DaySystem_Roadmap Q4);
-        // the profile schema is versioned, so adding the field later reads as 0 on
-        // existing saves -- which is exactly "start at Day 0".
+        // currently on. PERSISTED since decisions.md D-012, which closed the open
+        // question this comment used to point at (DaySystem_Roadmap Q4): the main
+        // screen's Play has to open the Day the player left off on, so the value
+        // rides in the profile alongside the wallet and a launch no longer always
+        // starts at Day 0. GameManager is its single writer -- day advance, the
+        // loaded-and-CLAMPED value in Awake (a save can outlive the Day it points
+        // at), and the completed-day exit to the main screen.
         public int CurrentDayIndex
         {
             get => currentDayIndex;

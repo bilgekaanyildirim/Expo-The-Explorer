@@ -1,40 +1,43 @@
 using System.Collections.Generic;
-using ExpoTheExplorer.Bootstrap;
-using ExpoTheExplorer.Core;
 using TMPro;
 using UnityEngine;
 
 namespace ExpoTheExplorer.UI
 {
-    // Top HUD readout for GameState.SoftMoney (GDD Section 10 — earned per
-    // delivery). Reactive, not polled: binds to GameState.SoftMoneyChanged
-    // (fired by the property setter on every actual change, e.g.
-    // GameManager's tip payout) instead of re-stringifying every frame.
+    // Top HUD readout for SoftMoney (GDD Section 10 — earned per delivery).
+    // Reactive where there is something to react to: in the day scene it binds to
+    // GameState.SoftMoneyChanged (fired by the property setter on every actual
+    // change, e.g. GameManager's payout) instead of re-stringifying every frame.
+    //
+    // Since D-013 the HUD Canvas is one prefab shared by both scenes, so this view
+    // no longer holds a GameManager of its own: HudWalletSource decides where the
+    // number comes from (live GameState, or the save file on the main screen).
+    //
+    // Since D-014 it does not know that TWO modes exist either -- it subscribes to the
+    // source's forwarded event and renders. On the main screen that event never fires,
+    // which is correct rather than a gap: nothing there can change a balance. One
+    // subscription, one render, no branch.
     public class SoftMoneyView : MonoBehaviour
     {
-        [SerializeField] private GameManager gameManager;
+        [SerializeField] private HudWalletSource walletSource;
         [SerializeField] private TMP_Text softMoneyText;
 
-        private GameState state;
-
-        // Subscribes from Start(), not Awake() -- Unity's Awake() order across
-        // different GameObjects is unspecified, and GameManager.Awake (which
-        // sets State) may not have run yet, throwing a NullReferenceException
-        // on gameManager.State. Start() is always safe: Unity runs every
-        // object's Awake() before any object's Start() in a given frame (same
-        // reason BoardView only ever touches gameManager.State from Start).
+        // Start(), not Awake() — Unity's Awake() order across different GameObjects
+        // is unspecified, and GameManager.Awake (which sets State) may not have run
+        // yet. Start() is always safe: every object's Awake() runs before any
+        // object's Start(). HudWalletSource resolves lazily for exactly this reason,
+        // so asking it anything from here is what keeps that guarantee.
         private void Start()
         {
             if (!ValidateReferences()) return;
 
-            state = gameManager.State;
-            state.SoftMoneyChanged.Subscribe(Refresh);
-            Refresh(state.SoftMoney);
+            walletSource.SoftMoneyChanged.Subscribe(Refresh);
+            Refresh(walletSource.SoftMoney);
         }
 
         private void OnDestroy()
         {
-            state?.SoftMoneyChanged.Unsubscribe(Refresh);
+            if (walletSource != null) walletSource.SoftMoneyChanged.Unsubscribe(Refresh);
         }
 
         private void Refresh(int softMoney)
@@ -42,13 +45,13 @@ namespace ExpoTheExplorer.UI
             softMoneyText.text = softMoney.ToString();
         }
 
-        // Every field here is wired by hand in the Editor — a missing one
-        // should fail loudly with a clear pointer to which field, not a bare
-        // NullReferenceException.
+        // Both fields are wired inside the PREFAB (walletSource points at the canvas
+        // root beside it), so they are prefab data and need no per-scene override —
+        // a missing one should still fail loudly with a clear pointer to which field.
         private bool ValidateReferences()
         {
             var missing = new List<string>();
-            if (gameManager == null) missing.Add(nameof(gameManager));
+            if (walletSource == null) missing.Add(nameof(walletSource));
             if (softMoneyText == null) missing.Add(nameof(softMoneyText));
 
             if (missing.Count == 0) return true;

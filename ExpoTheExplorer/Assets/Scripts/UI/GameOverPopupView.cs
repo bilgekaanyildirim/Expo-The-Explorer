@@ -9,9 +9,11 @@ namespace ExpoTheExplorer.UI
 {
     // Shown once GameState.Lives hits 0 (GDD Section 6 -- Lives System /
     // "continue" mechanic). Offers two paid continues (SoftMoney or Gems,
-    // both via LivesManager) plus a Main Menu button that has nowhere to go
-    // yet (single-scene project) and stays non-interactable until a Main
-    // Menu scene exists. The popup's visuals (background, title, icons,
+    // both via LivesManager), a free Retry of the attempt, and a Main Menu
+    // button that abandons it for the main screen -- which settles the attempt
+    // on the way out (earnings taken back, spending kept) rather than just
+    // navigating, see GameManager.ReturnToMainScreenAbandoningDay and
+    // decisions.md D-012. The popup's visuals (background, title, icons,
     // button art) are hand-built under Canvas in the Editor -- this script
     // never instantiates UI, it only toggles popupRoot and wires the three
     // buttons already sitting there.
@@ -43,9 +45,7 @@ namespace ExpoTheExplorer.UI
             softMoneyButton.onClick.AddListener(OnSoftMoneyClicked);
             gemButton.onClick.AddListener(OnGemClicked);
             retryButton.onClick.AddListener(OnRetryClicked);
-
-            // TODO: wire once a Main Menu scene exists.
-            mainMenuButton.interactable = false;
+            mainMenuButton.onClick.AddListener(OnMainMenuClicked);
         }
 
         private void OnDestroy()
@@ -55,6 +55,7 @@ namespace ExpoTheExplorer.UI
             softMoneyButton.onClick.RemoveListener(OnSoftMoneyClicked);
             gemButton.onClick.RemoveListener(OnGemClicked);
             retryButton.onClick.RemoveListener(OnRetryClicked);
+            mainMenuButton.onClick.RemoveListener(OnMainMenuClicked);
         }
 
         private void Show(int _)
@@ -87,6 +88,15 @@ namespace ExpoTheExplorer.UI
         {
             gameManager.RetryDay();
             Hide();
+        }
+
+        // Abandons the attempt instead of replaying it. No Hide() -- the scene
+        // load takes this popup with it -- and no wallet handling here: leaving a
+        // failed attempt has money rules (earnings reverted, spending kept, then
+        // written), and those belong with the Wallet's owner, not in a view.
+        private void OnMainMenuClicked()
+        {
+            gameManager.ReturnToMainScreenAbandoningDay();
         }
 
         // Every field here is wired by hand in the Editor -- a missing one

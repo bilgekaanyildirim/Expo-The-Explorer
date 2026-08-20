@@ -37,8 +37,11 @@
   <Project Path="Unity.2D.Tooling.Editor.csproj" />
   <Project Path="Unity.VisualScripting.State.csproj" />
   <Project Path="Unity.InternalAPIEditorBridge.001.csproj" />
+  <Project Path="ExpoTheExplorer.Core.csproj" />
+  <Project Path="Assembly-CSharp.csproj" />
   <Project Path="Assembly-CSharp-firstpass.csproj" />
   <Project Path="ExpoTheExplorer.Editor.csproj" />
+  <Project Path="Assembly-CSharp-Editor.csproj" />
   <Project Path="ExpoTheExplorer.Systems.DaySystem.csproj" />
   <Project Path="Unity.InputSystem.ForUI.csproj" />
   <Project Path="ExpoTheExplorer.Systems.TraySystem.csproj" />
@@ -47,9 +50,7 @@
   <Project Path="Unity.2D.Animation.Runtime.csproj" />
   <Project Path="Unity.Mathematics.Editor.csproj" />
   <Project Path="Unity.VisualScripting.SettingsProvider.Editor.csproj" />
-  <Project Path="Assembly-CSharp.csproj" />
   <Project Path="Unity.2D.Common.Runtime.csproj" />
-  <Project Path="ExpoTheExplorer.Core.csproj" />
   <Project Path="Unity.InputSystem.TestFramework.csproj" />
   <Project Path="Unity.VisualScripting.Shared.Editor.csproj" />
   <Project Path="Unity.2D.Aseprite.Common.csproj" />

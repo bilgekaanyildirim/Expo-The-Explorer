@@ -9,14 +9,19 @@ namespace ExpoTheExplorer.UI
 {
     // Shown once GameState.DayCompleted fires (day's ticket goal reached).
     // Breaks the day's earnings down the way the mockup's receipt does:
-    // "Orders delivered" = the day's summed BaseTip (the guaranteed per-item
-    // value), "Tips" = the summed speed/patience multiplier bonus on top of
-    // that, "Total" = both combined, which already equals the SoftMoney the
-    // player gained today. Stars compare Total against the current Day's
-    // authored thresholds. Go Back has nowhere to navigate yet (single-scene
-    // project) and stays non-interactable, mirroring GameOverPopupView's
-    // disabled Main Menu button. Same hand-built-in-Editor, SetActive-toggled
-    // pattern as GameOverPopupView -- this script never instantiates UI.
+    // "Orders delivered" = the day's summed Order Value (the guaranteed food
+    // price of everything delivered), "Tips" = the summed tip on top of that,
+    // "Total" = both combined, which already equals the SoftMoney the player
+    // gained today. Stars are one per life still held and are computed in
+    // DayLifecycleManager.StarCount (decisions.md D-008) -- the per-Day authored
+    // thresholds this class once compared Total against are gone.
+    //
+    // Its three buttons are the whole set of exits from a finished day: Next Day
+    // plays on, Retry redoes this one for a better star count, and Go Back leaves
+    // for the main screen while persisting the NEXT day, so Play there picks up
+    // where this popup left off (decisions.md D-012). Same hand-built-in-Editor,
+    // SetActive-toggled pattern as GameOverPopupView -- this script never
+    // instantiates UI.
     public class DayCompletePopupView : MonoBehaviour
     {
         [SerializeField] private GameManager gameManager;
@@ -47,9 +52,7 @@ namespace ExpoTheExplorer.UI
 
             nextDayButton.onClick.AddListener(OnNextDayClicked);
             retryButton.onClick.AddListener(OnRetryClicked);
-
-            // TODO: wire once a menu/day-select scene exists.
-            goBackButton.interactable = false;
+            goBackButton.onClick.AddListener(OnGoBackClicked);
         }
 
         private void OnDestroy()
@@ -58,6 +61,7 @@ namespace ExpoTheExplorer.UI
 
             nextDayButton.onClick.RemoveListener(OnNextDayClicked);
             retryButton.onClick.RemoveListener(OnRetryClicked);
+            goBackButton.onClick.RemoveListener(OnGoBackClicked);
         }
 
         private void Show(int _)
@@ -86,9 +90,18 @@ namespace ExpoTheExplorer.UI
             popupRoot.SetActive(false);
         }
 
+        // There may be no next Day to advance into. Rather than hiding the popup and
+        // leaving the player sitting on a finished day with no UI at all -- what this
+        // did before a main screen existed -- a failed advance exits to the main
+        // screen, the same place Go Back goes.
         private void OnNextDayClicked()
         {
-            gameManager.AdvanceToNextDay();
+            if (!gameManager.AdvanceToNextDay())
+            {
+                gameManager.ReturnToMainScreenFromCompletedDay();
+                return;
+            }
+
             Hide();
         }
 
@@ -99,6 +112,14 @@ namespace ExpoTheExplorer.UI
         {
             gameManager.RetryCompletedDay();
             Hide();
+        }
+
+        // No Hide() and no teardown of our own: the scene load destroys this whole
+        // scene, popup included. GameManager owns what has to survive it (the next
+        // day's index, written to the profile).
+        private void OnGoBackClicked()
+        {
+            gameManager.ReturnToMainScreenFromCompletedDay();
         }
 
         // Every field here is wired by hand in the Editor -- a missing one
