@@ -11,27 +11,9 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 45e173c1163e49c8bb0a0e2cd90bb3b4, type: 3}
   m_Name: EconomyConfig
-  m_EditorClassIdentifier:
-  baseTipPerItem: 10
-  lightningMultiplier: 2
-  fastMultiplier: 1.5
-  standardMultiplier: 1
-  lightningSecondsPerItem: 3
-  fastSecondsPerItem: 6
-  impatientDecaySteps:
-  - secondsPerItemThreshold: 2
-    decayCoefficient: 0.7
-  - secondsPerItemThreshold: 4
-    decayCoefficient: 0.4
-  - secondsPerItemThreshold: 6
-    decayCoefficient: 0.2
-  normalDecaySteps:
-  - secondsPerItemThreshold: 4
-    decayCoefficient: 0.8
-  - secondsPerItemThreshold: 8
-    decayCoefficient: 0.5
-  patientDecaySteps:
-  - secondsPerItemThreshold: 10
-    decayCoefficient: 0.9
-  - secondsPerItemThreshold: 20
-    decayCoefficient: 0.7
+  m_EditorClassIdentifier: 
+  warningRatio: 0.666
+  criticalRatio: 0.333
+  tipRateFull: 0.2
+  tipRateWarning: 0.1
+  tipRateCritical: 0.05
