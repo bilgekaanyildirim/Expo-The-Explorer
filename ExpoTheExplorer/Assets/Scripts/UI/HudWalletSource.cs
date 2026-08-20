@@ -1,7 +1,9 @@
 using ExpoTheExplorer.Bootstrap;
 using ExpoTheExplorer.Core;
+using ExpoTheExplorer.Session;
 using ExpoTheExplorer.Systems.ProgressionSystem;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace ExpoTheExplorer.UI
 {
@@ -37,10 +39,32 @@ namespace ExpoTheExplorer.UI
         // earlier draft resolved this with FindAnyObjectByType precisely to dodge
         // that, and it was changed to a serialized field on the user's instruction
         // so the binding is visible and theirs to control.
-        [SerializeField] private GameManager gameManager;
+        // FormerlySerializedAs is LOAD-BEARING, not tidiness. This field was named
+        // `gameManager` and SampleScene's prefab instance carries an override under that
+        // name; renaming it without this attribute drops the override, and the symptom is
+        // precisely the quiet failure described above -- the HUD stops following the live
+        // wallet and sits on the save file's numbers for the whole day, with nothing
+        // visibly different on screen. The attribute carries the value across, and the
+        // reference still type-checks because GameManager IS a SessionHost now.
+        //
+        // The type widened from GameManager to SessionHost so the main screen can provide
+        // a session too (decisions.md D-022). That is what makes the menu HUD live rather
+        // than a one-shot read, which a shop spending money requires.
+        [FormerlySerializedAs("gameManager")]
+        [SerializeField] private SessionHost sessionHost;
 
         private PlayerProfile profile;
         private bool resolved;
+
+        // PRIVATE on purpose. A public LiveState existed until D-014 and was removed
+        // precisely so the three views would stop branching on which mode they were in --
+        // reintroducing it as API would undo that. Here it is one null-safe walk down the
+        // chain, so the four value getters and Resolve do not each repeat it.
+        //
+        // Null means "no session in this scene", which is the save-file mode. The double
+        // ?. matters: the host may exist while its Session is still unassigned, since a
+        // host assigns it in its own Awake and Unity does not order Awake across objects.
+        private GameState LiveState => sessionHost?.Session?.State;
 
         // Forwarded change events, so a view never has to know which mode it is in
         // (D-014). In the day scene these re-publish GameState's own events; on the
@@ -60,7 +84,7 @@ namespace ExpoTheExplorer.UI
             get
             {
                 Resolve();
-                return gameManager != null ? gameManager.State.SoftMoney : profile.SoftMoney;
+                return LiveState != null ? LiveState.SoftMoney : profile.SoftMoney;
             }
         }
 
@@ -69,7 +93,7 @@ namespace ExpoTheExplorer.UI
             get
             {
                 Resolve();
-                return gameManager != null ? gameManager.State.Gems : profile.Gems;
+                return LiveState != null ? LiveState.Gems : profile.Gems;
             }
         }
 
@@ -82,7 +106,7 @@ namespace ExpoTheExplorer.UI
             get
             {
                 Resolve();
-                return gameManager != null ? gameManager.State.Lives : profile.Lives;
+                return LiveState != null ? LiveState.Lives : profile.Lives;
             }
         }
 
@@ -94,7 +118,7 @@ namespace ExpoTheExplorer.UI
             get
             {
                 Resolve();
-                return gameManager != null ? gameManager.State.MaxLives : GameState.DefaultStartingLives;
+                return LiveState != null ? LiveState.MaxLives : GameState.DefaultStartingLives;
             }
         }
 
@@ -105,9 +129,7 @@ namespace ExpoTheExplorer.UI
         // expressions here match the ones subscribed above.
         private void OnDestroy()
         {
-            if (gameManager == null) return;
-
-            var state = gameManager.State;
+            var state = LiveState;
             if (state == null) return;
 
             state.SoftMoneyChanged.Unsubscribe(SoftMoneyChanged.Publish);
@@ -126,7 +148,8 @@ namespace ExpoTheExplorer.UI
             if (resolved) return;
             resolved = true;
 
-            if (gameManager == null)
+            var live = LiveState;
+            if (live == null)
             {
                 profile = new PlayerProfileStore().Load();
             }
@@ -134,7 +157,7 @@ namespace ExpoTheExplorer.UI
             {
                 // Forward, don't re-implement: GameState's setters already publish only
                 // on an actual change, so this adds no filtering of its own.
-                var state = gameManager.State;
+                var state = live;
                 state.SoftMoneyChanged.Subscribe(SoftMoneyChanged.Publish);
                 state.GemsChanged.Subscribe(GemsChanged.Publish);
                 state.LivesChanged.Subscribe(LivesChanged.Publish);
@@ -147,9 +170,9 @@ namespace ExpoTheExplorer.UI
             // wallet because an override was lost", which look identical on screen.
             Debug.Log(
                 $"{nameof(HudWalletSource)} on '{name}' in scene '{gameObject.scene.name}': " +
-                (gameManager != null
-                    ? "live GameState (GameManager wired)."
-                    : "save file (no GameManager wired -- expected on the main screen, a lost prefab override anywhere else)."),
+                (LiveState != null
+                    ? $"live GameState (session host: {sessionHost.GetType().Name})."
+                    : "save file (NO session host wired -- since D-022 both scenes should have one, so this now means a lost reference rather than an expected menu)."),
                 this);
         }
     }

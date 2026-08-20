@@ -4,8 +4,11 @@ using UnityEngine;
 namespace ExpoTheExplorer.Editor
 {
     // Shared atlas-aware sprite drawing for hand-rolled IMGUI previews (ticket
-    // cards, board grid) -- a live uGUI prefab/scene renderer can't run inside
-    // an EditorWindow, so these previews draw sprites by hand instead.
+    // cards, board grid, and the Meta Editor's layout canvas) -- a live uGUI
+    // prefab/scene renderer can't run inside an EditorWindow, so these previews
+    // draw sprites by hand instead. The `DayEditor` prefix is now historical:
+    // MetaLocationLayoutGUI uses DrawTexCoords too, and renaming the file would
+    // move a GUID for a cosmetic gain.
     internal static class DayEditorSpriteGUI
     {
         // Centers and fits within rect preserving aspect -- matches how the in-game

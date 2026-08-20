@@ -1,0 +1,20 @@
+{
+    "name": "ExpoTheExplorer.Session",
+    "rootNamespace": "ExpoTheExplorer.Session",
+    "references": [
+        "ExpoTheExplorer.Core",
+        "ExpoTheExplorer.Data",
+        "ExpoTheExplorer.Systems.ProgressionSystem",
+        "ExpoTheExplorer.Systems.LivesSystem",
+        "ExpoTheExplorer.Systems.DaySystem"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

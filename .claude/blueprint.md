@@ -46,30 +46,40 @@
      Both one-directional -- neither system references MainScreen. The day scene's
      exits back to here go through GameManager, which owns what must survive the
      scene: the persisted day index, and settling an abandoned attempt. -->
-- MetaSystem — the expo grounds the player decorates between days: a per-location catalog of props (bought with SoftMoney, or unlocked by what the Day content has served), which of them the player owns, and the purchase rules — depends on: ProgressionSystem, DaySystem
+- MetaSystem — the expo grounds the player decorates between days: a per-location catalog of props (bought with SoftMoney, or appearing at an authored Day), which of them the player owns, and the purchase rules — depends on: -
 <!-- MetaSystem, added 2026-08-20 (decisions.md D-015): the meta CONTENT the main
      screen was deliberately left empty for ("build the design first, then hang it
-     here", ExpoTheExplorer/CLAUDE.md). -> ProgressionSystem because a purchase spends
-     through `Wallet` and the owned-item list lives in the profile; that arrow is what
-     keeps the wallet's single writer intact instead of letting a shop assign a
-     balance. -> DaySystem because a prop can be unlocked by Day CONTENT rather than by
-     money (the drinks fridge appears once drinks are on the menu), so the resolver
-     reads the parsed Day catalog. Both one-directional -- neither system references
-     MetaSystem, and the arrow to DaySystem introduces no cycle (DaySystem ->
-     TicketSystem -> EconomySystem).
+     here", ExpoTheExplorer/CLAUDE.md).
+
+     It depends on NOTHING. D-015 planned a -> ProgressionSystem arrow, on the grounds
+     that a purchase spends through `Wallet`; writing the rules (D-019) showed that was
+     unnecessary. `MetaResolver` and `MetaPurchase` take the owned-key set and the balance
+     as PARAMETERS, so the money and the owned-item list keep the single writers they
+     already have in ProgressionSystem, and the screen's composition root joins the two --
+     the same shape GameManager uses to join systems. The assembly references
+     `ExpoTheExplorer.Data` and no system at all, which is what makes every rule reachable
+     from a test with no MonoBehaviour and no scene.
+
+     There is deliberately NO arrow to DaySystem. D-015 had one, because a prop's
+     unlock was DERIVED from Day content (the drinks fridge appeared once drinks were
+     on the menu), which meant the resolver had to read the parsed Day catalog. D-017
+     replaced that with a single authored day index, so MetaSystem needs the player's
+     current Day and nothing else -- the whole content-scanning path, and this
+     dependency with it, is gone.
 
      It does NOT own a scene: MainScreen -> MetaSystem, because the expo grounds are
      rendered by the main screen rather than by a third scene -- D-012's two-scene
-     shape is untouched. And it does NOT depend on Bootstrap: the shared session state
-     it needs (GameState, Wallet, the Day catalog, the day index) is handed to it by
-     the screen's composition root, so this system never reaches into game flow.
+     shape is untouched. And it reaches into game flow nowhere: the two facts it needs --
+     the player's day index and their owned-item keys -- are handed to it as arguments by
+     the screen's composition root. Since D-017 the Day catalog is not among them, and
+     since D-019 neither is `Wallet`.
 
      Deliberately NOT an authority on the wallet, the day index or lives -- it reads
      all three and writes only the owned-item list, through the same profile writer
      GameManager uses. Two things it deliberately does NOT persist: whether a
-     content-unlocked prop is open, and whether a location is unlocked. Both are
-     DERIVED from the Day catalog plus CurrentDayIndex, because saving them would
-     create a second authority that starts lying the moment Day content is re-authored. -->
+     Day-unlocked prop is open, and whether a location is unlocked. Both are DERIVED by
+     comparing CurrentDayIndex against an authored index, so there is no second copy to
+     fall out of step with the catalog. -->
 
 ## Scene inventory
 
@@ -120,7 +130,15 @@
 ```
 Assets/
   Scripts/Core/        ← .cs: game flow, save, shared services (codemap: core)
-  Scripts/Bootstrap/   ← .cs: the composition root (GameManager) (codemap: core)
+  Scripts/Bootstrap/   ← .cs: the day scene's composition root (GameManager). NO asmdef
+                           on purpose: it lands in Assembly-CSharp, which every
+                           hand-wired view in the scene also lives in
+  Scripts/Session/     ← .cs: GameSession — the half of a session that belongs to the
+                           PLAYER rather than to a day, shared by both screens
+                           (decisions.md D-021). Its own asmdef, so it is testable; it
+                           cannot live in Scripts/Core/ because it needs
+                           ProgressionSystem, LivesSystem and DaySystem, all of which
+                           already reference Core — that would be a cycle
   Scripts/Systems/<System>/ ← .cs: one folder per system in the list above, each
                            with its own asmdef so it is EditMode-testable
                            (codemap: core — shards.json has no Systems pattern,

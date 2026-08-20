@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using ExpoTheExplorer.Core;
 using UnityEngine;
@@ -31,7 +32,11 @@ namespace ExpoTheExplorer.Systems.ProgressionSystem
         //     player rather than a fresh one. So this one gets a real upgrade in
         //     UpgradeToCurrent below -- the case the invariant's version number exists
         //     for.
-        public const int CurrentVersion = 3;
+        // v4: + OwnedMetaItemIds (decisions.md D-020). Back to a SAFE default: nothing
+        //     owned is exactly what an older save means. So unlike v3 this needs no
+        //     semantic migration -- only a null guard, because the safe default is an
+        //     empty list rather than a zero and a reference type can arrive as null.
+        public const int CurrentVersion = 4;
 
         private const string FileName = "player_profile.json";
 
@@ -54,27 +59,30 @@ namespace ExpoTheExplorer.Systems.ProgressionSystem
 
         public PlayerProfile Load(PlayerProfile fallback = null)
         {
+            // Normalize wraps EVERY return, including the fallback paths: a caller-supplied
+            // fallback is an ordinary object someone else built, so its list can be null
+            // just as easily as a deserialized one's.
             if (!File.Exists(filePath))
             {
                 Debug.Log($"No player profile found at {filePath}; using defaults.");
-                return fallback ?? Defaults();
+                return Normalize(fallback ?? Defaults());
             }
 
             try
             {
                 var json = File.ReadAllText(filePath);
                 var profile = JsonUtility.FromJson<PlayerProfile>(json);
-                if (profile == null) return fallback ?? Defaults();
+                if (profile == null) return Normalize(fallback ?? Defaults());
 
-                if (!IsVersionReadable(profile.Version)) return fallback ?? Defaults();
+                if (!IsVersionReadable(profile.Version)) return Normalize(fallback ?? Defaults());
 
                 UpgradeToCurrent(profile);
-                return profile;
+                return Normalize(profile);
             }
             catch (Exception e)
             {
                 Debug.LogError($"Failed to load player profile at {filePath}: {e.Message}");
-                return fallback ?? Defaults();
+                return Normalize(fallback ?? Defaults());
             }
         }
 
@@ -107,6 +115,22 @@ namespace ExpoTheExplorer.Systems.ProgressionSystem
             {
                 profile.Lives = GameState.DefaultStartingLives;
             }
+        }
+
+        // Not part of UpgradeToCurrent, and the difference is not cosmetic: that method
+        // returns early once the file is already current, which is correct for a
+        // version-specific fix like v3's Lives but wrong for this. A REFERENCE type can
+        // arrive null from any version -- a hand-edited file, an interrupted write, a
+        // future field someone forgets to initialize -- and every one of those would
+        // reach a caller as a NullReferenceException rather than as an empty inventory.
+        // So this runs on every load, whatever the version says.
+        //
+        // It is a normalization, not a migration: "owns nothing" is the correct meaning of
+        // an absent list, so there is no semantic decision here to get wrong.
+        private static PlayerProfile Normalize(PlayerProfile profile)
+        {
+            profile.OwnedMetaItemIds ??= new List<string>();
+            return profile;
         }
 
         // Accepts anything from 1 up to what this build knows, and refuses only

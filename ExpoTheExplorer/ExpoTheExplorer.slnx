@@ -12,6 +12,7 @@
   <Project Path="ExpoTheExplorer.Systems.ProgressionSystem.csproj" />
   <Project Path="Unity.Burst.csproj" />
   <Project Path="Unity.VisualScripting.Flow.Editor.csproj" />
+  <Project Path="ExpoTheExplorer.Systems.MetaSystem.csproj" />
   <Project Path="Unity.2D.SpriteShape.Editor.csproj" />
   <Project Path="Unity.VisualStudio.Editor.csproj" />
   <Project Path="Unity.InputSystem.csproj" />
@@ -60,6 +61,7 @@
   <Project Path="ExpoTheExplorer.Systems.LivesSystem.csproj" />
   <Project Path="Unity.InputSystem.DocCodeSamples.csproj" />
   <Project Path="Sirenix.OdinInspector.Modules.UnityMathematics.csproj" />
+  <Project Path="ExpoTheExplorer.Session.csproj" />
   <Project Path="Unity.VisualScripting.DocCodeExamples.csproj" />
   <Project Path="Unity.PlasticSCM.Editor.Entities.csproj" />
   <Project Path="ExpoTheExplorer.Systems.BoardDistribution.csproj" />

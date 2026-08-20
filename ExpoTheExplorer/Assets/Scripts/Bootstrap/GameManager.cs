@@ -8,6 +8,7 @@ using ExpoTheExplorer.Systems.DayLifecycle;
 using ExpoTheExplorer.Systems.DaySystem;
 using ExpoTheExplorer.Systems.EconomySystem;
 using ExpoTheExplorer.Systems.LivesSystem;
+using ExpoTheExplorer.Session;
 using ExpoTheExplorer.Systems.ProgressionSystem;
 using ExpoTheExplorer.Systems.TicketSystem;
 using ExpoTheExplorer.Systems.TraySystem;
@@ -20,7 +21,11 @@ namespace ExpoTheExplorer.Bootstrap
     // then drives the ticket lifecycle, board distribution, and tray delivery.
     // Systems/UI bind to State/TicketSlotManager/TrayManager rather than this
     // class growing gameplay logic itself.
-    public class GameManager : MonoBehaviour
+    // SessionHost rather than MonoBehaviour since 5b (decisions.md D-022): the shared HUD
+    // binds to "whichever component provides this scene's session", and the day scene's
+    // provider is this class. Changing the base class does not change the component's type
+    // identity, so nothing serialized in SampleScene is disturbed.
+    public class GameManager : SessionHost
     {
         [SerializeField] private GameConfig gameConfig;
         [SerializeField] private TicketGenerationConfig ticketGenerationConfig;
@@ -41,15 +46,26 @@ namespace ExpoTheExplorer.Bootstrap
         // actually paid can never disagree about where a tier starts.
         public EconomyConfig EconomyConfig => economyConfig;
 
-        public GameState State { get; private set; }
+        // Everything a PLAYER owns rather than a day: state, wallet, lives, the Day
+        // catalog, the day index and the owned meta props. Shared with the main screen
+        // (decisions.md D-021), which is why it is a class and not more fields here.
+        public override GameSession Session => session;
+
+        private GameSession session;
+
+        // Forwarded, not re-stored. Keeping the property NAMES identical is what let this
+        // extraction happen without rewiring a single view in the scene -- roughly a dozen
+        // components read GameManager.State, and a rename would have touched all of them
+        // for no gain.
+        public GameState State => Session?.State;
+        public LivesManager LivesManager => Session?.LivesManager;
+
         public TicketSlotManager TicketSlotManager { get; private set; }
         public TrayManager TrayManager { get; private set; }
-        public LivesManager LivesManager { get; private set; }
         public DayLifecycleManager DayLifecycleManager { get; private set; }
 
         private TicketFactory ticketFactory;
         private EconomyCalculator economyCalculator;
-        private IReadOnlyList<DayDefinition> dayCatalog;
         private DayTicketSequenceProvider dayTicketSequenceProvider;
 
         // (Re)constructed alongside dayTicketSequenceProvider (see
@@ -61,65 +77,42 @@ namespace ExpoTheExplorer.Bootstrap
         // previous Day would keep applying that Day's numbers.
         private BoardDistributor boardDistributor;
 
-        // The single writer of SoftMoney/Gems (economy-plan.md Adım 1). It also
-        // owns the day-start snapshot this class used to keep in a field of its
-        // own -- GameState's balance setters are internal to ProgressionSystem
-        // now, so a `State.SoftMoney = x` here would not compile.
-        private Wallet wallet;
+        // Still the single writer of SoftMoney/Gems (economy-plan.md Adım 1); it just
+        // lives on the session now, because the main screen needs the same one.
+        private Wallet wallet => Session.Wallet;
 
-        // The one thing this game writes to disk (Adım 4). Private on purpose:
-        // saving is triggered from the two places below that own the "a day
-        // attempt is atomic" contract, and a second caller would quietly break it.
-        private PlayerProfileStore profileStore;
+        // No PlayerProfileStore field any more: GameSession composes what is written and
+        // owns the only Save (decisions.md D-021). The four call sites below still own the
+        // "a day attempt is atomic" contract -- WHEN to save is a game-flow decision and
+        // stays here; WHAT gets written is a schema decision and does not.
 
         // Position in dayCatalog, not a Day's JSON dayIndex (that only decides
         // sort order) -- null until a Day catalog exists (PR-7), so every
         // consumer falls back to the pre-Day-system GameConfig behavior.
-        private DayDefinition CurrentDay =>
-            DayCatalogNavigator.GetDayAt(dayCatalog, State.CurrentDayIndex);
+        private DayDefinition CurrentDay => Session.CurrentDay;
 
         private void Awake()
         {
             EnsurePhysics2DRaycaster();
 
-            State = new GameState(gameConfig);
-
-            // The wallet is the only thing that survives a session (Adım 4).
-            // Order matters: construct the wallet, then apply the loaded profile
-            // through it -- GameState's balance setters are internal to
-            // ProgressionSystem, so this class cannot seed them itself, and
-            // ApplyPersistedBalances re-takes the day-start snapshot so the first
-            // retry of the session reverts to the RESTORED balance, not to 0.
+            // The whole session half of this method in one line (decisions.md D-021):
+            // state, wallet + persisted balances, lives + persisted lives, the Day catalog
+            // and the clamped day index, with the four ordering rules between them kept in
+            // one place instead of duplicated per screen.
             //
-            // A missing, corrupt or unversioned file loads as 0/0 (see
-            // PlayerProfileStore), which is also what a brand-new player gets.
-            profileStore = new PlayerProfileStore();
-            wallet = new Wallet(State);
-
-            var profile = profileStore.Load();
-            wallet.ApplyPersistedBalances(profile.SoftMoney, profile.Gems);
+            // A missing, corrupt or unversioned file loads as 0/0 (see PlayerProfileStore),
+            // which is also what a brand-new player gets.
+            session = new GameSession(gameConfig, livesConfig, foodCatalog);
 
             ticketFactory = new TicketFactory(ticketGenerationConfig);
-            LivesManager = new LivesManager(State, livesConfig, wallet);
-
-            // Lives persist too since D-014, and like the balances they are applied
-            // through their own single writer rather than assigned here. Has to follow
-            // the LivesManager construction above and precede anything that can cost a
-            // life, which the first ticket fill at the end of this method can.
-            LivesManager.ApplyPersistedLives(profile.Lives);
             DayLifecycleManager = new DayLifecycleManager(State);
             TicketSlotManager = new TicketSlotManager(State, CreateNextTicket, HandleLifeLoss);
             TrayManager = new TrayManager(State, slotIndex => TicketSlotManager.DeliverTicket(slotIndex), HandleLifeLoss);
             economyCalculator = new EconomyCalculator(economyConfig);
-            dayCatalog = DayCatalogParser.ParseAll(new DayJsonSource().LoadAll(), foodCatalog);
 
-            // Which Day to open comes from the profile now that the main screen
-            // exists (D-012), so it has to be applied AFTER the catalog is parsed
-            // (the clamp needs its Count) and BEFORE the provider/distributor are
-            // built off CurrentDay. A v1 save has no such field and reads 0, which
-            // is exactly the old behaviour: start at the first Day.
-            State.CurrentDayIndex = ResolveStartingDayIndex(profile.CurrentDayIndex);
-
+            // The catalog parse and the day-index clamp moved into GameSession, which is
+            // where their ordering rule lives now. Both still happen BEFORE this line, so
+            // the provider and distributor are still built off a resolved CurrentDay.
             RefreshDayTicketSequenceProvider();
 
             // Subscribe before the initial fill so the first 3 tickets trigger
@@ -232,29 +225,9 @@ namespace ExpoTheExplorer.Bootstrap
         // Builds the profile from GameState's public getters rather than asking
         // the wallet for its numbers: the wallet owns the RULES for changing
         // balances, GameState holds the values.
-        private void SaveProfile()
-        {
-            profileStore.Save(new PlayerProfile
-            {
-                SoftMoney = State.SoftMoney,
-                Gems = State.Gems,
-                CurrentDayIndex = State.CurrentDayIndex,
-                Lives = State.Lives,
-            });
-        }
-
-        // A persisted index is a claim about a catalog that may have changed since
-        // it was written -- a Day can be deleted, or the file can come from a build
-        // with more content -- so it is clamped rather than trusted. Landing on the
-        // last authored Day is the safe failure: the alternative is CurrentDay
-        // resolving to null and CreateNextTicket throwing on the first slot fill.
-        private int ResolveStartingDayIndex(int persistedIndex)
-        {
-            if (dayCatalog == null || dayCatalog.Count == 0) return 0;
-            if (persistedIndex <= 0) return 0;
-
-            return Math.Min(persistedIndex, dayCatalog.Count - 1);
-        }
+        // WHEN to save is game flow and stays here; WHAT gets written is schema and moved
+        // to GameSession.Save (decisions.md D-021). The four callers below are unchanged.
+        private void SaveProfile() => Session.Save();
 
         // Day Complete popup's "Go Back". The day is finished, so what the main
         // screen should offer next is the NEXT Day -- that index is persisted here
@@ -272,7 +245,7 @@ namespace ExpoTheExplorer.Bootstrap
         public void ReturnToMainScreenFromCompletedDay()
         {
             var nextIndex = State.CurrentDayIndex + 1;
-            if (dayCatalog != null && nextIndex < dayCatalog.Count)
+            if (Session.DayCatalog != null && nextIndex < Session.DayCatalog.Count)
             {
                 State.CurrentDayIndex = nextIndex;
             }
@@ -377,7 +350,7 @@ namespace ExpoTheExplorer.Bootstrap
         public bool AdvanceToNextDay()
         {
             var nextIndex = State.CurrentDayIndex + 1;
-            if (dayCatalog == null || nextIndex >= dayCatalog.Count)
+            if (Session.DayCatalog == null || nextIndex >= Session.DayCatalog.Count)
             {
                 // Last authored Day. The caller decides what to show --
                 // DayCompletePopupView sends the player to the main screen rather

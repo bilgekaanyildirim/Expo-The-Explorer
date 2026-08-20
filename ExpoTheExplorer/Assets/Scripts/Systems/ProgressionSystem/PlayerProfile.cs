@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace ExpoTheExplorer.Systems.ProgressionSystem
 {
@@ -54,5 +55,31 @@ namespace ExpoTheExplorer.Systems.ProgressionSystem
         // from GameState.DefaultStartingLives. The day it becomes upgradable it needs
         // a field of its own and another version bump.
         public int Lives;
+
+        // Meta props the player has BOUGHT, added in v4. Each entry is the qualified
+        // "<location>.<item>" key MetaCatalog.OwnershipKey composes -- local ids alone
+        // would collide the moment a second location reuses a name, which it is expected
+        // to (a fountain in two restaurants is two purchases).
+        //
+        // This field's format is NOT decided here. MetaCatalog.OwnershipKey is the single
+        // place that spells the key, and this class only carries the strings: writing the
+        // format down twice is exactly what a joined key invites and what one authority
+        // for it prevents.
+        //
+        // A LIST rather than a HashSet because JsonUtility serializes public fields and
+        // List<>, and quietly round-trips a HashSet as "{}" with no error at all -- the
+        // same trap this class's own comment names about auto-properties. Callers that
+        // want set semantics convert on read; MetaResolver already takes an ISet<string>.
+        //
+        // Unlike Lives (v3), an absent value here needs no real migration: nothing owned
+        // is exactly what an older save means, and an empty list says that correctly.
+        // PlayerProfileStore still normalizes it, but defensively rather than semantically
+        // -- see the comment on UpgradeToCurrent.
+        //
+        // Deliberately holds only PURCHASES. Whether a location is unlocked, and whether
+        // a Day-unlocked prop is on screen, are derived from the day index against an
+        // authored one (decisions.md D-015/D-017) and must never be written here: a second
+        // copy would start lying the moment the catalog is re-authored.
+        public List<string> OwnedMetaItemIds = new();
     }
 }

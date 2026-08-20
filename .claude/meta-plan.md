@@ -21,9 +21,13 @@ oyun, o kabuğun arkasına **oyuncunun büyüttüğü bir expo alanı** koyuyor.
 oynanır → SoftMoney kazanılır → ana ekranda o parayla alan dekore edilir →
 oyuncu ilerlemesini bir yer olarak görür.
 
-Sanat seti `Assets/Art/Meta1/` (20 PNG: 1 arka plan + 16 satın alınabilir + 3 required). Main.png **853×1844** — bu tam olarak
-telefon dikey en-boy oranı (0.463), yani arka plan kaydırmaya gerek yok, bir
-ekran dolusu.
+Sanat seti `Assets/Art/Meta1/` (20 PNG: 1 arka plan + 16 satın alınabilir + 3
+required). Main.png **853×1844**, yani en-boy oranı **0.463** — modern uzun bir
+telefon (~9:19.5) için çizilmiş, bir ekran dolusu.
+
+> **Ama sahnenin Canvas'ı 1080×1920 (0.5625) referansla kurulmuş.** Yani sanat
+> ile ekran aynı orana sahip DEĞİL; kısa/geniş ekranlarda bir şeyin verilmesi
+> gerekiyor. Ölçüldü ve K5'e yazıldı — Adım 7'nin kararı.
 
 > **Klasör adı tesadüf değil: bu ilk lokasyon.** Belli bir Gün'den sonra ikinci
 > bir restoran gelecek (`Art/Meta2/`, sanatı henüz yok). Sistem baştan **çok
@@ -32,8 +36,8 @@ ekran dolusu.
 
 | Sprite | Rol | Nasıl açılır |
 |---|---|---|
-| `Main.png` (853×1844) | Sahnenin arka planı. Bitmiş hotdog standı **zaten içine gömülü**. | Her zaman görünür, satılık değil |
-| `StartBuilding.png` (516×458) | Standın üstünü kapatan **harabe bina**. Oyun bununla başlar. | Satın alınınca **silinir** (ters görünürlük) |
+| `Background.png` (853×1844) | Sahnenin arka planı. **Harabe bina içine gömülü** — oyunun başlangıç hâli. | Her zaman görünür, satılık değil |
+| `Building.png` (494×428) | Bitmiş stand. Harabenin üstüne çizilir. | SoftMoney — oyunun ilk hedefi |
 | `Square.png` (853×819) | Taşlı meydan — **alan genişletme** | SoftMoney; ayrıca kendi bölgesindeki dekor yuvalarını açar |
 | Fences, Fountain, FrontStand, HotdogSign, Lamp1, Lamp2, Plant, Sign, Table1–4, Tent, TrashBin (14 adet) | Kozmetik dekor | SoftMoney |
 | `Required/DrinkFridge.png`, `Required/SaucesStand.png`, `Required/Fritöz.png` | Oynanışa bağlı proplar | **Satın alınmaz.** Gün içeriği tetikler |
@@ -72,99 +76,86 @@ ekran dolusu.
 
 ## 2. Mimari kararlar
 
-### K1 — Tek mekanizma: bir yuva = bir Image, iki sprite
+### K1 — Tek mekanizma: bir yuva = bir Image, tek sprite
 
-Dört farklı ürün tipi (dekor / harabe / alan / required) için dört kod yolu
-yazmak yerine, katalogdaki her kayıt **iki sprite** taşır:
+> **2026-08-20 düzeltmesi (D-016).** Bu bölüm başta *iki* sprite taşıyordu
+> (`unownedSprite` / `ownedSprite`) ki bir prop satın alınınca **kaybolabilsin**.
+> Kullanıcı bunu kaldırdı: bir prop sadece alınınca görünür, öncesinde yok.
 
-```
-MetaItemDefinition
-  unownedSprite   ← aktif DEĞİLKEN gösterilen (çoğunda boş)
-  ownedSprite     ← aktifKEN gösterilen (StartBuilding'de boş)
-```
-
-Görünüm kodunun tamamı: `image.sprite = active ? owned : unowned;
-image.enabled = image.sprite != null;` — enum yok, switch yok.
-
-| Ürün | unowned | owned |
-|---|---|---|
-| Fountain (dekor) | — | Fountain.png |
-| StartBuilding (harabe) | StartBuilding.png | — |
-| Square (alan) | — | Square.png |
-| DrinkFridge (required) | — | DrinkFridge.png |
-
-Geriye tek bir gerçek dallanma kalıyor: **aktiflik neyle kararlaştırılır.** İki
-seçenek: `Purchase(price)` veya `DayContent(trigger)`. `abstraction-level.md`
-gerekçesi: soyutlama tek bir alan (`unlock`), dört tip için dört sınıf değil.
-
-### K2 — Required propların otoritesi Day içeriğidir, save dosyası değil
-
-Bir Required propun açık olup olmadığı **kaydedilmez, türetilir**:
+Katalogdaki her kayıt **tek bir sprite** taşır ve prop aktif olana kadar hiç
+yoktur. Görünüm kodunun tamamı:
 
 ```
-aktif  ⟺  0..CurrentDayIndex arasındaki herhangi bir Day'in ticket'larında
-          o propun tetikleyici içeriğinden EN AZ BİRİ geçiyor
+image.sprite  = item.Sprite;
+image.enabled = active;
 ```
 
-Üç prop var ve **üçü de farklı bir içerik kavramına bakıyor** — bu, tetikleyicinin
-şeklini belirleyen esas gözlem:
+Enum yok, switch yok, ikinci sprite'ın hesabı yok. Dekor, alan genişletmesi ve
+gün-açılımlı prop üçü de aynı yoldan geçer; aralarındaki tek fark **aktifliğin
+neyle kararlaştırıldığı**: `Purchase(price)` ya da `DayUnlock(trigger)`.
+`abstraction-level.md` gerekçesi: soyutlama tek bir alan (`unlock`), tip başına
+bir sınıf değil.
 
-| Prop | Kavram | Gerçek asset(ler) |
-|---|---|---|
-| **Fritöz** | tek bir yiyecek | `FoodData/Sides/Food_Fries.asset` |
-| **DrinkFridge** | bir yiyecek *kategorisi* | `FoodData/Beverages/` — Cola, Fanta, Sprite + 3 milkshake |
-| **SaucesStand** | bir *modifikasyon kümesi* | `Mod_ExtraKetchup`, `Mod_ExtraMayonnaise`, `Mod_ExtraMustard` |
+**İkinci sprite tek bir prop için vardı** — Main.png'nin içine gömülü bitmiş
+standı gizleyen harabe. Artık bu **sanatta** çözülüyor: arka plan harabeyi
+içeriyor, stand ise üstüne çizilen sıradan bir satın alma propu. Ekranda aynı
+sonuç, bir mekanizma eksik.
 
-> **Dikkat:** `FoodCategory` yalnızca `Main | Side | Drink` — **`Sauce` yok.**
-> Soslar `ModificationConfig` olarak modellenmiş, yani sos standının tetikleyicisi
-> bir yiyecek değil. Hotdog klasöründeki üç `Mod_Extra*` sos; Burger'in dördü
-> (`ExtraCheese`, `ExtraPatty`, `NoLettuce`, `NoTomato`) değil.
+**Vazgeçilen şey açıkça şu:** sistem artık "alınca kaybolan prop"u *hiç* ifade
+edemiyor. Bunu yapabilen tek alan oydu, yani ileride öyle bir prop gerekirse yeni
+bir mekanizma gerekir — bir alan değil. Birinin ona uzanıp hiçbir şey bulmaması
+için burada yazılı.
 
-**Tek mekanizma, üç isteğe bağlı alan.** Prop `DayContent` unlock'u şu üçünü
-taşır ve **herhangi biri** eşleşirse açılır:
+**Sanat borcu: KAPANDI (kullanıcı, 2026-08-20).** `Main.png` → `Background.png`
+(harabe gömülü) ve `StartBuilding.png` → `Building.png` (bitmiş stand, satın alınınca
+üstüne çizilir). D-016'nın istediği tam olarak buydu: "alınca kaybolan prop" kavramı
+kodda yok, sanatta çözüldü.
+
+### K2 — Gün-açılımlı proplar: tek yazarlanmış gün numarası
+
+> **2026-08-20 düzeltmesi (D-017).** Bu bölüm başta propun açılmasını **Day
+> içeriğinden türetiyordu**: dört alanlı bir tetikleyici (yiyecekler /
+> kategoriler / modifikasyonlar / minimum gün) ve oyuncunun geldiği güne kadarki
+> bütün günlerde bu içeriği arayan bir tarama. Kullanıcı bunu kaldırdı:
+> *"sadece hangi günden önce açılacağını seçebilelim, böyle çok gereksiz karmaşa
+> var ve gereksiz arama tarama var."*
+
+Kural artık tek satır:
 
 ```
-DayUnlockTrigger
-  foods           FoodItemConfig[]      ← Fritöz: [Food_Fries]
-  foodCategories  FoodCategory[]        ← DrinkFridge: [Drink]
-  modifications   ModificationConfig[]  ← SaucesStand: [Ketchup, Mayo, Mustard]
-  minDayIndex     int (-1 = kullanılmıyor)   ← düz "Gün N'de açılır"
+prop aktif  ⟺  CurrentDayIndex >= item.UnlockAtDayIndex
 ```
 
-Hepsi **asset referansı**, string değil — kod içine gömülü bir id ya da kategori
-adı "content data is never embedded in code" invariant'ını ihlal ederdi, ve asset
-referansı yeniden adlandırmaya dayanıklı.
+Lokasyonun kendi kilidiyle **birebir aynı** kural (K6-2), yani sistemde
+açılma diye tek bir kavram var, iki tane değil.
 
-`minDayIndex` neden var: kullanıcının sistemi özetleyişi ("bölüm gelince açılan
-proplar") düz **gün numarası** okumasını da içeriyor, ve lokasyonun kendisi zaten
-`unlockAtDayIndex` kullanıyor — kavram sistemde mevcut. Bir prop içerik
-tetikleyicisi olmadan da "Gün 12'de belirir" diyebilmeli. Maliyeti bir alan ve
-bir OR koşulu; boş bırakılırsa hiçbir şey değişmez. Meta1'in üç propu bunu
-kullanmıyor.
+Sayı bir **katalog pozisyonu**, 0 tabanlı — oyuncuya gösterilen gün numarası
+`index + 1` olduğu için "oyuncunun beşinci gününden önce hazır olsun" katalogda
+**4** olarak yazılır. Bu, `fingerprint.md`'nin zaten kaydettiği
+`CurrentDayIndex` ↔ Day dosyasının kendi `dayIndex`'i karışıklığının aynısı, o
+yüzden tooltip'te açıkça yazıyor.
 
-`foodCategories` alanı neden var (tek başına `foods` yetmiyor mu): DrinkFridge'i
-6 içeceği tek tek listeleyerek de yazarlayabilirdik, ama o zaman 7. içecek
-eklendiğinde buzdolabı sessizce tetiklenmez — listeyi güncellemeyi unutmak bir
-hata sınıfı. Buzdolabı sprite'ı zaten "bir sürü çeşit içecek" demek, yani
-semantik olarak kategori doğru. Fritöz'ün tersi: kullanıcı özellikle *patates*
-side'ı için istedi, tüm `Side` kategorisi için değil — o yüzden tek asset. Alan
-başına bu seçim yazarındır; resolver'a maliyeti üç satır.
+**Neyin gittiği (üç şey, bir değil):**
 
-`CurrentDayIndex` oynanacak günü gösterdiği için, `≤ CurrentDayIndex` taraması
-propu tam da o gün oynanmadan **önce** açar — kullanıcının istediği davranış,
-`+1` gerekmeden.
+- `DayUnlockTrigger` sınıfının tamamı ve dört alanı
+- **Adım 6'nın kendisi** — `DayContentFacts`, gün içeriği taraması, hepsi
+- **`MetaSystem → DaySystem` bağımlılık oku.** Meta tarafı Day kataloğunu hiç
+  okumuyor artık; ihtiyacı olan tek şey oyuncunun bulunduğu gün numarası.
+- M3/M4/M4b açık soruları — hangi modifikasyon sos sayılır, buzdolabı kategoriye
+  mi altı id'ye mi bakar, fritöz `Food_Fries`'a mı bütün `Side`'lara mı. Üçü de
+  **yalnızca** açılma içerik okuduğu için soruydu.
 
-Alternatif (reddedildi): açılan propları profile yazmak. İkinci otorite yaratır;
-Day içeriği değişince kayıt yalan söyler.
+**Vazgeçilen şey:** iki sayı birbirinden kopabilir. Sosu Gün 5'ten Gün 9'a
+taşırsan sos standı yine Gün 5'te belirir, ta ki katalogdaki sayıyı da
+güncelleyene kadar. Ve bunu **hiçbir doğrulayıcı yakalayamaz** — `Data`
+assembly'si Day kataloğunu tasarım gereği göremiyor, yani kontrol yazılmamış
+değil, *yazılamaz*. Azaltıcı etken: prop başına tek bir sayı, Inspector'da
+görünür.
 
-**Maliyeti:** ana ekranın Day kataloğunu parse etmesi gerekir
-(`DayJsonSource().LoadAll()` + `DayCatalogParser.ParseAll(files, foodCatalog)`).
-İkisi de sahneye bağımlı değil, GameManager'ın zaten her gün sahnesinde yaptığı
-iş. Frekans = **load** (×0.01), yani maliyet modeline göre önemsiz. K3'teki
-`GameSession` çıkarımından sonra bu parse ana ekranda **zaten yapılıyor** olacak,
-yani bu tetikleyici ek bir yükleme maliyeti getirmiyor — yalnızca yeni bir
-`MetaSystem → DaySystem` oku ekliyor. Ok tek yönlü ve döngü yaratmıyor
-(DaySystem → TicketSystem → EconomySystem).
+`MetaUnlockKind` enum'u **kalıyor**: iki int alan var (`price`,
+`unlockAtDayIndex`) ve hangisinin geçerli olduğunu söyleyen şey o. "Fiyatı 0'dan
+büyükse satılıktır" gibi bir çıkarım, yanlış yazarlanmış bir 0'ın propun türünü
+sessizce değiştirmesi demek olurdu.
 
 ### K3 — Cüzdanın tek yazıcısı ana ekranda da korunmalı — bu planın en riskli yeri
 
@@ -211,7 +202,7 @@ elle yazmak gerekirdi (D-012'nin ayrı-sahne gerekçesi).
 | 1 | `State = new GameState(gameConfig)` | ✅ | ✅ |
 | 2 | `wallet` + `profileStore.Load()` + `ApplyPersistedBalances` | ✅ | ✅ |
 | 3 | `LivesManager` + `ApplyPersistedLives` | ✅ | ✅ |
-| 4 | `dayCatalog = DayCatalogParser.ParseAll(...)` | ✅ (Adım 6 buna muhtaç) | ✅ |
+| 4 | `dayCatalog = DayCatalogParser.ParseAll(...)` | ❌ (D-017'den sonra meta buna muhtaç değil) | ✅ |
 | 5 | `State.CurrentDayIndex = ResolveStartingDayIndex(...)` | ✅ | ✅ |
 | 6+ | ticketFactory, DayLifecycle, TicketSlot, Tray, Economy, provider, abonelikler, pre-seed, `FillEmptySlots` | ❌ | ✅ |
 
@@ -285,6 +276,36 @@ HudCanvasPrefabSetup).
 Normalize pozisyon çok lokasyonlulukta ikinci bir kazanç veriyor (K6): her
 lokasyonun arka planı farklı boyutta olabilir, yuva verisi aynı biçimde kalır.
 
+#### Ölçülen en-boy uyumsuzluğu (2026-08-20) — Adım 7'nin kararı
+
+`MainScreen.unity`'nin CanvasScaler'ı: **Scale With Screen Size**, referans
+**1080×1920**, Match Width Or Height **0.5**. CanvasScaler ölçeği değiştirir,
+**oranı değiştirmez** — yani Canvas rect'inin oranı her zaman cihazın oranıdır ve
+arka plan 0.46–0.56 aralığını karşılamak zorunda.
+
+Arka planı **genişliğe oturtursak** (`height = width / 0.4626`):
+
+| Cihaz | Oran | Canvas yüksekliği | Sanatın yüksekliği | Taşma |
+|---|---|---|---|---|
+| 1080×2340 (9:19.5) | 0.461 | ~2120 birim | ~2118 | **~0 — tam oturur** |
+| 1080×1920 (9:16) | 0.5625 | 1920 | 2334 | **414 birim (~%18)** |
+
+Yani sanat, kısa ekranlarda dikeyde %18'e kadar taşıyor. Üç seçenek:
+
+- **(a) Genişliğe oturt + dikey kaydırma — SEÇİLDİ (kullanıcı, 2026-08-20).** Taşma
+  varsa clamp'li bir `ScrollRect`; uzun telefonlarda kaydıracak bir şey olmaz. Oyuncu
+  her cihazda sanatın tamamını görebilir, hiçbir yuva erişilemez kalmaz.
+- **(b) Genişliğe oturt + kırp.** Bedava, ama kırpılan bantta kalan yuvalar
+  geniş ekranlarda görünmez — yazarlama kuralı gerektirir ("önemli yuvalar
+  güvenli bantta").
+- **(c) Referans çözünürlüğü 1080×2340'a çek.** Sanata birebir uyar ama HUD ve
+  `MainScreenView` 1080×1920 için yazarlandı; ikisini de yeniden düzenlemek
+  gerekir. Bu adımın kapsamını aşar.
+
+**K5'in "yuvaları ekrana değil arka plan rect'ine normalize et" kuralı üç
+seçenekte de load-bearing:** yuvalar sanatla birlikte hareket eder, yoksa
+kaydırma/kırpma anında pozisyonlar sanattan kopar.
+
 ### K6 — Sistem baştan çok lokasyonlu kurulur
 
 Kullanıcı: *"belli bir bölüm sonra yeni bir restorana geçeceğiz, şu an o daha
@@ -333,11 +354,12 @@ Dört sonuç:
    8) bu kural, Meta2 yazarlanırken sessizce Meta1'in meydanına bağlanmayı
    engelliyor.
 
-**Bir nüans, bilerek böyle:** gün-açılımlı propların tetikleyicisi **global**
-içeriğe bakar, lokasyonun kendi zaman çizgisine değil. Yani Meta2 Gün 12'de
-açılırsa ve içecekler Gün 3'te girmişse, Meta2'nin buzdolabı **açılır açılmaz
-oradadır**. Doğrusu bu: yeni restoran, hâlihazırda sattığın her şeyle birlikte
-kurulur — açıldıktan sonra buzdolabının "gelmesini" beklemek anlamsız olurdu.
+**Bir nüans, bilerek böyle:** gün-açılımlı proplar **global** gün sayacına bakar,
+lokasyonun kendi açılışına göre değil. Meta2 Gün 12'de açılıyorsa ve içindeki
+buzdolabı Gün 4'e yazarlanmışsa, buzdolabı Meta2 **açılır açılmaz oradadır**.
+Doğrusu bu: yeni restoran, hâlihazırda sattığın her şeyle birlikte kurulur.
+Pratik sonuç: bir lokasyonun proplarını kendi açılış gününden ÖNCEKİ günlere
+yazarlamak, "bu lokasyon hazır gelsin" demenin yolu.
 
 **Bunun bugüne maliyeti:** katalogda bir sarmalama katmanı, resolver'ın lokasyon
 parametresi alması, ve dükkânın "bakılan lokasyon" kavramı. Hepsi Adım 2–3–8'in
@@ -354,7 +376,6 @@ asmdef'i ile (projenin diğer sistemleri gibi, EditMode'dan test edilebilsin).
 
 ```
 MetaSystem  →  ProgressionSystem   (Wallet ile harcama, profil sınırı)
-MetaSystem  →  DaySystem           (required prop tetikleyicisi: gün içeriği taraması)
 MetaSystem  →  Data                (MetaCatalog, FoodItemConfig, ModificationConfig)
 MainScreen  →  MetaSystem          (ekran onu barındırır)
 ```
@@ -406,21 +427,31 @@ yerleşimini hiç DENETLEMİYOR ("no Assets/ directory yet") — iç içe `Asset
 klasörü hatası, D-013'te kaydedilmiş, hâlâ açık; yeni klasör satırları elle
 doğrulandı.
 
-### [ ] Adım 1 — Sanat ithal ayarları
+### [x] Adım 1 — Yeniden adlandırma (ithal ayarları GEREKMEDİ) — **bitti 2026-08-20**
 
-20 PNG'nin import ayarları: Sprite (2D and UI), pivot (dekorların çoğu **bottom
-center** olmalı — zeminle temas noktası orası), Pixels Per Unit, mipmap kapalı,
-max size, sıkıştırma. Yanlış pivot bütün yuva pozisyonlarını yanlış yapar, o
-yüzden yerleştirmeden **önce**.
+> **2026-08-20 düzeltmesi.** Bu adım planlandığında "20 PNG'nin pivot/PPU/
+> sıkıştırma ayarları düzeltilecek" yazıyordu. 20 `.meta` dosyası okundu:
+> **hepsi zaten doğru ve birbirinin aynısı** — `textureType: 8` (Sprite 2D and
+> UI), `spriteMode: 1` (Single), mipmap kapalı, `alphaIsTransparency: 1`,
+> `nPOTScale: 0`, `maxTextureSize: 2048` (en büyük kenar 1844, yani hiçbir şey
+> küçültülmüyor). Platform override'ı yok, gerekmiyor.
+>
+> **Pivot maddesi de yanlıştı:** UI `Image` bileşeni sprite'ın pivot'unu
+> **kullanmaz** — konumu RectTransform'un pivot'u belirler. K4/K5 meta ekranını
+> Canvas/UI olarak kurduğu için sprite pivot'u tamamen ilgisiz; "temas noktası"
+> kararı yuva verisidir (Adım 2/7), ithal ayarı değil.
+>
+> Atlas da gerekmiyor: projede hiç Sprite Atlas yok, ve tek bir menü ekranında
+> ~19 UI Image'ın draw call maliyeti maliyet modelinde önemsiz. Atlas eklemek
+> ölçülmemiş bir optimizasyon olurdu.
 
-`Main.png` ve `Square.png` büyük (853×1844 / 853×819) — atlas'a girmemeli, tek
-tek kalmalı.
+Geriye tek gerçek iş kalıyor: **`Required/Fritöz.png` → `Required/Fryer.png`**
+(ASCII dışı karakter, §1 notu). `.png` ve `.png.meta` birlikte taşınır ki GUID
+korunsun. Katalog asset'i ona referans vermeden yapılırsa bedava.
 
-Ayrıca bu adımda: **`Required/Fritöz.png` → `Required/Fryer.png`** yeniden
-adlandırma (ASCII dışı karakter, §1 notu). Şimdi bedava; katalog asset'i ona
-referans verdikten sonra değil.
+Bu adım o kadar küçüldüğü için **Adım 2 ile aynı preflight'ta** yürütülür.
 
-### [ ] Adım 2 — Veri katmanı: `MetaCatalog` + `MetaLocation`
+### [x] Adım 2 — Veri katmanı: `MetaCatalog` + `MetaLocation` — **bitti 2026-08-20**
 
 `Assets/Data/DataScripts/MetaCatalog.cs` + `Assets/Data/Meta/MetaCatalog.asset`
 
@@ -456,12 +487,66 @@ eden `requiresAreaId`, **başka bir lokasyonun alanını gösteren `requiresArea
 (K6-5), arka planı boş lokasyon, ve `unlockAtDayIndex`'i azalan sırada giden
 lokasyon listesi.
 
-### [ ] Adım 3 — Çekirdek mantık + testler (asmdef, saf C#)
+**Sonuç (2026-08-20).** Yazılanlar: `MetaCatalog.cs` (şema: `MetaCatalog` SO +
+`MetaLocation` / `MetaItemDefinition` / `DayUnlockTrigger` düz sınıfları +
+`MetaUnlockKind` + `OwnershipKey`), `MetaCatalogValidator.cs` (hata/uyarı
+ayrımı, `DayValidationResult`'ın şeklini izliyor), `MetaCatalogValidatorTests.cs`
+(31 test). `Fritöz.png` → `Fryer.png`, GUID korunarak; `.meta` içindeki
+`Fritöz_0` sprite adı da `Fryer_0` yapıldı, internalID'ye dokunmadan.
+
+**Derleme:** `dotnet build` ile `ExpoTheExplorer.Data` ve
+`ExpoTheExplorer.Tests.EditMode` — **ikisi de 0 hata**. Yeni dosyalar hiç uyarı
+üretmedi (mevcut 4 uyarı `TicketGenerationConfig`'de, önceden var).
+**Testler KOŞTURULAMADI:** Unity projeyi açık tutuyor, batchmode kilide çarpıyor.
+Koşturma Test Runner'dan yapılmalı.
+
+Yazarken çıkan iki tasarım düzeltmesi:
+1. **`DayUnlockTrigger.IsEmpty` null girdileri saymaz.** Yalnızca silinmiş bir
+   asset referansı tutan liste Inspector'da dolu görünür ama hiçbir zaman
+   eşleşemez; düz bir `Count` kontrolü onu geçerli tetikleyici sayardı.
+   Yanında canlı girdi de varsa ayrı bir uyarı çıkıyor (`HasMissingReferences`).
+2. **Boyut/ölçek alanı YOK, bilerek.** Bir lokasyonun bütün sprite'ları aynı
+   çözünürlükte yazarlandığı için propun canvas boyutu kendi piksel boyutu ×
+   arka planın ölçek katsayısı olarak *türetiliyor* — boyutu ayrıca yazarlamak
+   sanatla çelişebilecek ikinci bir otorite olurdu.
+
+`MetaCatalog.asset` bilerek yazılmadı — Unity'de `Create >
+ExpoTheExplorer/Data/Meta Catalog` ile üretilecek (Adım 7/9 onu dolduracak).
+
+### [x] Adım 2.5 — Meta Editor penceresi — **bitti 2026-08-20**
+
+Kullanıcının isteği: kataloğu iç içe Inspector listelerinden tıklamak yerine Day
+Editor gibi bir pencereden yazarlamak. **Depolama SO olarak kaldı**, JSON'a
+gidilmedi — kararın tamamı ve JSON'un neden reddedildiği `decisions.md` D-018'de.
+
+Yazılanlar: `Assets/Editor/MetaEditorWindow.cs` (OdinMenuEditorWindow — sol
+lokasyon ağacı, araç çubuğunda katalog alanı + doğrulama sayıları) ve
+`MetaLocationLayoutGUI.cs` (asıl iş: arka planı gerçek oranında çizip propları
+**sürükleyerek** yerleştirme). `DayEditorSpriteGUI.DrawTexCoords` yeniden
+kullanıldı, üçüncü tüketicisi olarak. **Hiçbir asmdef değişmedi** —
+`ExpoTheExplorer.Editor` zaten `ExpoTheExplorer.Data`'ya referans veriyordu.
+
+Menü: **ExpoTheExplorer > Meta Editor**.
+
+Üç tasarım notu: bütün mutasyonlar `SerializedObject` üzerinden (doğrudan yazmak
+asset'i işaretlemez, düzenleme sonraki domain reload'da sessizce kaybolur);
+alanları Odin değil Unity'nin kendi drawer'ı çiziyor (şema değişince pencere
+tahmin yapmasın); ve "Depth from Y" otomatik değil **buton** (otomatik olsa elle
+verilmiş istisnaları her sürüklemede silerdi).
+
+Derleme: `ExpoTheExplorer.Editor` **0 hata**; Data ve Tests.EditMode bozulmadı.
+Pencere Unity'de **çalıştırılarak denenmedi** — proje açık olduğu için batchmode
+kilide çarpıyor, ve IMGUI davranışı derlemeyle kanıtlanmaz.
+
+Bu adım Adım 7'nin ayrı "Editor yerleştirme aracı" maddesini **yuttu**.
+
+### [x] Adım 3 — Çekirdek mantık + testler (asmdef, saf C#) — **bitti 2026-08-20**
 
 Bu adım planın değer merkezi — Unity'siz, tamamen test edilebilir.
 
-- `MetaResolver` — `(lokasyon, sahip olunan anahtarlar, gün içeriği gerçekleri)`
-  → aktif id kümesi + satın alınabilir id kümesi (alan kilidini uygulayarak)
+- `MetaResolver` — `(lokasyon, sahip olunan anahtarlar, CurrentDayIndex)` → aktif id
+  kümesi + satın alınabilir id kümesi (alan kilidini uygulayarak). Üçüncü girdi
+  D-017'den sonra tek bir int; eskiden taranmış gün içeriğiydi
 - **Sahiplik anahtarı** `$"{location.Id}.{item.Id}"` burada hesaplanır; katalog
   yerel id tutar, profil nitelenmiş anahtar tutar (K6-1)
 - **Lokasyon kilidi:** `açık ⟺ CurrentDayIndex >= unlockAtDayIndex`, ve açık
@@ -473,7 +558,27 @@ Bu adım planın değer merkezi — Unity'siz, tamamen test edilebilir.
 
 Henüz ne kalıcılık, ne UI, ne sahne.
 
-### [ ] Adım 4 — Kalıcılık: profil şeması v3 → v4
+**Sonuç (2026-08-20).** `MetaSystem` assembly'si + `MetaResolver` + `MetaPurchase` +
+25 test. Kalıcı kayıt `decisions.md` D-019.
+
+**Blueprint düzeltildi:** D-015'in planladığı `MetaSystem → ProgressionSystem` oku
+**kaldırıldı** — kodu yazarken gereksiz olduğu görüldü. Kurallar sahip olunan
+anahtarları ve bakiyeyi parametre alıyor, yani para ve sahiplik listesi
+ProgressionSystem'deki tek yazıcılarını koruyor ve ekranın kompozisyon kökü ikisini
+birleştiriyor. MetaSystem artık **hiçbir sisteme bağımlı değil**; kazanç temizlik
+değil erişim: sıfır bağımlılık + sıfır MonoBehaviour = her kural testten çağrılabilir.
+
+Kurallardaki dört karar: verdict (bool değil) ve kontrol sırası
+(`NotForSale` → ... → `NotEnoughMoney`); alan geçidi **aktifliğe** de uygulanıyor;
+`ActiveItems` `List.Sort` değil insertion sort kullanıyor (kararsızlık üst üste binen
+proplarda titremeye yol açardı); `ShopItems` parası yetmeyen ve alan-kilitli propları
+**listede tutuyor**.
+
+**Doğrulama sınırı:** yalnızca **derleme** (assembly + testler, ikisi de 0 hata;
+Unity yeni asmdef için csproj üretmemişti, geçici csproj'larla yapıldı). Suite
+koşturulmadı — Unity projeyi kilitliyor.
+
+### [x] Adım 4 — Kalıcılık: profil şeması v3 → v4 — **bitti 2026-08-20**
 
 - `PlayerProfile.OwnedMetaItemIds` (`List<string>`) — nitelenmiş anahtarlar
   (`"Meta1.Fountain"`), düz tek liste. Lokasyon başına iç içe yapı **değil**:
@@ -486,7 +591,27 @@ Henüz ne kalıcılık, ne UI, ne sahne.
 - `PlayerProfileStoreTests.cs`'e v4 round-trip + "v3 dosyası boş liste okur"
   testleri.
 
-### [ ] Adım 5 — `GameSession` çıkarımı + tek yazıcı sınırı (K3) — **en riskli adım**
+**Sonuç (2026-08-20).** `OwnedMetaItemIds` (`List<string>`, nitelenmiş anahtarlar),
+`CurrentVersion = 4`, ve `PlayerProfileStore.Normalize`. Kayıt: D-020.
+
+**Preflight'ta "migrasyon gerekmez" demiştim, yarı yanlıştı.** Semantik migrasyon
+gerçekten gerekmiyor (boş liste = hiçbir şeye sahip değil, doğru varsayılan). Ama bu
+**ilk referans tipli alan**, ve `UpgradeToCurrent` dosya zaten güncelse erken dönüyor —
+yani elle bozulmuş bir v4 dosyası normalize edilmeden geçerdi ve çağırana
+`NullReferenceException` olarak varırdı. `Normalize` bu yüzden versiyon kapısının
+**dışında** ve her yüklemede çalışıyor, `fallback` yollarını da sarıyor.
+
+Testlerden biri özellikle bu boşluğu pinliyor: `"Version":4` + `"OwnedMetaItemIds":null`
+payload'u. Bariz olan v3 testi bu hatayı yakalamıyor, iki durumda da geçiyor.
+
+Derleme: ProgressionSystem ve Tests.EditMode **0 hata**. Suite koşturulmadı (Unity kilidi).
+
+### [x] Adım 5 — `GameSession` çıkarımı + tek yazıcı sınırı (K3) — **en riskli adım**
+
+> **İKİYE BÖLÜNDÜ (2026-08-20).** İki yarısı farklı K1 yüzeylerine dokunuyor ve tek
+> adımda yapılsa Play-mode'da bir şey bozulduğunda hangisinden geldiği belirsiz olurdu.
+> **5a — `GameSession` çıkarımı: BİTTİ.** **5b — HUD bağlaması + ana ekranın kompozisyon
+> kökü: BİTTİ.**
 
 Bu adım artık meta için bir yardımcı sınıf yazmak değil, **mevcut kurulumu
 paylaşılabilir hale getirmek** (K3'teki gerekçe):
@@ -512,29 +637,85 @@ test edilemez (predefined assembly vs asmdef test assembly), o yüzden adım ayr
 bir Play-mode geçişi ister: gün sahnesi eskisi gibi açılıyor mu, ilk 3 ticket
 geliyor mu, HUD doğru mu.
 
-> **Sıra notu:** Adım 6 (gün içeriği tetikleyicisi) Day kataloğunu ana ekranda
-> ister; `GameSession` onu zaten parse ettiği için Adım 6 bu adımın üstüne bedava
-> oturuyor. Bu yüzden Adım 5, Adım 6'dan önce.
+**5a sonucu (2026-08-20).** `Scripts/Session/` + `GameSession` + 12 test. `GameManager`
+oturum yarısını tek satıra indirdi; **public yüzeyi birebir korundu**, o yüzden
+`SampleScene`'deki hiçbir view rewire edilmedi. Kayıt: D-021.
 
-### [ ] Adım 6 — Gün içeriği tetikleyicisi (Required proplar)
+**`ProfileSaver` iptal edildi.** `GameSession` zaten profili yükleyip cüzdanı/canları/gün
+indeksini tuttuğu için yazılanı derleyecek olan da o; üçüncü bir sınıf her alanın bir
+KOPYASINA ihtiyaç duyardı ve o kopyada atlanan bir alan hata vermez, oyuncunun parasının
+üstüne sessizce sıfır yazar. `PlayerProfileStore` dosya sınırı olarak kaldı. Bu, Adım 4'te
+bilerek açık bırakılan "sahip olunan kümenin yazıcısı" boşluğunu da kapattı.
 
-- `DayContentFacts` — 0..CurrentDayIndex günlerindeki ticket'larda geçen food
-  id'leri, **yiyecek kategorileri** ve modification id'leri (küçük, türetilmiş
-  üç küme). Üç küme, K2'deki `DayUnlockTrigger`'ın üç içerik alanına birebir
-  karşılık gelir; eşleşme "herhangi biri kesişiyor mu" sorusu. Dördüncü alan
-  `minDayIndex` içerik taraması gerektirmez, doğrudan `CurrentDayIndex`'e bakar
-- Girdisi **Adım 5'in `GameSession`'ının zaten parse ettiği katalog** — ana ekran
-  ikinci bir parse yapmaz, `FoodCatalog` referansı da `GameSession` üzerinden
-  gelir
-- `MetaResolver`'a beslenir; `DayContent` unlock'lu kayıtlar buradan aktifleşir
-- Meta1'in üç propunun tetikleyicileri yazarlanır (K2 tablosu): Fritöz →
-  `Food_Fries`; DrinkFridge → `FoodCategory.Drink`; SaucesStand → üç
-  `Mod_Extra{Ketchup,Mayonnaise,Mustard}`
-- Testler: saf C#, sahte katalogla — üç tetikleyici şeklinin her biri için ayrı
-  vaka, artı "tetiklenmemesi gereken içerik tetiklemiyor" (ör. `Mod_ExtraCheese`
-  sos standını açmamalı)
+**Klasör zorunluydu:** `Scripts/Core/` döngü olurdu (ProgressionSystem, LivesSystem ve
+DaySystem üçü de Core'a referans veriyor), `Scripts/Bootstrap/` ise asmdef'siz olmak
+zorunda (asmdef eklemek `GameManager`'ı içine alıp sahnedeki view referanslarını riske
+atardı).
 
-### [ ] Adım 7 — Görünüm: arka plan + yuvalar + lokasyon geçişi + yerleştirme aracı
+**Kazanılan kapsam:** `ResolveStartingDayIndex`'in clamp'i D-012'den beri gerçek bir
+çökmeyi (son günün ötesindeki indeks → `CurrentDay` null → ilk ticket'ta exception)
+koruyordu ve **hiç testi yoktu**. Artık dört testi var.
+
+**Doğrulama sınırı:** yalnızca derleme (Session + Assembly-CSharp + testler, üçü de 0
+hata). **Play-mode geçişi YAPILMADI** — senden gereken kontrol: gün sahnesi açılıyor mu,
+ilk 3 ticket geliyor mu, HUD doğru mu, gün bitince kayıt oluyor mu.
+
+**5b sonucu (2026-08-20).** `SessionHost` (soyut taban), `MainScreenRoot`,
+`HudWalletSource`'un yeniden bağlanması ve `ExpoTheExplorer > Meta > Wire MainScreen
+Session` menü adımı. Kayıt: D-022. **Ana ekran artık bir `GameState` ve `Wallet`
+taşıyor** — dükkânın para harcayabilmesinin ön koşulu.
+
+**Planda "arayüze bağlanır" yazıyordu, olmuyor.** `[SerializeField]` bir arayüzü
+serileştiremez, yani Inspector'dan sürüklenebilir tip-güvenli bir alan somut bir tipe
+bakmak zorunda. Soyut MonoBehaviour tabanı (`SessionHost`) seçildi; alternatifleri
+`MonoBehaviour` alan + runtime cast (her şey sürüklenebilir, hata play-time'da çıkar)
+ya da D-013'te kullanıcının reddettiği runtime arama.
+
+**`[FormerlySerializedAs("gameManager")]` kozmetik değil, zorunlu.** Alan adını
+değiştirmek `SampleScene`'deki prefab override'ını düşürür ve HUD gün sahnesinde
+sessizce save-dosyası moduna geçer — dosyanın kendi yorumunda "KNOWN FAILURE MODE"
+diye yazılı olan şeyin aynısı.
+
+**Yeni test yok, bilerek:** üç tip de MonoBehaviour ve `HudWalletSource` predefined
+assembly'de, yani asmdef test assembly'si onu göremiyor. Doğrulama yalnızca derleme
+(4 assembly, 0 hata).
+
+**Senden gereken ilk kontrol:** `HudWalletSource`'un konsol satırı **iki sahnede de**
+"live GameState" demeli. "save file" derse referans düşmüş.
+
+---
+
+#### Doğrulama yönteminde bulunan kusur (2026-08-20)
+
+Adım 3 ve 5a'da yazdığım "0 hata" kanıtı **eksikti** ve iki derleme hatası oyuncuya
+—yani kullanıcıya— kadar gitti (`CS0121`, `CS0104`). Sebep:
+
+> Unity'nin ürettiği `.csproj` dosyaları derlenecek dosyaları `<Compile Include>`
+> satırlarıyla **tek tek** listeliyor. Yeni yazılmış bir dosya, Unity onu içe alıp
+> csproj'u yeniden üretene kadar o listede **yok** — derleme onu hiç görmüyor ve
+> gönül rahatlığıyla "0 hata" diyor.
+
+İkinci bir kusur da vardı: 5a'da MetaSystem'i güncel kaynaktan derledim ama testleri
+**overload'ları içermeyen eski DLL'e** karşı derledim, o yüzden belirsizlik o anda
+gerçekten yoktu.
+
+**Bundan sonraki kural:** yeni dosya yazdıktan sonraki derleme, o dosyanın csproj'un
+Compile listesinde göründüğü teyit edilmeden kanıt sayılmaz; ve bağımlılık sırası
+değişince ALT assembly'ler de yeniden derlenir.
+
+> **Sıra notu:** D-017'den sonra bu adımın ikinci tüketicisi kalmadı (Adım 6
+> silindi). Gerekçesi değişmedi — cüzdanın tek yazıcısı ana ekranda da korunmalı
+> ve kurulum kopyalanmamalı — ama `GameSession`'ın Day kataloğunu parse etmesi
+> artık yalnızca `GameManager`'ın kendi ihtiyacı.
+
+### ~~Adım 6~~ — SİLİNDİ (D-017)
+
+Gün içeriği taraması. Açılma tek bir yazarlanmış gün numarasına indiği için bu
+adımın konusu kalmadı — bkz. K2. Sonraki adımlar **yeniden numaralanmadı**:
+`decisions.md` D-015 ve D-016 "Adım 7/9"a atıf yapıyor, numaraları kaydırmak o
+atıfları yanlış yapardı. Numaralar etiket, sıra sayacı değil.
+
+### [x] Adım 7 — Görünüm: arka plan + yuvalar + lokasyon geçişi + yerleştirme aracı
 
 - `MetaBoardView` — **bakılan lokasyonun** arka planını basar, o lokasyonun her
   yuvası için bir Image spawn eder, `sortOrder` ile sıralar, aktifliğe göre
@@ -544,9 +725,26 @@ geliyor mu, HUD doğru mu.
 - **Lokasyon geçişi** (K6): `< Expo Park >` çubuğu; yalnızca açık lokasyonlar
   arasında gezinir, ekran en yeni açık olanla açılır. Geçiş tahtayı yeniden kurar
 - Kilitli bir sonraki lokasyon için "Gün N'de açılıyor" göstergesi
-- **Editor yerleştirme aracı**: yuvaları sahnede sürükle → normalize pozisyonları
-  ilgili `MetaLocation` asset'ine geri yaz
-- Meta1'in 19 pozisyonunun gerçekten yazarlanması
+- ~~Editor yerleştirme aracı~~ → **Adım 2.5'te yapıldı** (Meta Editor penceresi)
+- Meta1'in 19 pozisyonunun gerçekten yazarlanması (pencereden, sürükleyerek)
+
+**Sonuç (2026-08-20).** `MetaGroundsView` (görünüm) + `MetaGroundsSetup`
+(`ExpoTheExplorer > Meta > Build Meta Grounds`). Kayıt: D-023. **M10 kapandı:**
+genişliğe oturt + clamp'li dikey kaydırma.
+
+Dört karar: proplar katalogdan **runtime'da üretiliyor** (sahnede 19 elle konmuş nesne
+katalogla sessizce çelişebilirdi); ölçmeden önce `Canvas.ForceUpdateCanvases()` —
+`Start` karesinde stretched bir rect'in genişliği hâlâ **sıfır**, ölçsem bütün proplar
+sıfır boyutta çıkar ve ekran boş görünür (hata vermez); proplar arka planın **çocuğu**
+ve `normalizedPosition` doğrudan anchor'a yazılıyor, K5'in karşılığı bu — kaydırma için
+prop başına hiçbir kod gerekmedi; ve geçiş yalnızca **açık** lokasyonlar arasında,
+kilitli olan "Gün N'de açılıyor" ipucu olarak görünüyor.
+
+**Doğrulama:** derleme, ve bu kez yeni dosyaların csproj'un Compile listesinde olduğu
+**teyit edilerek** — bu oturumda iki hatanın kullanıcıya kadar gitmesine yol açan boşluk
+tam olarak buydu.
+
+Kalan: yuva pozisyonlarının yazarlanması (Meta Editor'den) ve sanat işi.
 
 ### [ ] Adım 8 — Dükkân UI'ı
 
@@ -582,14 +780,12 @@ geliyor mu, HUD doğru mu.
 |---|---|---|
 | M1 | **Fiyatlar.** Tipik bir gün kaç SoftMoney kazandırıyor? Dekorlar kaç günde bir alınacak hissi vermeli? (Fiyat, D-011'in 20/10/5 tip oranlarıyla ve yiyecek `basePrice`'larıyla ölçeklenmeli.) | Adım 9 |
 | M2 | **StartBuilding gerçekten satın alınıyor mu**, yoksa ilk gün bitince mi kayboluyor? Plan "satın alınır" varsayıyor — oyunun ilk hedefi olur. | Adım 2 |
-| M3 | ~~SaucesStand'i hangi modifikasyon tetikliyor?~~ **Fiilen cevaplandı:** `Mod_ExtraKetchup` + `Mod_ExtraMayonnaise` + `Mod_ExtraMustard` (Hotdog klasörü). Burger'in dört modifikasyonu sos değil. Onay yeterli. | Adım 6 |
-| M4 | ~~DrinkFridge tetikleyicisi?~~ **Önerilen:** `FoodCategory.Drink` kategorisi (6 içeceği tek tek listelemek yerine) — 7. içecek eklendiğinde sessizce tetiklenmeme hatasını kapatır. Onay yeterli. | Adım 6 |
-| M4b | **Fritöz `Food_Fries`'a mı bağlı, tüm `Side` kategorisine mi?** Plan tek asset varsayıyor ("patates side'ını açsın diye"). İleride ikinci bir kızartma side'ı gelirse kategori daha doğru olabilir. | Adım 6 |
 | M5 | **Dükkân şekli:** 16 ürün düz liste mi, yoksa kategori sekmeleri / kaydırma mı? | Adım 8 |
 | M6 | **Her şey alındığında ne olur?** Şu an bir bitiş durumu tasarlanmadı. | Adım 8 |
 | M7 | Meydan (`Square`) hangi dekor yuvalarını açıyor — Main.png'nin alt yarısındaki çim alan mı? | Adım 9 |
 | M8 | **Meta2 hangi Gün'de açılıyor?** Sanat henüz yok; sistem baştan hazır (K6), yalnızca sayı ve asset eksik. Sistemi bloke etmez — Meta1 tek lokasyonlu çalışır. | Meta2 asset'i |
 | M9 | **Yeni lokasyon açıldığı an oyuncuya nasıl duyurulur?** (banner / animasyon / sadece çubukta belirir). Cila işi, sistemi bloke etmez. | Adım 7 |
+| ~~M10~~ | **CEVAPLANDI (2026-08-20):** genişliğe oturt + clamp'li dikey kaydırma. Sanat 0.463, Canvas referansı 0.5625; kısa ekranlarda %18 taşma kaydırılarak gezilir, uzun telefonlarda kaydıracak bir şey olmaz. | ~~Adım 7~~ |
 
 ---
 

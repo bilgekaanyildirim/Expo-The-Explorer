@@ -19,7 +19,11 @@ namespace ExpoTheExplorer.Tests.EditMode
     // actual migration path a v1 player takes. v3 (decisions.md D-014) added Lives and
     // brought the first REAL upgrade with it -- absent-reads-as-0 is not survivable for
     // that field -- so the v2-payload case below is the one that guards a shipped save
-    // file against losing its money to a schema change.
+    // file against losing its money to a schema change. v4 (decisions.md D-020) added
+    // OwnedMetaItemIds and went back to a SAFE default, so its cases guard something
+    // different: not a value being lost, but a reference arriving null. That is why one
+    // of them uses a CURRENT-version payload -- UpgradeToCurrent returns early there, so
+    // only a normalization outside it catches the case.
     public class PlayerProfileStoreTests
     {
         private string testFilePath;
@@ -247,6 +251,100 @@ namespace ExpoTheExplorer.Tests.EditMode
             Assert.AreEqual(1, profile.CurrentDayIndex);
             Assert.AreEqual(GameState.DefaultStartingLives, profile.Lives,
                 "0 lives would be a player dead on arrival, so the upgrade must fill this in");
+        }
+
+        // The case that actually protects a shipped save file from v4: a real v3 player
+        // has money, a day and lives, and none of them may be touched by a schema change
+        // whose only addition is an empty inventory.
+        [Test]
+        public void Load_WhenFileIsV3_KeepsEveryFieldAndOwnsNothing()
+        {
+            File.WriteAllText(
+                testFilePath,
+                "{\"Version\":3,\"SoftMoney\":1250,\"Gems\":8,\"CurrentDayIndex\":5,\"Lives\":2}");
+            var store = new PlayerProfileStore(testFilePath);
+
+            var profile = store.Load();
+
+            Assert.AreEqual(1250, profile.SoftMoney, "a v3 file's money must survive the v4 upgrade untouched");
+            Assert.AreEqual(8, profile.Gems);
+            Assert.AreEqual(5, profile.CurrentDayIndex);
+            Assert.AreEqual(2, profile.Lives, "v4 adds a field; it must not refill lives the way v3 does");
+            Assert.IsNotNull(profile.OwnedMetaItemIds, "an absent list must arrive empty, never null");
+            Assert.IsEmpty(profile.OwnedMetaItemIds, "owning nothing is what an older save means");
+        }
+
+        [Test]
+        public void SaveThenLoad_PreservesOwnedMetaItems()
+        {
+            var store = new PlayerProfileStore(testFilePath);
+            store.Save(new PlayerProfile
+            {
+                OwnedMetaItemIds = { "Meta1.HotdogStand", "Meta1.Square", "Meta2.Fountain" }
+            });
+
+            var reloaded = new PlayerProfileStore(testFilePath).Load();
+
+            Assert.AreEqual(
+                new[] { "Meta1.HotdogStand", "Meta1.Square", "Meta2.Fountain" },
+                reloaded.OwnedMetaItemIds);
+        }
+
+        // Keys are qualified by location on purpose, so the same decor id bought in two
+        // restaurants is two entries rather than one. If this ever collapses to one, a
+        // player who buys a fountain in Meta1 gets Meta2's for free.
+        [Test]
+        public void SaveThenLoad_SameItemIdInTwoLocations_StaysTwoEntries()
+        {
+            var store = new PlayerProfileStore(testFilePath);
+            store.Save(new PlayerProfile { OwnedMetaItemIds = { "Meta1.Fountain", "Meta2.Fountain" } });
+
+            var reloaded = new PlayerProfileStore(testFilePath).Load();
+
+            Assert.AreEqual(2, reloaded.OwnedMetaItemIds.Count);
+            Assert.Contains("Meta1.Fountain", reloaded.OwnedMetaItemIds);
+            Assert.Contains("Meta2.Fountain", reloaded.OwnedMetaItemIds);
+        }
+
+        // A hand-edited or half-written CURRENT-version file, which UpgradeToCurrent
+        // returns early on -- the exact gap the normalization sits outside that method to
+        // close. Without it this reaches the caller as a NullReferenceException.
+        [Test]
+        public void Load_WhenCurrentVersionFileHasAnExplicitNullList_StillArrivesEmpty()
+        {
+            File.WriteAllText(
+                testFilePath,
+                "{\"Version\":4,\"SoftMoney\":5,\"Gems\":0,\"CurrentDayIndex\":0,\"Lives\":3,\"OwnedMetaItemIds\":null}");
+
+            var profile = new PlayerProfileStore(testFilePath).Load();
+
+            Assert.IsNotNull(profile.OwnedMetaItemIds);
+            Assert.IsEmpty(profile.OwnedMetaItemIds);
+            Assert.AreEqual(5, profile.SoftMoney, "normalizing the list must not disturb anything else");
+        }
+
+        // The fallback is an object some caller built, not something this class
+        // deserialized, so its list can be null just as easily -- which is why Normalize
+        // wraps the fallback returns too and not only the parsed one.
+        [Test]
+        public void Load_WithFallbackCarryingANullList_StillArrivesEmpty()
+        {
+            var fallback = new PlayerProfile { SoftMoney = 42, OwnedMetaItemIds = null };
+
+            var profile = new PlayerProfileStore(testFilePath).Load(fallback);
+
+            Assert.AreSame(fallback, profile, "the caller's own instance must come back");
+            Assert.IsNotNull(profile.OwnedMetaItemIds);
+            Assert.IsEmpty(profile.OwnedMetaItemIds);
+        }
+
+        [Test]
+        public void Load_WhenFileDoesNotExist_OwnsNothingRatherThanNull()
+        {
+            var profile = new PlayerProfileStore(testFilePath).Load();
+
+            Assert.IsNotNull(profile.OwnedMetaItemIds);
+            Assert.IsEmpty(profile.OwnedMetaItemIds);
         }
 
         // The opposite guard: a genuine v3 file's Lives is data, not something to

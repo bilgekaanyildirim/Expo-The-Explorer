@@ -2,6 +2,7 @@
     "name": "ExpoTheExplorer.Tests.EditMode",
     "rootNamespace": "ExpoTheExplorer.Tests.EditMode",
     "references": [
+        "ExpoTheExplorer.Session",
         "ExpoTheExplorer.Core",
         "ExpoTheExplorer.Data",
         "ExpoTheExplorer.Systems.TicketSystem",
@@ -12,6 +13,7 @@
         "ExpoTheExplorer.Systems.ProgressionSystem",
         "ExpoTheExplorer.Systems.DayLifecycle",
         "ExpoTheExplorer.Systems.DaySystem",
+        "ExpoTheExplorer.Systems.MetaSystem",
         "ExpoTheExplorer.Editor",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"

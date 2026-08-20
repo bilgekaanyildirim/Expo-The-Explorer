@@ -1,0 +1,56 @@
+using ExpoTheExplorer.Data;
+using ExpoTheExplorer.Session;
+using UnityEngine;
+
+namespace ExpoTheExplorer.UI
+{
+    // The main screen's composition root: it builds the same GameSession the day scene
+    // does, and nothing else. That is the whole point -- the menu now has a GameState and
+    // a Wallet, which is what a shop needs in order to spend money at all, and the shared
+    // HUD can follow it live instead of reading the save file once (decisions.md D-022).
+    //
+    // Deliberately NOT a GameManager. It builds the session half only; the day runtime
+    // (ticket slots, tray, board distribution, the per-frame tick) stays out, because a
+    // running day behind a menu would time tickets out and cost lives -- the concrete
+    // reason moving GameManager here was rejected in D-021.
+    //
+    // It is a SessionHost so HudWalletSource can hold a reference to "this scene's
+    // session provider" without knowing which of the two it is.
+    public class MainScreenRoot : SessionHost
+    {
+        // The same three assets GameManager takes. Wired by the menu step in
+        // MainScreenSessionSetup rather than by hand, since "find the one asset of this
+        // type" is a search an author should not have to repeat -- but they stay
+        // serialized fields, so a project with two of something can be corrected here.
+        [SerializeField] private GameConfig gameConfig;
+        [SerializeField] private LivesConfig livesConfig;
+
+        [Tooltip("Only used to parse the Day catalog, which this screen needs so it can tell which Day the player is on. Nothing on the menu reads a food item.")]
+        [SerializeField] private FoodCatalog foodCatalog;
+
+        private GameSession session;
+
+        public override GameSession Session => session;
+
+        // Awake, not Start: every reader is a view's Start (HudWalletSource resolves
+        // lazily from there), and Unity runs all Awakes before any Start. This is the same
+        // ordering GameManager relies on, so both scenes behave identically.
+        private void Awake()
+        {
+            if (gameConfig == null || livesConfig == null)
+            {
+                // Loud, because the failure is otherwise quiet: with no session the HUD
+                // silently falls back to reading the save file, which looks correct until
+                // the first purchase fails to update the coin count.
+                Debug.LogError(
+                    $"{nameof(MainScreenRoot)} on '{name}' is missing a config reference " +
+                    $"(gameConfig: {gameConfig != null}, livesConfig: {livesConfig != null}). " +
+                    "Run ExpoTheExplorer > Meta > Wire MainScreen Session.",
+                    this);
+                return;
+            }
+
+            session = new GameSession(gameConfig, livesConfig, foodCatalog);
+        }
+    }
+}

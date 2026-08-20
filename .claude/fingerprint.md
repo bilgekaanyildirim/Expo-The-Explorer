@@ -51,6 +51,17 @@
     and the load itself via `ApplyPersistedLives` (clamped 1..MaxLives). `MaxLives`
     is not persisted: nothing varies it. Readers: `GameOverPopupView`,
     `DayLifecycleManager.StarCount`, and `LivesView` through `HudWalletSource`.
+  - meta props the player has BOUGHT → **`player_profile.json`**
+    (`PlayerProfile.OwnedMetaItemIds`, added v4 by decisions.md D-020), as qualified
+    `"<location>.<item>"` keys whose format's single authority is
+    `MetaCatalog.OwnershipKey`. Purchases ONLY: whether a location is unlocked and
+    whether a Day-unlocked prop is on screen are DERIVED from `CurrentDayIndex` against an
+    authored index (D-015/D-017) and are deliberately never stored, because a second copy
+    starts lying the moment the catalog is re-authored. No single writer yet — nothing
+    writes it as of Adım 4; the writer arrives with `ProfileSaver` in Adım 5.
+  - a meta prop's price / position / art / unlock day → **`MetaCatalog` asset**
+    (decisions.md D-015…D-019). Readers: `MetaResolver`, `MetaPurchase`,
+    `MetaCatalogValidator`, and the Meta Editor window. Nothing else may hold a price.
   - everything else (SoftMoney/Gems, board grid state, tray contents)
     → OPEN. `.claude/economy-plan.md` step 1 is where the Wallet
     single-writer question is being settled. (Xp/Level dropped off this list
@@ -83,7 +94,7 @@
   index, which CLAMPS it against the parsed Day catalog — an index past the last
   authored Day would otherwise resolve `CurrentDay` to null and throw on the first
   ticket. Second reader, never a second writer: `MainScreenView.Start`.
-  Schema: `PlayerProfileStore.CurrentVersion = 3`, stamped on every Save. `Load`
+  Schema: `PlayerProfileStore.CurrentVersion = 4`, stamped on every Save. `Load`
   accepts versions 1..CurrentVersion and refuses 0 (unversioned, meaning unknown)
   or anything newer. v2 shipped with no migration code — a v1 file simply lacks
   `CurrentDayIndex` and reads it as 0 = Day 0, where a v1 player always started.

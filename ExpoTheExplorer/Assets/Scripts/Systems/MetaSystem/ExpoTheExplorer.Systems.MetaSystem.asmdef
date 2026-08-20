@@ -1,0 +1,16 @@
+{
+    "name": "ExpoTheExplorer.Systems.MetaSystem",
+    "rootNamespace": "ExpoTheExplorer.Systems.MetaSystem",
+    "references": [
+        "ExpoTheExplorer.Data"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
