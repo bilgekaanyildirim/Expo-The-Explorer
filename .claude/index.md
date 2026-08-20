@@ -1,4 +1,4 @@
-<!-- stamp: 2026-08-18 systems:11 unmapped:0 unassigned-files:45 -->
+<!-- stamp: 2026-08-20 systems:13 unmapped:1 unassigned-files:44 -->
 # index — system to location, one screen
 
 Step 1 of `procedures/locate.md`: read this before anything else, and only
@@ -10,16 +10,18 @@ maps and never invents a name.
 |---|---|---|---|---|---|---|
 | BoardDistribution | core | ExpoTheExplorer/Assets/Data/DataScripts/BoardDistributionSettings.cs, ExpoTheExplorer/Assets/Scripts/Systems/BoardDistribution/BoardDistributor.cs (+1) | - | - | - | OK |
 | BoardUI | core, ui | ExpoTheExplorer/Assets/Data/DataScripts/GameConfig.cs, ExpoTheExplorer/Assets/Scripts/UI/BoardView.cs (+1) | - | - | - | OK |
-| Bootstrap | core | ExpoTheExplorer/Assets/Scripts/Bootstrap/GameManager.cs, ExpoTheExplorer/Assets/Scripts/Core/GameState.cs (+2) | - | - | - | OK |
+| Bootstrap | core | ExpoTheExplorer/Assets/Scripts/Bootstrap/GameManager.cs, ExpoTheExplorer/Assets/Scripts/Core/GameState.cs (+3) | - | - | - | OK |
 | DayEditor | editor | ExpoTheExplorer/Assets/Editor/DayEditorDayStartPreview.cs, ExpoTheExplorer/Assets/Editor/DayEditorSpriteGUI.cs (+3) | - | - | - | OK |
 | DayLifecycle | core, ui | ExpoTheExplorer/Assets/Scripts/Systems/DayLifecycle/DayLifecycleManager.cs, ExpoTheExplorer/Assets/Scripts/Systems/DayLifecycle/ExpoTheExplorer.Systems.DayLifecycle.asmdef (+2) | - | - | - | OK |
 | DaySystem | core | ExpoTheExplorer/Assets/Scripts/Systems/DaySystem/DayBoardTimelinePlayer.cs, ExpoTheExplorer/Assets/Scripts/Systems/DaySystem/DayCatalogParser.cs (+9) | - | - | - | OK |
 | EconomySystem | core | ExpoTheExplorer/Assets/Data/DataScripts/EconomyConfig.cs, ExpoTheExplorer/Assets/Scripts/Systems/EconomySystem/EconomyCalculator.cs (+2) | - | - | - | OK |
-| LivesSystem | core, ui | ExpoTheExplorer/Assets/Scripts/Systems/LivesSystem/ExpoTheExplorer.Systems.LivesSystem.asmdef, ExpoTheExplorer/Assets/Scripts/Systems/LivesSystem/LivesManager.cs (+3) | - | - | - | OK |
-| ProgressionSystem | core, ui | ExpoTheExplorer/Assets/Scripts/Systems/ProgressionSystem/Wallet.cs, ExpoTheExplorer/Assets/Scripts/Systems/ProgressionSystem/ExpoTheExplorer.Systems.ProgressionSystem.asmdef (+6) | - | - | - | OK |
-| TicketSystem | core, ui | ExpoTheExplorer/Assets/Scripts/Systems/TicketSystem/TicketSlotManager.cs, ExpoTheExplorer/Assets/Data/DataScripts/TicketCardVisualsConfig.cs (+6) | - | - | - | OK |
+| LivesSystem | core, ui | ExpoTheExplorer/Assets/Scripts/Systems/LivesSystem/ExpoTheExplorer.Systems.LivesSystem.asmdef, ExpoTheExplorer/Assets/Scripts/Systems/LivesSystem/LivesManager.cs (+4) | - | - | - | OK |
+| MainScreen | editor, ui | ExpoTheExplorer/Assets/Scripts/UI/MainScreenView.cs, ExpoTheExplorer/Assets/Scripts/UI/Editor/HudCanvasPrefabSetup.cs (+1) | MainScreen | - | - | OK |
+| MetaSystem | - | - | - | - | - | UNMAPPED — blueprint system with no code |
+| ProgressionSystem | core, ui | ExpoTheExplorer/Assets/Scripts/Systems/ProgressionSystem/Wallet.cs, ExpoTheExplorer/Assets/Scripts/Systems/ProgressionSystem/ExpoTheExplorer.Systems.ProgressionSystem.asmdef (+7) | - | HudCanvas | - | OK |
+| TicketSystem | core, ui | ExpoTheExplorer/Assets/Scripts/Systems/TicketSystem/TicketSlotManager.cs, ExpoTheExplorer/Assets/Data/DataScripts/TicketCardVisualsConfig.cs (+6) | - | TicketCard, TicketCard Into, TicketCard UpDown | - | OK |
 | TraySystem | core | ExpoTheExplorer/Assets/Scripts/Systems/TraySystem/TrayManager.cs, ExpoTheExplorer/Assets/Scripts/Systems/TraySystem/ExpoTheExplorer.Systems.TraySystem.asmdef (+2) | - | - | - | OK |
 
 ## Gaps
-- `sys: ?` on 45 codemap line(s) — first: ExpoTheExplorer/Assets/Data/ExpoTheExplorer.Data.asmdef, ExpoTheExplorer/Assets/Data/DataScripts/BoardAnimationConfig.cs, ExpoTheExplorer/Assets/Data/DataScripts/DragFeelConfig.cs
+- `sys: ?` on 44 codemap line(s) — first: ExpoTheExplorer/Assets/Data/ExpoTheExplorer.Data.asmdef, ExpoTheExplorer/Assets/Data/DataScripts/BoardAnimationConfig.cs, ExpoTheExplorer/Assets/Data/DataScripts/DragFeelConfig.cs
 - 12 flagged codemap line(s) excluded from this table (STALE)
