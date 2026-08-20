@@ -46,7 +46,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 839328259805390741, guid: 9d7dd84290aae41dfafe9774b34668cd, type: 3}
       propertyPath: m_CellSize.y
-      value: 80
+      value: 100
       objectReference: {fileID: 0}
     - target: {fileID: 839328259805390741, guid: 9d7dd84290aae41dfafe9774b34668cd, type: 3}
       propertyPath: m_Padding.m_Top
@@ -94,7 +94,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2006575816911548226, guid: 9d7dd84290aae41dfafe9774b34668cd, type: 3}
       propertyPath: m_SizeDelta.y
-      value: 50
+      value: 71.25
       objectReference: {fileID: 0}
     - target: {fileID: 2006575816911548226, guid: 9d7dd84290aae41dfafe9774b34668cd, type: 3}
       propertyPath: m_AnchoredPosition.x
@@ -102,7 +102,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2006575816911548226, guid: 9d7dd84290aae41dfafe9774b34668cd, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: 13.517
+      value: 14.375
       objectReference: {fileID: 0}
     - target: {fileID: 2173789417276887943, guid: 9d7dd84290aae41dfafe9774b34668cd, type: 3}
       propertyPath: m_AnchorMax.y
