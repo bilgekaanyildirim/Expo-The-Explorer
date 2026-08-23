@@ -746,7 +746,26 @@ tam olarak buydu.
 
 Kalan: yuva pozisyonlarının yazarlanması (Meta Editor'den) ve sanat işi.
 
-### [ ] Adım 8 — Dükkân UI'ı
+### [ ] Adım 8 — Dükkân UI'ı — **GERİ ALINDI 2026-08-21**
+
+> **Yapıldı ve geri alındı (D-024 → D-027).** Kullanıcı farklı bir tasarım istiyor;
+> dükkânda bir hata bulunmadı. `MetaShopView` ve `MetaShopSetup` silindi,
+> `MetaGroundsView`'ın yalnızca onlar için büyüttüğü parçalar da (hayalet önizleme,
+> `ViewedLocation`, `ViewedLocationChanged`, public `Refresh`) çıkarıldı.
+>
+> **Duran şeyler:** `MetaResolver`/`MetaPurchase` ve 25 testi (kurallar ekrandan
+> bağımsız), `PlayerProfile.OwnedMetaItemIds` ve şema v4 (geri almak mevcut kayıtları
+> okunamaz yapardı). Yani küme D-020'nin kaydettiği duruma döndü: var, ve onu yazan
+> hiçbir şey yok.
+>
+> **`git reset` kullanılmadı:** dükkândan sonraki işleri (Continue Day X, reset
+> düğmesi + 1000 coin) de silerdi.
+>
+> **Yeni tasarımın planı ayrı bir dosyada: `.claude/meta-shop-plan.md`** (2026-08-21).
+> Kullanıcının tarif ettiği akış iki aşamalı — market düğmesi → liste → satır BUY ile
+> hayalet + onay popup'ı → popup BUY ile satın alma — ve asıl işi satırları çizmek
+> değil dört durumlu bir makineyi doğru kurmak. Aşağıdaki notlar o plana girdi olarak
+> duruyor.
 
 - `MetaShopView` — **bakılan lokasyonun** satın alınabilir ürünleri, fiyat,
   Satın Al butonu. Oyuncu neye bakıyorsa onu satın alır; kapalı bir lokasyona
@@ -754,7 +773,29 @@ Kalan: yuva pozisyonlarının yazarlanması (Meta Editor'den) ve sanat işi.
 - Durumlar: alınabilir / para yetmiyor / alan kilitli / zaten sahip
 - Satın alma akışı: `MetaPurchase` → `Wallet.TrySpendSoftMoney` → `ProfileSaver`
   → tahtayı ve HUD'ı tazele
-- Açık soru: 16 ürünlük düz bir liste mi, kategorili/kaydırmalı mı (§5)
+- ~~Açık soru: 16 ürünlük düz liste mi, kategorili mi (M5)~~ → **düz yatay şerit**,
+  kaydırmalı, kategori yok. 16 ürün için sekme yapmak sürtünmeden başka bir şey değil.
+
+**Sonuç (2026-08-20).** `MetaShopView` + `MetaShopSetup`
+(`ExpoTheExplorer > Meta > Build Meta Shop`), artı `MetaGroundsView`'a hayalet
+önizleme ve `ViewedLocationChanged` olayı. Kayıt: D-024. **Meta sistemi ilk kez
+uçtan uca çalışıyor:** katalog → kurallar → cüzdan → kayıt dosyası → haritanın
+yeniden çizilmesi.
+
+Satın alma sırası: `Evaluate` → `Wallet.TrySpendSoftMoney` → `OwnedMetaItemIds.Add`
+→ `Save()` → `Refresh()`. `Evaluate` zaten "Ok" dedi ama cüzdana **yine de**
+soruluyor: bakiyenin tek yazıcısı o ve kendi cevabı otorite; ikisi ayrışırsa oyuncu
+ödemediği bir şeye sahip olmasın.
+
+**Akış yapısal olarak atomik, ve bu emekten değil önceki kararlardan çıktı:** para ve
+sahiplik listesi aynı `GameSession`'da duruyor, `Save()` ikisini birlikte yazıyor.
+Çökme olursa ikisi de kaybolur, kayıt olursa ikisi de yazılır — "parası gitti ama eşya
+gelmedi" ifade edilemiyor.
+
+Altı verdict'ten **üçü** ekrana çıkıyor; `AreaLocked` satırı ölü bir düğme yerine
+"Needs Square" yazıyor, ki verdict'in bool olmamasının sebebi tam olarak bu.
+
+**Kalan:** fiyatlar (M1) ve yuva pozisyonlarının yazarlanması.
 
 ### [ ] Adım 9 — Fiyat dengesi + içerik doldurma
 
@@ -804,3 +845,91 @@ Kalan: yuva pozisyonlarının yazarlanması (Meta Editor'den) ve sanat işi.
   kalır; Meta1'de alınan çeşme Meta2'ye taşınamaz.
 - **Meta2'nin kendisi bu planın teslimatı değil.** Bu plan Meta2'yi *taşıyabilen*
   sistemi kuruyor; sanat gelince yazılacak kod değil, doldurulacak asset var.
+
+---
+
+## Ek: sıradaki Day Unlock propunun önizlemesi (D-040, 2026-08-21)
+
+Kullanıcının isteği: açılmamış Day Unlock proplarından **sıradaki** haritada hayalet
+olarak duruyor, gün ilerledikçe alttan yukarı katı hâline doğru doluyor, üstünde
+tamamlanan yüzde yazıyor.
+
+**Kural:** `MetaResolver.NextDayUnlock` → `MetaDayUnlockPreview` (prop + 0..1 ilerleme).
+İlerleme = (bugün − geçilmiş son Day Unlock günü) / (hedef gün − aynı nokta); hiç
+geçilmiş nokta yoksa 0'dan. **Yeni yazarlanan alan YOK.**
+
+**Üç çatal kullanıcıya soruldu:** dolum başlangıcı (→ önceki dönüm noktası), kaç prop
+(→ sadece sıradaki), yüzde yönü (→ tamamlanan).
+
+**Sanat hazırlığı gerekmiyor:** tek sprite yeterli. İki katman — arkada soluk siluet,
+üstünde `Image.Type.Filled` ile alttan yukarı dolan katı kısım. Tek `Image` ile hem
+soluk hem kısmen dolu ifade edilemiyor, çünkü `fillAmount` kesiyor, saydamlaştırmıyor.
+
+**Alan geçidi önizlemeye de uygulanıyor:** alanı alınmamış bir Day Unlock propu hiç
+görünmüyor, çünkü onu bekleten zaman değil bir satın alma.
+
+**Bilinen boşluk:** oyuncuya propun AÇILDIĞINI söyleyen hâlâ bir şey yok — önizleme
+"geliyor"u anlatıyor, "geldi"yi anlatmıyor.
+
+## Ek 2: açılış bir OLAY (D-041, 2026-08-21) — birinci yarı
+
+Kullanıcının isteği iki parça: (a) açılış kutlaması, (b) açılış olduğunda ana menüye
+zorunlu dönüş. **İkiye bölündü ve sıra tersine çevrildi**, çünkü (b) tek başına
+kötüleşme olurdu: menüye zorla yollanıp karşılığında hiçbir şey görmemek.
+
+**Bu adım (a):** ana ekrana nasıl dönüldüğünden bağımsız çalışıyor. Zoom in → prop
+siluetten katıya yükseliyor → zoom out. Sıradaki propa geçmek için dokunulabilir
+(atlanabilir).
+
+- Kural: `MetaResolver.DayUnlocksBetween(location, owned, since, current)` — alt sınır
+  **dışlayıcı**, yoksa her menü ziyaretinde aynı kutlama tekrar oynar.
+- Şema **v5**: `LastCelebratedDayIndex`. **0 güvenli değil**, o yüzden gerçek bir göç
+  var (eski dosyalarda `CurrentDayIndex`'e ayarlanıyor). Projenin v3'ten sonraki ikinci
+  göçü.
+- Tek yazıcı: `MetaGroundsView` — "gösterildi mi"yi ancak gösteren bilir.
+- İşaret **bütün kuyruk bitince** yazılıyor; yarıda kesilirse bir dahaki açılışta
+  tekrar oynar (kaybolmaz).
+- Statik cross-scene alan kullanılmadı: devir teslim aracı kayıt dosyası, ve statik alan
+  oyun arada kapanırsa kutlamayı sessizce yok ederdi.
+
+**Sıradaki adım (b):** "Next Day" bir prop açacaksa gün sahnesinde kalmak yerine ana
+ekrana yönlendirmek — böylece kutlama atlanamaz.
+
+## Ek 3: zorunlu ana ekran dönüşü (D-042) — ikinci yarı, tamamlandı
+
+"Next Day", girilecek gün bir Day Unlock propu açıyorsa gün sahnesinde kalmak yerine
+**ana ekrana** yönlendiriyor. Böylece D-041'in kutlaması atlanamıyor.
+
+- Davranış yeniden yazılmadı: `ReturnToMainScreenFromCompletedDay` zaten tam olarak
+  bunu yapıyordu, ve `AdvanceToNextDay`'i bilerek çağırmıyor (sahne kapanırken tahta
+  temizlemek boşa gider ya da yıkılan görünümlere olay kaskadı yollar). Yeni dal da
+  ona uğramıyor.
+- Karar `GameManager.TryContinueIntoNextDay`'de; popup tek soru soruyor ve yalnızca
+  gizlenip gizlenmeyeceğine bakıyor.
+- Sorulan lokasyon, meta ekranın AÇILACAĞI lokasyon — katalog düzeyindeki aşırı yükleme
+  ikisini tek fonksiyona bağlıyor. "Zorla döndüm ama kutlama oynamadı" ifade edilemiyor.
+- `GameManager`'a **opsiyonel** bir `MetaCatalog` alanı geldi; boşsa yönlendirme olmuyor
+  ve `Awake` bunu bir kez logluyor.
+- Asmdef değişikliği yok: `Bootstrap` ve `UI` `Assembly-CSharp`'ta, o da `MetaSystem`'e
+  zaten erişiyor.
+
+**Kullanıcı adımı:** `SampleScene`'de `GameManager`'a `Meta Catalog`'u sürüklemek.
+
+**Test edilmeyen ve edilemeyen:** kararın kendisi (hangi sahnenin yükleneceği) — sahne
+yükleyen bir MonoBehaviour. Test edilen şey kural.
+
+## Ek 4: kutlamadan sonra sıradakine bakış (D-043)
+
+Kutlama dizisi artık: açılan propa zoom → prop yükseliyor → **sıradakinin hayaletine
+zoom + kısa bekleme** → zoom out.
+
+- Yeni kural yok, yeni test yok — bakılan prop `NextDayUnlock`'un zaten döndürdüğü şey.
+- Hayalet yeniden çizilmiyor: `Refresh` kutlamadan önce ve yeni gün indeksiyle koştuğu
+  için ekrandaki hayalet zaten "açılan propun SONRAKİSİ" ve doğru oranda.
+- **Zamanlama bedavaya anlamlı:** D-040 dolumu önceki açılıştan ölçtüğü için, bir prop
+  açıldığı anda sıradaki tam **%0** okuyor. "Bunun sayacı şimdi başladı" mesajı ekstra
+  metin olmadan çıkıyor.
+- Bakışın kendi süresi var (`Celebration Next Peek Seconds`), kutlama beklemesine
+  bindirilmedi: iki farklı beat.
+- Atlama bayrağı bakış öncesi sıfırlanıyor — açılışı atlayan bakışı otomatik atlamıyor.
+

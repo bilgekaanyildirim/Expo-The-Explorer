@@ -86,7 +86,7 @@
 <!-- Every scene, starting with the boot/persistent scene. One line each:
      name — role — load mode (single | additive + trigger) — what lives
      in it. -->
-- MainScreen — the main screen the game launches into, and where a finished or abandoned day returns — single (build index 0) — Camera, EventSystem, Canvas carrying MainScreenView (day + wallet value texts, Play button)
+- MainScreen — the main screen the game launches into, and where a finished or abandoned day returns — single (build index 0) — Camera, EventSystem, the shared HUD Canvas prefab (wallet + lives, D-013), and a Canvas carrying MainScreenView (Play button captioned "Continue Day X" since D-025, optional Start Over button since D-026), the meta grounds and the meta shop
 - SampleScene — the day scene: the whole playable game — single (loaded by SceneFlow.LoadDay) — GameManager plus every hand-wired view (board, tray, ticket cards, HUD, the two popups)
 <!-- Scene inventory filled in 2026-08-19 (D-012); it was still template text
      because the project had exactly one scene until then. There is deliberately NO

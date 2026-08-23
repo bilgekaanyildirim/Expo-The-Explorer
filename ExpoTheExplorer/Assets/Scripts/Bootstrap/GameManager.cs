@@ -8,6 +8,7 @@ using ExpoTheExplorer.Systems.DayLifecycle;
 using ExpoTheExplorer.Systems.DaySystem;
 using ExpoTheExplorer.Systems.EconomySystem;
 using ExpoTheExplorer.Systems.LivesSystem;
+using ExpoTheExplorer.Systems.MetaSystem;
 using ExpoTheExplorer.Session;
 using ExpoTheExplorer.Systems.ProgressionSystem;
 using ExpoTheExplorer.Systems.TicketSystem;
@@ -32,6 +33,18 @@ namespace ExpoTheExplorer.Bootstrap
         [SerializeField] private FoodCatalog foodCatalog;
         [SerializeField] private EconomyConfig economyConfig;
         [SerializeField] private LivesConfig livesConfig;
+
+        // OPTIONAL, and read for exactly one question: will the day the player is about to
+        // enter open a Day-unlocked prop? If it does, "Next Day" sends them to the main
+        // screen so the celebration (decisions.md D-041) cannot be skipped.
+        //
+        // Optional rather than required because a day scene must not be broken by a missing
+        // reference for what is, from the day's point of view, a routing nicety. But NOT
+        // silent: Awake says so once, because an empty field and a catalog with no upcoming
+        // unlocks look identical on screen -- the same reason HudWalletSource logs which mode
+        // it resolved to.
+        [Tooltip("Only used to decide whether finishing this day should return the player to the main screen, so a newly unlocked prop is actually seen. Leave it empty and that routing simply does not happen.")]
+        [SerializeField] private MetaCatalog metaCatalog;
 
         // No boardDistributionConfig field on purpose: board-distribution balancing is
         // authored per Day and arrives with the Day (decisions.md D-004). The shared asset
@@ -103,6 +116,13 @@ namespace ExpoTheExplorer.Bootstrap
             // A missing, corrupt or unversioned file loads as 0/0 (see PlayerProfileStore),
             // which is also what a brand-new player gets.
             session = new GameSession(gameConfig, livesConfig, foodCatalog);
+
+            if (metaCatalog == null)
+            {
+                Debug.Log(
+                    $"{nameof(GameManager)}: no MetaCatalog wired, so finishing a day will never route to the " +
+                    "main screen for a prop unlock. Drag the catalog in if you want unlocks to be shown.", this);
+            }
 
             ticketFactory = new TicketFactory(ticketGenerationConfig);
             DayLifecycleManager = new DayLifecycleManager(State);
@@ -242,6 +262,58 @@ namespace ExpoTheExplorer.Bootstrap
         // No wallet work: this day already completed, so OnDayCompleted banked its
         // earnings, and the next day's baseline is re-taken by ApplyPersistedBalances
         // when the day scene next loads.
+        // What "Next Day" actually asks for (decisions.md D-042). Returns true when the
+        // player stays in THIS scene on a fresh day, false when the scene is being dropped
+        // for the main screen -- the caller only needs to know whether it still has a popup
+        // to hide.
+        //
+        // The whole decision lives here rather than in the popup. That view already asked one
+        // question and branched on it; a second question would have made it the place where
+        // flow is decided, and flow is this class's job.
+        //
+        // Two reasons to leave for the main screen, and they resolve in this order:
+        //   1. The next day opens a Day-unlocked prop. The player is sent to see it, because
+        //      a celebration nobody is present for is not a celebration.
+        //   2. There is no next day. The pre-existing fallback, unchanged.
+        // Both hand off to ReturnToMainScreenFromCompletedDay, which already persists the
+        // next index and loads the scene -- and which deliberately does NOT go through
+        // AdvanceToNextDay, since clearing the board and refilling slots microseconds before
+        // the scene unloads is either wasted or an event cascade through tearing-down views.
+        // That reasoning applies to case 1 exactly as it did to case 2.
+        public bool TryContinueIntoNextDay()
+        {
+            if (NextDayOpensAProp())
+            {
+                ReturnToMainScreenFromCompletedDay();
+                return false;
+            }
+
+            if (AdvanceToNextDay()) return true;
+
+            ReturnToMainScreenFromCompletedDay();
+            return false;
+        }
+
+        // Asks about the location the meta screen will OPEN on, via the catalog overload, not
+        // about some location of its own choosing. That is what makes "marched back to the
+        // menu and shown nothing" unrepresentable: the celebration only starts from Start,
+        // and at that moment the viewed location is the newest unlocked one -- the same one
+        // this resolves.
+        private bool NextDayOpensAProp()
+        {
+            if (metaCatalog == null) return false;
+
+            var nextIndex = State.CurrentDayIndex + 1;
+
+            // No next day means nothing opens on it either; the caller's second reason then
+            // handles the exit. Checked here so this method never reports an unlock for a day
+            // the player cannot reach.
+            if (Session.DayCatalog == null || nextIndex >= Session.DayCatalog.Count) return false;
+
+            return MetaResolver.DayUnlocksBetween(
+                metaCatalog, Session.OwnedMetaItemIds, State.CurrentDayIndex, nextIndex).Count > 0;
+        }
+
         public void ReturnToMainScreenFromCompletedDay()
         {
             var nextIndex = State.CurrentDayIndex + 1;

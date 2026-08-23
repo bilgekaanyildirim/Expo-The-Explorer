@@ -118,33 +118,48 @@ namespace ExpoTheExplorer.EditorTools
 
             var root = canvasObject.transform;
 
-            // Captions are separate objects the view never touches -- it only writes
-            // the three value texts, which is what keeps authored text out of code.
-            CreateText("TitleCaption", root, "EXPO THE EXPLORER", 64, new Vector2(0f, 620f), new Vector2(900f, 140f));
-            CreateText("DayCaption", root, "DAY", 48, new Vector2(0f, 330f), new Vector2(400f, 80f));
-            var dayValue = CreateText("DayValue", root, "1", 110, new Vector2(0f, 210f), new Vector2(400f, 160f));
-
-            // No coins/gems labels: since D-013 the shared HUD Canvas prefab displays
-            // the wallet in this scene too, so building a second pair here would put
-            // one balance on screen twice. HudCanvasPrefabSetup deletes the four
-            // labels an earlier run of this builder created.
+            // Buttons, and nothing else (decisions.md D-025). The title, the "DAY"
+            // caption and the day number were all removed on the user's instruction: the
+            // day number now lives on the button itself as "Continue Day X", and the meta
+            // grounds are what fills this screen. Building them here again would put the
+            // builder and the scene permanently at odds.
+            //
+            // No coins/gems labels either: since D-013 the shared HUD Canvas prefab
+            // displays the wallet in this scene, so a second pair would put one balance on
+            // screen twice.
+            //
+            // The caption reads "PLAY" only until MainScreenView's Start overwrites it with
+            // the day number -- it is a placeholder for the Editor, not authored text.
             var playButton = CreateButton("PlayButton", root, "PLAY", new Vector2(0f, -20f), new Vector2(520f, 170f));
 
+            // The second button (decisions.md D-026): smaller, muted red, directly under
+            // Play, because it destroys progress and must not read as the main action. Its
+            // caption is authored from here on -- MainScreenView caches whatever the scene
+            // says and only swaps in its confirm text -- so "Start Over" is real text, not
+            // the placeholder "PLAY" above.
+            //
+            // A scene that already exists never reaches this method (the guard at the top
+            // refuses to overwrite one), which is why the same button also has a setup step
+            // of its own: MainScreenResetButtonSetup.
+            var resetButton = CreateButton(
+                "ResetButton", root, "Start Over", new Vector2(0f, -190f), new Vector2(320f, 90f), fontSize: 34);
+            resetButton.targetGraphic.color = new Color(0.45f, 0.18f, 0.18f);
+
             var view = canvasObject.AddComponent<MainScreenView>();
-            WireView(view, dayValue, playButton);
+            WireView(view, playButton, resetButton);
             return view;
         }
 
         // The view's references are private [SerializeField]s -- assigning them from
         // an editor script goes through SerializedObject, and the property names
         // below must stay in step with the field names in MainScreenView.
-        private static void WireView(MainScreenView view, TMP_Text dayValue, Button playButton)
+        private static void WireView(MainScreenView view, Button playButton, Button resetButton)
         {
             var serialized = new SerializedObject(view);
             var wiring = new Dictionary<string, UnityEngine.Object>
             {
-                ["dayValueText"] = dayValue,
                 ["playButton"] = playButton,
+                ["resetButton"] = resetButton,
             };
 
             foreach (var pair in wiring)
@@ -199,7 +214,13 @@ namespace ExpoTheExplorer.EditorTools
             return label;
         }
 
-        private static Button CreateButton(string name, Transform parent, string label, Vector2 anchoredPosition, Vector2 size)
+        private static Button CreateButton(
+            string name,
+            Transform parent,
+            string label,
+            Vector2 anchoredPosition,
+            Vector2 size,
+            float fontSize = 64f)
         {
             var buttonObject = new GameObject(name, typeof(RectTransform));
             buttonObject.transform.SetParent(parent, false);
@@ -222,7 +243,7 @@ namespace ExpoTheExplorer.EditorTools
 
             SetRect((RectTransform)buttonObject.transform, anchoredPosition, size);
 
-            var textLabel = CreateText($"{name}Label", buttonObject.transform, label, 64, Vector2.zero, size);
+            var textLabel = CreateText($"{name}Label", buttonObject.transform, label, fontSize, Vector2.zero, size);
             StretchToParent((RectTransform)textLabel.transform);
 
             return button;

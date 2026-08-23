@@ -51,6 +51,17 @@
     and the load itself via `ApplyPersistedLives` (clamped 1..MaxLives). `MaxLives`
     is not persisted: nothing varies it. Readers: `GameOverPopupView`,
     `DayLifecycleManager.StarCount`, and `LivesView` through `HudWalletSource`.
+  - a NEW player's opening coin balance → **`GameConfig`** (`startingSoftMoney`,
+    1000 in `GameConfig.asset`, added 2026-08-20 by decisions.md D-026). Not on
+    `EconomyConfig`: that asset is the per-ticket tip math and is unreachable from
+    the main screen, while `GameConfig` is the one config both scene roots already
+    hold. Exactly one reader, `GameSession`, which hands it to
+    `PlayerProfileStore.NewPlayer` as the `Load` FALLBACK — so it applies only to a
+    player with no readable save, reaches the wallet through the ordinary
+    `ApplyPersistedBalances` call (Wallet stays the single writer of a balance), and
+    never tops up a saved profile. The current balance itself is NOT authored
+    anywhere: it lives in `player_profile.json` and at runtime in
+    `GameState.SoftMoney`.
   - meta props the player has BOUGHT → **`player_profile.json`**
     (`PlayerProfile.OwnedMetaItemIds`, added v4 by decisions.md D-020), as qualified
     `"<location>.<item>"` keys whose format's single authority is

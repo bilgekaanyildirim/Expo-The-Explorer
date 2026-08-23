@@ -90,19 +90,14 @@ namespace ExpoTheExplorer.UI
             popupRoot.SetActive(false);
         }
 
-        // There may be no next Day to advance into. Rather than hiding the popup and
-        // leaving the player sitting on a finished day with no UI at all -- what this
-        // did before a main screen existed -- a failed advance exits to the main
-        // screen, the same place Go Back goes.
+        // Asks for the next day and hides itself only if there still IS a day scene to hide
+        // in. Both reasons to leave -- no next Day authored, or the next day opening a
+        // Day-unlocked prop the player should be shown (decisions.md D-042) -- are decided by
+        // GameManager, which owns flow. This view used to branch on the first of them; adding
+        // the second here would have made a popup the place where scene routing is decided.
         private void OnNextDayClicked()
         {
-            if (!gameManager.AdvanceToNextDay())
-            {
-                gameManager.ReturnToMainScreenFromCompletedDay();
-                return;
-            }
-
-            Hide();
+            if (gameManager.TryContinueIntoNextDay()) Hide();
         }
 
         // Always interactable, even at 3 stars -- a player can want a redo
