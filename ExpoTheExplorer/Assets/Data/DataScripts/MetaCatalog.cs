@@ -49,6 +49,9 @@ namespace ExpoTheExplorer.Data
         [Tooltip("What this prop looks like. Drawn only once the prop is active — before that it is simply not there. Required: a prop with no sprite can never appear.")]
         [SerializeField] private Sprite sprite;
 
+        [Tooltip("Optional. What the SHOP ROW shows for this prop. Leave it empty and the row uses the prop's own sprite, which is what happened everywhere before this field existed. Only the list icon: the map prop and the purchase ghost always use Sprite above, because those answer \"how will this look where it stands\" and this one answers \"how do we represent it in a list\".")]
+        [SerializeField] private Sprite shopIcon;
+
         [Tooltip("Purchase = costs SoftMoney. Day Unlock = not for sale, appears once the player reaches Unlock At Day Index and stays from then on.")]
         [SerializeField] private MetaUnlockKind unlock = MetaUnlockKind.Purchase;
 
@@ -76,6 +79,12 @@ namespace ExpoTheExplorer.Data
         public string Id => id;
         public string DisplayName => displayName;
         public Sprite Sprite => sprite;
+
+        // The fall-back lives HERE, not in the shop. "Empty means use the prop's sprite" is
+        // one rule, and a rule spread across its callers is one a caller eventually forgets
+        // -- the shop would then draw nothing for every prop without a custom icon, which
+        // reads as missing art rather than as missing code.
+        public Sprite ShopIcon => shopIcon != null ? shopIcon : sprite;
         public MetaUnlockKind Unlock => unlock;
         public int Price => price;
         public int UnlockAtDayIndex => unlockAtDayIndex;
@@ -103,6 +112,7 @@ namespace ExpoTheExplorer.Data
             int price = 0,
             int unlockAtDayIndex = 0,
             Sprite sprite = null,
+            Sprite shopIcon = null,
             string requiresAreaId = null,
             bool unlocksArea = false,
             string displayName = null,
@@ -113,6 +123,7 @@ namespace ExpoTheExplorer.Data
             this.id = id;
             this.displayName = displayName;
             this.sprite = sprite;
+            this.shopIcon = shopIcon;
             this.unlock = unlock;
             this.price = price;
             this.unlockAtDayIndex = unlockAtDayIndex;

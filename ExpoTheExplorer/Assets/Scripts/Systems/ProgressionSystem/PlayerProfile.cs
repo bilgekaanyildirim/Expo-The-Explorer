@@ -81,5 +81,26 @@ namespace ExpoTheExplorer.Systems.ProgressionSystem
         // authored one (decisions.md D-015/D-017) and must never be written here: a second
         // copy would start lying the moment the catalog is re-authored.
         public List<string> OwnedMetaItemIds = new();
+
+        // How far the meta screen has already congratulated the player (v5, decisions.md
+        // D-041). A Day-unlocked prop that opened after this day and at or before
+        // CurrentDayIndex is one the player has not been shown yet, so the grounds zoom in on
+        // it once and then move this marker up.
+        //
+        // Why it is stored at all: "has this been celebrated" is not derivable from anything
+        // else. Everything else about a Day-unlocked prop falls out of comparing day indices
+        // (D-015/D-017), which is why it is not written here -- but a one-time event that has
+        // or has not happened yet is exactly the kind of fact that has to be remembered.
+        //
+        // ZERO IS NOT A SAFE DEFAULT for this one, which is why v5 carries a real migration
+        // rather than only a bump. An existing save read as 0 would mean every prop the
+        // player unlocked days ago is still owed a celebration, and they would be shown a
+        // queue of them on next launch. UpgradeToCurrent sets it to CurrentDayIndex instead:
+        // whatever they have, they have already seen. This is the second migration in the
+        // project's history and the same shape as v3's Lives.
+        //
+        // A NEW player starts at 0 and is correct without a migration: the comparison is
+        // strictly-after, so a prop authored at day 0 is not treated as having just arrived.
+        public int LastCelebratedDayIndex;
     }
 }

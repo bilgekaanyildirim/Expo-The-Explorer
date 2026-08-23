@@ -60,6 +60,17 @@ namespace ExpoTheExplorer.Session
         // parameter (D-019) and no purchase could be committed yet.
         public ISet<string> OwnedMetaItemIds { get; }
 
+        // How far the meta screen has congratulated the player (profile v5, decisions.md
+        // D-041). Settable, unlike OwnedMetaItemIds which is a mutable set behind a
+        // read-only property, because this is one number rather than a collection.
+        //
+        // Its SINGLE WRITER is the thing that plays the celebration -- MetaGroundsView --
+        // and that is the whole reason it is not written anywhere else: "has this been
+        // shown" is only knowable by whatever showed it. The wallet and the day index keep
+        // GameManager as their writer; this datum simply has a different one, which the
+        // root invariant allows and the map records.
+        public int LastCelebratedDayIndex { get; set; }
+
         // Null until a Day catalog exists, so every consumer falls back the same way it
         // did when this lived on GameManager.
         public DayDefinition CurrentDay => DayCatalogNavigator.GetDayAt(DayCatalog, State.CurrentDayIndex);
@@ -76,7 +87,18 @@ namespace ExpoTheExplorer.Session
             State = new GameState(gameConfig);
             wallet = new Wallet(State);
 
-            var profile = this.profileStore.Load();
+            // The fallback carries the authored opening balance (decisions.md D-026), so
+            // "a player with no readable save" and "a player with 1000 coins to spend"
+            // are the same fact rather than two. It reaches the wallet through the
+            // ordinary ApplyPersistedBalances call below -- no new write path, so Wallet
+            // stays the single writer of both balances.
+            //
+            // It is the fallback for an UNREADABLE file too (corrupt, or written by a
+            // newer build). That is deliberate: this build cannot tell what those numbers
+            // mean, so it treats the player as new, and a new player gets the grant. The
+            // alternative -- a corrupt file dropping someone to zero coins -- is worse and
+            // is not what the version check exists to do.
+            var profile = this.profileStore.Load(PlayerProfileStore.NewPlayer(gameConfig.StartingSoftMoney));
 
             // Order 1 and 4: through the wallet, never by assignment, and it re-snapshots
             // the day start as a side effect that a retry depends on.
@@ -95,6 +117,7 @@ namespace ExpoTheExplorer.Session
             State.CurrentDayIndex = ResolveStartingDayIndex(profile.CurrentDayIndex);
 
             OwnedMetaItemIds = new HashSet<string>(profile.OwnedMetaItemIds);
+            LastCelebratedDayIndex = profile.LastCelebratedDayIndex;
         }
 
         // The wallet is handed out rather than wrapped: it is already the compiler-enforced
@@ -136,6 +159,7 @@ namespace ExpoTheExplorer.Session
                 CurrentDayIndex = State.CurrentDayIndex,
                 Lives = State.Lives,
                 OwnedMetaItemIds = new List<string>(OwnedMetaItemIds),
+                LastCelebratedDayIndex = LastCelebratedDayIndex,
             });
         }
     }

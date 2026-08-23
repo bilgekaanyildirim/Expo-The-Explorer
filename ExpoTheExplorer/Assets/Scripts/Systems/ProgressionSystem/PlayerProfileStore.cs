@@ -36,7 +36,12 @@ namespace ExpoTheExplorer.Systems.ProgressionSystem
         //     owned is exactly what an older save means. So unlike v3 this needs no
         //     semantic migration -- only a null guard, because the safe default is an
         //     empty list rather than a zero and a reference type can arrive as null.
-        public const int CurrentVersion = 4;
+        // v5: + LastCelebratedDayIndex (decisions.md D-041). Back to a DANGEROUS default,
+        //     like v3: read as 0, an existing save claims every Day-unlocked prop the
+        //     player got days ago is still owed a celebration, and they would be shown a
+        //     queue of them on next launch. So this one belongs in UpgradeToCurrent, and
+        //     the value it takes is CurrentDayIndex -- whatever they have, they have seen.
+        public const int CurrentVersion = 5;
 
         private const string FileName = "player_profile.json";
 
@@ -86,13 +91,34 @@ namespace ExpoTheExplorer.Systems.ProgressionSystem
             }
         }
 
-        // What a brand-new player gets, and what every fallback path returns when the
-        // caller supplied none. Money and day index are plain zero -- own nothing,
-        // start at the first Day -- but lives must be FULL, because 0 lives is a dead
-        // player and a fresh profile would otherwise be unplayable.
+        // What a brand-new player gets. The single place that answers "what does a
+        // player who has never played hold", which is why the starting grant is applied
+        // HERE and not in the wallet: seeding a balance anywhere else would put a second
+        // answer to that question in the codebase, and the two would drift.
+        //
+        // The day index stays zero -- start at the first Day -- and lives must be FULL,
+        // because 0 lives is a dead player and a fresh profile would otherwise be
+        // unplayable. The opening coin balance is authored content, so it arrives as an
+        // argument rather than being written down here (GameConfig.StartingSoftMoney;
+        // decisions.md D-026). Negative is clamped for the same reason
+        // Wallet.ApplyPersistedBalances clamps: broke, never in debt.
+        public static PlayerProfile NewPlayer(int startingSoftMoney)
+        {
+            return new PlayerProfile
+            {
+                SoftMoney = Math.Max(0, startingSoftMoney),
+                Lives = GameState.DefaultStartingLives,
+            };
+        }
+
+        // The fallback for a caller that supplied none. Deliberately grants NOTHING: this
+        // class has no config reference and inventing a number here is exactly the
+        // embedded-content the invariant forbids, so a caller who wants the authored
+        // opening balance passes NewPlayer(...) in as the fallback -- GameSession does,
+        // and it is the only place a wallet is ever seeded from a profile.
         private static PlayerProfile Defaults()
         {
-            return new PlayerProfile { Lives = GameState.DefaultStartingLives };
+            return NewPlayer(0);
         }
 
         // Brings a readable older file up to the current schema, in place. This is the
@@ -114,6 +140,15 @@ namespace ExpoTheExplorer.Systems.ProgressionSystem
             if (profile.Version < 3)
             {
                 profile.Lives = GameState.DefaultStartingLives;
+            }
+
+            if (profile.Version < 5)
+            {
+                // Read AFTER CurrentDayIndex has been deserialized, which it has -- this
+                // runs on a fully parsed profile. Marking everything up to today as seen is
+                // the only answer that neither replays old celebrations nor swallows a
+                // genuinely new one: a prop opening tomorrow is still strictly after this.
+                profile.LastCelebratedDayIndex = profile.CurrentDayIndex;
             }
         }
 
@@ -182,6 +217,32 @@ namespace ExpoTheExplorer.Systems.ProgressionSystem
             catch (Exception e)
             {
                 Debug.LogError($"Failed to save player profile at {filePath}: {e.Message}");
+            }
+        }
+
+        // Throws the save away, so the next Load reports "no profile found" and every
+        // caller starts a player over from nothing (decisions.md D-026). Deleting the
+        // FILE rather than writing a fresh profile over it is what makes this exact:
+        // a "reset" that saved defaults would have to know every field, which is the
+        // payload knowledge this class exists without -- and a field forgotten there
+        // would leave a scrap of the old player behind.
+        //
+        // Returns whether the caller can now treat the player as new. An already-absent
+        // file is success, not failure: the player wanted a clean slate and has one.
+        // A failed delete returns false rather than throwing, because the one caller is
+        // a UI button and the honest outcome there is "nothing was reset" rather than an
+        // exception on the click.
+        public bool Delete()
+        {
+            try
+            {
+                if (File.Exists(filePath)) File.Delete(filePath);
+                return true;
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"Failed to delete player profile at {filePath}: {e.Message}");
+                return false;
             }
         }
     }

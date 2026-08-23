@@ -484,6 +484,13 @@ namespace ExpoTheExplorer.Editor
             Field(item, "displayName");
             Field(item, "sprite");
 
+            // Drawn right under the prop's own art, because the pair is the whole point:
+            // this one is only what the shop row shows, and leaving it empty means "use the
+            // art above". Listed explicitly like every field here -- this window draws props
+            // field by field rather than by default inspector, so a new field is invisible
+            // until it is named.
+            Field(item, "shopIcon");
+
             EditorGUILayout.Space(2f);
             var unlock = item.FindPropertyRelative("unlock");
             if (unlock != null) EditorGUILayout.PropertyField(unlock);

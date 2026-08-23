@@ -60,13 +60,20 @@ namespace ExpoTheExplorer.Tests.EditMode
         // foodCatalog is null throughout: passing a dayCatalog means the real parse (which
         // would need Resources and a FoodCatalog asset) is never reached. That injection
         // point exists for exactly this.
+        // Kept so the starting-grant cases can assert against the CONFIG's value rather
+        // than against a literal: the number is authored in GameConfig.asset and a test
+        // that repeats it would pass while the asset says something else.
+        private GameConfig gameConfig;
+
         private GameSession CreateSession(int dayCount = 3, PlayerProfile saved = null)
         {
             var store = new PlayerProfileStore(testFilePath);
             if (saved != null) store.Save(saved);
 
+            gameConfig = CreateConfig<GameConfig>();
+
             return new GameSession(
-                CreateConfig<GameConfig>(),
+                gameConfig,
                 CreateConfig<LivesConfig>(),
                 foodCatalog: null,
                 profileStore: store,
@@ -155,14 +162,45 @@ namespace ExpoTheExplorer.Tests.EditMode
             Assert.IsTrue(session.OwnedMetaItemIds.Contains("Meta1.Square"));
         }
 
+        // A player with no save is a NEW player, and a new player is given the opening
+        // balance authored on GameConfig (decisions.md D-026). Asserted through the config
+        // rather than against a literal, so re-authoring the asset cannot make this lie.
         [Test]
-        public void WithNoSavedFile_StartsAtZeroMoneyAndFullLives()
+        public void WithNoSavedFile_StartsWithTheAuthoredGrantAndFullLives()
         {
             var session = CreateSession();
 
-            Assert.AreEqual(0, session.State.SoftMoney);
+            Assert.AreEqual(gameConfig.StartingSoftMoney, session.State.SoftMoney);
+            Assert.Greater(gameConfig.StartingSoftMoney, 0, "a zero grant would make this test prove nothing");
+            Assert.AreEqual(0, session.State.Gems, "the grant is coins only");
             Assert.AreEqual(GameState.DefaultStartingLives, session.State.Lives);
             Assert.IsEmpty(session.OwnedMetaItemIds);
+        }
+
+        // The other half of the grant rule, and the one that protects a real player: it is
+        // given ONCE, to someone with no readable save. A player who spent down to zero has
+        // a save that says zero, and must stay at zero -- topping them up here would hand
+        // out the grant on every launch.
+        [Test]
+        public void WithASavedFile_TheGrantIsNotHandedOutAgain()
+        {
+            var session = CreateSession(saved: new PlayerProfile { SoftMoney = 0, Lives = 2 });
+
+            Assert.AreEqual(0, session.State.SoftMoney);
+        }
+
+        // The grant arrives before the day-start snapshot is taken, because it comes through
+        // ApplyPersistedBalances like any restored balance. Without that a new player's first
+        // failed day would revert their wallet to zero.
+        [Test]
+        public void TheGrantSurvivesARetry_LikeARestoredBalance()
+        {
+            var session = CreateSession();
+
+            session.Wallet.EarnSoftMoney(70);
+            session.Wallet.RevertToDayStart();
+
+            Assert.AreEqual(gameConfig.StartingSoftMoney, session.State.SoftMoney);
         }
 
         // --- what Save writes ------------------------------------------------------------

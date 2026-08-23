@@ -17,6 +17,26 @@ namespace ExpoTheExplorer.Systems.MetaSystem
     // D-015/D-017): whether a location is unlocked, and whether a Day-unlocked prop is
     // open. Both fall out of comparing the player's day index against an authored one, so
     // there is no second copy to drift from the catalog.
+    // The prop the player is waiting for, and how far along that wait is. A struct rather
+    // than two out parameters because both callers -- the view and its tests -- read the
+    // pair together, and "item plus progress" is one answer rather than two.
+    public readonly struct MetaDayUnlockPreview
+    {
+        // Null means there is nothing coming: every Day-unlocked prop in this location is
+        // already open, or none was ever authored.
+        public readonly MetaItemDefinition Item;
+
+        // 0 on the day the wait began, 1 on the day the prop opens. Clamped, so a caller can
+        // hand it straight to a fill amount.
+        public readonly float Progress;
+
+        public MetaDayUnlockPreview(MetaItemDefinition item, float progress)
+        {
+            Item = item;
+            Progress = progress;
+        }
+    }
+
     public static class MetaResolver
     {
         // Owned keys are the qualified "<location>.<item>" form (MetaCatalog.OwnershipKey),
@@ -122,6 +142,115 @@ namespace ExpoTheExplorer.Systems.MetaSystem
             }
 
             return false;
+        }
+
+        // The NEXT Day-unlocked prop and how far the wait has come. The view draws it as a
+        // faint silhouette filling from the bottom, so the player can see what is coming and
+        // roughly when (the user's request, 2026-08-21).
+        //
+        // Nothing new is authored for this. The wait STARTS at the most recent Day-unlock
+        // milestone the player has already passed, and day 0 when there is none -- the
+        // user's choice among three options, and the one that needs no second number per
+        // prop. The practical consequence is that the pace varies: two unlocks eight days
+        // apart fill slowly, two days apart fill fast. That is the catalog's rhythm showing
+        // through rather than a defect.
+        //
+        // Only ONE prop is previewed -- the nearest by day, ties by authored order. Showing
+        // every future prop would fill the grounds with translucent objects and blur the one
+        // thing the player is actually close to.
+        public static MetaDayUnlockPreview NextDayUnlock(
+            MetaLocation location, ISet<string> ownedKeys, int currentDayIndex)
+        {
+            if (location?.Items == null) return default;
+
+            MetaItemDefinition target = null;
+            var previousMilestone = 0;
+
+            foreach (var item in location.Items)
+            {
+                if (item == null || item.Unlock != MetaUnlockKind.DayUnlock) continue;
+
+                // Area gating applies to the preview too, not only to IsActive. What holds
+                // such a prop back is a PURCHASE, not time, and a bar creeping toward full
+                // would promise "wait and it comes" when the honest answer is "buy the
+                // square". A prop whose day has passed but whose area is unowned therefore
+                // shows nothing at all, which is the same silence IsActive already gives it.
+                if (!IsAreaSatisfied(location, item, ownedKeys)) continue;
+
+                if (item.UnlockAtDayIndex <= currentDayIndex)
+                {
+                    // Already open: it is not what we are waiting for, but it may be where
+                    // the current wait started.
+                    if (item.UnlockAtDayIndex > previousMilestone) previousMilestone = item.UnlockAtDayIndex;
+                    continue;
+                }
+
+                // Strictly less, so ties keep authored order -- the same stability rule
+                // ActiveItems and MetaPurchase's ordering follow.
+                if (target == null || item.UnlockAtDayIndex < target.UnlockAtDayIndex) target = item;
+            }
+
+            if (target == null) return default;
+
+            // The span cannot be zero in practice: the target's day is strictly after today
+            // and the milestone is at or before it, so this is at least 1. Guarded anyway,
+            // because a catalog is data an author is part-way through and two props on one
+            // day is the sort of thing that reaches here before the validator is read.
+            var span = target.UnlockAtDayIndex - previousMilestone;
+            var progress = span <= 0 ? 0f : (float)(currentDayIndex - previousMilestone) / span;
+
+            return new MetaDayUnlockPreview(target, progress < 0f ? 0f : progress > 1f ? 1f : progress);
+        }
+
+        // Day-unlocked props that became active BETWEEN two days -- what the main screen owes
+        // the player a celebration for (D-041). Exclusive of `sinceDayIndex` and inclusive of
+        // `currentDayIndex`: the "since" day has already been accounted for, so a prop that
+        // opened exactly then is not owed again. That is also what stops a brand new player,
+        // whose marker sits at 0, from being shown a day-0 prop as though it had just
+        // arrived.
+        //
+        // Returned in authored catalog order, because two props may share a day and the
+        // screen shows them one after another -- so the order has to be something an author
+        // controls rather than whatever the list happens to yield.
+        // Catalog-level overload, for callers that hold the asset rather than one location --
+        // the day scene asking "will tomorrow open something" (D-042). It resolves the SAME
+        // location the meta screen will open on, which is what makes "sent back to the menu
+        // but shown nothing" impossible: the celebration only ever starts from Start, and at
+        // that moment the viewed location IS the newest unlocked one.
+        //
+        // NOTE the two overloads mean a bare `null` names neither -- the ambiguity that cost
+        // a CS0121 on DefaultLocationIndex earlier. Cast at the call site if you ever need to
+        // pass one.
+        public static List<MetaItemDefinition> DayUnlocksBetween(
+            MetaCatalog catalog, ISet<string> ownedKeys, int sinceDayIndex, int currentDayIndex)
+        {
+            var index = DefaultLocationIndex(catalog, currentDayIndex);
+            return index < 0
+                ? new List<MetaItemDefinition>()
+                : DayUnlocksBetween(catalog.Locations[index], ownedKeys, sinceDayIndex, currentDayIndex);
+        }
+
+        public static List<MetaItemDefinition> DayUnlocksBetween(
+            MetaLocation location, ISet<string> ownedKeys, int sinceDayIndex, int currentDayIndex)
+        {
+            var opened = new List<MetaItemDefinition>();
+            if (location?.Items == null || currentDayIndex <= sinceDayIndex) return opened;
+
+            foreach (var item in location.Items)
+            {
+                if (item == null || item.Unlock != MetaUnlockKind.DayUnlock) continue;
+                if (item.UnlockAtDayIndex <= sinceDayIndex || item.UnlockAtDayIndex > currentDayIndex) continue;
+
+                // The area gate again: a prop whose area is unowned is not on screen, so
+                // there is nothing to zoom in on and nothing to celebrate. Buying the area
+                // later makes it appear without a celebration, which is the honest outcome --
+                // the purchase already was the moment.
+                if (!IsAreaSatisfied(location, item, ownedKeys)) continue;
+
+                opened.Add(item);
+            }
+
+            return opened;
         }
 
         // Convenience for the view: every prop that should be drawn, already in draw order

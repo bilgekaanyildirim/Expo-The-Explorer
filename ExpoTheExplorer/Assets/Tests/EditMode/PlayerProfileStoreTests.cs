@@ -361,6 +361,42 @@ namespace ExpoTheExplorer.Tests.EditMode
             Assert.AreEqual(1, reloaded.Lives);
         }
 
+        // v5's migration, and the reason it exists at all (decisions.md D-041). Zero is NOT a
+        // safe default for LastCelebratedDayIndex: read as 0, an existing save claims every
+        // Day-unlocked prop the player got days ago is still owed a celebration, and the meta
+        // screen would greet them with a queue of fanfares for things they already have.
+        [Test]
+        public void Load_WhenFileIsOlderThanV5_MarksEverythingUpToTodayAsAlreadySeen()
+        {
+            File.WriteAllText(
+                testFilePath,
+                "{\"Version\":4,\"SoftMoney\":500,\"Gems\":3,\"CurrentDayIndex\":7,\"Lives\":2}");
+
+            var profile = new PlayerProfileStore(testFilePath).Load();
+
+            Assert.AreEqual(7, profile.LastCelebratedDayIndex);
+
+            // And nothing the old file DID carry is disturbed -- a migration that fixed one
+            // field by resetting others would be worse than the bug it fixes.
+            Assert.AreEqual(500, profile.SoftMoney);
+            Assert.AreEqual(7, profile.CurrentDayIndex);
+            Assert.AreEqual(2, profile.Lives);
+        }
+
+        // The opposite guard, the same shape as the Lives one above: on a CURRENT-version
+        // file the marker is data. Without this, an upgrade running unconditionally would
+        // push the marker to today on every launch and silently swallow a real unlock.
+        [Test]
+        public void Load_WhenFileIsCurrentVersion_DoesNotOverwriteTheCelebrationMarker()
+        {
+            var store = new PlayerProfileStore(testFilePath);
+            store.Save(new PlayerProfile { CurrentDayIndex = 9, LastCelebratedDayIndex = 4 });
+
+            var reloaded = new PlayerProfileStore(testFilePath).Load();
+
+            Assert.AreEqual(4, reloaded.LastCelebratedDayIndex);
+        }
+
         // A brand-new player has no file at all, and 0 lives would make that profile
         // unplayable -- so the no-file default is full lives, unlike money and day
         // index which are legitimately zero.
@@ -386,6 +422,81 @@ namespace ExpoTheExplorer.Tests.EditMode
 
             File.Delete(nestedPath);
             Directory.Delete(Path.GetDirectoryName(nestedPath));
+        }
+
+        // --- the new-player grant (decisions.md D-026) ------------------------------------
+
+        // The opening balance is authored content, so it arrives as an argument. What this
+        // pins down is that it does not cost the fresh profile anything else: full lives,
+        // first Day, nothing owned -- the same profile as before, with money in it.
+        [Test]
+        public void NewPlayer_CarriesTheGrantWithFullLivesAndNothingElse()
+        {
+            var profile = PlayerProfileStore.NewPlayer(1000);
+
+            Assert.AreEqual(1000, profile.SoftMoney);
+            Assert.AreEqual(GameState.DefaultStartingLives, profile.Lives);
+            Assert.AreEqual(0, profile.Gems);
+            Assert.AreEqual(0, profile.CurrentDayIndex);
+            Assert.IsEmpty(profile.OwnedMetaItemIds);
+        }
+
+        // A hand-edited config should read as broke, never as debt -- the same clamp
+        // Wallet.ApplyPersistedBalances makes, applied one step earlier.
+        [Test]
+        public void NewPlayer_ClampsANegativeGrantToZero()
+        {
+            Assert.AreEqual(0, PlayerProfileStore.NewPlayer(-500).SoftMoney);
+        }
+
+        // The grant reaches a player through the FALLBACK, so it must lose to a real save:
+        // topping an existing player up on every launch is the failure this asserts against.
+        [Test]
+        public void Load_WithANewPlayerFallback_PrefersTheSavedFile()
+        {
+            var store = new PlayerProfileStore(testFilePath);
+            store.Save(new PlayerProfile { SoftMoney = 12, Lives = 1 });
+
+            var loaded = store.Load(PlayerProfileStore.NewPlayer(1000));
+
+            Assert.AreEqual(12, loaded.SoftMoney);
+        }
+
+        [Test]
+        public void Load_WithANewPlayerFallback_AndNoFile_GrantsTheMoney()
+        {
+            var loaded = new PlayerProfileStore(testFilePath).Load(PlayerProfileStore.NewPlayer(1000));
+
+            Assert.AreEqual(1000, loaded.SoftMoney);
+        }
+
+        // --- Delete (decisions.md D-026) --------------------------------------------------
+
+        [Test]
+        public void Delete_RemovesTheFile_AndTheNextLoadIsANewPlayer()
+        {
+            var store = new PlayerProfileStore(testFilePath);
+            store.Save(new PlayerProfile { SoftMoney = 900, CurrentDayIndex = 4, Lives = 1, OwnedMetaItemIds = { "Meta1.Square" } });
+
+            Assert.IsTrue(store.Delete());
+            Assert.IsFalse(File.Exists(testFilePath), "the reset must leave no file behind for the next load to find");
+
+            // Every field, not just the money: "start over" means the day index and the
+            // owned props go too, and a partial reset would be the quiet failure here.
+            var reloaded = store.Load(PlayerProfileStore.NewPlayer(1000));
+
+            Assert.AreEqual(1000, reloaded.SoftMoney);
+            Assert.AreEqual(0, reloaded.CurrentDayIndex);
+            Assert.AreEqual(GameState.DefaultStartingLives, reloaded.Lives);
+            Assert.IsEmpty(reloaded.OwnedMetaItemIds);
+        }
+
+        // The player wanted a clean slate and already has one; reporting failure would make
+        // the caller refuse to reload the screen for no reason.
+        [Test]
+        public void Delete_WhenThereIsNoFile_ReportsSuccess()
+        {
+            Assert.IsTrue(new PlayerProfileStore(testFilePath).Delete());
         }
     }
 }

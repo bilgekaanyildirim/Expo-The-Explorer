@@ -36,9 +36,10 @@ namespace ExpoTheExplorer.Tests.EditMode
             new(id, MetaUnlockKind.Purchase, price: price, sprite: CreateSprite(),
                 requiresAreaId: requiresAreaId, unlocksArea: unlocksArea, sortOrder: sortOrder);
 
-        private MetaItemDefinition DayUnlocked(string id, int unlockAtDayIndex, int sortOrder = 0) =>
+        private MetaItemDefinition DayUnlocked(
+            string id, int unlockAtDayIndex, int sortOrder = 0, string requiresAreaId = null) =>
             new(id, MetaUnlockKind.DayUnlock, unlockAtDayIndex: unlockAtDayIndex,
-                sprite: CreateSprite(), sortOrder: sortOrder);
+                sprite: CreateSprite(), sortOrder: sortOrder, requiresAreaId: requiresAreaId);
 
         private MetaLocation Location(string id, int unlockAtDayIndex, params MetaItemDefinition[] items) =>
             new(id, unlockAtDayIndex, items, CreateSprite());
@@ -319,7 +320,7 @@ namespace ExpoTheExplorer.Tests.EditMode
         // --- the shop's list -------------------------------------------------------------
 
         [Test]
-        public void ShopItems_KeepsUnaffordableAndGatedProps_DropsOwnedAndDayUnlocked()
+        public void ShopItems_KeepsUnaffordable_DropsOwnedDayUnlockedAndAreaLocked()
         {
             var square = Purchase("Square", price: 900, unlocksArea: true);
             var table = Purchase("Table1", price: 100, requiresAreaId: "Square");
@@ -327,12 +328,242 @@ namespace ExpoTheExplorer.Tests.EditMode
             var fridge = DayUnlocked("DrinkFridge", 4);
             var location = Location("Meta1", 0, square, table, fountain, fridge);
 
-            var offers = MetaPurchase.ShopItems(location, Owned("Meta1.Fountain"), 0);
+            var offers = MetaPurchase.ShopItems(location, Owned("Meta1.Fountain"), 0, softMoney: 0);
 
-            // Square and Table1 stay: seeing what is still to come, and what it costs, is
-            // most of what a shop is for. Fountain is owned and the fridge was never for
-            // sale, so neither has anything left to offer.
-            Assert.AreEqual(new[] { "Square", "Table1" }, offers.Select(i => i.Id).ToArray());
+            // Only Square. Table1 is gone because its AREA is still locked -- the user's
+            // instruction on 2026-08-21, which reversed half of the plan's MS2: a prop the
+            // player cannot reach yet is not shown at all. Fountain is owned and the fridge
+            // was never for sale. Square itself stays even though 0 money cannot buy it,
+            // because seeing the price is what makes it worth saving for.
+            Assert.AreEqual(new[] { "Square" }, offers.Select(i => i.Id).ToArray());
+        }
+
+        [Test]
+        public void ShopItems_AreaOwned_LetsTheGatedPropIntoTheList()
+        {
+            var square = Purchase("Square", price: 900, unlocksArea: true);
+            var table = Purchase("Table1", price: 100, requiresAreaId: "Square");
+            var location = Location("Meta1", 0, square, table);
+
+            // The gate is what hides it, not the prop itself -- so owning the area brings it
+            // back. Without this the test above would also pass if area-gated props were
+            // dropped forever.
+            var offers = MetaPurchase.ShopItems(location, Owned("Meta1.Square"), 0, softMoney: 0);
+
+            Assert.AreEqual(new[] { "Table1" }, offers.Select(i => i.Id).ToArray());
+        }
+
+        [Test]
+        public void ShopItems_OrdersAffordableFirstThenByAscendingPrice()
+        {
+            var cheapLocked = Purchase("CheapLocked", price: 500);
+            var dear = Purchase("Dear", price: 900);
+            var cheap = Purchase("Cheap", price: 100);
+            var middling = Purchase("Middling", price: 300);
+            var location = Location("Meta1", 0, cheapLocked, dear, cheap, middling);
+
+            var offers = MetaPurchase.ShopItems(location, Owned(), 0, softMoney: 300);
+
+            // Affordable first (100, 300), then the rest, each group cheapest-first. Note
+            // CheapLocked at 500 sorts BEFORE Dear at 900 even though neither can be bought:
+            // the second key still applies inside the unaffordable group.
+            Assert.AreEqual(
+                new[] { "Cheap", "Middling", "CheapLocked", "Dear" },
+                offers.Select(i => i.Id).ToArray());
+        }
+
+        [Test]
+        public void ShopItems_EqualPrices_KeepAuthoredOrder()
+        {
+            // The reason the sort is an insertion sort rather than List.Sort, which is not
+            // stable: two props at one price must not be free to swap places between one
+            // open of the shop and the next.
+            var first = Purchase("First", price: 200);
+            var second = Purchase("Second", price: 200);
+            var third = Purchase("Third", price: 200);
+            var location = Location("Meta1", 0, first, second, third);
+
+            var offers = MetaPurchase.ShopItems(location, Owned(), 0, softMoney: 1000);
+
+            Assert.AreEqual(new[] { "First", "Second", "Third" }, offers.Select(i => i.Id).ToArray());
+        }
+
+        // --- the upcoming Day-unlock prop ------------------------------------------------
+
+        [Test]
+        public void NextDayUnlock_PicksTheNearestFutureProp()
+        {
+            var location = Location("Meta1", 0,
+                DayUnlocked("Fryer", 4), DayUnlocked("SauceBench", 12), DayUnlocked("Fridge", 20));
+
+            var upcoming = MetaResolver.NextDayUnlock(location, Owned(), currentDayIndex: 6);
+
+            // Not the Fryer -- that one is already open at day 6 -- and not the Fridge, which
+            // is further away. Only one prop is ever previewed.
+            Assert.AreEqual("SauceBench", upcoming.Item?.Id);
+        }
+
+        [Test]
+        public void NextDayUnlock_ProgressRunsFromThePreviousMilestone()
+        {
+            var location = Location("Meta1", 0, DayUnlocked("Fryer", 4), DayUnlocked("SauceBench", 12));
+
+            // The wait for SauceBench began when the Fryer opened on day 4, so day 8 is
+            // halfway through an eight-day span -- not 8/12, which is what measuring from
+            // day zero would have given.
+            var upcoming = MetaResolver.NextDayUnlock(location, Owned(), currentDayIndex: 8);
+
+            Assert.AreEqual(0.5f, upcoming.Progress, 0.0001f);
+        }
+
+        [Test]
+        public void NextDayUnlock_NoEarlierMilestone_MeasuresFromDayZero()
+        {
+            var location = Location("Meta1", 0, DayUnlocked("Fryer", 4));
+
+            var upcoming = MetaResolver.NextDayUnlock(location, Owned(), currentDayIndex: 1);
+
+            Assert.AreEqual("Fryer", upcoming.Item?.Id);
+            Assert.AreEqual(0.25f, upcoming.Progress, 0.0001f);
+        }
+
+        [Test]
+        public void NextDayUnlock_EverythingOpen_HasNothingToShow()
+        {
+            var location = Location("Meta1", 0, DayUnlocked("Fryer", 4), Purchase("Fountain", price: 400));
+
+            // Purchase props are never previewed either: waiting is not what stands between
+            // the player and one of those.
+            Assert.IsNull(MetaResolver.NextDayUnlock(location, Owned(), currentDayIndex: 9).Item);
+        }
+
+        [Test]
+        public void NextDayUnlock_AreaLockedProp_IsNotPreviewed()
+        {
+            var square = Purchase("Square", price: 900, unlocksArea: true);
+            var bench = DayUnlocked("SauceBench", 12, requiresAreaId: "Square");
+            var location = Location("Meta1", 0, square, bench);
+
+            // What holds this prop back is a PURCHASE, not time, so a bar creeping toward
+            // full would promise the wrong thing.
+            Assert.IsNull(MetaResolver.NextDayUnlock(location, Owned(), currentDayIndex: 6).Item);
+
+            // Buying the area hands it back to the clock.
+            var withArea = MetaResolver.NextDayUnlock(location, Owned("Meta1.Square"), currentDayIndex: 6);
+            Assert.AreEqual("SauceBench", withArea.Item?.Id);
+        }
+
+        // --- what the player is owed a celebration for -----------------------------------
+
+        [Test]
+        public void DayUnlocksBetween_ReturnsWhatOpenedInTheWindow()
+        {
+            var location = Location("Meta1", 0,
+                DayUnlocked("Fryer", 4), DayUnlocked("SauceBench", 8), DayUnlocked("Fridge", 20));
+
+            var opened = MetaResolver.DayUnlocksBetween(
+                location, Owned(), sinceDayIndex: 3, currentDayIndex: 9);
+
+            Assert.AreEqual(new[] { "Fryer", "SauceBench" }, opened.Select(i => i.Id).ToArray());
+        }
+
+        [Test]
+        public void DayUnlocksBetween_ExcludesTheSinceDay_SoNothingIsCelebratedTwice()
+        {
+            var location = Location("Meta1", 0, DayUnlocked("Fryer", 4));
+
+            // The marker sitting AT day 4 means day 4 has been accounted for. Were this
+            // inclusive, every visit to the menu would replay the same fanfare.
+            Assert.IsEmpty(MetaResolver.DayUnlocksBetween(
+                location, Owned(), sinceDayIndex: 4, currentDayIndex: 4));
+            Assert.IsEmpty(MetaResolver.DayUnlocksBetween(
+                location, Owned(), sinceDayIndex: 4, currentDayIndex: 7));
+        }
+
+        [Test]
+        public void DayUnlocksBetween_NewPlayer_IsNotShownADayZeroProp()
+        {
+            var location = Location("Meta1", 0, DayUnlocked("Banner", 0));
+
+            // A fresh profile's marker is 0 and so is their day, and the comparison is
+            // strictly-after -- so a prop authored at day 0 is scenery they started with, not
+            // an event. This is why a new player needs no migration.
+            Assert.IsEmpty(MetaResolver.DayUnlocksBetween(
+                location, Owned(), sinceDayIndex: 0, currentDayIndex: 0));
+        }
+
+        [Test]
+        public void DayUnlocksBetween_AreaLockedProp_IsNotCelebrated()
+        {
+            var square = Purchase("Square", price: 900, unlocksArea: true);
+            var bench = DayUnlocked("SauceBench", 4, requiresAreaId: "Square");
+            var location = Location("Meta1", 0, square, bench);
+
+            // It is not on screen, so there is nothing to zoom in on. Buying the area later
+            // brings it in without a fanfare, which is honest: the purchase was the moment.
+            Assert.IsEmpty(MetaResolver.DayUnlocksBetween(
+                location, Owned(), sinceDayIndex: 0, currentDayIndex: 6));
+
+            Assert.AreEqual(
+                new[] { "SauceBench" },
+                MetaResolver.DayUnlocksBetween(location, Owned("Meta1.Square"), 0, 6)
+                    .Select(i => i.Id).ToArray());
+        }
+
+        [Test]
+        public void DayUnlocksBetween_CatalogOverload_AsksTheLocationTheScreenWillOpenOn()
+        {
+            // Meta2 is the newest unlocked one at day 7, so it is what the meta screen shows
+            // and therefore what the day scene must ask about (D-042). Meta1's prop opening
+            // in the same window is NOT what the player would be shown, so it must not
+            // trigger a return.
+            var catalog = Catalog(
+                Location("Meta1", 0, DayUnlocked("OldFryer", 5)),
+                Location("Meta2", 6, DayUnlocked("NewBench", 7)));
+
+            var opened = MetaResolver.DayUnlocksBetween(
+                catalog, Owned(), sinceDayIndex: 4, currentDayIndex: 7);
+
+            Assert.AreEqual(new[] { "NewBench" }, opened.Select(i => i.Id).ToArray());
+        }
+
+        [Test]
+        public void DayUnlocksBetween_CatalogOverload_NothingUnlocked_IsEmpty()
+        {
+            var catalog = Catalog(Location("Meta1", 5, DayUnlocked("Fryer", 6)));
+
+            // No location is open at day 0, so there is nothing to ask about -- and the day
+            // side must not route anywhere for a prop on a location the player cannot see.
+            Assert.IsEmpty(MetaResolver.DayUnlocksBetween(catalog, Owned(), 0, 0));
+        }
+
+        // --- the shop icon ---------------------------------------------------------------
+
+        [Test]
+        public void ShopIcon_AuthoredIcon_IsUsedInsteadOfThePropArt()
+        {
+            var propArt = CreateSprite();
+            var icon = CreateSprite();
+            var item = new MetaItemDefinition(
+                "Fountain", MetaUnlockKind.Purchase, price: 400, sprite: propArt, shopIcon: icon);
+
+            Assert.AreSame(icon, item.ShopIcon);
+
+            // And the prop's own art is untouched: the map and the purchase ghost still draw
+            // from it, so a list icon must never leak into the thing standing on the ground.
+            Assert.AreSame(propArt, item.Sprite);
+        }
+
+        [Test]
+        public void ShopIcon_NoIcon_FallsBackToThePropArt()
+        {
+            var propArt = CreateSprite();
+            var item = new MetaItemDefinition(
+                "Fountain", MetaUnlockKind.Purchase, price: 400, sprite: propArt);
+
+            // The fall-back is what keeps every catalog authored before this field existed
+            // valid: an empty icon means "use the art", not "missing data".
+            Assert.AreSame(propArt, item.ShopIcon);
         }
 
         [Test]
@@ -340,7 +571,7 @@ namespace ExpoTheExplorer.Tests.EditMode
         {
             var location = Location("Meta2", 12, Purchase("Fountain", price: 400));
 
-            Assert.IsEmpty(MetaPurchase.ShopItems(location, Owned(), 0));
+            Assert.IsEmpty(MetaPurchase.ShopItems(location, Owned(), 0, softMoney: 10_000));
         }
 
         // --- degenerate input ------------------------------------------------------------
@@ -360,7 +591,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             Assert.AreEqual(-1, MetaResolver.DefaultLocationIndex((IReadOnlyList<MetaLocation>)null, 0));
             Assert.IsEmpty(MetaResolver.UnlockedLocations((IReadOnlyList<MetaLocation>)null, 0));
             Assert.IsEmpty(MetaResolver.ActiveItems(null, Owned(), 0));
-            Assert.IsEmpty(MetaPurchase.ShopItems(null, Owned(), 0));
+            Assert.IsEmpty(MetaPurchase.ShopItems(null, Owned(), 0, 0));
             Assert.AreEqual(MetaPurchaseVerdict.NotForSale, MetaPurchase.Evaluate(null, null, Owned(), 0, 0));
         }
     }
