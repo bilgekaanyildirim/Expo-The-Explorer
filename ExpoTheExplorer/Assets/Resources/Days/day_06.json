@@ -1,9 +1,9 @@
 {
     "runtime": {
-        "dayIndex": 1,
-        "ticketsRequiredForDay": 5,
+        "dayIndex": 6,
+        "ticketsRequiredForDay": 10,
         "boardDistribution": {
-            "noiseLeakCountLambda": 1.0,
+            "noiseLeakCountLambda": 2.0,
             "guaranteedTicketCountMode": "Manual",
             "guaranteedTicketCount": 1,
             "guaranteedTicketCountLambda": 1.0,
@@ -23,12 +23,16 @@
                 "mainItemId": "hotdog",
                 "sideItemId": "",
                 "drinkItemId": "",
-                "modifications": [
-                    {
-                        "modificationId": "extraketchup",
-                        "isAddition": true
-                    }
-                ],
+                "modifications": [],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "",
+                "drinkItemId": "fanta",
+                "modifications": [],
                 "patienceType": "Patient",
                 "customerNameOverride": "",
                 "timeLimitSecondsOverride": 0.0
@@ -37,12 +41,16 @@
                 "mainItemId": "hotdog",
                 "sideItemId": "",
                 "drinkItemId": "",
-                "modifications": [
-                    {
-                        "modificationId": "extraketchup",
-                        "isAddition": true
-                    }
-                ],
+                "modifications": [],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "",
+                "drinkItemId": "cola",
+                "modifications": [],
                 "patienceType": "Patient",
                 "customerNameOverride": "",
                 "timeLimitSecondsOverride": 0.0
@@ -50,7 +58,21 @@
             {
                 "mainItemId": "hotdog",
                 "sideItemId": "",
-                "drinkItemId": "",
+                "drinkItemId": "fanta",
+                "modifications": [
+                    {
+                        "modificationId": "extramayonnaise",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "",
+                "drinkItemId": "cola",
                 "modifications": [
                     {
                         "modificationId": "extramustard",
@@ -64,13 +86,17 @@
             {
                 "mainItemId": "hotdog",
                 "sideItemId": "",
-                "drinkItemId": "",
-                "modifications": [
-                    {
-                        "modificationId": "extraketchup",
-                        "isAddition": true
-                    }
-                ],
+                "drinkItemId": "cola",
+                "modifications": [],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "",
+                "drinkItemId": "cola",
+                "modifications": [],
                 "patienceType": "Patient",
                 "customerNameOverride": "",
                 "timeLimitSecondsOverride": 0.0
@@ -78,10 +104,19 @@
             {
                 "mainItemId": "hotdog",
                 "sideItemId": "",
-                "drinkItemId": "",
+                "drinkItemId": "fanta",
+                "modifications": [],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "",
+                "drinkItemId": "fanta",
                 "modifications": [
                     {
-                        "modificationId": "extramayonnaise",
+                        "modificationId": "extraketchup",
                         "isAddition": true
                     }
                 ],
@@ -94,7 +129,9 @@
     },
     "editorMeta": {
         "allowedFoodItemIds": [
-            "hotdog"
+            "hotdog",
+            "fanta",
+            "cola"
         ],
         "ticketGeneration": {
             "sideInclusionChance": 0.8999999761581421,
@@ -105,7 +142,7 @@
                 {
                     "foodItemId": "hotdog",
                     "weight": 1.0,
-                    "modificationCountLambda": 10.0,
+                    "modificationCountLambda": 1.0,
                     "maxModificationCount": 1
                 }
             ]
