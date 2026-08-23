@@ -823,5 +823,70 @@ namespace ExpoTheExplorer.Tests.EditMode
             Assert.AreEqual(1, CountMatchingItemsOnBoard(state.Board, mainB, ticketB.Modifications));
             Assert.AreEqual(0, CountMatchingItemsOnBoard(state.Board, mainC, ticketC.Modifications));
         }
+
+        [Test]
+        public void OnOrderPlaced_QueuedTicketsCouldWinLottery_ActiveTicketIsAlwaysGuaranteed()
+        {
+            // Regression test for the playtest bug in decisions.md D-044: the budget was
+            // drawn from one combined active+upcoming pool, so with the shipped balancing
+            // (budget 1, a 10-deep lookahead) the only guaranteed slot regularly went to
+            // a ticket the player could not see, and NO active ticket had its items on
+            // the board -- board full of food, no legal move, ticket expires for a life.
+            //
+            // decay 1f (uniform) is what makes this a real test: every candidate has an
+            // equal chance, so under the old combined pool the single active ticket would
+            // win only ~1 round in 4 and this loop would fail almost immediately. Under
+            // the active-first rule it is guaranteed every round, so the assertion inside
+            // the loop is deterministic -- non-flaky by construction, not by trial count.
+            var mainActive = CreateFoodItem();
+
+            for (var trial = 0; trial < 40; trial++)
+            {
+                var state = new GameState(gameConfig);
+                var active = CreateTicket(new List<FoodItemConfig> { mainActive }, arrivalSequence: 0);
+                var upcoming = new[]
+                {
+                    CreateTicket(new List<FoodItemConfig> { CreateFoodItem() }, arrivalSequence: 1),
+                    CreateTicket(new List<FoodItemConfig> { CreateFoodItem() }, arrivalSequence: 2),
+                    CreateTicket(new List<FoodItemConfig> { CreateFoodItem() }, arrivalSequence: 3),
+                };
+                var distributor = new BoardDistributor(state, CreateDistributionConfig(
+                    0f, guaranteedTicketCount: 1, earlyTicketWeightDecay: 1f));
+
+                distributor.OnOrderPlaced(new[] { active }, upcoming);
+
+                Assert.AreEqual(
+                    1,
+                    CountMatchingItemsOnBoard(state.Board, mainActive, active.Modifications),
+                    $"trial {trial}: the active ticket must be guaranteed before any queued one.");
+            }
+        }
+
+        [Test]
+        public void OnOrderPlaced_QueuedTicketAlreadyHoldsTheBudget_NewActiveTicketStillGetsCovered()
+        {
+            // The sticky half of the same bug. Selection persists across calls, and a
+            // queued ticket does not leave the pool when a slot fills -- so a queued
+            // ticket that won the budget in an earlier round used to keep holding it
+            // round after round while active tickets starved. Round 1 has no active
+            // tickets at all, which is the one legitimate way the budget lands on a
+            // queued ticket; round 2 must still cover the newly active one.
+            var state = new GameState(gameConfig);
+            var mainQueued = CreateFoodItem();
+            var mainActive = CreateFoodItem();
+            var queued = CreateTicket(new List<FoodItemConfig> { mainQueued }, arrivalSequence: 0);
+            var active = CreateTicket(new List<FoodItemConfig> { mainActive }, arrivalSequence: 1);
+            var distributor = new BoardDistributor(state, CreateDistributionConfig(0f, guaranteedTicketCount: 1));
+
+            distributor.OnOrderPlaced(Array.Empty<Ticket>(), new[] { queued });
+            Assert.AreEqual(1, CountMatchingItemsOnBoard(state.Board, mainQueued, queued.Modifications));
+
+            distributor.OnOrderPlaced(new[] { active }, new[] { queued });
+
+            Assert.AreEqual(1, CountMatchingItemsOnBoard(state.Board, mainActive, active.Modifications));
+            // The queued ticket keeps what was already spawned for it -- nothing here
+            // ever un-spawns an item, it just stops consuming the active budget.
+            Assert.AreEqual(1, CountMatchingItemsOnBoard(state.Board, mainQueued, queued.Modifications));
+        }
     }
 }

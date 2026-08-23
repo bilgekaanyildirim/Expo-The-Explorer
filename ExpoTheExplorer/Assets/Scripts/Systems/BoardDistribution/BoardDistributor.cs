@@ -86,11 +86,20 @@ namespace ExpoTheExplorer.Systems.BoardDistribution
         // decisions.md D-001 Phase 2a): a per-round budget (Manual fixed value, or
         // Poisson-sampled -- always 1..TicketSlotCount, never 0, so "at least one
         // ticket must always be completable" holds even in Poisson mode) picks that
-        // many tickets via an arrival-weighted lottery. Layered on top: any active
+        // many tickets via an arrival-weighted lottery. The budget is spent on ACTIVE
+        // tickets first and only reaches the queued lookahead once every active ticket
+        // is already covered (decisions.md D-044 -- see the long comment at that code,
+        // it is the fix for a real stuck position). Layered on top: any active
         // ticket under UrgentTimeThresholdSeconds is guaranteed unconditionally --
         // it consumes from the budget when the budget isn't exceeded, but is
         // guaranteed in full even past budget if urgent-ticket count exceeds it
-        // (confirmed with the user: urgency always wins).
+        // (confirmed with the user: urgency always wins). That urgency check is
+        // evaluated HERE, on the order-placed path, and deliberately nowhere else:
+        // spawning stays order-triggered with no timer or per-frame poll anywhere
+        // (the user's call, reaffirmed 2026-08-23). What makes that safe is the
+        // active-first budget below -- every round already leaves at least one
+        // ON-SCREEN ticket completable, so the board cannot reach a state where the
+        // player has no move and no further round is coming.
         //
         // Selection is STICKY across calls (guaranteedTickets is instance state,
         // pruned/topped-up here rather than recomputed from scratch each time) --
@@ -127,13 +136,53 @@ namespace ExpoTheExplorer.Systems.BoardDistribution
                 ? TruncatedPoisson.Sample(GameState.TicketSlotCount - 1, settings.GuaranteedTicketCountLambda, random) + 1
                 : settings.GuaranteedTicketCount;
 
-            var slotsToFill = budget - guaranteedTickets.Count;
+            // The budget counts ACTIVE tickets only, and active candidates are drawn
+            // before any queued one -- the locked rule is "the minimum set needed to
+            // complete ACTIVE tickets: at least one ticket must always be completable"
+            // (GDD Section 4 / ExpoTheExplorer CLAUDE.md), and a ticket the player
+            // cannot even see yet completes nothing.
+            //
+            // Drawing from one combined active+upcoming pool was a real playtest bug.
+            // With the shipped balancing (budget 1, decay 0.5, a 10-deep lookahead) the
+            // pool is ~13 tickets, of which only 3 are on screen, so the single budget
+            // slot regularly went to a QUEUED ticket -- and because selection is sticky
+            // and a queued ticket never leaves the pool, it then held that slot for many
+            // rounds while all three visible tickets got nothing. The board filled with
+            // items for orders that had not arrived (a ketchup hotdog while all three
+            // active tickets wanted something else), the player had no legal move, and
+            // since nothing is delivered, no ticket is assigned and no further round
+            // runs -- the position is unrecoverable until a ticket times out and pays a
+            // life for it. Simulated over the authored Days: 18.7% of rounds left ZERO
+            // active ticket guaranteed and 2.3% left all three slots full with nothing
+            // completable, ~0.3 forced life losses per day; both go to zero here.
+            var activeSet = new HashSet<Ticket>(
+                activeTickets.Where(t => t != null && t.State == TicketState.Active));
+
+            var slotsToFill = budget - guaranteedTickets.Count(t => activeSet.Contains(t));
             if (slotsToFill > 0)
             {
-                var candidates = pool.Where(t => !guaranteedTickets.Contains(t)).ToList();
-                foreach (var picked in WeightedSampleWithoutReplacement(candidates, slotsToFill))
+                // pool order (arrival) is preserved by the filter, which is what the
+                // decay weighting in WeightedSampleWithoutReplacement reads.
+                var activeCandidates = pool.Where(t => activeSet.Contains(t) && !guaranteedTickets.Contains(t)).ToList();
+                foreach (var picked in WeightedSampleWithoutReplacement(activeCandidates, slotsToFill))
                 {
                     guaranteedTickets.Add(picked);
+                    slotsToFill--;
+                }
+
+                // Only once EVERY active ticket is covered does the lookahead get the
+                // remainder -- that is the "budget larger than the number of active
+                // tickets" case, where preparing the next arrival in advance costs an
+                // on-screen ticket nothing. A queued ticket picked this way keeps its
+                // spawned items and stays in the set, but never counts against the
+                // active budget above; it starts counting once it reaches a slot.
+                if (slotsToFill > 0)
+                {
+                    var upcomingCandidates = pool.Where(t => !activeSet.Contains(t) && !guaranteedTickets.Contains(t)).ToList();
+                    foreach (var picked in WeightedSampleWithoutReplacement(upcomingCandidates, slotsToFill))
+                    {
+                        guaranteedTickets.Add(picked);
+                    }
                 }
             }
 
