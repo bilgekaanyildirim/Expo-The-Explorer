@@ -80,6 +80,27 @@ namespace ExpoTheExplorer.Systems.ProgressionSystem
             state.SoftMoney += amount;
         }
 
+        // Gems' first earn path: a completed day pays GameConfig.GemsPerStar for each
+        // star it scored (GameManager.OnDayCompleted). Until this existed Gems could
+        // only ever go down -- paid Continues spent them and nothing put them back.
+        //
+        // One-directional for the same reason EarnSoftMoney is: a negative amount is
+        // ignored rather than quietly subtracting, so this can never become a second
+        // spending path around TrySpendGems' affordability check. That also makes an
+        // authored gemsPerStar of 0, or a 0-star day, a no-op rather than a special case
+        // the caller has to remember.
+        //
+        // Deliberately NOT tracked in the spend ledger: gems earned during a day are
+        // taken back wholesale by RevertToDayStart, which restores the day-start
+        // snapshot. That is what makes replaying a finished day for a better score pay
+        // the new star count instead of stacking on top of the old one.
+        public void EarnGems(int amount)
+        {
+            if (amount <= 0) return;
+
+            state.Gems += amount;
+        }
+
         // Returns false and spends NOTHING when the player can't afford it --
         // the check and the deduction have to sit together, which is exactly why
         // callers can no longer be trusted with the setter. A negative cost is

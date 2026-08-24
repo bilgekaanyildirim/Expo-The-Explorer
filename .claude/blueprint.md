@@ -28,13 +28,33 @@
 - DayEditor — custom EditorWindow tooling for authoring Day JSON content (ticket sequence, Day Start board timeline) — depends on: DaySystem, TicketSystem
 - BoardUI — runtime board grid rendering + drag/drop (BoardView, board-visual config assets) — depends on: -
 - EconomySystem — delivery payout formula (order value from food prices + a tip stepped through three tiers keyed on remaining-time ratio) + its balancing config — depends on: -
-- ProgressionSystem — the single writer of SoftMoney/Gems (`Wallet`), the player-profile save boundary (JSON load/save + fallback on missing/corrupt file, currently unwired and carrying no fields), and the owning system of the wallet HUD (SoftMoneyView/GemsView) — depends on: -
+- ProgressionSystem — the single writer of SoftMoney/Gems (`Wallet`), the debt a completed day still owes the player (`DayRewardPurse`), the player-profile save boundary (JSON load/save + fallback on missing/corrupt file, currently unwired and carrying no fields), and the owning system of the wallet HUD (SoftMoneyView/GemsView) — depends on: -
+<!-- DayRewardPurse, added 2026-08-24 (decisions.md D-057): the payout became deferred, so
+     between "the day completed" and "the player left the popup" there is an amount that is
+     owed but not yet held. It is filed here rather than under DayLifecycle because it is
+     currency bookkeeping, and it is safe next to the single-writer invariant precisely
+     because it is a DEBT: the numbers in it have never been in the wallet, `Wallet` still
+     owns both balances, and GameManager -- the one class holding both -- pairs every Take
+     with exactly one Earn. It adds no arrow: it is plain C# and references nothing. -->
 - LivesSystem — life loss on wrong delivery/timeout + paid continue (SoftMoney or Gems) — depends on: ProgressionSystem
 <!-- LivesSystem -> ProgressionSystem, added 2026-08-18 (economy-plan Adım 1):
      the two paid-Continue prices are charged through Wallet, because GameState's
      balance setters are internal to ProgressionSystem now. One-directional --
      ProgressionSystem references nothing in LivesSystem. -->
-- DayLifecycle — per-day receipt bookkeeping (base tip / bonus tip / failed orders) feeding the Day Complete popup — depends on: EconomySystem
+- DayLifecycle — per-day receipt bookkeeping (base tip / bonus tip / failed orders) feeding the Day Complete popup, and since D-057 the popup's payout HANDOVER (`DayRewardFlightView`) — depends on: EconomySystem
+<!-- The handover, added 2026-08-24 (decisions.md D-057): a day's earnings are no longer
+     credited as they are made, so the Day Complete popup is where the money actually
+     changes hands -- stars seat, gems and coins fly to the HUD counters, and each landing
+     credits its share. It is filed under DayLifecycle because it is that popup's second
+     half, not a new system.
+
+     Its two references -- GameManager and DayRewardPurse -- add no NEW arrow: the popup
+     beside it has held a GameManager since it was written, which is this project's
+     composition seam for every view, and the purse is a plain data holder. Worth stating
+     plainly rather than leaving for the next reader to rediscover: the money authority did
+     not move. Wallet is still the single writer, GameManager still owns when a day pays,
+     and this view only asks it to release what the purse already owes. -->
+
 - TraySystem — per-slot tray contents, batched order validation, scatter-back-to-board — depends on: -
 - MainScreen — the main-screen presentation (day + wallet readout, Play) and the scene it lives in — depends on: ProgressionSystem, Bootstrap, MetaSystem
 <!-- MainScreen, added 2026-08-19 (decisions.md D-012): the meta side's navigation

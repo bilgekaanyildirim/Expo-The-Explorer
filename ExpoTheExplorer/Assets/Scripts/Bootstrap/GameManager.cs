@@ -195,15 +195,21 @@ namespace ExpoTheExplorer.Bootstrap
             TrayManager.OnTicketAssigned(assignment.SlotIndex);
         }
 
-        // Banks the Economy Module's payout (GDD Section 9 — Order Value + the
-        // tier's tip) the instant a ticket is delivered. TicketDelivered fires
-        // with the ticket that just left, still holding its final
-        // RemainingSeconds, so the tier is read from that same instance -- which
-        // is the only moment the delivered ticket's remaining time still exists.
+        // RECORDS the Economy Module's payout (GDD Section 9 — Order Value + the
+        // tier's tip) the instant a ticket is delivered, and deliberately does not
+        // pay it. TicketDelivered fires with the ticket that just left, still holding
+        // its final RemainingSeconds, so the tier is read from that same instance --
+        // which is the only moment the delivered ticket's remaining time still exists.
+        //
+        // The wallet call that used to sit here is gone (D-057): nothing reaches the
+        // player's balance until the day is COMPLETED, and the receipt this line feeds
+        // is what the day then owes. DayLifecycleManager.RecordDelivery already rounds
+        // once per delivery, so its running Total is to the coin the same number the
+        // per-delivery EarnSoftMoney calls used to add up to -- moving the payment did
+        // not move the amount.
         private void OnTicketDelivered((int SlotIndex, Ticket Ticket) delivery)
         {
             var payout = economyCalculator.CalculatePayout(delivery.Ticket);
-            wallet.EarnSoftMoney(Mathf.RoundToInt(payout.Total));
             DayLifecycleManager.RecordDelivery(payout);
         }
 
@@ -239,7 +245,85 @@ namespace ExpoTheExplorer.Bootstrap
         // quitting mid-day loses that day's income rather than banking it.
         private void OnDayCompleted(int _)
         {
+            pendingReward = new DayRewardPurse(
+                DayLifecycleManager.Total,
+                DayLifecycleManager.StarCount * gameConfig.GemsPerStar);
+
+            // Still saves, and still saves NOTHING of the reward. What this write banks
+            // is everything the day changed that is not money: lives lost, and the day
+            // index. Dropping it to "the handover saves" would mean a player who force
+            // quits on the popup relaunches with their pre-day lives, which is a worse
+            // trade than the ~2s window the money now sits in.
             SaveProfile();
+        }
+
+        // What the completed day owes the player but has not handed over yet. Null
+        // whenever no day is waiting to pay out, which is every moment except between
+        // DayCompleted and the player leaving the finished day.
+        //
+        // The debt exists because the payout is now a PERFORMANCE (D-057): coins and gems
+        // reach the balance as the Day Complete popup's reward flight lands each icon on
+        // its HUD counter, so what the player sees arrive and what they actually own are
+        // the same event rather than two events that have to be kept in step.
+        private DayRewardPurse pendingReward;
+
+        public int PendingRewardSoftMoney => pendingReward?.SoftMoneyRemaining ?? 0;
+        public int PendingRewardGems => pendingReward?.GemsRemaining ?? 0;
+
+        // The two hand-over steps the reward flight calls, one per icon that lands. Both
+        // go through Wallet like every other balance change in the game -- the purse only
+        // decides how much of the debt is allowed out, it never touches a balance itself.
+        // Both are clamped by the purse, so a miscounted animation can pay out less than
+        // the day earned but never more.
+        public void ClaimRewardGems(int count)
+        {
+            if (pendingReward == null) return;
+
+            wallet.EarnGems(pendingReward.TakeGems(count));
+        }
+
+        public void ClaimRewardSoftMoney(int amount)
+        {
+            if (pendingReward == null) return;
+
+            wallet.EarnSoftMoney(pendingReward.TakeSoftMoney(amount));
+        }
+
+        // Called by the reward flight when its last icon has landed. Separate from
+        // CommitPendingReward only in that it also writes the file: the exits below
+        // already save for their own reasons, and this one has no other reason to.
+        public void CompleteRewardHandover()
+        {
+            if (CommitPendingReward()) SaveProfile();
+        }
+
+        // The safety net under the whole animation, and the reason a broken or unwired
+        // reward flight cannot cost the player money: every exit from a finished day runs
+        // this first, so whatever the flight did not hand over is paid in full before the
+        // player can go anywhere. Returns whether anything was actually credited, so the
+        // callers that already save do not gain a second write for nothing.
+        private bool CommitPendingReward()
+        {
+            if (pendingReward == null) return false;
+
+            var softMoney = pendingReward.TakeAllSoftMoney();
+            var gems = pendingReward.TakeAllGems();
+            pendingReward = null;
+
+            wallet.EarnSoftMoney(softMoney);
+            wallet.EarnGems(gems);
+
+            return softMoney > 0 || gems > 0;
+        }
+
+        // The opposite of committing, for the one exit where the day's result is being
+        // thrown away rather than collected: a voluntary redo. The debt is voided instead
+        // of paid, which is what stops a finished day being replayed for its reward over
+        // and over. Anything the flight already handed over is a real balance by then and
+        // is taken back by RevertToDayStart, not by this.
+        private void DiscardPendingReward()
+        {
+            pendingReward = null;
         }
 
         // Builds the profile from GameState's public getters rather than asking
@@ -316,6 +400,12 @@ namespace ExpoTheExplorer.Bootstrap
 
         public void ReturnToMainScreenFromCompletedDay()
         {
+            // Before anything else: the day is over and the player is leaving with it,
+            // so whatever the reward flight had not handed over yet is paid now. The
+            // SaveProfile at the bottom then writes it, which is why this needs no save
+            // of its own.
+            CommitPendingReward();
+
             var nextIndex = State.CurrentDayIndex + 1;
             if (Session.DayCatalog != null && nextIndex < Session.DayCatalog.Count)
             {
@@ -341,6 +431,12 @@ namespace ExpoTheExplorer.Bootstrap
         // never money earned, so it cannot bank a failed day's income.
         public void ReturnToMainScreenAbandoningDay()
         {
+            // Defensive rather than load-bearing: this path is only reachable from the
+            // Game Over popup, i.e. from a day that never completed, so there is no debt
+            // to void. It is here so that "a failed day pays nothing" stays true by
+            // construction rather than by the reader tracing which events can overlap.
+            DiscardPendingReward();
+
             wallet.RevertToDayStart();
 
             // Refills lives BEFORE the save, and this line is load-bearing since
@@ -391,6 +487,12 @@ namespace ExpoTheExplorer.Bootstrap
         // RetryDay's reset order otherwise, including a full Lives refill.
         public void RetryCompletedDay()
         {
+            // VOIDED, not paid: this attempt's result is being thrown away, so the debt
+            // goes with it. Whatever the reward flight already handed over is a real
+            // balance by now, and the revert below is what takes that part back -- the
+            // two together are why replaying a finished day cannot farm the reward.
+            DiscardPendingReward();
+
             wallet.RevertToDayStart();
 
             RefreshDayTicketSequenceProvider();
@@ -430,11 +532,17 @@ namespace ExpoTheExplorer.Bootstrap
                 return false;
             }
 
+            // Ordering is load-bearing twice over: the reward is paid BEFORE
+            // CaptureDayStart, so the day the player is advancing into takes a baseline
+            // that already includes what they just earned -- snapshot first and their
+            // first retry of the new day would revert the reward away.
+            CommitPendingReward();
+
             State.CurrentDayIndex = nextIndex;
             wallet.CaptureDayStart();
 
-            // Persists the new index, not new money: OnDayCompleted already banked
-            // this balance and nothing has changed it since. Without this write,
+            // Persists the new index, and now also whatever the line above just paid
+            // out. Without this write,
             // quitting during the day the player just advanced INTO would relaunch
             // them onto the day they had already beaten.
             SaveProfile();

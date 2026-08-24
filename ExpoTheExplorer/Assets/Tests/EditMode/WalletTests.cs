@@ -12,8 +12,10 @@ namespace ExpoTheExplorer.Tests.EditMode
     // purpose: earnings taken back, spending never refunded, clamped at 0 (D1).
     //
     // Balances are seeded by assigning GameState directly, which the test
-    // assembly alone may do (Core/AssemblyInfo.cs) -- and Gems have no earn path
-    // in the game at all, so there is nothing else to seed them with.
+    // assembly alone may do (Core/AssemblyInfo.cs). That used to be the ONLY way to
+    // put Gems on the books, because the currency had no earn path; EarnGems (the
+    // star payout on a completed day) is that path now, and the cases at the bottom
+    // cover it.
     public class WalletTests
     {
         private GameConfig gameConfig;
@@ -328,6 +330,95 @@ namespace ExpoTheExplorer.Tests.EditMode
 
             Assert.AreEqual(150, publishedSoftMoney);
             Assert.AreEqual(6, publishedGems);
+        }
+
+        [Test]
+        public void EarnGems_AddsToBalance()
+        {
+            var state = new GameState(gameConfig) { Gems = 5 };
+            var wallet = new Wallet(state);
+
+            wallet.EarnGems(3);
+            wallet.EarnGems(2);
+
+            Assert.AreEqual(10, state.Gems);
+        }
+
+        // One-directional like EarnSoftMoney, so it can never become a spending path
+        // that skips TrySpendGems' affordability check. It also means an authored
+        // gemsPerStar of 0, or a 0-star day, is a no-op rather than a caller-side case.
+        [Test]
+        public void EarnGems_WithZeroOrNegative_ChangesNothing()
+        {
+            var state = new GameState(gameConfig) { Gems = 40 };
+            var wallet = new Wallet(state);
+
+            wallet.EarnGems(0);
+            wallet.EarnGems(-7);
+
+            Assert.AreEqual(40, state.Gems);
+        }
+
+        [Test]
+        public void EarnGems_PublishesTheGemsChangedEvent()
+        {
+            var state = new GameState(gameConfig) { Gems = 2 };
+            var wallet = new Wallet(state);
+
+            int? publishedGems = null;
+            state.GemsChanged.Subscribe(value => publishedGems = value);
+
+            wallet.EarnGems(3);
+
+            Assert.AreEqual(5, publishedGems);
+        }
+
+        // The atomic-day rule reaches the new currency for free, and that is what stops
+        // a completed day being replayed for gems over and over: RetryCompletedDay
+        // reverts before the next completion pays out, so the second attempt's stars
+        // REPLACE the first attempt's rather than stacking on them.
+        [Test]
+        public void RevertToDayStart_TakesBackGemsEarnedThisDay()
+        {
+            var state = new GameState(gameConfig) { Gems = 8 };
+            var wallet = new Wallet(state);
+
+            wallet.EarnGems(2);
+            wallet.RevertToDayStart();
+
+            Assert.AreEqual(8, state.Gems);
+        }
+
+        // The half of the rule that is NOT symmetric: a Continue bought with gems the
+        // same day's stars paid for is still paid for after the revert.
+        [Test]
+        public void RevertToDayStart_WhenAContinueWasFundedByTheDaysGems_ClampsAtZero()
+        {
+            var state = new GameState(gameConfig) { Gems = 3 };
+            var wallet = new Wallet(state);
+
+            wallet.EarnGems(3);
+            Assert.IsTrue(wallet.TrySpendGems(5));
+
+            wallet.RevertToDayStart();
+
+            Assert.AreEqual(0, state.Gems, "max(0, 3 dayStart - 5 spent) -- poorer than they began, never in debt.");
+        }
+
+        // A completed day banks its gems: the next day measures reverts against the
+        // balance that INCLUDES them, so finishing day 1 and then failing day 2 does not
+        // cost the player day 1's stars.
+        [Test]
+        public void CaptureDayStart_AfterEarningGems_MakesThemTheNewBaseline()
+        {
+            var state = new GameState(gameConfig) { Gems = 6 };
+            var wallet = new Wallet(state);
+
+            wallet.EarnGems(3);
+            wallet.CaptureDayStart();
+            wallet.RevertToDayStart();
+
+            Assert.AreEqual(9, state.Gems);
         }
     }
 }
