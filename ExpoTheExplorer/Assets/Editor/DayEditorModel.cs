@@ -131,17 +131,24 @@ namespace ExpoTheExplorer.Editor
 
             EditorGUILayout.Space();
 
-            var pool = AllowedFoodPool;
-            entry.MainItem = DrawCategoryItemField("Main Item", entry.MainItem, FoodCategory.Main, pool);
-            entry.SideItem = DrawCategoryItemField("Side Item", entry.SideItem, FoodCategory.Side, pool);
-            entry.DrinkItem = DrawCategoryItemField("Drink Item", entry.DrinkItem, FoodCategory.Drink, pool);
-            entry.PatienceType = (PatienceType)EditorGUILayout.EnumPopup("Patience Type", entry.PatienceType);
-
-            entry.CustomerNameOverride = EditorGUILayout.TextField("Name Override", entry.CustomerNameOverride);
-            entry.TimeLimitSecondsOverride = EditorGUILayout.FloatField("Time Override", entry.TimeLimitSecondsOverride);
+            // Modifications sits directly under Main Item, and that is structural rather than
+            // cosmetic: the picker is keyed on entry.MainItem, because TicketFactory pulls a
+            // ticket's modifications from the main dish and nothing else. Putting it under the
+            // dish it belongs to makes that relationship readable off the screen -- between
+            // Side and Drink, as it was, it looked like it belonged to the whole ticket.
+            entry.MainItem = DrawItemSlot("Main Item", entry.MainItem, FoodCategory.Main);
 
             EditorGUILayout.Space();
             DrawModificationPicker(entry.MainItem, entry.Modifications, "Main dish");
+
+            EditorGUILayout.Space();
+            entry.SideItem = DrawItemSlot("Side Item", entry.SideItem, FoodCategory.Side);
+            entry.DrinkItem = DrawItemSlot("Drink Item", entry.DrinkItem, FoodCategory.Drink);
+
+            EditorGUILayout.Space();
+            entry.PatienceType = (PatienceType)EditorGUILayout.EnumPopup("Patience Type", entry.PatienceType);
+            entry.CustomerNameOverride = EditorGUILayout.TextField("Name Override", entry.CustomerNameOverride);
+            entry.TimeLimitSecondsOverride = EditorGUILayout.FloatField("Time Override", entry.TimeLimitSecondsOverride);
 
             EditorGUILayout.Space();
             if (UnityEngine.GUILayout.Button("Delete This Ticket"))
@@ -151,39 +158,73 @@ namespace ExpoTheExplorer.Editor
             }
         }
 
-        // Restricts the picker to items of the given category, out of the pool this Day is
-        // allowed to use -- ObjectField can't filter by a field value, only by Type, so a
-        // plain ObjectField would let e.g. a Side item be assigned into the Main slot (or a
-        // food this Day's own selection excludes). Falls back to the old unfiltered
-        // ObjectField when there is no pool yet (catalog unassigned), so editing isn't
-        // blocked before the toolbar is configured.
-        private static FoodItemConfig DrawCategoryItemField(string label, FoodItemConfig current, FoodCategory category, IReadOnlyList<FoodItemConfig> pool)
+        // One of a ticket's three food slots, as pictures. Replaced a name popup (and, when no
+        // catalog was assigned, a raw unfiltered ObjectField) -- which was the last ObjectField
+        // in this file. The category filter and the AllowedFoodPool restriction are exactly the
+        // ones that popup already applied: a Side can still never land in the Main slot, and a
+        // food this Day did not select is still not on offer. Only the presentation changed.
+        //
+        // Unlike the Start Board cell picker, the grid stays OPEN when the slot is filled. That
+        // is not an oversight: the common action on a ticket slot is SWITCHING (Hotdog to
+        // Burger), and hiding the alternatives would make that two clicks instead of one. The
+        // cell hides them because a filled cell hands its 220px of room to the modifications
+        // below it, which a slot in this wide column does not need to do.
+        private FoodItemConfig DrawItemSlot(string label, FoodItemConfig current, FoodCategory category)
         {
+            EditorGUILayout.LabelField(label, UnityEditor.EditorStyles.boldLabel);
+
+            var pool = AllowedFoodPool;
             if (pool == null)
             {
-                return (FoodItemConfig)EditorGUILayout.ObjectField(label, current, typeof(FoodItemConfig), false);
+                EditorGUILayout.HelpBox("Food Catalog not assigned (toolbar above).", UnityEditor.MessageType.Info);
+                return current;
             }
 
-            var options = pool.Where(item => item.Category == category).ToList();
-
-            // Keep a mismatched/orphaned current value visible instead of silently dropping it
-            // (e.g. data authored before this filter existed, or a category changed since).
-            if (current != null && !options.Contains(current))
+            var options = pool.Where(item => item != null && item.Category == category).ToList();
+            if (options.Count == 0)
             {
-                options.Insert(0, current);
+                EditorGUILayout.HelpBox(
+                    $"No {category} is in this Day -- pick one under Food Selection to offer it here.",
+                    UnityEditor.MessageType.Info);
+                return DrawSlotOrphanNotice(current, options);
             }
 
-            var labels = new string[options.Count + 1];
-            labels[0] = "None";
-            for (var i = 0; i < options.Count; i++)
+            var picked = current;
+            DrawTileGrid(options.Count, ref lastTicketSlotGridWidth, (tileRect, i) =>
             {
-                labels[i + 1] = options[i].DisplayName;
-            }
+                // Same toggle as the cell picker: clicking the highlighted tile clears the
+                // slot, which is what took over from the popup's "None" entry. Side and Drink
+                // are genuinely optional, so clearing has to stay reachable.
+                if (DrawCellItemTile(tileRect, options[i], current))
+                {
+                    picked = current == options[i] ? null : options[i];
+                }
+            });
 
-            var currentIndex = current == null ? 0 : options.IndexOf(current) + 1;
-            var selectedIndex = EditorGUILayout.Popup(label, currentIndex, labels);
-            return selectedIndex == 0 ? null : options[selectedIndex - 1];
+            return DrawSlotOrphanNotice(picked, options);
         }
+
+        // A slot holding food this Day no longer serves -- authored earlier, or deselected from
+        // Food Selection afterwards. The popup this replaced kept such a value visible by
+        // injecting it into its own option list; surfacing it in a warning says the same thing
+        // out loud, and matches how the cell picker and the modification picker report it. It is
+        // never cleared for the designer: it still ships in the Day JSON, and DayValidator is
+        // already refusing the Save over it.
+        private static FoodItemConfig DrawSlotOrphanNotice(FoodItemConfig current, List<FoodItemConfig> options)
+        {
+            if (current == null || options.Contains(current)) return current;
+
+            var name = string.IsNullOrEmpty(current.DisplayName) ? current.Id : current.DisplayName;
+            EditorGUILayout.HelpBox(
+                $"Holding {name}, which is not in this Day's food selection. Pick another above to replace it.",
+                UnityEditor.MessageType.Warning);
+            return current;
+        }
+
+        // Shared by all three ticket slots, unlike the food/modification/cell grids which each
+        // keep their own: those sit in sections of different widths, while these three are
+        // drawn one after another in the same column, so one measurement is the correct one.
+        private float lastTicketSlotGridWidth = 600f;
 
         [UnityEngine.HideInInspector]
         public List<DayEditorTicketEntry> TicketSequence = new();
