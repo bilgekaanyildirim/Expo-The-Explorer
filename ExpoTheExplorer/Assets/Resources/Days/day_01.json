@@ -1,7 +1,7 @@
 {
     "runtime": {
         "dayIndex": 1,
-        "ticketsRequiredForDay": 5,
+        "ticketsRequiredForDay": 7,
         "boardDistribution": {
             "noiseLeakCountLambda": 1.0,
             "guaranteedTicketCountMode": "Manual",
@@ -23,9 +23,18 @@
                 "mainItemId": "hotdog",
                 "sideItemId": "",
                 "drinkItemId": "",
+                "modifications": [],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "",
+                "drinkItemId": "",
                 "modifications": [
                     {
-                        "modificationId": "extraketchup",
+                        "modificationId": "extramayonnaise",
                         "isAddition": true
                     }
                 ],
@@ -37,9 +46,18 @@
                 "mainItemId": "hotdog",
                 "sideItemId": "",
                 "drinkItemId": "",
+                "modifications": [],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "",
+                "drinkItemId": "",
                 "modifications": [
                     {
-                        "modificationId": "extraketchup",
+                        "modificationId": "extramayonnaise",
                         "isAddition": true
                     }
                 ],
@@ -67,7 +85,7 @@
                 "drinkItemId": "",
                 "modifications": [
                     {
-                        "modificationId": "extraketchup",
+                        "modificationId": "extramustard",
                         "isAddition": true
                     }
                 ],
@@ -79,12 +97,7 @@
                 "mainItemId": "hotdog",
                 "sideItemId": "",
                 "drinkItemId": "",
-                "modifications": [
-                    {
-                        "modificationId": "extramayonnaise",
-                        "isAddition": true
-                    }
-                ],
+                "modifications": [],
                 "patienceType": "Patient",
                 "customerNameOverride": "",
                 "timeLimitSecondsOverride": 0.0
@@ -108,7 +121,10 @@
                     "modificationCountLambda": 10.0,
                     "maxModificationCount": 1
                 }
-            ]
+            ],
+            "patientTicketCount": 7,
+            "normalTicketCount": 0,
+            "impatientTicketCount": 0
         }
     }
 }
