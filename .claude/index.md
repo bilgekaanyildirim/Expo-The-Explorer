@@ -1,4 +1,4 @@
-<!-- stamp: 2026-08-23 systems:13 unmapped:0 unassigned-files:39 -->
+<!-- stamp: 2026-08-24 systems:13 unmapped:0 unassigned-files:39 -->
 # index — system to location, one screen
 
 Step 1 of `procedures/locate.md`: read this before anything else, and only
@@ -17,11 +17,11 @@ maps and never invents a name.
 | EconomySystem | core | ExpoTheExplorer/Assets/Data/DataScripts/EconomyConfig.cs, ExpoTheExplorer/Assets/Scripts/Systems/EconomySystem/EconomyCalculator.cs (+2) | - | - | - | OK |
 | LivesSystem | core, ui | ExpoTheExplorer/Assets/Scripts/Systems/LivesSystem/ExpoTheExplorer.Systems.LivesSystem.asmdef, ExpoTheExplorer/Assets/Scripts/Systems/LivesSystem/LivesManager.cs (+4) | - | - | - | OK |
 | MainScreen | editor, ui | ExpoTheExplorer/Assets/Scripts/UI/MainScreenRoot.cs, ExpoTheExplorer/Assets/Scripts/UI/MainScreenView.cs (+4) | MainScreen | - | - | OK |
-| MetaSystem | core, editor, ui | ExpoTheExplorer/Assets/Data/DataScripts/MetaCatalog.cs, ExpoTheExplorer/Assets/Scripts/Systems/MetaSystem/MetaPurchase.cs (+11) | - | - | - | OK |
+| MetaSystem | core, editor, ui | ExpoTheExplorer/Assets/Data/DataScripts/MetaCatalog.cs, ExpoTheExplorer/Assets/Scripts/Systems/MetaSystem/MetaPurchase.cs (+12) | - | - | - | OK |
 | ProgressionSystem | core, ui | ExpoTheExplorer/Assets/Scripts/Systems/ProgressionSystem/Wallet.cs, ExpoTheExplorer/Assets/Scripts/Systems/ProgressionSystem/ExpoTheExplorer.Systems.ProgressionSystem.asmdef (+7) | - | HudCanvas | - | OK |
 | TicketSystem | core, ui | ExpoTheExplorer/Assets/Scripts/Core/Ticket.cs, ExpoTheExplorer/Assets/Scripts/Systems/TicketSystem/TicketSlotManager.cs (+7) | - | TicketCard, TicketCard Into, TicketCard UpDown | - | OK |
 | TraySystem | core | ExpoTheExplorer/Assets/Scripts/Systems/TraySystem/TrayManager.cs, ExpoTheExplorer/Assets/Scripts/Systems/TraySystem/ExpoTheExplorer.Systems.TraySystem.asmdef (+2) | - | - | - | OK |
 
 ## Gaps
 - `sys: ?` on 39 codemap line(s) — first: ExpoTheExplorer/Assets/Data/ExpoTheExplorer.Data.asmdef, ExpoTheExplorer/Assets/Data/DataScripts/BoardAnimationConfig.cs, ExpoTheExplorer/Assets/Data/DataScripts/DragFeelConfig.cs
-- 13 flagged codemap line(s) excluded from this table (STALE)
+- 12 flagged codemap line(s) excluded from this table (STALE)

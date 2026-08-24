@@ -10,8 +10,9 @@ namespace ExpoTheExplorer.UI
 {
     // The meta shop: a market button in the bottom-right corner, a panel it opens, a row
     // per prop still for sale, and — since Ş3 — a preview: tapping a row's BUY puts a
-    // translucent ghost of the prop where it would stand and a confirm popup over it.
-    // Nothing is charged until Ş4; the popup's BUY only logs.
+    // translucent ghost of the prop where it would stand and a confirm popup over it. The
+    // popup's BUY spends (Ş4), and a purchase ends the whole flow: the shop goes back to
+    // KAPALI so the screen ends on the prop rather than on the list (D-047).
     //
     // THE STATE MACHINE LIVES HERE, all of it, on purpose. Two fields hold it: `isOpen`
     // (KAPALI/AÇIK) and `pendingItem` (ÖNİZLEME when non-null). Every transition goes
@@ -299,8 +300,13 @@ namespace ExpoTheExplorer.UI
             var item = pendingItem;
 
             // Evaluated a SECOND time, having already been evaluated when the row was drawn.
-            // Not redundant: the panel can stay open across several purchases, so the balance
-            // the row was drawn against may be stale by now. The cost is one function call.
+            // The original reason was that the panel stayed open across several purchases, so
+            // the row's balance could be stale by now; since D-047 closes the shop on every
+            // purchase, that particular staleness is gone. The re-check STAYS anyway: it is
+            // the guard that this screen never spends on a verdict it did not just ask for,
+            // and it costs one function call on a tap. Deleting it would make the correctness
+            // of a purchase depend on the shop's lifetime, which is exactly the coupling the
+            // next change to that lifetime would break silently.
             var verdict = MetaPurchase.Evaluate(
                 location, item, session.OwnedMetaItemIds, session.State.CurrentDayIndex, session.State.SoftMoney);
 
@@ -332,16 +338,42 @@ namespace ExpoTheExplorer.UI
             // partial write to recover from, because the profile is one file written whole.
             session.Save();
 
-            // Preview down first: the ghost goes, the map travels back, the list returns.
-            ClosePreview();
+            // THE GROUNDS ARE TOLD FIRST, AND THE ORDER OF THESE TWO CALLS IS LOAD-BEARING
+            // (D-049). RefreshAfterPurchase claims the map's framing before anything can ask
+            // for it back; SetOpen(false) below goes through ClosePreview and ClearGhost,
+            // whose second half is exactly that request. Closing first would start the zoom
+            // out before the grounds had heard about the purchase, and the prop would land on
+            // a map already travelling away from it -- which is the bug this ordering exists
+            // to prevent, found while wiring D-049 rather than reasoned about in advance.
+            //
+            // Both calls land in the same frame with no render between them, so nothing is
+            // visibly half-done: the panel and the drop begin together.
+            //
+            // The prop is redrawn as OWNED (MetaResolver.IsActive answers differently now, so
+            // it is drawn solid) and then SET DOWN -- it falls the last stretch into place and
+            // the ground takes the hit. The shop passes WHAT was bought and nothing else: what
+            // a purchase looks like on the grounds is the grounds' business, and this screen
+            // stays a thing that spends money and asks two views to catch up.
+            grounds.RefreshAfterPurchase(item);
 
-            // Then the two views catch up with what changed. The prop is now OWNED, so
-            // MetaResolver.IsActive answers differently and it is drawn solid; and it is no
-            // longer for sale, so ShopItems drops it from the list. The panel stays OPEN
-            // (MS4) -- buying a few things in a row should not mean tapping the market button
-            // between each one.
-            grounds.Refresh();
-            RebuildRows();
+            // The shop CLOSES on a purchase, all the way down to KAPALI (D-047, the user's
+            // instruction). MS4 said the opposite -- the panel stayed open so several props
+            // could be bought without tapping the market button between each one -- and that
+            // was wrong about what the player wants to see next: the panel is a bottom sheet
+            // over most of the map, so coming back to a list means the thing just bought is
+            // hidden behind the list of things not bought yet. The payoff of a purchase is
+            // the prop standing on the grounds, and the screen now ends on it.
+            //
+            // Through SetOpen rather than by clearing `isOpen` here, because that is the one
+            // door: it takes the preview down, applies the visibility for both states at once,
+            // and drops the rows. The ghost leaked in the first shop precisely because a
+            // transition took a shortcut around this (D-024). Its ClearGhost call is now a
+            // no-op on both halves -- the ghost was destroyed by the redraw above, and the
+            // framing belongs to the placement until it lands -- and that is by design, not a
+            // coincidence to lean on: the list is NOT rebuilt either, because a closed panel
+            // has no rows and the next SetOpen(true) builds them against the balance as it
+            // will be then rather than as it is now.
+            SetOpen(false);
 
             Debug.Log($"Bought '{item.Id}' for {item.Price}. Balance is now {session.State.SoftMoney}.", this);
         }

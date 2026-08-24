@@ -16,6 +16,7 @@ MonoBehaviour:
   - id: meta1
     displayName: Meta 1
     backgroundSprite: {fileID: 21300000, guid: 83833ee6daa454cd4a9f360c88817790, type: 3}
+    backgroundBgSprite: {fileID: 21300000, guid: 7677156de566d421fa96635279024714, type: 3}
     unlockAtDayIndex: 0
     items:
     - id: building
@@ -37,7 +38,7 @@ MonoBehaviour:
       unlock: 0
       price: 100
       unlockAtDayIndex: 2
-      normalizedPosition: {x: 0.404, y: 0.735}
+      normalizedPosition: {x: 0.404, y: 0.7328448}
       pivot: {x: 0.5, y: 0}
       sortOrder: 20
       requiresAreaId: fryer
@@ -217,7 +218,7 @@ MonoBehaviour:
       unlock: 1
       price: 0
       unlockAtDayIndex: 5
-      normalizedPosition: {x: 0.6622772, y: 0.6428715}
+      normalizedPosition: {x: 0.66571146, y: 0.64541924}
       pivot: {x: 0.5, y: 0}
       sortOrder: 14
       requiresAreaId: building

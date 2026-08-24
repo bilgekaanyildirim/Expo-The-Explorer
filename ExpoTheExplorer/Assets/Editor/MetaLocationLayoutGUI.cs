@@ -120,6 +120,27 @@ namespace ExpoTheExplorer.Editor
                 var fit = FitRect(localArea, background.rect.width / background.rect.height);
                 var backgroundRect = ViewRect(fit, state);
 
+                // The continuation layer first, so the grounds land on top of it -- the same
+                // order the runtime builds (D-046). Drawn here at all because the alternative
+                // is the editor and the game showing different pictures, which is precisely
+                // the defect D-045 was reported for; a preview that leaves out a layer is a
+                // preview that will be trusted and then contradicted.
+                //
+                // Centred on the grounds, no offset: that is the contract on the field.
+                var continuation = location.BackgroundBgSprite;
+                if (continuation != null)
+                {
+                    var factor = backgroundRect.width / background.rect.width;
+                    var size = continuation.rect.size * factor;
+                    DayEditorSpriteGUI.DrawTexCoords(
+                        new Rect(
+                            backgroundRect.center.x - size.x * 0.5f,
+                            backgroundRect.center.y - size.y * 0.5f,
+                            size.x,
+                            size.y),
+                        continuation);
+                }
+
                 DayEditorSpriteGUI.DrawTexCoords(backgroundRect, background);
 
                 // Props are authored against the background at ONE resolution (D-015: no

@@ -89,6 +89,30 @@ namespace ExpoTheExplorer.UI
         [Tooltip("How long the map lingers on the NEXT prop's ghost after a celebration, before zooming back out. A separate number from the hold above on purpose: that beat is \"look at what you got\", this one is \"and this is next\".")]
         [SerializeField, Min(0f)] private float celebrationNextPeekSeconds = 1.1f;
 
+        // A purchased prop is PLACED rather than simply present: it drops the last stretch
+        // into its spot and the ground takes the hit. Every number here is feel, so it is
+        // serialized next to the other feel on this component and NOT in the catalog -- D-015
+        // keeps MetaCatalog to price/position/art/unlock, and "how hard the map shakes" is
+        // none of those. A prop authored tomorrow needs no new content for this to work.
+        [Header("Purchase placement")]
+        [Tooltip("How far above its spot a just-bought prop starts, in the grounds' own units (the same space as the upcoming label's offset). Small on purpose: this is a thing being set down, not dropped off a roof.")]
+        [SerializeField, Min(0f)] private float placementDropHeight = 48f;
+
+        [Tooltip("How long the drop takes. The fade in runs over the same stretch, so the prop is solid exactly as it lands.")]
+        [SerializeField, Min(0.05f)] private float placementDropSeconds = 0.32f;
+
+        [Tooltip("Easing for the drop. An IN ease accelerates downward, which is what makes the shake at the end read as an impact rather than as the map twitching.")]
+        [SerializeField] private Ease placementDropEase = Ease.InCubic;
+
+        [Tooltip("How long the ground shakes after the prop lands. 0 turns the shake off and leaves the drop.")]
+        [SerializeField, Min(0f)] private float placementShakeSeconds = 0.22f;
+
+        [Tooltip("How far the map moves at the worst of the shake, in the grounds' own units. Keep it small — this is a confirmation, not a screen shake.")]
+        [SerializeField, Min(0f)] private float placementShakeStrength = 9f;
+
+        [Tooltip("How many times the map swings before it settles. The swing damps to nothing across the duration, so a higher count reads as a buzz and a lower one as a single thud.")]
+        [SerializeField, Min(1f)] private float placementShakeOscillations = 2f;
+
         private readonly List<GameObject> spawnedProps = new();
 
         // The same objects as spawnedProps, keyed so the celebration can find the ONE prop it
@@ -99,6 +123,11 @@ namespace ExpoTheExplorer.UI
         // The upcoming-prop silhouette DrawUpcoming last drew, or null when nothing is
         // coming. Lives and dies with the other props, so it is cleared alongside them.
         private GameObject upcomingProp;
+
+        // How many art layers sit in front of the props in sibling order (D-046). Props start
+        // after these, so any sibling-index arithmetic has to add it -- getting that wrong
+        // silently would be the same class of bug D-045 just fixed.
+        private int artLayerCount;
 
         private List<MetaLocation> unlockedLocations = new();
         private int viewedIndex = -1;
@@ -112,6 +141,32 @@ namespace ExpoTheExplorer.UI
         // not the whole queue: a player who wants to move on should not have to sit through
         // three of them, but neither should one tap silently swallow two unlocks.
         private bool skipRequested;
+
+        // The running placement animation, HELD so it can be stopped. It animates a prop and
+        // the map's position, and both of those can be pulled out from under it: a second
+        // purchase, or walking to another location, calls Refresh, which destroys every prop.
+        // Clear() stops this for exactly that reason -- a coroutine driving a destroyed
+        // RectTransform is the one failure this feature can produce, and it is not one the
+        // player could be shown an error about.
+        private Coroutine placementRoutine;
+
+        // True from the moment a purchase is handed over until the placement gives the map
+        // back. While it is up, the framing belongs to the placement and RestoreFocus does
+        // nothing -- which is what keeps the player looking at the prop they just bought
+        // instead of being pulled back out the instant the shop closed (D-049).
+        //
+        // A flag rather than a parameter threaded through the shop's SetOpen/ClosePreview: the
+        // question "may the zoom be given back right now" is this class's to answer, and it is
+        // answered in the one method that gives it back, next to the `focused` guard that is
+        // already there for the same kind of reason.
+        private bool placing;
+
+        // Bumped every time the framing is claimed. A placement's finally hands the map back
+        // only if this still matches the number it started with -- which is how "am I still
+        // the one who owns this" gets answered without the finally having to know WHO
+        // interrupted it. Without it, a second purchase would have the first placement's
+        // teardown travel the map out from under the second one's drop.
+        private int placementGeneration;
 
         // Deliberately NOT in spawnedProps. Clear() would then take it too, which is what
         // is wanted today -- but it would tie two different lifetimes to one list, and in
@@ -214,10 +269,259 @@ namespace ExpoTheExplorer.UI
             DrawLocationBar(location, currentDay);
         }
 
+        // What the shop calls instead of Refresh once a purchase has gone through. ONE method
+        // rather than letting the shop call Refresh and then an animate method: the animation
+        // has to prepare the prop in the SAME FRAME the prop is drawn (see below), so the two
+        // halves are order-dependent, and an order-dependent pair of public methods is a pair
+        // that is eventually called in the wrong order. Composing them here means the shop
+        // says what happened -- "this was bought" -- and the grounds decide what that looks
+        // like, which is the division of labour the rest of this class keeps.
+        public void RefreshAfterPurchase(MetaItemDefinition purchased)
+        {
+            // Claimed BEFORE the redraw, and that order is the whole trick (D-049). The shop's
+            // exit path has already run by now -- SetOpen(false) closed the panel and went
+            // through ClearGhost, whose second half is RestoreFocus -- and Refresh below
+            // clears the ghost again for its own reason. Both of those hand the zoom back,
+            // which is exactly what must NOT happen yet: the player is meant to watch the
+            // prop land at the size they were previewing it at. So the placement takes
+            // ownership of the framing here and RestoreFocus goes quiet until it gives it up.
+            //
+            // Nothing in MetaShopView had to change for that. Its state machine still has one
+            // door and that door still calls ClearGhost; the call simply becomes a no-op on
+            // the framing half while a placement owns it. A parameter threaded through
+            // SetOpen and ClosePreview would have put the same decision in the shop, where it
+            // is not the shop's to make.
+            placing = true;
+
+            // Claimed BEFORE Refresh, because Refresh is what stops any placement already
+            // running (through Clear). Bumping first is what tells that one's finally it is no
+            // longer the owner, so it tears down its prop without travelling the map out from
+            // under this purchase's drop.
+            var generation = ++placementGeneration;
+
+            Refresh();
+
+            // A celebration owns the framing and the props while it runs (it hides one and
+            // animates a copy), so a placement on top of it would be two animations arguing
+            // over the same map. Unreachable today -- the celebration puts a full-screen
+            // catcher over everything, so the confirm popup cannot be tapped while one is
+            // playing -- and guarded anyway, because "unreachable" is a property of today's
+            // scene rather than of this code.
+            //
+            // Every early exit hands the framing straight back. A map left parked on a zoom
+            // that nobody owns is the one failure this feature can produce that the player
+            // cannot get out of -- horizontal scrolling is off, so they would be stuck
+            // looking at a fraction of their own grounds.
+            if (celebrating || purchased == null)
+            {
+                ReleaseFraming();
+                return;
+            }
+
+            if (!propsByItem.TryGetValue(purchased, out var prop) || prop == null)
+            {
+                // Not an error and not silent-by-accident: the purchase is already complete
+                // and saved, so the honest outcome is the prop simply being there. This is
+                // reachable if a bought prop is not among the ACTIVE items for some reason
+                // the rules layer decides -- MetaResolver owns that call, not this method.
+                ReleaseFraming();
+                return;
+            }
+
+            placementRoutine = StartCoroutine(PlacePurchasedProp(prop, generation));
+        }
+
+        // Ends a placement WITHOUT letting it travel the map home, and hands the framing back
+        // by snapping instead. For the caller that is walking to another location: the framing
+        // being restored belonged to grounds the player is leaving, and an animated return
+        // would still be moving when the new location's scroll position is set a line later --
+        // the tween would win, and the player would arrive somewhere they never asked for. The
+        // snap is invisible there because the whole map is being replaced in the same frame.
+        private void CancelPlacement()
+        {
+            // Bumped first, so the routine's finally knows it no longer owns the framing and
+            // leaves the hand-back to the code below.
+            placementGeneration++;
+
+            if (placementRoutine != null)
+            {
+                StopCoroutine(placementRoutine);
+                placementRoutine = null;
+            }
+
+            placing = false;
+            RestoreFocus(animated: false);
+        }
+
+        // Gives the zoom back and travels the map out. THE one way a placement ends, whether
+        // it finished, was never started, or was stopped halfway -- so "when does the map
+        // come back" has a single answer, the same property D-031 gave the ghost.
+        private void ReleaseFraming()
+        {
+            placing = false;
+            RestoreFocus();
+        }
+
+        // The purchase payoff: the prop falls the last stretch into its spot, fading in as it
+        // goes, and the ground takes the hit when it lands.
+        //
+        // Animated with a frame loop and Time.unscaledDeltaTime rather than a tween, which is
+        // the same choice CelebrateOne made and for the same two reasons: the try/finally can
+        // then guarantee the finished state whatever interrupts it, and there is no tween left
+        // pointing at a RectTransform that Refresh is about to destroy.
+        private IEnumerator PlacePurchasedProp(GameObject prop, int generation)
+        {
+            var rect = (RectTransform)prop.transform;
+            var image = prop.GetComponent<Image>();
+            var content = background.rectTransform;
+
+            // Where the prop BELONGS, read before anything moves it. Not assumed to be zero
+            // even though CreateProp leaves it there: the anchors carry the authored position
+            // (K5), and the day that changes this reads the truth instead of a constant.
+            var landed = rect.anchoredPosition;
+            var solid = image.color;
+
+            // Prepared in the SAME FRAME Refresh drew it, before a single frame is yielded.
+            // This is the load-bearing line of the whole method: DrawProps draws a bought prop
+            // solid and in place, so waiting even one frame would show it standing there and
+            // then jerk it back up into the air.
+            //
+            // The drop is measured in the CONTENT's own space, so it grows with the preview
+            // zoom -- and it should: the prop is drawn that much bigger too, so the fall stays
+            // the same fraction of the prop's own height whatever the map is magnified to. The
+            // shake below is the opposite case, for the opposite reason; see there.
+            rect.anchoredPosition = landed + new Vector2(0f, placementDropHeight);
+            image.color = new Color(solid.r, solid.g, solid.b, 0f);
+
+            var shakeBase = Vector2.zero;
+            var shaking = false;
+
+            try
+            {
+                // Normally not a single frame of waiting: the map has been parked on this prop
+                // since the row was tapped, and D-049 keeps it there for the whole placement.
+                // The one case this covers is a player who taps BUY before the travel INTO the
+                // zoom has finished -- fast enough is fast enough -- and a drop played against
+                // a moving background reads as one confused motion instead of two clear ones.
+                //
+                // Asked of DOTween rather than timed against previewTravelSeconds, because
+                // only DOTween knows how much of that travel is left. A fixed wait would be
+                // too long in the normal case and the wrong length in this one.
+                while (DOTween.IsTweening(content)) yield return null;
+
+                var elapsed = 0f;
+                while (elapsed < placementDropSeconds)
+                {
+                    elapsed += Time.unscaledDeltaTime;
+                    var t = Mathf.Clamp01(elapsed / placementDropSeconds);
+
+                    // Position is eased and the fade is LINEAR, on purpose. The ease is what
+                    // makes the fall accelerate; running the alpha through it too would keep
+                    // the prop nearly invisible for most of the drop and then pop it in at
+                    // the end, which reads as an appearing prop rather than a falling one.
+                    var height = DOVirtual.EasedValue(placementDropHeight, 0f, t, placementDropEase);
+                    rect.anchoredPosition = landed + new Vector2(0f, height);
+
+                    // Lerped toward the prop's OWN alpha rather than to 1. CreateProp leaves
+                    // props opaque today, so the two are the same number -- but a translucent
+                    // prop would otherwise be faded up to solid by this animation and stay
+                    // wrong until the next Refresh redrew it.
+                    image.color = new Color(solid.r, solid.g, solid.b, Mathf.Lerp(0f, solid.a, t));
+
+                    yield return null;
+                }
+
+                rect.anchoredPosition = landed;
+                image.color = solid;
+
+                if (placementShakeSeconds <= 0f || placementShakeStrength <= 0f) yield break;
+
+                // The map is shaken by moving the CONTENT, not the viewport. Moving the
+                // viewport would move the mask window and open a sliver of empty screen at
+                // the edges; the content carries D-046's oversized continuation layer as a
+                // child, which is exactly the art that keeps the edges covered while it
+                // moves.
+                //
+                // The offset is the content's anchoredPosition, which lives in the VIEWPORT's
+                // space and is therefore untouched by the zoom -- so the shake is a fixed
+                // number of screen units however far the map is magnified. That is the right
+                // answer here and the opposite of the drop's, and for the same principle: a
+                // camera shake is about the screen, a falling prop is about the prop.
+                //
+                // Nothing here touches the ScrollRect. It has been off since FocusOn (D-032)
+                // and RestoreFocus is what turns it back on, once the map has travelled out
+                // at the end of this method -- so the whole placement runs inside a window
+                // where scrolling is already suspended. An earlier version disabled and
+                // re-enabled it around the shake; that was dead code the moment D-049 kept
+                // the framing, and dead code that claims to own a flag is worse than none.
+                shakeBase = content.anchoredPosition;
+                shaking = true;
+
+                var shaken = 0f;
+                while (shaken < placementShakeSeconds)
+                {
+                    shaken += Time.unscaledDeltaTime;
+                    var t = Mathf.Clamp01(shaken / placementShakeSeconds);
+
+                    // A damped swing rather than random jitter per frame: an impact has a
+                    // direction, and noise at 60fps reads as a glitch. Negative first, so the
+                    // ground gives way UNDER the prop that just hit it, and the amplitude
+                    // falls linearly to nothing so the last frame is already home.
+                    var swing = -Mathf.Sin(t * placementShakeOscillations * 2f * Mathf.PI);
+                    content.anchoredPosition =
+                        shakeBase + new Vector2(0f, swing * placementShakeStrength * (1f - t));
+
+                    yield return null;
+                }
+            }
+            finally
+            {
+                // Whatever ended this -- the loops finishing, Clear stopping it, the screen
+                // being torn down -- the prop is standing where it belongs at full strength
+                // and the map is where it was. Null-checked because the most likely stopper
+                // is Refresh, which destroys the prop before this runs.
+                if (prop != null)
+                {
+                    rect.anchoredPosition = landed;
+                    image.color = solid;
+                }
+
+                // Before the framing is released, not after: RestoreFocus tweens FROM wherever
+                // the content is standing, so a shake offset left in place would be baked into
+                // the start of the journey home.
+                if (shaking && content != null) content.anchoredPosition = shakeBase;
+
+                placementRoutine = null;
+
+                // And now the map travels out (D-049) -- but only if this placement is still
+                // the one that owns the framing. This is the LAST line for a reason: it is the
+                // payoff of holding the zoom through the drop, and putting it in the finally
+                // rather than after the shake loop is what makes it happen on the interrupted
+                // paths too -- the screen being torn down owes the player their whole map back
+                // just as much as a drop that finished.
+                //
+                // The generation check is what keeps that from being too eager. Something that
+                // claimed the framing while this was running -- a second purchase, or a step
+                // to another location -- has its own plan for it, and a teardown that travelled
+                // the map home anyway would undo that plan from a coroutine nobody is looking
+                // at any more.
+                if (generation == placementGeneration) ReleaseFraming();
+            }
+        }
+
         private void DrawBackground(MetaLocation location)
         {
-            background.sprite = location.BackgroundSprite;
-            background.enabled = location.BackgroundSprite != null;
+            // The grounds Image is a CONTAINER from here on, never the art (D-046). It keeps
+            // being the ScrollRect's content, the zoom target and the props' parent -- what it
+            // stops being is a thing that draws. The art moved into a child so that the
+            // continuation layer can sit BEHIND it: a child always renders over its parent's
+            // own graphic, so a parent that draws cannot have anything behind it.
+            //
+            // Done this way rather than by inserting a real container object into the
+            // hierarchy, which would have meant a new serialized reference and another
+            // "delete the root and rebuild" round (D-036).
+            background.sprite = null;
+            background.enabled = false;
 
             if (location.BackgroundSprite == null) return;
 
@@ -243,8 +547,10 @@ namespace ExpoTheExplorer.UI
             // ActiveItems already returns draw order (ascending SortOrder, ties by authored
             // order), so sibling index carries depth for free -- later siblings draw on top
             // in a Canvas.
-            var active = MetaResolver.ActiveItems(location, ownedKeys, currentDayIndex);
             var scale = PropScale(location);
+            DrawBackgroundLayers(location, scale);
+
+            var active = MetaResolver.ActiveItems(location, ownedKeys, currentDayIndex);
 
             foreach (var item in active)
             {
@@ -322,11 +628,15 @@ namespace ExpoTheExplorer.UI
         // The tie-break needs the authored positions, which is why the location is passed in:
         // "ties keep catalog order" means nothing without knowing what that order was, and
         // inferring it from the active list would be a second, quietly different rule.
-        private static int SortedInsertIndex(
+        // NOTE this returns a SIBLING index, so it starts after the art layers (D-046) rather
+        // than at zero. Forgetting that shift would place every ghost one or two slots too
+        // early -- behind the grounds art, invisible -- which is the same silent-depth defect
+        // D-045 was written about.
+        private int SortedInsertIndex(
             MetaLocation location, List<MetaItemDefinition> active, MetaItemDefinition item)
         {
             var itemAuthored = AuthoredIndex(location, item);
-            var index = 0;
+            var index = artLayerCount;
 
             foreach (var other in active)
             {
@@ -624,6 +934,58 @@ namespace ExpoTheExplorer.UI
             label.text = $"%{Mathf.RoundToInt(progress * 100f)}";
         }
 
+        // The two layers that stand in for the container's own Image (D-046), created before
+        // any prop so they end up behind all of them:
+        //   [0] the continuation art, larger and centred, when one is authored
+        //   [1] the grounds themselves, filling the container exactly
+        // Counted, because SortedInsertIndex works in sibling indices and these sit in front
+        // of every prop's index.
+        private void DrawBackgroundLayers(MetaLocation location, float scale)
+        {
+            if (location.BackgroundBgSprite != null)
+            {
+                // CENTRED, with no authored offset: the contract on that field is that the
+                // extension grows outward equally on all four sides. Sized from its own
+                // pixels times the SAME scale the grounds use, so one number decides how big
+                // everything on this screen is -- a second scale here is how a continuation
+                // layer would start drifting away from the art it continues.
+                var continuation = CreateArtLayer("BackgroundContinuation", location.BackgroundBgSprite);
+                var rect = (RectTransform)continuation.transform;
+                rect.anchorMin = new Vector2(0.5f, 0.5f);
+                rect.anchorMax = new Vector2(0.5f, 0.5f);
+                rect.pivot = new Vector2(0.5f, 0.5f);
+                rect.anchoredPosition = Vector2.zero;
+                rect.sizeDelta = location.BackgroundBgSprite.rect.size * scale;
+            }
+
+            // Stretched over the container rather than sized from the sprite, so the rect the
+            // props' normalized positions are fractions of stays exactly the container's --
+            // the thing every prop position in the catalog was authored against.
+            var grounds = CreateArtLayer("BackgroundArt", location.BackgroundSprite);
+            var groundsRect = (RectTransform)grounds.transform;
+            groundsRect.anchorMin = Vector2.zero;
+            groundsRect.anchorMax = Vector2.one;
+            groundsRect.pivot = new Vector2(0.5f, 0.5f);
+            groundsRect.offsetMin = Vector2.zero;
+            groundsRect.offsetMax = Vector2.zero;
+        }
+
+        private GameObject CreateArtLayer(string name, Sprite sprite)
+        {
+            var layer = new GameObject(name, typeof(RectTransform), typeof(Image));
+            layer.transform.SetParent(background.rectTransform, worldPositionStays: false);
+
+            var image = layer.GetComponent<Image>();
+            image.sprite = sprite;
+            // Backdrops swallow nothing: the ScrollRect's own drag handling lives on the
+            // content, and a raycast target here would sit in front of it.
+            image.raycastTarget = false;
+
+            spawnedProps.Add(layer);
+            artLayerCount++;
+            return layer;
+        }
+
         // The same derivation the Meta Editor's canvas uses: a prop's size is its own pixel
         // size times however much the background got scaled. There is no scale field in the
         // catalog on purpose (D-015), so this formula IS the size, and every place that
@@ -806,13 +1168,40 @@ namespace ExpoTheExplorer.UI
         // Travels the map back to where it was. Guarded by `focused` rather than by comparing
         // values, because a preview that happened to open on an unzoomed prop moved nothing
         // and must still hand scrolling back.
-        private void RestoreFocus()
+        private void RestoreFocus() => RestoreFocus(animated: true);
+
+        // `animated: false` snaps instead of travelling, for the caller that is about to set
+        // the map's position itself (CancelPlacement, on the way to another location). Same
+        // method rather than a second one, because "what giving the framing back MEANS" --
+        // which values, the flag, the ScrollRect -- is knowledge that must not exist twice.
+        private void RestoreFocus(bool animated)
         {
+            // A placement owns the framing while it runs (D-049), so this is a no-op until it
+            // is done. Both of the shop's exit calls land here -- SetOpen(false) goes through
+            // ClosePreview and ClearGhost, and Refresh clears the ghost again for its own
+            // reason -- and both have to be ignored, or the map would be pulled back out from
+            // under a prop that has not landed yet. The placement's own finally is what lifts
+            // this, through ReleaseFraming, so the suppression cannot outlive it.
+            if (placing) return;
+
             if (!focused) return;
             focused = false;
 
             var content = background.rectTransform;
             content.DOKill();
+
+            if (!animated)
+            {
+                content.localScale = preFocusContentScale;
+                content.anchoredPosition = preFocusContentPosition;
+
+                // Handed back here rather than by an OnComplete, because there is no tween to
+                // complete. The tween path below cannot use this line instead: re-enabling
+                // scrolling while the map is still travelling would have the ScrollRect's own
+                // clamping pull at a value the tween is writing.
+                if (scroll != null) scroll.enabled = true;
+                return;
+            }
 
             content.DOScale(preFocusContentScale, previewTravelSeconds).SetEase(previewTravelEase);
             content.DOAnchorPos(preFocusContentPosition, previewTravelSeconds)
@@ -896,6 +1285,12 @@ namespace ExpoTheExplorer.UI
         // would duplicate, in the UI, the refusal MetaPurchase.LocationLocked already owns.
         private void Step(int delta)
         {
+            // A placement belongs to the grounds it is standing on, so walking away ends it --
+            // and ends it HERE, before the redraw, rather than leaving it to Clear. Clear
+            // cannot tell a location change from a second purchase, and the two want opposite
+            // things from the framing; this caller knows which one it is.
+            CancelPlacement();
+
             viewedIndex = Mathf.Clamp(viewedIndex + delta, 0, unlockedLocations.Count - 1);
             Refresh();
 
@@ -906,6 +1301,17 @@ namespace ExpoTheExplorer.UI
 
         private void Clear()
         {
+            // BEFORE the props go, not after: the placement animation drives one of them and
+            // the map's position, and its finally is what puts the map back. Stopping it here
+            // is what makes "the props are gone" and "nothing is still animating them" the
+            // same moment -- and this is the single place props are destroyed, so it is the
+            // only place that has to know.
+            if (placementRoutine != null)
+            {
+                StopCoroutine(placementRoutine);
+                placementRoutine = null;
+            }
+
             foreach (var prop in spawnedProps)
             {
                 if (prop != null) Destroy(prop);
@@ -913,6 +1319,7 @@ namespace ExpoTheExplorer.UI
             spawnedProps.Clear();
             propsByItem.Clear();
             upcomingProp = null;
+            artLayerCount = 0;
         }
 
         private void OnEnable()

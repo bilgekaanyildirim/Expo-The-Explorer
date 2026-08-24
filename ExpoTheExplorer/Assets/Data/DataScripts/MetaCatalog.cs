@@ -153,6 +153,9 @@ namespace ExpoTheExplorer.Data
         [Tooltip("The grounds themselves. Every prop's Normalized Position is a fraction of THIS sprite's rect.")]
         [SerializeField] private Sprite backgroundSprite;
 
+        [Tooltip("Optional. A LARGER version of the same art, drawn behind the grounds so the edges keep going when the map is zoomed in. Must be the grounds grown OUTWARD EQUALLY on all four sides — it is centred on the background, with no offset to author. Leave it empty and the screen looks exactly as it did before this existed.")]
+        [SerializeField] private Sprite backgroundBgSprite;
+
         [Tooltip("The Day index at which this location becomes visitable. 0 for the location the game starts on. Derived, never saved: the player's current Day already answers it, and storing it as well would be a second authority that lies as soon as Day content is re-authored.")]
         [SerializeField, Min(0)] private int unlockAtDayIndex;
 
@@ -161,6 +164,15 @@ namespace ExpoTheExplorer.Data
         public string Id => id;
         public string DisplayName => displayName;
         public Sprite BackgroundSprite => backgroundSprite;
+
+        // Centred on BackgroundSprite, with NO offset to author, and that is a property of the
+        // ART rather than a simplification: the extension has to grow outward equally on all
+        // four sides. The first export of Meta1's did not (it sat at 117,387 inside a
+        // 1074x2550 image while centring would have put it at 110,353) and the author
+        // re-exported it rather than have the catalog carry a correction. Keeping it that way
+        // is what lets this be one field instead of a field plus a pair of numbers that go
+        // stale the next time the art is re-exported.
+        public Sprite BackgroundBgSprite => backgroundBgSprite;
         public int UnlockAtDayIndex => unlockAtDayIndex;
         public IReadOnlyList<MetaItemDefinition> Items => items;
 
