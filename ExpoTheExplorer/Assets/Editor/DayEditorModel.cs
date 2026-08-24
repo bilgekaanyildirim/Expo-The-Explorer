@@ -230,7 +230,7 @@ namespace ExpoTheExplorer.Editor
 
             var entry = FindStartBoardEntry(selectedStartBoardX, selectedStartBoardY);
             var currentItem = entry?.Item;
-            var newItem = (FoodItemConfig)EditorGUILayout.ObjectField("Item", currentItem, typeof(FoodItemConfig), false);
+            var newItem = DrawCellItemPicker(currentItem);
 
             if (newItem != currentItem)
             {
@@ -257,7 +257,7 @@ namespace ExpoTheExplorer.Editor
             }
 
             EditorGUILayout.Space();
-            DrawModificationPicker(entry.Item, entry.Modifications, "Item");
+            DrawModificationPicker(entry.Item, entry.Modifications, "Item", hideWhenEmpty: true);
 
             EditorGUILayout.Space();
             if (UnityEngine.GUILayout.Button("Clear Cell"))
@@ -267,6 +267,133 @@ namespace ExpoTheExplorer.Editor
 
             UnityEngine.GUILayout.EndVertical();
         }
+
+        // What goes in the selected Start Board cell, picked by clicking a picture instead of
+        // hunting through every FoodItemConfig in the project. Returns the item the cell
+        // should hold: `current` when nothing was clicked, the clicked food, or null when the
+        // already-selected tile is clicked again -- which is how the cell is emptied, taking
+        // over from the old ObjectField's "None".
+        //
+        // Fed from AllowedFoodPool, so this Day can only put food on the board that it
+        // actually selected. That is a fix rather than a side effect: the ObjectField this
+        // replaces was completely unfiltered, so it could author a board item DayValidator
+        // then refused (it checks the board against the same pool). Every category is offered
+        // -- a board cell can hold a Main, a Side or a Drink -- grouped so a long catalog
+        // stays readable.
+        private FoodItemConfig DrawCellItemPicker(FoodItemConfig current)
+        {
+            var pool = AllowedFoodPool;
+            if (pool == null)
+            {
+                EditorGUILayout.HelpBox("Food Catalog not assigned (toolbar above).", UnityEditor.MessageType.Info);
+                return current;
+            }
+
+            var options = pool.Where(item => item != null).ToList();
+            if (options.Count == 0)
+            {
+                EditorGUILayout.HelpBox(
+                    "No food is in this Day yet -- pick some under Food Selection first.", UnityEditor.MessageType.Info);
+                return current;
+            }
+
+            // Two states, and the cell itself is what selects between them -- there is no flag
+            // to keep in sync and nothing to reset. A FILLED cell shows only what is in it, so
+            // the picker gets out of the way and leaves the room to that item's modifications;
+            // an EMPTY one shows the whole larder again. Emptying therefore needs no "go back"
+            // path of its own: clicking the tile again and the Clear Cell button both leave the
+            // cell empty, and the next draw is the grid.
+            var picked = current;
+
+            if (current != null)
+            {
+                EditorGUILayout.LabelField("Click it again to empty the cell", UnityEditor.EditorStyles.miniLabel);
+                DrawTileGrid(1, ref lastCellGridWidth, (tileRect, _) =>
+                {
+                    if (DrawCellItemTile(tileRect, current, current)) picked = null;
+                });
+            }
+            else
+            {
+                EditorGUILayout.LabelField("Click a food to place it here", UnityEditor.EditorStyles.miniLabel);
+
+                foreach (var category in CellPickerCategories)
+                {
+                    var inCategory = options.Where(item => item.Category == category).ToList();
+                    if (inCategory.Count == 0) continue;
+
+                    EditorGUILayout.LabelField(category.ToString(), UnityEditor.EditorStyles.miniBoldLabel);
+                    DrawTileGrid(inCategory.Count, ref lastCellGridWidth, (tileRect, i) =>
+                    {
+                        // The cell is empty in this branch, so a click can only ever be a pick --
+                        // the toggle-to-empty case lives in the branch above.
+                        if (DrawCellItemTile(tileRect, inCategory[i], null)) picked = inCategory[i];
+                    });
+                }
+            }
+
+            // An item the Day no longer serves: authored earlier, or deselected from Food
+            // Selection afterwards. Surfaced rather than silently cleared -- it still ships in
+            // the Day JSON, and DayValidator is already complaining about it separately.
+            if (current != null && !options.Contains(current))
+            {
+                var name = string.IsNullOrEmpty(current.DisplayName) ? current.Id : current.DisplayName;
+                EditorGUILayout.HelpBox(
+                    $"This cell holds {name}, which is not in this Day's food selection. "
+                    + "Pick a food above to replace it, or use Clear Cell.",
+                    UnityEditor.MessageType.Warning);
+            }
+
+            return picked;
+        }
+
+        // Returns whether this tile was clicked. Single-select, so "selected" is just identity
+        // against the cell's current item rather than membership in a list.
+        private bool DrawCellItemTile(UnityEngine.Rect tileRect, FoodItemConfig item, FoodItemConfig current)
+        {
+            var isSelected = item == current;
+
+            if (isSelected)
+            {
+                EditorGUI.DrawRect(
+                    new UnityEngine.Rect(
+                        tileRect.x - FoodTileHighlightMargin, tileRect.y - FoodTileHighlightMargin,
+                        tileRect.width + FoodTileHighlightMargin * 2f, tileRect.height + FoodTileHighlightMargin * 2f),
+                    FoodTileSelectedColor);
+            }
+            EditorGUI.DrawRect(tileRect, FoodTileBackgroundColor);
+
+            var previousColor = UnityEngine.GUI.color;
+            if (!isSelected) UnityEngine.GUI.color = new UnityEngine.Color(1f, 1f, 1f, 0.3f) * previousColor;
+            DayEditorSpriteGUI.DrawSpriteFit(tileRect, item.Sprite);
+            UnityEngine.GUI.color = previousColor;
+
+            var name = string.IsNullOrEmpty(item.DisplayName) ? item.Id : item.DisplayName;
+            UnityEngine.GUI.Label(tileRect, new UnityEngine.GUIContent(string.Empty, name));
+
+            if (UnityEngine.Event.current.type != UnityEngine.EventType.MouseDown
+                || UnityEngine.Event.current.button != 0
+                || !tileRect.Contains(UnityEngine.Event.current.mousePosition))
+            {
+                return false;
+            }
+
+            UnityEngine.GUI.changed = true;
+            UnityEngine.Event.current.Use();
+            return true;
+        }
+
+        // Presentation order for the cell picker, written out rather than iterating the enum
+        // so it reads Main first the way a dish does on a ticket card.
+        private static readonly FoodCategory[] CellPickerCategories =
+        {
+            FoodCategory.Main, FoodCategory.Side, FoodCategory.Drink,
+        };
+
+        // The cell picker's own width measurement. It matters more here than for the other two
+        // grids: this one is drawn inside a fixed 220px column, so it settles on ~3 columns
+        // while the others get the full content width.
+        private float lastCellGridWidth = 220f;
 
         private DayEditorBoardSpawnEntry FindStartBoardEntry(int x, int y) =>
             BoardTimeline.FirstOrDefault(e => e.TriggerStepIndex == -1 && e.UseExactCell && e.X == x && e.Y == y);
@@ -436,8 +563,28 @@ namespace ExpoTheExplorer.Editor
             // child. The column count is therefore derived from the width measured on the
             // last repaint, and the rect asks only for one tile's worth of width while
             // expanding into whatever is on offer, so it can never demand more than exists.
-            var columns = UnityEngine.Mathf.Max(1, UnityEngine.Mathf.FloorToInt(lastFoodGridWidth / FoodTileStride));
-            var rows = UnityEngine.Mathf.CeilToInt(items.Count / (float)columns);
+            DrawTileGrid(items.Count, ref lastFoodGridWidth, (tileRect, i) => DrawFoodTile(tileRect, items[i]));
+        }
+
+        // The geometry every tile grid in this window shares: how many columns fit, how tall
+        // the block has to be, and where each tile lands. Extracted when the third grid
+        // arrived (Food Selection, the modification picker, the Start Board cell picker),
+        // because THIS is the code with the bug history documented above -- keeping three
+        // copies of it would scatter that lesson across three places, and the next person to
+        // reach for EditorGUIUtility.currentViewWidth would only be corrected in one of them.
+        //
+        // Per-tile drawing deliberately stays with each caller: they do genuinely different
+        // work (toggling a selection, drawing a direction badge, single-select), and only the
+        // measuring is the same.
+        //
+        // `lastWidth` is per-grid and passed by reference for a reason -- these grids sit in
+        // sections of DIFFERENT widths (the cell picker lives inside a fixed 220px column),
+        // so one shared measurement would have each overwrite the other's column count every
+        // repaint. Nothing here may assume the full inspector width.
+        private static void DrawTileGrid(int count, ref float lastWidth, Action<UnityEngine.Rect, int> drawTile)
+        {
+            var columns = UnityEngine.Mathf.Max(1, UnityEngine.Mathf.FloorToInt(lastWidth / FoodTileStride));
+            var rows = UnityEngine.Mathf.CeilToInt(count / (float)columns);
             var gridRect = UnityEngine.GUILayoutUtility.GetRect(
                 FoodTileStride, rows * FoodTileStride, UnityEngine.GUILayout.ExpandWidth(true));
 
@@ -445,16 +592,17 @@ namespace ExpoTheExplorer.Editor
             // Converges on the first repaint after any resize, which IMGUI does continuously.
             if (UnityEngine.Event.current.type == UnityEngine.EventType.Repaint && gridRect.width > 1f)
             {
-                lastFoodGridWidth = gridRect.width;
+                lastWidth = gridRect.width;
             }
 
-            for (var i = 0; i < items.Count; i++)
+            for (var i = 0; i < count; i++)
             {
-                var tileRect = new UnityEngine.Rect(
-                    gridRect.x + i % columns * FoodTileStride,
-                    gridRect.y + i / columns * FoodTileStride,
-                    FoodTileSize, FoodTileSize);
-                DrawFoodTile(tileRect, items[i]);
+                drawTile(
+                    new UnityEngine.Rect(
+                        gridRect.x + i % columns * FoodTileStride,
+                        gridRect.y + i / columns * FoodTileStride,
+                        FoodTileSize, FoodTileSize),
+                    i);
             }
         }
 
@@ -512,9 +660,31 @@ namespace ExpoTheExplorer.Editor
         // highlight, fade and tooltip) because it is the same gesture: click a picture to
         // put it on this thing. `ownerLabel` is what the empty-state message calls the food
         // -- "Main dish" for a ticket, "Item" for a board cell.
+        //
+        // `hideWhenEmpty` draws NOTHING -- not even the header -- when the owning food offers
+        // no modifications. The Start Board cell editor passes it because a filled cell should
+        // show its item and, only if there is something to say, its modifications; a box
+        // reading "this food has no modifications" is noise in a panel that narrow. The ticket
+        // editor leaves it at false, where the same box is useful advice (it names the
+        // FoodItemConfig to go and author them on), so that side is unchanged by construction.
+        //
+        // It does NOT silence orphans. Modifications the owning food no longer offers are
+        // surfaced either way: D-054 made them visible precisely because they still ship in
+        // the Day JSON, and quieting them to tidy up an empty state would undo that decision
+        // sideways. "Show nothing" means nothing to show, not nothing to admit.
         private void DrawModificationPicker(
-            FoodItemConfig owner, List<DayEditorModification> mods, string ownerLabel)
+            FoodItemConfig owner, List<DayEditorModification> mods, string ownerLabel, bool hideWhenEmpty = false)
         {
+            var available = owner != null
+                ? owner.AvailableModifications.Where(m => m != null).ToList()
+                : new List<ModificationConfig>();
+
+            if (hideWhenEmpty && available.Count == 0)
+            {
+                DrawOrphanModifications(owner, mods);
+                return;
+            }
+
             EditorGUILayout.LabelField("Modifications", UnityEditor.EditorStyles.boldLabel);
 
             if (owner == null)
@@ -526,7 +696,6 @@ namespace ExpoTheExplorer.Editor
                 return;
             }
 
-            var available = owner.AvailableModifications.Where(m => m != null).ToList();
             var ownerName = string.IsNullOrEmpty(owner.DisplayName) ? owner.Id : owner.DisplayName;
             if (available.Count == 0)
             {
@@ -541,28 +710,9 @@ namespace ExpoTheExplorer.Editor
                 $"Click a modification {ownerName} offers. Right-click a two-way one to flip +/-.",
                 UnityEditor.EditorStyles.miniLabel);
 
-            // Same width-from-the-last-repaint rule as the food grid, and for the same reason
-            // (see DrawFoodCategorySelection) -- but on its OWN field: this grid is drawn
-            // inside a foldout that can be a different width from the Food Selection block,
-            // and sharing one measurement would make each fight the other's column count.
-            var columns = UnityEngine.Mathf.Max(1, UnityEngine.Mathf.FloorToInt(lastModGridWidth / FoodTileStride));
-            var rows = UnityEngine.Mathf.CeilToInt(available.Count / (float)columns);
-            var gridRect = UnityEngine.GUILayoutUtility.GetRect(
-                FoodTileStride, rows * FoodTileStride, UnityEngine.GUILayout.ExpandWidth(true));
-
-            if (UnityEngine.Event.current.type == UnityEngine.EventType.Repaint && gridRect.width > 1f)
-            {
-                lastModGridWidth = gridRect.width;
-            }
-
-            for (var i = 0; i < available.Count; i++)
-            {
-                var tileRect = new UnityEngine.Rect(
-                    gridRect.x + i % columns * FoodTileStride,
-                    gridRect.y + i / columns * FoodTileStride,
-                    FoodTileSize, FoodTileSize);
-                DrawModificationTile(tileRect, available[i], mods);
-            }
+            // Own width field, not the food grid's -- this one is drawn inside a foldout that
+            // can be a different width from the Food Selection block (see DrawTileGrid).
+            DrawTileGrid(available.Count, ref lastModGridWidth, (tileRect, i) => DrawModificationTile(tileRect, available[i], mods));
 
             DrawOrphanModifications(owner, mods);
         }
