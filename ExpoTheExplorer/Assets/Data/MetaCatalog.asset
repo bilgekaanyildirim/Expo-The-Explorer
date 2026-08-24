@@ -205,7 +205,7 @@ MonoBehaviour:
       shopIcon: {fileID: 0}
       unlock: 1
       price: 0
-      unlockAtDayIndex: 1
+      unlockAtDayIndex: 0
       normalizedPosition: {x: 0.35, y: 0.7038461}
       pivot: {x: 0.5, y: 0}
       sortOrder: 13
@@ -217,7 +217,7 @@ MonoBehaviour:
       shopIcon: {fileID: 0}
       unlock: 1
       price: 0
-      unlockAtDayIndex: 5
+      unlockAtDayIndex: 2
       normalizedPosition: {x: 0.66571146, y: 0.64541924}
       pivot: {x: 0.5, y: 0}
       sortOrder: 14
@@ -229,7 +229,7 @@ MonoBehaviour:
       shopIcon: {fileID: 0}
       unlock: 1
       price: 0
-      unlockAtDayIndex: 12
+      unlockAtDayIndex: 4
       normalizedPosition: {x: 0.37850678, y: 0.7231951}
       pivot: {x: 0.5, y: 0}
       sortOrder: 0

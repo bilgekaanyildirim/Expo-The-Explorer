@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: ExpoTheExplorer.Data::ExpoTheExplorer.Data.FoodItemConfig
   id: hotdog
   displayName: Hotdog
-  sprite: {fileID: 21300000, guid: 6ee6dae97a18c49b9851f9b316ca067d, type: 3}
+  sprite: {fileID: 21300000, guid: 066cba655e8d8481abe1eb219cda7165, type: 3}
   category: 0
   basePrice: 8
   availableModifications:
@@ -22,7 +22,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 47271d8ce0f30414c95bc49a9120b8f6, type: 2}
   - {fileID: 11400000, guid: 872d35a84497740c5832c7c8f254e2ae, type: 2}
   spriteLayers:
-  - sprite: {fileID: 21300000, guid: 6ee6dae97a18c49b9851f9b316ca067d, type: 3}
+  - sprite: {fileID: 21300000, guid: 066cba655e8d8481abe1eb219cda7165, type: 3}
     visibility: 0
     modification: {fileID: 0}
     direction: 0
