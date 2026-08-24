@@ -29,7 +29,7 @@ namespace ExpoTheExplorer.Systems.DaySystem
 
             try
             {
-                return GenerateCore(ResolveFoodPool(catalog, editorMeta), ticketConfig, ticketsRequiredForDay, random);
+                return GenerateCore(ResolveFoodPool(catalog, editorMeta), ticketConfig, ticketsRequiredForDay, random, editorMeta);
             }
             finally
             {
@@ -58,14 +58,70 @@ namespace ExpoTheExplorer.Systems.DaySystem
             return catalog.Items.Where(item => item != null && allowedIds.Contains(item.Id)).ToList();
         }
 
-        private static TicketEntryJson[] GenerateCore(IReadOnlyList<FoodItemConfig> pool, TicketGenerationConfig ticketConfig, int ticketsRequiredForDay, Random random)
+        // The presentation order the Day Editor authors against, and the order a generated
+        // sequence comes out in. Deliberately NOT PatienceType's own declaration order,
+        // which runs Impatient, Normal, Patient -- the exact reverse. Iterating the enum
+        // would have produced a sequence that starts with the harshest tickets.
+        private static readonly PatienceType[] PatienceOrder =
+        {
+            PatienceType.Patient, PatienceType.Normal, PatienceType.Impatient,
+        };
+
+        // Turns the Day's three authored counts into one patience per ticket, already in
+        // PatienceOrder -- so the generated sequence is sorted by construction and no second
+        // sort pass exists to disagree with this one.
+        //
+        // Returns an EMPTY list for "unauthored", which is what all three counts being zero
+        // means (see TicketGenerationJson): the caller then falls back to the uniform roll
+        // that was the only behaviour before this existed, so opening and re-generating an
+        // old Day does not silently turn every ticket Normal.
+        //
+        // The counts are measured against ticketsRequiredForDay rather than replacing it --
+        // that value stays the single authority for how long a Day is. A shortfall is padded
+        // with Normal, and an excess is cut off the TAIL, which takes it from Impatient first
+        // and then Normal. Both are deliberate and neither is silent: the editor shows the
+        // effective counts next to the authored ones before Generate is ever pressed.
+        public static List<PatienceType> BuildPatiencePlan(
+            int patientCount, int normalCount, int impatientCount, int ticketsRequiredForDay)
+        {
+            var plan = new List<PatienceType>();
+            if (ticketsRequiredForDay <= 0) return plan;
+            if (patientCount <= 0 && normalCount <= 0 && impatientCount <= 0) return plan;
+
+            var counts = new[] { Math.Max(0, patientCount), Math.Max(0, normalCount), Math.Max(0, impatientCount) };
+            for (var i = 0; i < PatienceOrder.Length; i++)
+            {
+                for (var n = 0; n < counts[i] && plan.Count < ticketsRequiredForDay; n++)
+                {
+                    plan.Add(PatienceOrder[i]);
+                }
+            }
+
+            // Padding with Normal rather than proportionally: the neutral type is the one
+            // choice that does not quietly make the Day easier or harder than the counts
+            // that were actually written down.
+            while (plan.Count < ticketsRequiredForDay) plan.Add(PatienceType.Normal);
+
+            return plan;
+        }
+
+        private static TicketEntryJson[] GenerateCore(IReadOnlyList<FoodItemConfig> pool, TicketGenerationConfig ticketConfig, int ticketsRequiredForDay, Random random, DayEditorMetaJson editorMeta)
         {
             var ticketFactory = new TicketFactory(ticketConfig, random);
             var entries = new TicketEntryJson[ticketsRequiredForDay];
 
+            var generation = editorMeta?.ticketGeneration;
+            var patiencePlan = BuildPatiencePlan(
+                generation?.patientTicketCount ?? 0,
+                generation?.normalTicketCount ?? 0,
+                generation?.impatientTicketCount ?? 0,
+                ticketsRequiredForDay);
+
             for (var i = 0; i < ticketsRequiredForDay; i++)
             {
-                var patienceType = ticketFactory.PickRandomPatienceType();
+                // Empty plan = no mix authored, so the patience stays a roll, exactly as it
+                // was before Patience Mix existed.
+                var patienceType = patiencePlan.Count > 0 ? patiencePlan[i] : ticketFactory.PickRandomPatienceType();
                 var ticket = ticketFactory.Create(pool, SimulatedCustomerName, patienceType);
                 entries[i] = ToTicketEntryJson(ticket);
             }

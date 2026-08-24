@@ -66,6 +66,16 @@ namespace ExpoTheExplorer.Systems.DaySystem
         public float modificationCountLambda;
         public float modificationAdditionChance;
         public MainDishWeightJson[] mainDishWeights;
+
+        // How many tickets of each patience type a Generate should lay down. ALL THREE ZERO
+        // means unauthored, not "zero tickets of every type" -- a Day file written before
+        // these existed reads them as 0, and authoring 0/0/0 by hand would ask for an empty
+        // Day, which the ticket count already governs. DayContentGenerator.BuildPatiencePlan
+        // is the single reader of that rule and falls back to the old uniform roll there, so
+        // no already-authored Day changes balance until someone sets a mix on purpose.
+        public int patientTicketCount;
+        public int normalTicketCount;
+        public int impatientTicketCount;
     }
 
     [Serializable]

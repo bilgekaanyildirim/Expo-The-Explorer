@@ -108,6 +108,12 @@ namespace ExpoTheExplorer.Tests.EditMode
                         {
                             new MainDishWeightJson { foodItemId = main.Id, weight = 3f, modificationCountLambda = 1.5f, maxModificationCount = 2 },
                         },
+                        // Non-default and non-equal on purpose, like every other field here:
+                        // three identical values would still pass if the model mixed two of
+                        // them up on the way through.
+                        patientTicketCount = 4,
+                        normalTicketCount = 3,
+                        impatientTicketCount = 2,
                     },
                 },
             };
@@ -273,25 +279,235 @@ namespace ExpoTheExplorer.Tests.EditMode
             Assert.AreSame(side, model.TicketSequence[0].SideItem);
         }
 
-        private FoodItemConfig CreateFoodItem(string id)
+        // The three Patience Mix counts are the newest editorMeta fields (D-055) and the ones
+        // most likely to be dropped or transposed on the way through, being three ints of the
+        // same type sitting next to each other.
+        [Test]
+        public void FromDayJson_ThenToDayJson_KeepsThePatienceMix()
+        {
+            var model = DayEditorModel.FromDayJson(CreateFullDayJson(), catalog);
+
+            var generation = model.ToDayJson().editorMeta.ticketGeneration;
+
+            Assert.AreEqual(4, generation.patientTicketCount);
+            Assert.AreEqual(3, generation.normalTicketCount);
+            Assert.AreEqual(2, generation.impatientTicketCount);
+        }
+
+        // A Day written before Patience Mix existed carries none of the three, which
+        // JsonUtility reads as 0 -- and 0/0/0 has to keep meaning "unauthored" all the way
+        // through the editor, or re-saving such a Day would write a mix nobody chose.
+        [Test]
+        public void FromDayJson_NoPatienceMix_StaysAllZero()
+        {
+            var json = CreateFullDayJson();
+            json.editorMeta.ticketGeneration.patientTicketCount = 0;
+            json.editorMeta.ticketGeneration.normalTicketCount = 0;
+            json.editorMeta.ticketGeneration.impatientTicketCount = 0;
+
+            var generation = DayEditorModel.FromDayJson(json, catalog).ToDayJson().editorMeta.ticketGeneration;
+
+            Assert.AreEqual(0, generation.patientTicketCount);
+            Assert.AreEqual(0, generation.normalTicketCount);
+            Assert.AreEqual(0, generation.impatientTicketCount);
+        }
+
+        // The modification picker seeds direction from the modification's own type rather
+        // than letting the designer pick (D-054), because TicketFactory.CreateModification
+        // does exactly that and only ever rolls for a Both. These four pin the rule: the old
+        // "+ Add Modification" button appended a blank entry with IsAddition left at false,
+        // which authored "remove Extra Ketchup" for an AdditionOnly modification -- valid
+        // data the generator could never produce.
+        [Test]
+        public void ForConfig_AdditionOnly_ComesInAsAnAddition()
+        {
+            var config = CreateModification("extra_ketchup", ModificationDirection.AdditionOnly);
+
+            var authored = DayEditorModification.ForConfig(config);
+
+            Assert.IsTrue(authored.IsAddition);
+            Assert.IsFalse(DayEditorModification.CanFlipDirection(config), "its direction is intrinsic");
+        }
+
+        [Test]
+        public void ForConfig_RemovalOnly_ComesInAsARemoval()
+        {
+            var config = CreateModification("no_lettuce", ModificationDirection.RemovalOnly);
+
+            var authored = DayEditorModification.ForConfig(config);
+
+            Assert.IsFalse(authored.IsAddition);
+            Assert.IsFalse(DayEditorModification.CanFlipDirection(config), "its direction is intrinsic");
+        }
+
+        // Both is the only one the designer gets to decide, so it is the only one that may
+        // be flipped -- and it still has to arrive at a defined value rather than whatever
+        // the field defaults to.
+        [Test]
+        public void ForConfig_Both_ComesInAsAnAdditionAndCanBeFlipped()
+        {
+            var config = CreateModification("cheese", ModificationDirection.Both);
+
+            var authored = DayEditorModification.ForConfig(config);
+
+            Assert.IsTrue(authored.IsAddition);
+            Assert.IsTrue(DayEditorModification.CanFlipDirection(config));
+        }
+
+        // A null never reaches the picker (it filters the food's list first), but ForConfig
+        // must not throw for one either -- CanFlipDirection is what the tile asks before
+        // offering the flip, and a missing asset has to answer "no" rather than crash a draw.
+        [Test]
+        public void CanFlipDirection_NullConfig_IsFalse()
+        {
+            Assert.IsFalse(DayEditorModification.CanFlipDirection(null));
+            Assert.IsTrue(DayEditorModification.ForConfig(null).IsAddition);
+        }
+
+        // The Main Dish Weights list is DERIVED from Food Selection (D-052), so these five
+        // pin the derivation itself: what gets added, in what order, what survives a re-sync
+        // untouched, and what is dropped. The list used to be hand-authored, which is why
+        // "keeps the authored numbers" is the one that matters most -- a sync that reset a
+        // designer's weights every repaint would be worse than no sync at all.
+        [Test]
+        public void SyncMainDishWeights_AddsARowPerSelectedMain_InCatalogOrder()
+        {
+            var burger = CreateFoodItem("burger");
+            var hotdog = CreateFoodItem("hotdog");
+            var localCatalog = CreateCatalog(burger, hotdog);
+            var meta = MetaWithSelection(hotdog, burger);
+
+            meta.SyncMainDishWeights(localCatalog);
+
+            var weights = meta.TicketGeneration.MainDishWeights;
+            Assert.AreEqual(2, weights.Count);
+            Assert.AreSame(burger, weights[0].Food, "catalog order, not the order they were picked in");
+            Assert.AreSame(hotdog, weights[1].Food);
+            Assert.AreEqual(MainDishWeight.DefaultWeight, weights[0].Weight);
+            Assert.AreEqual(MainDishWeight.DefaultMaxModificationCount, weights[0].MaxModificationCount);
+        }
+
+        [Test]
+        public void SyncMainDishWeights_KeepsTheAuthoredNumbersOfARowItAlreadyHad()
+        {
+            var burger = CreateFoodItem("burger");
+            var hotdog = CreateFoodItem("hotdog");
+            var localCatalog = CreateCatalog(burger, hotdog);
+            var meta = MetaWithSelection(burger);
+            meta.SyncMainDishWeights(localCatalog);
+
+            var tuned = meta.TicketGeneration.MainDishWeights[0];
+            tuned.Weight = 7f;
+            tuned.ModificationCountLambda = 2.5f;
+            tuned.MaxModificationCount = 3;
+
+            // A second Main joins the Day: the burger's row must be the SAME object, not a
+            // fresh one at defaults.
+            meta.AllowedFoodItemIds.Add(hotdog.Id);
+            meta.SyncMainDishWeights(localCatalog);
+
+            var weights = meta.TicketGeneration.MainDishWeights;
+            Assert.AreEqual(2, weights.Count);
+            Assert.AreSame(tuned, weights[0]);
+            Assert.AreEqual(7f, weights[0].Weight);
+            Assert.AreEqual(2.5f, weights[0].ModificationCountLambda);
+            Assert.AreEqual(3, weights[0].MaxModificationCount);
+            Assert.AreEqual(MainDishWeight.DefaultWeight, weights[1].Weight);
+        }
+
+        [Test]
+        public void SyncMainDishWeights_DropsTheRowOfADeselectedMain()
+        {
+            var burger = CreateFoodItem("burger");
+            var hotdog = CreateFoodItem("hotdog");
+            var localCatalog = CreateCatalog(burger, hotdog);
+            var meta = MetaWithSelection(burger, hotdog);
+            meta.SyncMainDishWeights(localCatalog);
+
+            meta.AllowedFoodItemIds.Remove(burger.Id);
+            meta.SyncMainDishWeights(localCatalog);
+
+            var weights = meta.TicketGeneration.MainDishWeights;
+            Assert.AreEqual(1, weights.Count);
+            Assert.AreSame(hotdog, weights[0].Food);
+        }
+
+        // Only Mains get a weight -- a selected side or drink must not produce a row, and
+        // neither must a Main the Day does not serve.
+        [Test]
+        public void SyncMainDishWeights_IgnoresSidesDrinksAndUnselectedMains()
+        {
+            var burger = CreateFoodItem("burger");
+            var unpickedMain = CreateFoodItem("pizza");
+            var fries = CreateFoodItem("fries", FoodCategory.Side);
+            var cola = CreateFoodItem("cola", FoodCategory.Drink);
+            var localCatalog = CreateCatalog(burger, unpickedMain, fries, cola);
+            var meta = MetaWithSelection(burger, fries, cola);
+
+            meta.SyncMainDishWeights(localCatalog);
+
+            var weights = meta.TicketGeneration.MainDishWeights;
+            Assert.AreEqual(1, weights.Count);
+            Assert.AreSame(burger, weights[0].Food);
+        }
+
+        // The sync runs from a draw method, i.e. on every repaint. When the list already
+        // matches it must not rebuild -- otherwise the inspector allocates a fresh list
+        // several times a second, and anything holding on to the old one is left stale.
+        [Test]
+        public void SyncMainDishWeights_AlreadyInSync_DoesNotRebuildTheList()
+        {
+            var burger = CreateFoodItem("burger");
+            var localCatalog = CreateCatalog(burger);
+            var meta = MetaWithSelection(burger);
+            meta.SyncMainDishWeights(localCatalog);
+            var firstList = meta.TicketGeneration.MainDishWeights;
+
+            meta.SyncMainDishWeights(localCatalog);
+
+            Assert.AreSame(firstList, meta.TicketGeneration.MainDishWeights);
+        }
+
+        // The category argument matters more than it looks: FoodCategory.Main is 0, so the
+        // three items the SetUp above builds are ALL Main-category. Harmless for the
+        // round-trip tests (nothing there reads Category), but any test about the Main-dish
+        // sync has to say what it means -- hence the explicit catalogs below.
+        private FoodItemConfig CreateFoodItem(string id, FoodCategory category = FoodCategory.Main)
         {
             var item = ScriptableObject.CreateInstance<FoodItemConfig>();
             spawned.Add(item);
 
             var serialized = new SerializedObject(item);
             serialized.FindProperty("id").stringValue = id;
+            serialized.FindProperty("category").enumValueIndex = (int)category;
             serialized.ApplyModifiedPropertiesWithoutUndo();
 
             return item;
         }
 
-        private ModificationConfig CreateModification(string id)
+        private FoodCatalog CreateCatalog(params FoodItemConfig[] items)
+        {
+            var created = ScriptableObject.CreateInstance<FoodCatalog>();
+            spawned.Add(created);
+            SetItemsList(created, items);
+            return created;
+        }
+
+        private static DayEditorMetaModel MetaWithSelection(params FoodItemConfig[] selected)
+        {
+            var meta = new DayEditorMetaModel();
+            foreach (var item in selected) meta.AllowedFoodItemIds.Add(item.Id);
+            return meta;
+        }
+
+        private ModificationConfig CreateModification(string id, ModificationDirection direction = ModificationDirection.Both)
         {
             var mod = ScriptableObject.CreateInstance<ModificationConfig>();
             spawned.Add(mod);
 
             var serialized = new SerializedObject(mod);
             serialized.FindProperty("id").stringValue = id;
+            serialized.FindProperty("allowedDirection").enumValueIndex = (int)direction;
             serialized.ApplyModifiedPropertiesWithoutUndo();
 
             return mod;

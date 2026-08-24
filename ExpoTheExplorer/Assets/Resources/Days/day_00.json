@@ -4,9 +4,9 @@
         "ticketsRequiredForDay": 5,
         "boardDistribution": {
             "noiseLeakCountLambda": 0.0,
-            "guaranteedTicketCountMode": "Manual",
+            "guaranteedTicketCountMode": "Poisson",
             "guaranteedTicketCount": 1,
-            "guaranteedTicketCountLambda": 1.0,
+            "guaranteedTicketCountLambda": 0.0,
             "earlyTicketWeightDecay": 0.5,
             "urgentTimeThresholdSeconds": 10.0,
             "leakDepth": 3,
@@ -41,7 +41,12 @@
                 "mainItemId": "hotdog",
                 "sideItemId": "",
                 "drinkItemId": "",
-                "modifications": [],
+                "modifications": [
+                    {
+                        "modificationId": "extramustard",
+                        "isAddition": true
+                    }
+                ],
                 "patienceType": "Patient",
                 "customerNameOverride": "",
                 "timeLimitSecondsOverride": 0.0
@@ -50,7 +55,12 @@
                 "mainItemId": "hotdog",
                 "sideItemId": "",
                 "drinkItemId": "",
-                "modifications": [],
+                "modifications": [
+                    {
+                        "modificationId": "extramustard",
+                        "isAddition": true
+                    }
+                ],
                 "patienceType": "Patient",
                 "customerNameOverride": "",
                 "timeLimitSecondsOverride": 0.0
@@ -104,11 +114,14 @@
             "mainDishWeights": [
                 {
                     "foodItemId": "hotdog",
-                    "weight": 1.0,
+                    "weight": 5.539999961853027,
                     "modificationCountLambda": 0.0,
                     "maxModificationCount": 1
                 }
-            ]
+            ],
+            "patientTicketCount": 5,
+            "normalTicketCount": 0,
+            "impatientTicketCount": 0
         }
     }
 }

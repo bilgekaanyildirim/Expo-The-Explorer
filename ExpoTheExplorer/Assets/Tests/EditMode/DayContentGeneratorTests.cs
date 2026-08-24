@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using ExpoTheExplorer.Core;
 using ExpoTheExplorer.Data;
 using ExpoTheExplorer.Systems.DaySystem;
@@ -226,6 +227,98 @@ namespace ExpoTheExplorer.Tests.EditMode
         // A Day's food selection is absolute -- an unset one means an empty Day -- so a
         // test that cares about some other aspect of generation still has to say which
         // foods exist. This is the "everything in the catalog" shorthand for those.
+        // BuildPatiencePlan is the whole Patience Mix rule in one deterministic function
+        // (D-055), which is why it is tested directly rather than through the randomness
+        // around it. PatienceType declares Impatient, Normal, Patient -- the REVERSE of the
+        // order a Day is laid out in -- so "ordered" here can never be satisfied by
+        // accidentally iterating the enum.
+        [Test]
+        public void BuildPatiencePlan_ExactCounts_RunsPatientThenNormalThenImpatient()
+        {
+            var plan = DayContentGenerator.BuildPatiencePlan(2, 3, 1, ticketsRequiredForDay: 6);
+
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    PatienceType.Patient, PatienceType.Patient,
+                    PatienceType.Normal, PatienceType.Normal, PatienceType.Normal,
+                    PatienceType.Impatient,
+                },
+                plan);
+        }
+
+        [Test]
+        public void BuildPatiencePlan_FewerThanTheDayNeeds_PadsWithNormal()
+        {
+            var plan = DayContentGenerator.BuildPatiencePlan(1, 1, 1, ticketsRequiredForDay: 5);
+
+            Assert.AreEqual(5, plan.Count);
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    PatienceType.Patient, PatienceType.Normal, PatienceType.Impatient,
+                    PatienceType.Normal, PatienceType.Normal,
+                },
+                plan,
+                "the shortfall arrives as Normal, appended after what was authored");
+        }
+
+        // The excess comes off the tail, and the tail is Impatient -- so over-authoring
+        // loses the harshest tickets first, never the Patient ones the designer asked for.
+        [Test]
+        public void BuildPatiencePlan_MoreThanTheDayNeeds_CutsOffTheTail()
+        {
+            var plan = DayContentGenerator.BuildPatiencePlan(4, 3, 5, ticketsRequiredForDay: 10);
+
+            Assert.AreEqual(10, plan.Count);
+            Assert.AreEqual(4, plan.Count(p => p == PatienceType.Patient), "authored Patient survives in full");
+            Assert.AreEqual(3, plan.Count(p => p == PatienceType.Normal), "so does Normal");
+            Assert.AreEqual(3, plan.Count(p => p == PatienceType.Impatient), "Impatient absorbs the whole overflow");
+        }
+
+        // Zero across the board is the "no mix authored" signal every Day file written before
+        // this feature carries, NOT a request for an empty Day. An empty plan is what tells
+        // GenerateCore to keep rolling at random.
+        [Test]
+        public void BuildPatiencePlan_AllZero_IsEmptyRatherThanZeroTickets()
+        {
+            CollectionAssert.IsEmpty(DayContentGenerator.BuildPatiencePlan(0, 0, 0, ticketsRequiredForDay: 8));
+        }
+
+        [Test]
+        public void Generate_WithAPatienceMix_LaysTheSequenceOutInThatOrder()
+        {
+            var editorMeta = SelectEveryFood(catalog);
+            editorMeta.ticketGeneration = new TicketGenerationJson
+            {
+                sideInclusionChance = 0.5f,
+                drinkInclusionChance = 0.5f,
+                modificationCountLambda = 1f,
+                modificationAdditionChance = 0.5f,
+                mainDishWeights = Array.Empty<MainDishWeightJson>(),
+                patientTicketCount = 2,
+                normalTicketCount = 1,
+                impatientTicketCount = 1,
+            };
+
+            var result = DayContentGenerator.Generate(catalog, ticketConfig, editorMeta, ticketsRequiredForDay: 4, seed: 7);
+
+            CollectionAssert.AreEqual(
+                new[] { "Patient", "Patient", "Normal", "Impatient" },
+                result.Select(e => e.patienceType).ToArray());
+        }
+
+        // The counts are absent from every Day authored before them, so the old uniform roll
+        // has to survive an editorMeta that carries no ticketGeneration block at all.
+        [Test]
+        public void Generate_WithNoPatienceMix_StillFillsEveryTicket()
+        {
+            var result = DayContentGenerator.Generate(catalog, ticketConfig, SelectEveryFood(catalog), ticketsRequiredForDay: 6, seed: 3);
+
+            Assert.AreEqual(6, result.Length);
+            CollectionAssert.IsEmpty(result.Where(e => string.IsNullOrEmpty(e.patienceType)).ToArray());
+        }
+
         private static DayEditorMetaJson SelectEveryFood(FoodCatalog target)
         {
             var ids = new string[target.Items.Count];

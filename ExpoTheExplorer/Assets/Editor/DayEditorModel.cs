@@ -25,15 +25,24 @@ namespace ExpoTheExplorer.Editor
 
         // Per-Day BoardDistributor balancing, replacing the shared BoardDistributionConfig
         // asset as the runtime authority. Odin draws this as a plain nested box for now;
-        // grouping, seeding from the config asset and the leak-distribution preview land in
-        // a later step of .claude/day-config-plan.md.
-        [BoxGroup("Board Distribution"), HideLabel, PropertyOrder(-2.5f)]
+        // grouping and seeding from the config asset land in a later step of
+        // .claude/day-config-plan.md.
+        //
+        // Deliberately the LAST block in the inspector, right above Save/Duplicate/Delete:
+        // it is the balancing pass you make after the Day's content exists, so it belongs at
+        // the end of the authoring flow rather than between Generation Settings and the
+        // ticket strip. Those three buttons carry no PropertyOrder, so they sit at the
+        // default 0 and everything else in this class is negative -- which makes any value
+        // between the lowest neighbour (-0.5, the selected-ticket editor) and 0 the bottom
+        // slot. Both members of the group move together; splitting them would tear the
+        // previews away from the knobs they visualise.
+        [BoxGroup("Board Distribution"), HideLabel, PropertyOrder(-0.2f)]
         public DayEditorBoardDistribution BoardDistribution = new();
 
         // Drawn from THIS Day's values, which is the whole point: these two distributions
         // are what the balance knobs above actually mean, and before this they could only be
         // seen on the shared config asset's inspector -- i.e. never for the Day being tuned.
-        [BoxGroup("Board Distribution"), OnInspectorGUI, PropertyOrder(-2.45f)]
+        [BoxGroup("Board Distribution"), OnInspectorGUI, PropertyOrder(-0.15f)]
         private void DrawBoardDistributionPreviews()
         {
             // Two columns, with no width given to either: GUILayout splits what is available.
@@ -132,24 +141,7 @@ namespace ExpoTheExplorer.Editor
             entry.TimeLimitSecondsOverride = EditorGUILayout.FloatField("Time Override", entry.TimeLimitSecondsOverride);
 
             EditorGUILayout.Space();
-            EditorGUILayout.LabelField("Modifications", UnityEditor.EditorStyles.boldLabel);
-            for (var i = 0; i < entry.Modifications.Count; i++)
-            {
-                EditorGUILayout.BeginHorizontal();
-                entry.Modifications[i].Config = (ModificationConfig)EditorGUILayout.ObjectField(entry.Modifications[i].Config, typeof(ModificationConfig), false);
-                entry.Modifications[i].IsAddition = EditorGUILayout.ToggleLeft("Addition", entry.Modifications[i].IsAddition, UnityEngine.GUILayout.Width(80));
-                var removeClicked = UnityEngine.GUILayout.Button("x", UnityEngine.GUILayout.Width(20));
-                EditorGUILayout.EndHorizontal();
-                if (removeClicked)
-                {
-                    entry.Modifications.RemoveAt(i);
-                    break; // list mutated mid-loop -- next OnGUI pass redraws the rest
-                }
-            }
-            if (UnityEngine.GUILayout.Button("+ Add Modification"))
-            {
-                entry.Modifications.Add(new DayEditorModification());
-            }
+            DrawModificationPicker(entry.MainItem, entry.Modifications, "Main dish");
 
             EditorGUILayout.Space();
             if (UnityEngine.GUILayout.Button("Delete This Ticket"))
@@ -265,24 +257,7 @@ namespace ExpoTheExplorer.Editor
             }
 
             EditorGUILayout.Space();
-            EditorGUILayout.LabelField("Modifications", UnityEditor.EditorStyles.boldLabel);
-            for (var i = 0; i < entry.Modifications.Count; i++)
-            {
-                EditorGUILayout.BeginHorizontal();
-                entry.Modifications[i].Config = (ModificationConfig)EditorGUILayout.ObjectField(entry.Modifications[i].Config, typeof(ModificationConfig), false);
-                entry.Modifications[i].IsAddition = EditorGUILayout.ToggleLeft("Addition", entry.Modifications[i].IsAddition, UnityEngine.GUILayout.Width(80));
-                var removeClicked = UnityEngine.GUILayout.Button("x", UnityEngine.GUILayout.Width(20));
-                EditorGUILayout.EndHorizontal();
-                if (removeClicked)
-                {
-                    entry.Modifications.RemoveAt(i);
-                    break; // list mutated mid-loop -- next OnGUI pass redraws the rest
-                }
-            }
-            if (UnityEngine.GUILayout.Button("+ Add Modification"))
-            {
-                entry.Modifications.Add(new DayEditorModification());
-            }
+            DrawModificationPicker(entry.Item, entry.Modifications, "Item");
 
             EditorGUILayout.Space();
             if (UnityEngine.GUILayout.Button("Clear Cell"))
@@ -318,6 +293,58 @@ namespace ExpoTheExplorer.Editor
                 EditorMeta.TicketGeneration.MainDishWeights
                     .Select(w => (w.Food, w.Weight, w.ModificationCountLambda, w.MaxModificationCount)).ToList(),
                 sharedCatalog != null ? AllowedFoodPool : null);
+
+        // What the three Patience Mix counts will ACTUALLY produce. Lives on the model rather
+        // than beside the counts because it needs TicketsRequiredForDay, which
+        // DayEditorTicketGeneration has no access to -- same split as the food selection.
+        //
+        // This readout is the whole reason the counts are allowed to disagree with the ticket
+        // count: the padding and the tail-truncation are decided by
+        // DayContentGenerator.BuildPatiencePlan, and asking that same function what it would
+        // do is what keeps the answer from drifting away from what Generate really does. A
+        // second copy of the arithmetic here would be a preview that lies.
+        [FoldoutGroup("Generation Settings (authoring only)"), OnInspectorGUI, PropertyOrder(-2.85f)]
+        private void DrawPatienceMixReadout()
+        {
+            var plan = DayContentGenerator.BuildPatiencePlan(
+                EditorMeta.TicketGeneration.PatientTicketCount,
+                EditorMeta.TicketGeneration.NormalTicketCount,
+                EditorMeta.TicketGeneration.ImpatientTicketCount,
+                TicketsRequiredForDay);
+
+            if (plan.Count == 0)
+            {
+                EditorGUILayout.HelpBox(
+                    "Patience Mix is unset -- Generate rolls each ticket's patience at random, as it always did. "
+                    + "Set any of the three counts above to author the mix instead.",
+                    UnityEditor.MessageType.Info);
+                return;
+            }
+
+            var patient = plan.Count(p => p == PatienceType.Patient);
+            var normal = plan.Count(p => p == PatienceType.Normal);
+            var impatient = plan.Count(p => p == PatienceType.Impatient);
+
+            var authored = EditorMeta.TicketGeneration.PatientTicketCount
+                           + EditorMeta.TicketGeneration.NormalTicketCount
+                           + EditorMeta.TicketGeneration.ImpatientTicketCount;
+
+            var effective = $"Generate will lay down {patient} Patient, then {normal} Normal, then {impatient} Impatient.";
+
+            if (authored == TicketsRequiredForDay)
+            {
+                EditorGUILayout.HelpBox($"{authored} / {TicketsRequiredForDay} tickets. {effective}", UnityEditor.MessageType.Info);
+                return;
+            }
+
+            var reason = authored < TicketsRequiredForDay
+                ? $"{TicketsRequiredForDay - authored} short -- the rest come in as Normal."
+                : $"{authored - TicketsRequiredForDay} over -- the excess is cut off the end, so Impatient goes first.";
+
+            EditorGUILayout.HelpBox(
+                $"{authored} authored vs {TicketsRequiredForDay} tickets this Day: {reason}\n{effective}",
+                UnityEditor.MessageType.Warning);
+        }
 
         // Which foods exist in this Day: drives Generate's pool AND the ticket editor's
         // Main/Side/Drink pickers, so a Day can only ever contain food it actually
@@ -361,6 +388,18 @@ namespace ExpoTheExplorer.Editor
             DrawFoodCategorySelection(allItems, FoodCategory.Main);
             DrawFoodCategorySelection(allItems, FoodCategory.Side);
             DrawFoodCategorySelection(allItems, FoodCategory.Drink);
+
+            // The one place the derived Main Dish Weights list is kept in step with the
+            // selection above. Here rather than in the writers (SetFoodAllowed, FromDayJson,
+            // CopySettingsFrom) because this is the section that OWNS the input and, at
+            // PropertyOrder -5, it draws before the Generation Settings block at -3 -- so
+            // whatever Odin renders below is already reconciled, on every path there is:
+            // opening a file, clicking a tile, the All/None buttons, a catalog assigned late
+            // in the toolbar, or a new Day seeded from the previous one. A future fourth
+            // writer is covered for free, which three hand-placed call sites would not be.
+            // Free to sit in a draw method because the sync is idempotent: when the list
+            // already matches, it compares and returns without allocating (see the method).
+            EditorMeta.SyncMainDishWeights(sharedCatalog);
 
             if (!HasSelectableMainDish)
             {
@@ -458,6 +497,196 @@ namespace ExpoTheExplorer.Editor
             }
         }
 
+        // The modification editor for one ticket or one Start Board cell. Both used to carry
+        // their own byte-identical copy of an unfiltered ObjectField plus a "+ Add
+        // Modification" button that appended a blank row; one helper now serves both, so the
+        // rule cannot be fixed in one and left wrong in the other.
+        //
+        // The options come from the OWNING FOOD, which is the same authority TicketFactory
+        // reads (Create pulls from main.AvailableModifications and nothing else). The old
+        // picker offered every ModificationConfig in the project, so a Hotdog could be given
+        // a Burger's modification -- data the generator could never produce and the game
+        // would show as a topping the dish has no sprite layer for.
+        //
+        // Drawn as a tile grid on the Food Selection grid's conventions (same stride,
+        // highlight, fade and tooltip) because it is the same gesture: click a picture to
+        // put it on this thing. `ownerLabel` is what the empty-state message calls the food
+        // -- "Main dish" for a ticket, "Item" for a board cell.
+        private void DrawModificationPicker(
+            FoodItemConfig owner, List<DayEditorModification> mods, string ownerLabel)
+        {
+            EditorGUILayout.LabelField("Modifications", UnityEditor.EditorStyles.boldLabel);
+
+            if (owner == null)
+            {
+                EditorGUILayout.HelpBox(
+                    $"Assign a {ownerLabel} first -- modifications come from the food itself.",
+                    UnityEditor.MessageType.Info);
+                DrawOrphanModifications(owner, mods);
+                return;
+            }
+
+            var available = owner.AvailableModifications.Where(m => m != null).ToList();
+            var ownerName = string.IsNullOrEmpty(owner.DisplayName) ? owner.Id : owner.DisplayName;
+            if (available.Count == 0)
+            {
+                EditorGUILayout.HelpBox(
+                    $"{ownerName} has no modifications authored -- add them to its FoodItemConfig first.",
+                    UnityEditor.MessageType.Info);
+                DrawOrphanModifications(owner, mods);
+                return;
+            }
+
+            EditorGUILayout.LabelField(
+                $"Click a modification {ownerName} offers. Right-click a two-way one to flip +/-.",
+                UnityEditor.EditorStyles.miniLabel);
+
+            // Same width-from-the-last-repaint rule as the food grid, and for the same reason
+            // (see DrawFoodCategorySelection) -- but on its OWN field: this grid is drawn
+            // inside a foldout that can be a different width from the Food Selection block,
+            // and sharing one measurement would make each fight the other's column count.
+            var columns = UnityEngine.Mathf.Max(1, UnityEngine.Mathf.FloorToInt(lastModGridWidth / FoodTileStride));
+            var rows = UnityEngine.Mathf.CeilToInt(available.Count / (float)columns);
+            var gridRect = UnityEngine.GUILayoutUtility.GetRect(
+                FoodTileStride, rows * FoodTileStride, UnityEngine.GUILayout.ExpandWidth(true));
+
+            if (UnityEngine.Event.current.type == UnityEngine.EventType.Repaint && gridRect.width > 1f)
+            {
+                lastModGridWidth = gridRect.width;
+            }
+
+            for (var i = 0; i < available.Count; i++)
+            {
+                var tileRect = new UnityEngine.Rect(
+                    gridRect.x + i % columns * FoodTileStride,
+                    gridRect.y + i / columns * FoodTileStride,
+                    FoodTileSize, FoodTileSize);
+                DrawModificationTile(tileRect, available[i], mods);
+            }
+
+            DrawOrphanModifications(owner, mods);
+        }
+
+        // One clickable modification tile: the icon the game itself draws, plus -- when this
+        // modification is on the entry -- the same +/- badge DayEditorTicketCardPreview puts
+        // on a card, so the direction is READ off the tile rather than off a checkbox.
+        private void DrawModificationTile(
+            UnityEngine.Rect tileRect, ModificationConfig config, List<DayEditorModification> mods)
+        {
+            var existing = mods.FirstOrDefault(m => m != null && m.Config == config);
+            var isOn = existing != null;
+
+            if (isOn)
+            {
+                EditorGUI.DrawRect(
+                    new UnityEngine.Rect(
+                        tileRect.x - FoodTileHighlightMargin, tileRect.y - FoodTileHighlightMargin,
+                        tileRect.width + FoodTileHighlightMargin * 2f, tileRect.height + FoodTileHighlightMargin * 2f),
+                    FoodTileSelectedColor);
+            }
+            EditorGUI.DrawRect(tileRect, FoodTileBackgroundColor);
+
+            var previousColor = UnityEngine.GUI.color;
+            if (!isOn) UnityEngine.GUI.color = new UnityEngine.Color(1f, 1f, 1f, 0.3f) * previousColor;
+            DayEditorSpriteGUI.DrawSpriteFit(tileRect, config.Icon);
+            UnityEngine.GUI.color = previousColor;
+
+            if (isOn) DrawDirectionBadge(tileRect, existing.IsAddition);
+
+            var name = string.IsNullOrEmpty(config.DisplayName) ? config.Id : config.DisplayName;
+            var tip = DayEditorModification.CanFlipDirection(config)
+                ? $"{name} (two-way -- right-click to flip +/-)"
+                : $"{name} ({config.AllowedDirection})";
+            UnityEngine.GUI.Label(tileRect, new UnityEngine.GUIContent(string.Empty, tip));
+
+            if (UnityEngine.Event.current.type != UnityEngine.EventType.MouseDown
+                || !tileRect.Contains(UnityEngine.Event.current.mousePosition))
+            {
+                return;
+            }
+
+            // Left toggles membership, right flips direction -- the same split the Start Board
+            // grid uses (left relocates, right selects), so the two grids read the same way.
+            if (UnityEngine.Event.current.button == 0)
+            {
+                if (isOn) mods.Remove(existing);
+                else mods.Add(DayEditorModification.ForConfig(config));
+                UnityEngine.GUI.changed = true;
+                UnityEngine.Event.current.Use();
+            }
+            else if (UnityEngine.Event.current.button == 1 && isOn && DayEditorModification.CanFlipDirection(config))
+            {
+                existing.IsAddition = !existing.IsAddition;
+                UnityEngine.GUI.changed = true;
+                UnityEngine.Event.current.Use();
+            }
+        }
+
+        // The badge sits bottom-centre and overlaps the tile's edge, matching the card
+        // preview's placement. Falls back to a "+"/"-" label when TicketCardVisualsConfig is
+        // unassigned: the direction is the one thing on this tile that must never be
+        // invisible, and a missing sprite would otherwise draw nothing at all.
+        private void DrawDirectionBadge(UnityEngine.Rect tileRect, bool isAddition)
+        {
+            var badgeSize = FoodTileSize * 0.4f;
+            var badgeRect = new UnityEngine.Rect(
+                tileRect.center.x - badgeSize / 2f, tileRect.yMax - badgeSize * 0.75f, badgeSize, badgeSize);
+
+            var sprite = sharedTicketCardVisuals != null
+                ? (isAddition ? sharedTicketCardVisuals.AdditionSprite : sharedTicketCardVisuals.RemovalSprite)
+                : null;
+
+            if (sprite != null)
+            {
+                DayEditorSpriteGUI.DrawSpriteFit(badgeRect, sprite);
+                return;
+            }
+
+            EditorGUI.DrawRect(badgeRect, FoodTileBackgroundColor);
+            UnityEngine.GUI.Label(badgeRect, isAddition ? "+" : "-", DirectionFallbackStyle);
+        }
+
+        // Modifications the entry carries that the owning food does not offer -- authored
+        // before this picker existed, or left behind when the food was changed afterwards.
+        // Shown rather than silently dropped, the same call the Main-dish-weight rows make
+        // for a deleted FoodItemConfig: the designer has to be able to see that something is
+        // there, and it does ship in the Day JSON until it is removed.
+        private void DrawOrphanModifications(FoodItemConfig owner, List<DayEditorModification> mods)
+        {
+            var offered = owner != null
+                ? owner.AvailableModifications.Where(m => m != null).ToList()
+                : new List<ModificationConfig>();
+            var orphans = mods.Where(m => m == null || !offered.Contains(m.Config)).ToList();
+            if (orphans.Count == 0) return;
+
+            EditorGUILayout.Space();
+            EditorGUILayout.HelpBox(
+                owner == null
+                    ? "This entry carries modifications but has no food to check them against."
+                    : "Not offered by this food -- left over from an earlier edit. These still ship in the Day JSON.",
+                UnityEditor.MessageType.Warning);
+
+            foreach (var orphan in orphans)
+            {
+                EditorGUILayout.BeginHorizontal();
+                // Same name-or-id fallback as every other food/modification label in this
+                // file -- an unset DisplayName is an empty string, not a null, so `??` would
+                // have shown a blank row.
+                var label = orphan?.Config != null
+                    ? $"{(string.IsNullOrEmpty(orphan.Config.DisplayName) ? orphan.Config.Id : orphan.Config.DisplayName)} ({(orphan.IsAddition ? "+" : "-")})"
+                    : "<missing modification asset>";
+                EditorGUILayout.LabelField(label);
+                var removeClicked = UnityEngine.GUILayout.Button("x", UnityEngine.GUILayout.Width(20));
+                EditorGUILayout.EndHorizontal();
+
+                if (removeClicked)
+                {
+                    mods.Remove(orphan);
+                    break; // list mutated mid-loop -- the next OnGUI pass redraws the rest
+                }
+            }
+        }
+
         private void SetFoodAllowed(FoodItemConfig item, bool allowed)
         {
             if (!allowed)
@@ -490,6 +719,21 @@ namespace ExpoTheExplorer.Editor
         // Seeded wide enough to look sensible on the very first layout pass, then corrected
         // from the real rect on the first repaint (see DrawFoodSelection).
         private float lastFoodGridWidth = 600f;
+
+        // The modification grid's own measurement, deliberately not shared with the food
+        // grid's: the two are drawn in different sections whose widths need not match, and
+        // one field would let each overwrite the other's column count every repaint.
+        private float lastModGridWidth = 600f;
+
+        // Centred, so the fallback "+"/"-" sits where the badge sprite would have. Built
+        // lazily rather than in a field initializer because EditorStyles is not available
+        // while this object is being constructed.
+        private static UnityEngine.GUIStyle directionFallbackStyle;
+        private static UnityEngine.GUIStyle DirectionFallbackStyle =>
+            directionFallbackStyle ??= new UnityEngine.GUIStyle(UnityEditor.EditorStyles.boldLabel)
+            {
+                alignment = UnityEngine.TextAnchor.MiddleCenter,
+            };
 
         private const float FoodTileSize = 52f;
         private const float FoodTileSpacing = 6f;
@@ -683,6 +927,28 @@ namespace ExpoTheExplorer.Editor
             IsAddition = json.isAddition,
         };
 
+        // Hand-authoring a modification goes through here so the editor cannot produce a
+        // pair TicketFactory never would. Direction is intrinsic to the modification type
+        // (ModificationConfig.AllowedDirection), and TicketFactory.CreateModification reads
+        // it exactly this way -- only Both is a free choice there (a coin flip) and here (the
+        // designer's right-click). The old "+ Add Modification" button made a blank entry
+        // with IsAddition left at false, which authored "remove Extra Ketchup" for an
+        // AdditionOnly modification: valid data, impossible content.
+        //
+        // Both defaults to addition rather than removal only because it has to default to
+        // something and a positive reads as the friendlier first guess; CanFlipDirection is
+        // what makes it a choice rather than a decision.
+        public static DayEditorModification ForConfig(ModificationConfig config) => new()
+        {
+            Config = config,
+            IsAddition = config == null || config.AllowedDirection != ModificationDirection.RemovalOnly,
+        };
+
+        // Only a Both-direction modification can be flipped; the other two carry their
+        // direction in the type, so offering a toggle would be offering to author a lie.
+        public static bool CanFlipDirection(ModificationConfig config) =>
+            config != null && config.AllowedDirection == ModificationDirection.Both;
+
         public ModificationEntryJson ToJson() => new()
         {
             modificationId = Config != null ? Config.Id : string.Empty,
@@ -800,6 +1066,66 @@ namespace ExpoTheExplorer.Editor
         [BoxGroup("Ticket Generation"), HideLabel]
         public DayEditorTicketGeneration TicketGeneration = new();
 
+        // Makes TicketGeneration.MainDishWeights hold exactly the Mains this Day serves.
+        // Lives on THIS class because it owns both sides of the derivation -- the selected
+        // ids and the weights list; DayEditorTicketGeneration has no idea what the Day
+        // serves, and DayEditorModel would only be forwarding. Called from the Food
+        // Selection draw, the single place the input can change (D-052).
+        //
+        // Three rules, in the order they matter:
+        //   - an existing row is CARRIED OVER by reference, so the weight, lambda and
+        //     ceiling a designer tuned survive every re-sync -- only membership is derived,
+        //     never the numbers in it;
+        //   - a newly picked Main enters at the shared MainDishWeight defaults, the same
+        //     values a hand-added row used to get;
+        //   - a row whose dish is no longer picked is dropped, and so is one whose Food came
+        //     back null (its FoodItemConfig was deleted). Dropping is safe rather than data
+        //     loss: TicketFactory only ever picks from the Day's food pool, which is built
+        //     from AllowedFoodItemIds, so a weight for an unpicked dish was never read.
+        //
+        // Catalog order, not selection order, so the list reads in the same sequence as the
+        // tile grid above it -- and so the comparison below can be positional.
+        public void SyncMainDishWeights(FoodCatalog catalog)
+        {
+            if (catalog == null) return;
+
+            var weights = TicketGeneration.MainDishWeights;
+            if (MainDishWeightsMatch(catalog, weights)) return;
+
+            var synced = new List<DayEditorMainDishWeight>();
+            for (var i = 0; i < catalog.Items.Count; i++)
+            {
+                var item = catalog.Items[i];
+                if (!IsSelectedMain(item)) continue;
+
+                synced.Add(weights.FirstOrDefault(w => w.Food == item)
+                           ?? new DayEditorMainDishWeight { Food = item });
+            }
+
+            TicketGeneration.MainDishWeights = synced;
+        }
+
+        // The early-out that lets the sync sit in a draw method: an inspector repaints
+        // continuously, and the list is already correct on all but the few frames where the
+        // selection just changed. Indexed loops and no LINQ on purpose -- this is the path
+        // that runs every repaint, while the rebuild above runs only when something moved.
+        private bool MainDishWeightsMatch(FoodCatalog catalog, List<DayEditorMainDishWeight> weights)
+        {
+            var matched = 0;
+            for (var i = 0; i < catalog.Items.Count; i++)
+            {
+                if (!IsSelectedMain(catalog.Items[i])) continue;
+                if (matched >= weights.Count || weights[matched].Food != catalog.Items[i]) return false;
+                matched++;
+            }
+
+            // Anything left over is a row for a dish that is no longer picked.
+            return matched == weights.Count;
+        }
+
+        private bool IsSelectedMain(FoodItemConfig item) =>
+            item != null && item.Category == FoodCategory.Main && AllowedFoodItemIds.Contains(item.Id);
+
         public DayEditorMetaJson ToJson() => new()
         {
             allowedFoodItemIds = AllowedFoodItemIds.ToArray(),
@@ -828,15 +1154,40 @@ namespace ExpoTheExplorer.Editor
         [PropertyRange(0f, 1f)] public float SideInclusionChance = 0.5f;
         [PropertyRange(0f, 1f)] public float DrinkInclusionChance = 0.5f;
 
+        // Kept, and kept in the JSON, even though the sync now makes it unreachable on this
+        // Day's own Generate: every Main in the pool has a row of its own, so TicketFactory
+        // never reaches the fallback. The field still travels to the runtime config clone,
+        // and dropping it would be a Day-JSON schema change for a value that costs nothing.
         [PropertyRange(0f, 10f)]
-        [UnityEngine.Tooltip("Fallback Poisson rate for a Main dish missing from Main Dish Weights below -- a dish listed there uses its own rate instead.")]
+        [UnityEngine.Tooltip("Fallback Poisson rate for a Main dish with no row in Main Dish Weights below. Since that list now covers every Main this Day serves, Generate does not consult this -- each dish uses its own rate.")]
         public float ModificationCountLambda = MainDishWeight.DefaultModificationCountLambda;
 
         [PropertyRange(0f, 1f)]
         [UnityEngine.Tooltip("Only consulted for Both-direction modifications; AdditionOnly/RemovalOnly get their direction from the modification itself.")]
         public float ModificationAdditionChance = 0.5f;
 
-        [UnityEngine.Tooltip("Relative spawn weight per Main dish. A Main this Day serves but does not list here falls back to weight 1.")]
+        // Membership is DERIVED from Food Selection (DayEditorMetaModel.SyncMainDishWeights),
+        // so the add/remove buttons are gone: with them, "which Mains are listed" would have
+        // two writers, and the sync would silently undo whichever one the designer used last.
+        // Each row's weight/lambda/max stays hand-authored -- that is the content this list
+        // exists to carry, and the sync never touches it.
+        // How many tickets of each patience type Generate lays down, in the order it lays
+        // them down. All three at 0 is UNAUTHORED, not an empty Day: DayContentGenerator
+        // falls back to the uniform roll then, which is what every Day did before this
+        // existed. Counts are checked against TicketsRequiredForDay rather than replacing it
+        // -- that stays the single authority for a Day's length -- and the readout under
+        // these three shows what Generate will actually produce.
+        [BoxGroup("Patience Mix"), LabelText("Patient"), MinValue(0)]
+        public int PatientTicketCount;
+
+        [BoxGroup("Patience Mix"), LabelText("Normal"), MinValue(0)]
+        public int NormalTicketCount;
+
+        [BoxGroup("Patience Mix"), LabelText("Impatient"), MinValue(0)]
+        public int ImpatientTicketCount;
+
+        [UnityEngine.Tooltip("Relative spawn weight per Main dish. Filled automatically from the Mains picked under Food Selection -- pick a Main there to add a row, deselect it to remove one.")]
+        [ListDrawerSettings(HideAddButton = true, HideRemoveButton = true, DraggableItems = false)]
         public List<DayEditorMainDishWeight> MainDishWeights = new();
 
         // A Day file predating this block returns the defaults above rather than zeros --
@@ -850,6 +1201,9 @@ namespace ExpoTheExplorer.Editor
             {
                 SideInclusionChance = json.sideInclusionChance,
                 DrinkInclusionChance = json.drinkInclusionChance,
+                PatientTicketCount = json.patientTicketCount,
+                NormalTicketCount = json.normalTicketCount,
+                ImpatientTicketCount = json.impatientTicketCount,
                 ModificationCountLambda = json.modificationCountLambda,
                 ModificationAdditionChance = json.modificationAdditionChance,
                 MainDishWeights = (json.mainDishWeights ?? Array.Empty<MainDishWeightJson>())
@@ -861,6 +1215,9 @@ namespace ExpoTheExplorer.Editor
         {
             sideInclusionChance = SideInclusionChance,
             drinkInclusionChance = DrinkInclusionChance,
+            patientTicketCount = PatientTicketCount,
+            normalTicketCount = NormalTicketCount,
+            impatientTicketCount = ImpatientTicketCount,
             modificationCountLambda = ModificationCountLambda,
             modificationAdditionChance = ModificationAdditionChance,
             mainDishWeights = MainDishWeights.Select(w => w.ToJson()).ToArray(),
@@ -870,9 +1227,12 @@ namespace ExpoTheExplorer.Editor
     [Serializable]
     public class DayEditorMainDishWeight
     {
-        // Held as a FoodItemConfig rather than a raw id so the Day Editor can offer an
-        // object picker; ToJson writes the id back out, like every other food reference.
-        public FoodItemConfig Food;
+        // Held as a FoodItemConfig rather than a raw id because that is what the sync
+        // resolves the selected ids to, and what ToJson writes back out as an id, like every
+        // other food reference. Read-only rather than an object picker since D-052: the row
+        // exists BECAUSE this dish is in Food Selection, so repointing it here would either
+        // be reverted by the next sync or create a weight for a dish the Day never serves.
+        [ReadOnly] public FoodItemConfig Food;
         public float Weight = MainDishWeight.DefaultWeight;
         [PropertyRange(0f, 10f)] public float ModificationCountLambda = MainDishWeight.DefaultModificationCountLambda;
 
@@ -991,11 +1351,32 @@ namespace ExpoTheExplorer.Editor
     [Serializable]
     public class DayEditorTicketRuntime
     {
-        [UnityEngine.Min(1f)] public float ImpatientTimeLimitSeconds = 45f;
-        [UnityEngine.Min(1f)] public float NormalTimeLimitSeconds = 90f;
-        [UnityEngine.Min(1f)] public float PatientTimeLimitSeconds = 150f;
+        // Odin's [MinValue], NOT UnityEngine's [Min] -- the same rule the numeric settings in
+        // every other block already follow, and for the same reason the window's [Range] ban
+        // exists. This window is an OdinMenuEditorWindow whose menu items are plain
+        // DayEditorModel objects, so there is NO SerializedObject behind them; a UnityEngine
+        // value attribute is drawn by a Unity PropertyDrawer (MinAttribute -> MinDrawer),
+        // which needs a SerializedProperty, so Odin has to bridge it through an emulated one.
+        // That bridge is what made this box misbehave: its height came from Unity's
+        // GetPropertyHeight and disagreed between the layout and the repaint pass, so the
+        // fields arrived a frame late while scrolling, and it consumed the event against its
+        // own rect, so the mouse wheel died over this box instead of scrolling the page.
+        // Odin's own attributes never leave Odin's drawer chain. Do not reintroduce a
+        // UnityEngine value attribute anywhere in this file.
+        //
+        // Floor 0, not 1, on the three limits: a 0-second limit MUST stay authorable. It is
+        // what DayValidator refuses the Save over, with the reason spelled out (see FromJson
+        // below, which deliberately does not clamp these three either). [Min(1f)] had made
+        // that path unreachable by hand -- the inspector silently prevented the very value
+        // the validator exists to catch. Negatives are still blocked, being nonsense rather
+        // than an authoring mistake worth reporting.
+        [MinValue(0)] public float ImpatientTimeLimitSeconds = 45f;
+        [MinValue(0)] public float NormalTimeLimitSeconds = 90f;
+        [MinValue(0)] public float PatientTimeLimitSeconds = 150f;
 
-        [UnityEngine.Min(1)]
+        // 1, matching FromJson's Mathf.Max(1, ...) clamp -- unlike the limits above, a queue
+        // size of 0 is not a mistake worth surfacing to the designer, it is just invalid.
+        [MinValue(1)]
         [UnityEngine.Tooltip("How many tickets are pre-generated ahead of the 3 active slots. BoardDistributor's noise pool leaks from these, so LeakDepth above this is wasted reach.")]
         public int UpcomingQueueSize = 10;
 
