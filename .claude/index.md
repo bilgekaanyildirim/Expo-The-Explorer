@@ -19,9 +19,9 @@ maps and never invents a name.
 | MainScreen | editor, ui | ExpoTheExplorer/Assets/Scripts/UI/MainScreenRoot.cs, ExpoTheExplorer/Assets/Scripts/UI/MainScreenView.cs (+4) | MainScreen | - | - | OK |
 | MetaSystem | core, editor, ui | ExpoTheExplorer/Assets/Data/DataScripts/MetaCatalog.cs, ExpoTheExplorer/Assets/Scripts/Systems/MetaSystem/MetaLayout.cs (+15) | - | - | - | OK |
 | ProgressionSystem | core, ui | ExpoTheExplorer/Assets/Scripts/Systems/ProgressionSystem/Wallet.cs, ExpoTheExplorer/Assets/Scripts/Systems/ProgressionSystem/DayRewardPurse.cs (+9) | - | HudCanvas | - | OK |
-| TicketSystem | core, ui | ExpoTheExplorer/Assets/Scripts/Core/Ticket.cs, ExpoTheExplorer/Assets/Scripts/Systems/TicketSystem/TicketSlotManager.cs (+7) | - | TicketCard, TicketCard Into, TicketCard UpDown | - | OK |
+| TicketSystem | core, ui | ExpoTheExplorer/Assets/Scripts/Core/Ticket.cs, ExpoTheExplorer/Assets/Scripts/Systems/TicketSystem/TicketSlotManager.cs (+6) | - | TicketCard, TicketCard Into, TicketCard UpDown | - | OK |
 | TraySystem | core | ExpoTheExplorer/Assets/Scripts/Systems/TraySystem/TrayManager.cs, ExpoTheExplorer/Assets/Scripts/Systems/TraySystem/ExpoTheExplorer.Systems.TraySystem.asmdef (+2) | - | - | - | OK |
 
 ## Gaps
 - `sys: ?` on 39 codemap line(s) — first: ExpoTheExplorer/Assets/Data/ExpoTheExplorer.Data.asmdef, ExpoTheExplorer/Assets/Data/DataScripts/BoardAnimationConfig.cs, ExpoTheExplorer/Assets/Data/DataScripts/DragFeelConfig.cs
-- 13 flagged codemap line(s) excluded from this table (STALE)
+- 14 flagged codemap line(s) excluded from this table (STALE)
