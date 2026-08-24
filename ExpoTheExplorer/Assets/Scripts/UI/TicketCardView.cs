@@ -206,7 +206,14 @@ namespace ExpoTheExplorer.UI
 
                 rectTransform.DOAnchorPos(settledPos, animConfig.TicketEntryDuration).SetEase(Ease.OutBack)
                     .OnComplete(() => transitionInProgress = false);
-                canvasGroup.DOFade(1f, animConfig.TicketEntryDuration);
+
+                // Nothing left to hand this slot (the day's last ticket was the
+                // one just delivered) means there is no card to drop in — fade
+                // back to the hidden state RebuildContent(null) just set, not to
+                // 1, or the entry animation would reveal an empty card. The
+                // position tween still runs so the card lands on its layout
+                // position while invisible, ready for the next ticket.
+                canvasGroup.DOFade(newTicket != null ? 1f : 0f, animConfig.TicketEntryDuration);
             });
         }
 
@@ -218,6 +225,15 @@ namespace ExpoTheExplorer.UI
 
             if (ticket == null)
             {
+                // An empty slot shows nothing at all — not even the card body,
+                // which would otherwise sit there as a blank ticket. Hidden
+                // through the CanvasGroup rather than SetActive(false) because
+                // cardsParent is a HorizontalLayoutGroup: alpha is invisible to
+                // layout, so this card keeps its exact footprint and the other
+                // two stay put, whereas deactivating the object would drop it
+                // out of the layout and slide them across.
+                canvasGroup.alpha = 0f;
+
                 customerNameText.text = string.Empty;
                 timerFillImage.fillAmount = 0f;
                 ClearTimerDividers();
@@ -226,6 +242,8 @@ namespace ExpoTheExplorer.UI
                 drinkImage.gameObject.SetActive(false);
                 return;
             }
+
+            canvasGroup.alpha = 1f;
 
             customerNameText.text = ticket.CustomerName;
 
