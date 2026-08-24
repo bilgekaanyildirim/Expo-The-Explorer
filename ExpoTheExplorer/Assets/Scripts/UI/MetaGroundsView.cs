@@ -817,7 +817,11 @@ namespace ExpoTheExplorer.UI
 
             yield return WaitOrSkip(celebrationHoldSeconds);
 
-            Destroy(silhouette);
+            // Through Detach, like every other child of the grounds (D-051): the animated copy
+            // lives under the background too, so leaving its corpse in the child list for the
+            // rest of the frame would shift the next absolute sibling index by one. The
+            // celebration reveals props one after another, so there IS a next one.
+            Detach(silhouette);
             if (realProp != null) realProp.SetActive(true);
         }
 
@@ -992,7 +996,7 @@ namespace ExpoTheExplorer.UI
         // draws a prop must compute it identically or a preview lies about where the thing
         // will land. One method rather than two call sites for exactly that reason.
         private float PropScale(MetaLocation location) =>
-            background.rectTransform.rect.width / location.BackgroundSprite.rect.width;
+            MetaLayout.PropScale(background.rectTransform.rect.width, location.BackgroundSprite);
 
         // The shop's preview: the prop drawn where it WILL stand, at the size it will be,
         // only translucent. It goes through CreateProp rather than laying itself out, so the
@@ -1161,8 +1165,34 @@ namespace ExpoTheExplorer.UI
         // is animated.
         private void DestroyGhostObject()
         {
-            if (ghost != null) Destroy(ghost);
+            if (ghost != null) Detach(ghost);
             ghost = null;
+        }
+
+        // THE ONLY WAY ANYTHING UNDER THE GROUNDS IS DESTROYED, and the SetParent is the whole
+        // point of it (D-051).
+        //
+        // Destroy is DEFERRED to the end of the frame, and until then the object is still a
+        // child of the background. A redraw destroys the old art layers, props, silhouette and
+        // ghost and then immediately builds the new ones, so for the rest of that frame the
+        // parent carries BOTH sets. That is invisible to anything that only appends -- the new
+        // props keep their relative order -- but it is fatal to DrawUpcoming, which moves its
+        // silhouette to an ABSOLUTE sibling index computed as though the dead children were
+        // already gone. On the purchase that surfaced this, the dead block was 13 children and
+        // the computed index was 12: the silhouette landed inside the corpses, BEHIND the new
+        // background art, and vanished. It looked like the prop had been deleted.
+        //
+        // SetParent(null) removes it from the child list on THIS line, so every index computed
+        // afterwards counts only what is really there. Destroy still runs; this only takes the
+        // object out of the hierarchy first. DestroyImmediate would also work and is the wrong
+        // tool at run time.
+        //
+        // The cost is a layout dirty flag per object on an object about to die, on an event
+        // that already rebuilds the whole screen.
+        private static void Detach(GameObject spawned)
+        {
+            spawned.transform.SetParent(null, worldPositionStays: false);
+            Destroy(spawned);
         }
 
         // Travels the map back to where it was. Guarded by `focused` rather than by comparing
@@ -1235,7 +1265,12 @@ namespace ExpoTheExplorer.UI
             // keeps a prop planted when its art is re-exported at a different height.
             rect.pivot = item.Pivot;
             rect.anchoredPosition = Vector2.zero;
-            rect.sizeDelta = item.Sprite.rect.size * scale;
+            // Through MetaLayout, not inline, since the day scene's backdrop composites the
+            // same prop into a texture and the two sizes have to agree. The POSITION stays
+            // anchors + pivot, which is the better implementation of the same rule -- an
+            // anchored prop rides the background through every resize -- and MetaLayout.PropRect
+            // is that rule written out for the backdrop, which has no anchors to lean on.
+            rect.sizeDelta = MetaLayout.PropSize(item, scale);
 
             var image = prop.GetComponent<Image>();
             image.sprite = item.Sprite;
@@ -1314,7 +1349,7 @@ namespace ExpoTheExplorer.UI
 
             foreach (var prop in spawnedProps)
             {
-                if (prop != null) Destroy(prop);
+                if (prop != null) Detach(prop);
             }
             spawnedProps.Clear();
             propsByItem.Clear();
