@@ -306,9 +306,9 @@ GameObject:
   - component: {fileID: 5175859958071625345}
   - component: {fileID: 8080308370673869302}
   - component: {fileID: 4060371674738093058}
-  - component: {fileID: 7544733939031270778}
+  - component: {fileID: 978977549749174448}
   m_Layer: 5
-  m_Name: HealthUI
+  m_Name: KeysUI
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -373,7 +373,7 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
---- !u!114 &7544733939031270778
+--- !u!114 &978977549749174448
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -382,11 +382,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 3381015712930794961}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a6afd76306d764985bdc3492472860e0, type: 3}
+  m_Script: {fileID: 11500000, guid: e99f13d066e014305a03527e858cdefb, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ExpoTheExplorer.UI.LivesView
+  m_EditorClassIdentifier: Assembly-CSharp::ExpoTheExplorer.UI.KeysView
   walletSource: {fileID: 1186656014712007531}
-  livesText: {fileID: 4844174629555380927}
+  keysText: {fileID: 4844174629555380927}
 --- !u!1 &4725973518122207262
 GameObject:
   m_ObjectHideFlags: 0
@@ -583,7 +583,7 @@ GameObject:
   - component: {fileID: 2143717072834467784}
   - component: {fileID: 4844174629555380927}
   m_Layer: 5
-  m_Name: HealthText
+  m_Name: KeysText
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -797,7 +797,7 @@ GameObject:
   - component: {fileID: 5137548607568049442}
   - component: {fileID: 3061858543158306807}
   m_Layer: 5
-  m_Name: HeartImage
+  m_Name: KeysImage
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -850,7 +850,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: -6176110321221878314, guid: c50eec0b385874736a3c00214f60de1a, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 350604db84a5248529d18e022d8035df, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1

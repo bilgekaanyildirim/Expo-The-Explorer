@@ -54,6 +54,19 @@ namespace ExpoTheExplorer.UI.EditorTools
                 (hudWired ? ", HudWalletSource pointed at it." : ", but NO HudWalletSource was found in the scene — the HUD will keep reading the save file.") +
                 " The scene is dirty; save it yourself.",
                 root);
+
+            // Reported separately and as a WARNING, because this one is not a degraded
+            // screen -- MainScreenRoot refuses to build a session without a KeyConfig, so
+            // the main screen simply will not run. Saying it here, at the moment the tool
+            // could not fill the field, is far cheaper than finding it at play time.
+            if (new SerializedObject(root).FindProperty("keyConfig")?.objectReferenceValue == null)
+            {
+                Debug.LogWarning(
+                    $"No {nameof(KeyConfig)} asset was found, so '{root.name}' still has that field empty and " +
+                    "will refuse to build a session. Create one via Create > ExpoTheExplorer > Data > Key Config, " +
+                    "then run this menu item again.",
+                    root);
+            }
         }
 
         // Matches SceneFlow.MainScreenSceneName without referencing Core from an editor
@@ -70,6 +83,17 @@ namespace ExpoTheExplorer.UI.EditorTools
 
             Fill<GameConfig>(serialized, "gameConfig");
             Fill<LivesConfig>(serialized, "livesConfig");
+
+            // Added with the key economy (decisions.md D-065). Worth more here than the
+            // others: MainScreenRoot refuses to build a session without it, so a forgotten
+            // drag takes the whole main screen down rather than degrading something.
+            //
+            // It fills nothing when the asset does not exist yet -- FindFirstAsset returns
+            // null and Fill leaves the field empty -- so running this before creating
+            // KeyConfig.asset is not an error, it just has nothing to assign. The report
+            // below is what tells the author which is which.
+            Fill<KeyConfig>(serialized, "keyConfig");
+
             Fill<FoodCatalog>(serialized, "foodCatalog");
 
             serialized.ApplyModifiedProperties();

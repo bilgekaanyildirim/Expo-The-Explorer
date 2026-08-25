@@ -41,6 +41,17 @@ namespace ExpoTheExplorer.UI
         // it. Two labels showing one balance is how a screen contradicts itself.
         [SerializeField] private Button playButton;
 
+        // The out-of-keys explanation, asked on every Play (key-plan step 5). OPTIONAL on
+        // purpose, and this is the one place in this class where an unwired field is not
+        // simply cosmetic: leaving it empty means Play is never gated. That is the
+        // deliberate direction to fail. A forgotten drag costing the player an uncharged
+        // key is a small wrong; a forgotten drag leaving them unable to start the game at
+        // all is a large one, and it would look identical to a bug in the key economy.
+        // NoKeysPopupView logs loudly at Start when it cannot work, which is what makes
+        // the misconfiguration findable rather than silent.
+        [Tooltip("Shown when Play is pressed with no keys left. Leave empty and Play is never gated.")]
+        [SerializeField] private NoKeysPopupView noKeysPopup;
+
         // Dragged in, never searched for. The project rule since 2026-08-21: no runtime
         // code resolves a scene reference by name or by type — every one is a serialized
         // field the author wires. That generalises the instruction D-013 already recorded
@@ -136,6 +147,16 @@ namespace ExpoTheExplorer.UI
 
         private void OnPlayClicked()
         {
+            // Checked HERE, on the click, rather than by grey-ing the button out: a
+            // disabled Play tells the player nothing about why, while the popup names the
+            // reason and offers both ways forward -- wait, or pay (.claude/key-plan.md
+            // step 5). Starting a day is a GATE, not a price: nothing is spent here, and
+            // the key is only charged if the day is later given up on (D-068).
+            //
+            // Unwired, this field is a no-op that logs at Start rather than a lock: see
+            // the field's comment for why a forgotten drag must fail OPEN.
+            if (noKeysPopup != null && !noKeysPopup.HasKeyOrShow()) return;
+
             SceneFlow.LoadDay();
         }
 

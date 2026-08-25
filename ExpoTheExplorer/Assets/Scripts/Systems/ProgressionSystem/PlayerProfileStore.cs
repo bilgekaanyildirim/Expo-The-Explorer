@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using ExpoTheExplorer.Core;
 using UnityEngine;
 
 namespace ExpoTheExplorer.Systems.ProgressionSystem
@@ -12,11 +11,12 @@ namespace ExpoTheExplorer.Systems.ProgressionSystem
     // here -- missing, corrupt and unrecognised-version files all fall back instead
     // of throwing -- is what this class exists to keep.
     //
-    // It does read one compile-time constant from Core, GameState.DefaultStartingLives,
-    // because "a file older than v3 means the player had full lives" and "a brand-new
-    // player starts with full lives" are both SCHEMA facts and belong here. The
-    // alternative was a second copy of that number living beside the first, which the
-    // single-authority invariant rules out.
+    // It used to read one compile-time constant from Core, GameState.DefaultStartingLives,
+    // for the two schema facts "a file older than v3 means the player had full lives" and
+    // "a brand-new player starts with full lives". Neither is a schema fact any more (v6,
+    // decisions.md D-064): lives left the profile, so this class no longer knows what a
+    // life is and does not reference Core at all. The asmdef reference stays because
+    // Wallet next door needs it.
     public class PlayerProfileStore
     {
         // Root CLAUDE.md invariant: "save data carries a version number;
@@ -27,11 +27,11 @@ namespace ExpoTheExplorer.Systems.ProgressionSystem
         //     it as 0, which is precisely "start at the first Day", so v2 needed no
         //     upgrade branch -- the version RANGE check below is what carries that
         //     file forward intact instead of discarding a real player's wallet.
-        // v3: + Lives (decisions.md D-014). The FIRST field where 0 is not a safe
-        //     default: an older file lacks Lives, would read 0, and 0 lives is a dead
-        //     player rather than a fresh one. So this one gets a real upgrade in
-        //     UpgradeToCurrent below -- the case the invariant's version number exists
-        //     for.
+        // v3: + Lives (decisions.md D-014), REMOVED again in v6. It was the FIRST field
+        //     where 0 was not a safe default -- an older file lacked Lives, read it as 0,
+        //     and 0 lives is a dead player rather than a fresh one -- so it carried a real
+        //     upgrade in UpgradeToCurrent, the case the invariant's version number exists
+        //     for. That upgrade went out with the field; see v6.
         // v4: + OwnedMetaItemIds (decisions.md D-020). Back to a SAFE default: nothing
         //     owned is exactly what an older save means. So unlike v3 this needs no
         //     semantic migration -- only a null guard, because the safe default is an
@@ -41,7 +41,39 @@ namespace ExpoTheExplorer.Systems.ProgressionSystem
         //     player got days ago is still owed a celebration, and they would be shown a
         //     queue of them on next launch. So this one belongs in UpgradeToCurrent, and
         //     the value it takes is CurrentDayIndex -- whatever they have, they have seen.
-        public const int CurrentVersion = 5;
+        // v6: - Lives (decisions.md D-064). The first version that REMOVES a field rather
+        //     than adding one, and the asymmetry is worth stating: a removal needs no
+        //     upgrade branch at all, because JsonUtility drops a JSON key with no matching
+        //     field. Every v3-v5 file's saved life count is simply ignored from now on,
+        //     which is the intent -- lives are a per-day resource again and GameState opens
+        //     each day at a full bar, so a restored count would be a staler second answer.
+        //     The bump is still owed even though nothing has to be migrated: the version is
+        //     what tells a reader which shape the file is, and a v6 file genuinely differs
+        //     from a v5 one.
+        // v7: + Keys and LastKeyRegenUtcTicks (decisions.md D-065). Keys is the third
+        //     field where 0 is not a safe default -- 0 keys is a locked-out player, the
+        //     same trap as v3's Lives -- but it differs from every migration before it in
+        //     one way: THE CORRECT VALUE IS NOT KNOWN HERE. It is KeyConfig's cap, and
+        //     this class has no config reference and must not gain one. So the upgrade
+        //     writes -1, an "absent" marker, and KeyManager.ApplyPersisted resolves it
+        //     where the cap actually lives. That is what lets this class stay a file
+        //     boundary that knows nothing about what a key means.
+        //     The anchor needs no branch: 0 means "no timestamp recorded" and the load
+        //     path starts the clock then, which also keeps System.DateTime out of here.
+        public const int CurrentVersion = 7;
+
+        // What this class writes into PlayerProfile.Keys when it cannot know the real
+        // answer -- an older save, or a player who has never played. The real answer is
+        // KeyConfig's cap, and resolving it HERE would mean handing a file boundary a
+        // content reference and a second copy of a balancing number.
+        //
+        // Public so the marker has ONE name rather than a bare -1 appearing in the
+        // upgrade, in NewPlayer and in the tests. The reading end does not reference this
+        // constant: KeyManager.ApplyPersisted treats ANY negative count as absent, which
+        // is deliberately more permissive than an equality check -- a hand-edited or
+        // half-written file carrying -2 means the same thing and must not lock a player
+        // out. So this names the value written; it does not narrow what is accepted.
+        public const int KeysAbsentMarker = -1;
 
         private const string FileName = "player_profile.json";
 
@@ -96,18 +128,25 @@ namespace ExpoTheExplorer.Systems.ProgressionSystem
         // HERE and not in the wallet: seeding a balance anywhere else would put a second
         // answer to that question in the codebase, and the two would drift.
         //
-        // The day index stays zero -- start at the first Day -- and lives must be FULL,
-        // because 0 lives is a dead player and a fresh profile would otherwise be
-        // unplayable. The opening coin balance is authored content, so it arrives as an
-        // argument rather than being written down here (GameConfig.StartingSoftMoney;
-        // decisions.md D-026). Negative is clamped for the same reason
-        // Wallet.ApplyPersistedBalances clamps: broke, never in debt.
+        // The day index stays zero -- start at the first Day. Lives are NOT seeded here
+        // any more (v6, decisions.md D-064): they left the profile entirely, and a new
+        // GameState already opens at a full bar, so seeding them here would be a second
+        // answer to a question the runtime already answers. The opening coin balance is
+        // authored content, so it arrives as an argument rather than being written down
+        // here (GameConfig.StartingSoftMoney; decisions.md D-026). Negative is clamped
+        // for the same reason Wallet.ApplyPersistedBalances clamps: broke, never in debt.
         public static PlayerProfile NewPlayer(int startingSoftMoney)
         {
             return new PlayerProfile
             {
                 SoftMoney = Math.Max(0, startingSoftMoney),
-                Lives = GameState.DefaultStartingLives,
+
+                // The same marker an older save gets, and for the same reason: a brand-new
+                // player must start with a FULL bar of keys, that number is KeyConfig's
+                // cap, and this class cannot see it. "Never played" and "played before
+                // keys existed" deserve the identical answer, so they take the identical
+                // path rather than each inventing one.
+                Keys = KeysAbsentMarker,
             };
         }
 
@@ -137,9 +176,21 @@ namespace ExpoTheExplorer.Systems.ProgressionSystem
         {
             if (profile.Version >= CurrentVersion) return;
 
-            if (profile.Version < 3)
+            // v3's Lives refill used to sit here. It went out with the field in v6 --
+            // there is nothing to restore, and a removal is the one schema change that
+            // needs no branch, since JsonUtility drops a key with no matching field.
+
+            if (profile.Version < 7)
             {
-                profile.Lives = GameState.DefaultStartingLives;
+                // -1, not the cap: this class cannot see KeyConfig and must not learn what
+                // a key is worth. The marker travels to KeyManager.ApplyPersisted, which
+                // turns it into a full bar. 0 would be catastrophic here -- it is a real
+                // count meaning "locked out", so an existing player would launch unable to
+                // start a day and with nothing to tell them why.
+                //
+                // LastKeyRegenUtcTicks is deliberately left at its deserialized 0: that
+                // reads as "no anchor", and the load path starts the clock at load time.
+                profile.Keys = KeysAbsentMarker;
             }
 
             if (profile.Version < 5)

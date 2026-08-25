@@ -40,21 +40,49 @@ namespace ExpoTheExplorer.Systems.ProgressionSystem
         // trusted, since the Day catalog can shrink between builds.
         public int CurrentDayIndex;
 
-        // Lives the player has left, added in v3 (decisions.md D-014). Lives already
-        // carried from one day to the next inside a session -- AdvanceToNextDay
-        // deliberately skips LivesManager, so only a failed-day retry or a paid
-        // Continue refills them -- and this extends that same rule across sessions
-        // rather than inventing a new one.
+        // NO Lives FIELD, and its absence is a decision rather than an oversight
+        // (v6, decisions.md D-064). Lives were persisted from v3 to v5 (D-014), on the
+        // reasoning that they already carried from one day to the next inside a session
+        // so carrying them across sessions was the same rule. Both halves of that were
+        // reversed: lives are a per-day resource now, refilled at the start of every day
+        // including a successful advance, so there is nothing left to carry and a saved
+        // count would be a second, staler authority on a number GameState already opens
+        // at full. MaxLives was never here either, for the reason it still is not:
+        // nothing varies it, so it stays seeded from GameState.DefaultStartingLives.
         //
-        // This is the field that broke the "a missing field reads as 0 and that is
-        // fine" pattern: 0 lives is a dead player, not a fresh one, so
-        // PlayerProfileStore.Load carries an explicit upgrade for files older than
-        // v3. It is the reason the version number exists at all.
+        // v6 REMOVES a field, which is the one schema change this file's "adding a
+        // field" note above does not cover. It needs no upgrade branch: JsonUtility
+        // ignores a key with no matching field, so every v3-v5 file's Lives is simply
+        // dropped on read, which is exactly the intent.
+
+        // Keys the player holds, added in v7 (decisions.md D-065). Keys gate PLAYING --
+        // starting a day needs one, and leaving a lost day spends one -- so unlike Lives,
+        // which D-064 made a per-day allowance that is deliberately not saved, this is
+        // exactly the kind of thing that has to survive quitting the game.
         //
-        // MaxLives is deliberately NOT here: nothing varies it, so it stays seeded
-        // from GameState.DefaultStartingLives. The day it becomes upgradable it needs
-        // a field of its own and another version bump.
-        public int Lives;
+        // **-1 IS THE "ABSENT" VALUE HERE, NOT 0**, and that is the whole subtlety of this
+        // field. 0 is a real, reachable count meaning "locked out, go wait" -- so it
+        // cannot double as "this file predates keys" the way an absent CurrentDayIndex
+        // could safely read as Day 0. The correct value for an older file is the CAP,
+        // which lives on KeyConfig, which PlayerProfileStore has no reference to and must
+        // never gain: the store is a file boundary and knows nothing about what a key
+        // means. So UpgradeToCurrent writes -1, the marker crosses the boundary, and
+        // KeyManager.ApplyPersisted -- the one place the cap is known -- resolves it.
+        public int Keys;
+
+        // When the CURRENT partial regen interval started, as UTC ticks (v7). Not a
+        // countdown: a remaining-seconds field would stop the moment the game closed,
+        // and the whole design is that keys accrue while it is closed.
+        //
+        // Ticks rather than a DateTime because JsonUtility cannot serialize a DateTime at
+        // all -- it round-trips as "{}" with no error, the same trap this class already
+        // documents about auto-properties and HashSet.
+        //
+        // Needs NO migration branch, unlike Keys above: 0 means "no anchor recorded" and
+        // ApplyPersisted starts the clock at load time, which is the correct reading for
+        // an older file. That is also what keeps System.DateTime out of PlayerProfileStore
+        // -- the file never has to invent a timestamp, it just says it has none.
+        public long LastKeyRegenUtcTicks;
 
         // Meta props the player has BOUGHT, added in v4. Each entry is the qualified
         // "<location>.<item>" key MetaCatalog.OwnershipKey composes -- local ids alone
@@ -71,8 +99,9 @@ namespace ExpoTheExplorer.Systems.ProgressionSystem
         // same trap this class's own comment names about auto-properties. Callers that
         // want set semantics convert on read; MetaResolver already takes an ISet<string>.
         //
-        // Unlike Lives (v3), an absent value here needs no real migration: nothing owned
-        // is exactly what an older save means, and an empty list says that correctly.
+        // Unlike LastCelebratedDayIndex (v5), an absent value here needs no real
+        // migration: nothing owned is exactly what an older save means, and an empty
+        // list says that correctly.
         // PlayerProfileStore still normalizes it, but defensively rather than semantically
         // -- see the comment on UpgradeToCurrent.
         //
@@ -96,8 +125,9 @@ namespace ExpoTheExplorer.Systems.ProgressionSystem
         // rather than only a bump. An existing save read as 0 would mean every prop the
         // player unlocked days ago is still owed a celebration, and they would be shown a
         // queue of them on next launch. UpgradeToCurrent sets it to CurrentDayIndex instead:
-        // whatever they have, they have already seen. This is the second migration in the
-        // project's history and the same shape as v3's Lives.
+        // whatever they have, they have already seen. It was the second migration in the
+        // project's history and the same shape as v3's Lives; since v6 dropped that field
+        // and its upgrade with it, this is the ONLY semantic migration left.
         //
         // A NEW player starts at 0 and is correct without a migration: the comparison is
         // strictly-after, so a prop authored at day 0 is not treated as having just arrived.

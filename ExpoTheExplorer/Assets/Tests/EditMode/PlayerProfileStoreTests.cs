@@ -1,6 +1,5 @@
 using System;
 using System.IO;
-using ExpoTheExplorer.Core;
 using ExpoTheExplorer.Systems.ProgressionSystem;
 using NUnit.Framework;
 using UnityEngine;
@@ -18,8 +17,10 @@ namespace ExpoTheExplorer.Tests.EditMode
     // turned the "older but versioned schema" case from a hypothetical into the
     // actual migration path a v1 player takes. v3 (decisions.md D-014) added Lives and
     // brought the first REAL upgrade with it -- absent-reads-as-0 is not survivable for
-    // that field -- so the v2-payload case below is the one that guards a shipped save
-    // file against losing its money to a schema change. v4 (decisions.md D-020) added
+    // that field -- and v6 (decisions.md D-064) took both back out again, which is why
+    // the cases below assert what a v3 file's OTHER fields still do rather than what its
+    // lives become: a removal is proven by the old key being ignored and by the write
+    // side never emitting it again. v4 (decisions.md D-020) added
     // OwnedMetaItemIds and went back to a SAFE default, so its cases guard something
     // different: not a value being lost, but a reference arriving null. That is why one
     // of them uses a CURRENT-version payload -- UpgradeToCurrent returns early there, so
@@ -233,13 +234,15 @@ namespace ExpoTheExplorer.Tests.EditMode
             Assert.AreEqual(0, profile.CurrentDayIndex, "a v1 file has no day index; it must read as Day 0");
         }
 
-        // The v2 -> v3 migration, written against a LITERAL v2 payload rather than a
+        // The oldest still-readable payload, written as a LITERAL rather than a
         // round-tripped object, because the thing under test is what an already-shipped
-        // file means. This is the shape of a real save that existed on disk when v3
-        // landed, day index and all: everything it already carried must survive
-        // untouched, and only the field v3 ADDED may be filled in.
+        // file means. Everything a v2 save carried must survive every upgrade since.
+        //
+        // It used to assert the v3 lives refill as well; that field and its upgrade left
+        // in v6 (decisions.md D-064), so what is left is the half that actually protects
+        // a real player -- their money and their place in the game.
         [Test]
-        public void Load_WhenFileIsV2_KeepsItsFieldsAndFillsLivesWithTheStartingCount()
+        public void Load_WhenFileIsV2_KeepsEveryFieldItCarried()
         {
             File.WriteAllText(testFilePath, "{\"Version\":2,\"SoftMoney\":319,\"Gems\":4,\"CurrentDayIndex\":1}");
             var store = new PlayerProfileStore(testFilePath);
@@ -249,15 +252,19 @@ namespace ExpoTheExplorer.Tests.EditMode
             Assert.AreEqual(319, profile.SoftMoney, "a v2 file's money must survive the upgrade untouched");
             Assert.AreEqual(4, profile.Gems);
             Assert.AreEqual(1, profile.CurrentDayIndex);
-            Assert.AreEqual(GameState.DefaultStartingLives, profile.Lives,
-                "0 lives would be a player dead on arrival, so the upgrade must fill this in");
         }
 
-        // The case that actually protects a shipped save file from v4: a real v3 player
-        // has money, a day and lives, and none of them may be touched by a schema change
-        // whose only addition is an empty inventory.
+        // The case that actually protects a shipped save file: a real v3 player has money
+        // and a place in the game, and no schema change since may touch either.
+        //
+        // The payload deliberately still carries "Lives":2 even though no field answers
+        // to that name any more. That is the point of keeping it: v6 removed the field
+        // rather than migrating it, and this is what proves the removal is SAFE -- an
+        // unmatched JSON key must be dropped quietly by JsonUtility, not throw and not
+        // take the rest of the object down with it. Delete that key from the payload and
+        // the test stops testing the thing that could actually break a v3-v5 player.
         [Test]
-        public void Load_WhenFileIsV3_KeepsEveryFieldAndOwnsNothing()
+        public void Load_WhenFileIsV3_KeepsEveryFieldAndDropsTheRetiredLivesKey()
         {
             File.WriteAllText(
                 testFilePath,
@@ -266,10 +273,9 @@ namespace ExpoTheExplorer.Tests.EditMode
 
             var profile = store.Load();
 
-            Assert.AreEqual(1250, profile.SoftMoney, "a v3 file's money must survive the v4 upgrade untouched");
+            Assert.AreEqual(1250, profile.SoftMoney, "a v3 file's money must survive every later upgrade untouched");
             Assert.AreEqual(8, profile.Gems);
             Assert.AreEqual(5, profile.CurrentDayIndex);
-            Assert.AreEqual(2, profile.Lives, "v4 adds a field; it must not refill lives the way v3 does");
             Assert.IsNotNull(profile.OwnedMetaItemIds, "an absent list must arrive empty, never null");
             Assert.IsEmpty(profile.OwnedMetaItemIds, "owning nothing is what an older save means");
         }
@@ -347,18 +353,79 @@ namespace ExpoTheExplorer.Tests.EditMode
             Assert.IsEmpty(profile.OwnedMetaItemIds);
         }
 
-        // The opposite guard: a genuine v3 file's Lives is data, not something to
-        // overwrite. Without this, an upgrade that ran unconditionally would silently
-        // refill every player's lives on every launch.
+        // Replaces Load_WhenFileIsCurrentVersion_DoesNotOverwriteLives, which guarded the
+        // v3 upgrade against refilling a real player's saved lives on every launch. That
+        // upgrade and that field left in v6 (decisions.md D-064), so the guard has nothing
+        // to guard -- but the REMOVAL deserves a test of its own, from the write side.
+        //
+        // Asserted against the file's raw text rather than a reloaded object, because a
+        // reloaded object cannot tell the difference: with no field to deserialize into, a
+        // stray "Lives" key would read back as absent either way. The file is the only
+        // place the difference is visible, and a Lives key reappearing there would mean
+        // lives had quietly become persistent again.
         [Test]
-        public void Load_WhenFileIsCurrentVersion_DoesNotOverwriteLives()
+        public void Save_WritesNoLivesKey()
         {
             var store = new PlayerProfileStore(testFilePath);
-            store.Save(new PlayerProfile { SoftMoney = 10, Gems = 1, CurrentDayIndex = 2, Lives = 1 });
+            store.Save(new PlayerProfile { SoftMoney = 10, Gems = 1, CurrentDayIndex = 2 });
+
+            var json = File.ReadAllText(testFilePath);
+
+            StringAssert.DoesNotContain("Lives", json, "lives left the save file in v6; writing them again would restore the behaviour D-064 removed");
+            StringAssert.Contains("\"SoftMoney\":10", json, "the rest of the profile must still be written");
+        }
+
+        // v7's migration (decisions.md D-065), and the one that differs in kind from every
+        // one before it: the correct value is NOT KNOWN HERE. It is KeyConfig's cap, and
+        // this class has no config reference by design, so the upgrade writes a MARKER and
+        // KeyManager resolves it. What must never happen is a plain 0 -- that is a real,
+        // reachable count meaning "locked out", so an existing player would launch unable
+        // to start a day with nothing on screen explaining why.
+        [Test]
+        public void Load_WhenFileIsOlderThanV7_MarksKeysAsAbsentRatherThanZero()
+        {
+            File.WriteAllText(
+                testFilePath,
+                "{\"Version\":6,\"SoftMoney\":500,\"Gems\":3,\"CurrentDayIndex\":7,\"LastCelebratedDayIndex\":7}");
+
+            var profile = new PlayerProfileStore(testFilePath).Load();
+
+            Assert.AreEqual(PlayerProfileStore.KeysAbsentMarker, profile.Keys);
+            Assert.AreNotEqual(0, profile.Keys, "0 is a real count meaning locked out; it cannot double as 'absent'");
+
+            // And the migration touches nothing the old file already carried.
+            Assert.AreEqual(500, profile.SoftMoney);
+            Assert.AreEqual(3, profile.Gems);
+            Assert.AreEqual(7, profile.CurrentDayIndex);
+        }
+
+        // The anchor deliberately gets NO migration branch: 0 means "no timestamp", which
+        // the load path reads as "start the clock now". That absence is what keeps
+        // System.DateTime out of this class entirely.
+        [Test]
+        public void Load_WhenFileIsOlderThanV7_LeavesTheKeyAnchorAtZero()
+        {
+            File.WriteAllText(testFilePath, "{\"Version\":6,\"SoftMoney\":10}");
+
+            var profile = new PlayerProfileStore(testFilePath).Load();
+
+            Assert.AreEqual(0, profile.LastKeyRegenUtcTicks);
+        }
+
+        // The guard on the other side, the same shape as the Lives and celebration-marker
+        // pairs: on a CURRENT-version file the count is DATA. Without this, an upgrade that
+        // ran unconditionally would refill every player's keys on every launch -- infinite
+        // keys for anyone willing to relaunch the game.
+        [Test]
+        public void Load_WhenFileIsCurrentVersion_DoesNotOverwriteKeys()
+        {
+            var store = new PlayerProfileStore(testFilePath);
+            store.Save(new PlayerProfile { Keys = 0, LastKeyRegenUtcTicks = 123456789L });
 
             var reloaded = new PlayerProfileStore(testFilePath).Load();
 
-            Assert.AreEqual(1, reloaded.Lives);
+            Assert.AreEqual(0, reloaded.Keys, "a saved zero is a player who spent their keys, not an absent field");
+            Assert.AreEqual(123456789L, reloaded.LastKeyRegenUtcTicks);
         }
 
         // v5's migration, and the reason it exists at all (decisions.md D-041). Zero is NOT a
@@ -380,7 +447,6 @@ namespace ExpoTheExplorer.Tests.EditMode
             // field by resetting others would be worse than the bug it fixes.
             Assert.AreEqual(500, profile.SoftMoney);
             Assert.AreEqual(7, profile.CurrentDayIndex);
-            Assert.AreEqual(2, profile.Lives);
         }
 
         // The opposite guard, the same shape as the Lives one above: on a CURRENT-version
@@ -397,15 +463,16 @@ namespace ExpoTheExplorer.Tests.EditMode
             Assert.AreEqual(4, reloaded.LastCelebratedDayIndex);
         }
 
-        // A brand-new player has no file at all, and 0 lives would make that profile
-        // unplayable -- so the no-file default is full lives, unlike money and day
-        // index which are legitimately zero.
+        // A brand-new player has no file at all, and every field they get is legitimately
+        // zero: no money, first Day. Lives used to be the one exception here -- 0 lives
+        // would have made the profile unplayable, so the no-file default filled them in --
+        // and that exception went out with the field in v6 (decisions.md D-064). A fresh
+        // GameState opens at a full bar, so nothing about a full bar is this file's job.
         [Test]
-        public void Load_WhenFileDoesNotExist_DefaultsToFullLivesButNoMoney()
+        public void Load_WhenFileDoesNotExist_DefaultsToNoMoneyAndTheFirstDay()
         {
             var profile = new PlayerProfileStore(testFilePath).Load();
 
-            Assert.AreEqual(GameState.DefaultStartingLives, profile.Lives);
             Assert.AreEqual(0, profile.SoftMoney);
             Assert.AreEqual(0, profile.CurrentDayIndex);
         }
@@ -427,18 +494,23 @@ namespace ExpoTheExplorer.Tests.EditMode
         // --- the new-player grant (decisions.md D-026) ------------------------------------
 
         // The opening balance is authored content, so it arrives as an argument. What this
-        // pins down is that it does not cost the fresh profile anything else: full lives,
-        // first Day, nothing owned -- the same profile as before, with money in it.
+        // pins down is that it does not cost the fresh profile anything else: first Day,
+        // no gems, nothing owned -- the same profile as before, with money in it. It also
+        // asserted full lives until v6 took them out of the profile (decisions.md D-064).
         [Test]
-        public void NewPlayer_CarriesTheGrantWithFullLivesAndNothingElse()
+        public void NewPlayer_CarriesTheGrantAndNothingElse()
         {
             var profile = PlayerProfileStore.NewPlayer(1000);
 
             Assert.AreEqual(1000, profile.SoftMoney);
-            Assert.AreEqual(GameState.DefaultStartingLives, profile.Lives);
             Assert.AreEqual(0, profile.Gems);
             Assert.AreEqual(0, profile.CurrentDayIndex);
             Assert.IsEmpty(profile.OwnedMetaItemIds);
+
+            // Keys are the one field a fresh profile does NOT get as a zero: "never played"
+            // and "played before keys existed" deserve the identical answer -- a full bar --
+            // and it is the same marker that says so, resolved where the cap is known.
+            Assert.AreEqual(PlayerProfileStore.KeysAbsentMarker, profile.Keys);
         }
 
         // A hand-edited config should read as broke, never as debt -- the same clamp
@@ -455,7 +527,7 @@ namespace ExpoTheExplorer.Tests.EditMode
         public void Load_WithANewPlayerFallback_PrefersTheSavedFile()
         {
             var store = new PlayerProfileStore(testFilePath);
-            store.Save(new PlayerProfile { SoftMoney = 12, Lives = 1 });
+            store.Save(new PlayerProfile { SoftMoney = 12 });
 
             var loaded = store.Load(PlayerProfileStore.NewPlayer(1000));
 
@@ -476,7 +548,7 @@ namespace ExpoTheExplorer.Tests.EditMode
         public void Delete_RemovesTheFile_AndTheNextLoadIsANewPlayer()
         {
             var store = new PlayerProfileStore(testFilePath);
-            store.Save(new PlayerProfile { SoftMoney = 900, CurrentDayIndex = 4, Lives = 1, OwnedMetaItemIds = { "Meta1.Square" } });
+            store.Save(new PlayerProfile { SoftMoney = 900, CurrentDayIndex = 4, OwnedMetaItemIds = { "Meta1.Square" } });
 
             Assert.IsTrue(store.Delete());
             Assert.IsFalse(File.Exists(testFilePath), "the reset must leave no file behind for the next load to find");
@@ -487,7 +559,6 @@ namespace ExpoTheExplorer.Tests.EditMode
 
             Assert.AreEqual(1000, reloaded.SoftMoney);
             Assert.AreEqual(0, reloaded.CurrentDayIndex);
-            Assert.AreEqual(GameState.DefaultStartingLives, reloaded.Lives);
             Assert.IsEmpty(reloaded.OwnedMetaItemIds);
         }
 

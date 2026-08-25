@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using DG.Tweening;
 using ExpoTheExplorer.Bootstrap;
+using ExpoTheExplorer.Data;
 using ExpoTheExplorer.Systems.ProgressionSystem;
 using UnityEngine;
 using UnityEngine.UI;
@@ -70,6 +71,9 @@ namespace ExpoTheExplorer.UI
         // whole feature degrades to what shipped in D-057.
         [Tooltip("Optional. The score bar the stars stand on. When set, each star seats as the fill passes its notch instead of on a fixed interval.")]
         [SerializeField] private StarScoreBarView scoreBar;
+
+        [Tooltip("Optional. The scene's HapticsBinder, so each star can be felt as it seats. Unwired means a silent star row and nothing else changes.")]
+        [SerializeField] private HapticsBinder haptics;
 
         [Header("Coins")]
         [Tooltip("How many coin icons the day's total is split across — a visual count, not one per coin. Clamped down when the day earned less than this, so no coin is ever worth nothing.")]
@@ -249,6 +253,13 @@ namespace ExpoTheExplorer.UI
                     .DOScale(Vector3.one, starSeatDuration)
                     .SetEase(Ease.OutBack, starOvershoot));
 
+                // One buzz per star, on the frame it pops rather than when its bounce
+                // settles: the pop is what the eye reads as the star landing, and the two
+                // senses agreeing is the whole point. Three of them in a row is the day's
+                // crescendo -- which is why this, and not the popup opening, is where the
+                // day's success is felt.
+                haptics?.Request(HapticMoment.StarSeated);
+
                 yield return new WaitForSeconds(starSeatDuration);
 
                 // From THIS star's seat, not from the popup's centre or a shared launch
@@ -257,7 +268,16 @@ namespace ExpoTheExplorer.UI
                 // all -- it is the coordinate space the icons live in, not where they
                 // start from.
                 var share = DayRewardPurse.ShareOf(gemsOwed, i, starCount);
-                Launch(gemSprite, ToFlightLocal(star.transform), gemFlightTarget, () => gameManager.ClaimRewardGems(share));
+                Launch(gemSprite, ToFlightLocal(star.transform), gemFlightTarget, () =>
+                {
+                    gameManager.ClaimRewardGems(share);
+
+                    // On ARRIVAL, not on launch: the buzz belongs to the counter ticking
+                    // up, which is the moment the gem becomes the player's. At most three
+                    // of these and they are spaced by the star rhythm, so unlike the coins
+                    // below they need no thinning rule.
+                    haptics?.Request(HapticMoment.GemLanded);
+                });
 
                 // Only when the bar is not pacing this: with a bar, the wait above already
                 // spaces the stars by however long the fill takes to cross to the next
@@ -283,7 +303,24 @@ namespace ExpoTheExplorer.UI
                     var spawn = origin + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * coinCircleRadius;
 
                     var share = DayRewardPurse.ShareOf(coinsOwed, j, coins);
-                    Launch(coinSprite, spawn, coinFlightTarget, () => gameManager.ClaimRewardSoftMoney(share));
+
+                    // ONLY THE FIRST AND LAST COIN BUZZ, and the reason is arithmetic
+                    // rather than taste: coinSpawnInterval is 0.06s and there are up to
+                    // `coinCount` of them, so one haptic per coin fires faster than a
+                    // preset lasts -- the hand would feel half a second of undifferentiated
+                    // rumble instead of ten ticks. Two deliberate beats say the same thing
+                    // better: the money started arriving, and it has finished.
+                    //
+                    // A per-iteration local, NOT `j` itself: this is a for loop, so the
+                    // closure below would capture the one shared variable and read whatever
+                    // it had reached by the time the flight lands.
+                    var buzzOnArrival = j == 0 || j == coins - 1;
+
+                    Launch(coinSprite, spawn, coinFlightTarget, () =>
+                    {
+                        gameManager.ClaimRewardSoftMoney(share);
+                        if (buzzOnArrival) haptics?.Request(HapticMoment.CoinLanded);
+                    });
 
                     yield return new WaitForSeconds(coinSpawnInterval);
                 }

@@ -1,4 +1,3 @@
-using System;
 using ExpoTheExplorer.Core;
 using ExpoTheExplorer.Data;
 using ExpoTheExplorer.Systems.ProgressionSystem;
@@ -77,28 +76,23 @@ namespace ExpoTheExplorer.Systems.LivesSystem
             return true;
         }
 
-        // Free day-reset primitive (GameManager.RetryDay, and the abandon-for-the-
-        // main-screen path) -- refills Lives the same way a paid Continue does, just
-        // with no affordability check since abandoning the day and starting over
-        // doesn't cost anything.
-        public void RetryDay() => RefillLivesAndResume();
-
-        // Seeds Lives from a loaded PlayerProfile (decisions.md D-014). Lives are
-        // persisted now, and they come through HERE rather than GameManager assigning
-        // State.Lives itself for one reason: this class is the single writer of Lives.
-        // Nothing in the compiler stops GameManager doing it -- GameState.Lives has a
-        // public setter, unlike the balances -- so this is a deliberate choice, and it
-        // mirrors Wallet.ApplyPersistedBalances so both loads read the same way.
+        // Free day-reset primitive -- refills Lives the same way a paid Continue does,
+        // just with no affordability check, since starting a day over costs nothing.
         //
-        // Clamped to 1..MaxLives rather than trusted. A saved 0 would be a player
-        // dead on arrival with no way to act, and a value above MaxLives would show a
-        // life bar fuller than the game admits exists; PlayerProfileStore already
-        // upgrades pre-v3 files to full lives, so anything out of range here is a
-        // hand-edited or corrupt file, not a version we know.
-        public void ApplyPersistedLives(int lives)
-        {
-            state.Lives = Math.Clamp(lives, 1, state.MaxLives);
-        }
+        // Named for what it DOES rather than after one of its callers, and that matters
+        // since D-064: it is called by the failed-day retry, the voluntary redo of a
+        // finished day, the abandon-for-the-main-screen path, AND the successful advance
+        // to the next day. It was called RetryDay while three of those four were retries;
+        // once the advance path started calling it, that name was wrong at the place it
+        // most needed to be right. GameManager.RetryDay keeps its name -- the game action
+        // really is a retry.
+        //
+        // There is deliberately no ApplyPersistedLives beside this any more. Lives left
+        // the save file in v6 (D-064), so the load path has nothing to seed: a fresh
+        // GameState already opens at a full bar, and this is now the ONLY way Lives ever
+        // go back up. That leaves this class the single writer of Lives with one fewer
+        // entry point than before, which is the direction that invariant should move in.
+        public void RefillForNewDay() => RefillLivesAndResume();
 
         // Refills Lives back to MaxLives -- MaxLives already holds whatever
         // life count the day began with (GameState.DefaultStartingLives, and

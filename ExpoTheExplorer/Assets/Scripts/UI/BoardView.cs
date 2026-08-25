@@ -31,6 +31,10 @@ namespace ExpoTheExplorer.UI
         [Tooltip("Optional — if set, newly-appearing items fly in from this point (scaling up as they travel) instead of just popping in at their destination cell.")]
         [SerializeField] private Transform startingPoint;
 
+        [Header("Haptics")]
+        [Tooltip("Optional. The scene's HapticsBinder, handed down to every board item so picking one up and dropping it into a tray can be felt. Unwired means no drag haptics and nothing else changes.")]
+        [SerializeField] private HapticsBinder haptics;
+
         private BoardGrid board;
         private Sprite placeholderSprite;
         private Transform[,] itemContainers;
@@ -248,7 +252,7 @@ namespace ExpoTheExplorer.UI
                 collider.size = new Vector2(cellSize, cellSize);
 
                 var dragHandler = itemObject.AddComponent<BoardItemDragHandler>();
-                dragHandler.Configure(board, resolvedCamera, this, gameManager, dragFeel, animConfig);
+                dragHandler.Configure(board, resolvedCamera, this, gameManager, dragFeel, animConfig, haptics);
 
                 container = itemObject.transform;
                 itemContainers[x, y] = container;

@@ -10,10 +10,12 @@
         "ExpoTheExplorer.Systems.TraySystem",
         "ExpoTheExplorer.Systems.EconomySystem",
         "ExpoTheExplorer.Systems.LivesSystem",
+        "ExpoTheExplorer.Systems.KeySystem",
         "ExpoTheExplorer.Systems.ProgressionSystem",
         "ExpoTheExplorer.Systems.DayLifecycle",
         "ExpoTheExplorer.Systems.DaySystem",
         "ExpoTheExplorer.Systems.MetaSystem",
+        "ExpoTheExplorer.Systems.HapticsSystem",
         "ExpoTheExplorer.Editor",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"

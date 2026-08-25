@@ -1,0 +1,87 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f302957e05c3a413aa7d55cd7ad4eff1, type: 3}
+  m_Name: HapticConfig
+  m_EditorClassIdentifier: ExpoTheExplorer.Data::ExpoTheExplorer.Data.HapticConfig
+  entries:
+  - moment: 0
+    preset: 5
+    priority: 10
+    enabled: 1
+  - moment: 1
+    preset: 6
+    priority: 20
+    enabled: 1
+  - moment: 6
+    preset: 1
+    priority: 30
+    enabled: 1
+  - moment: 2
+    preset: 2
+    priority: 40
+    enabled: 1
+  - moment: 5
+    preset: 6
+    priority: 50
+    enabled: 1
+  - moment: 3
+    preset: 4
+    priority: 60
+    enabled: 1
+  - moment: 7
+    preset: 7
+    priority: 70
+    enabled: 1
+  - moment: 4
+    preset: 7
+    priority: 80
+    enabled: 1
+  - moment: 8
+    preset: 1
+    priority: 5
+    enabled: 1
+  - moment: 9
+    preset: 1
+    priority: 12
+    enabled: 1
+  - moment: 10
+    preset: 5
+    priority: 15
+    enabled: 1
+  - moment: 11
+    preset: 9
+    priority: 18
+    enabled: 1
+  - moment: 12
+    preset: 5
+    priority: 25
+    enabled: 1
+  - moment: 13
+    preset: 3
+    priority: 45
+    enabled: 1
+  - moment: 14
+    preset: 3
+    priority: 55
+    enabled: 1
+  - moment: 15
+    preset: 6
+    priority: 35
+    enabled: 1
+  - moment: 16
+    preset: 2
+    priority: 65
+    enabled: 1
+  - moment: 17
+    preset: 2
+    priority: 72
+    enabled: 1

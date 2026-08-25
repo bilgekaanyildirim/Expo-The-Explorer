@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using ExpoTheExplorer.Bootstrap;
 using ExpoTheExplorer.Core;
+using ExpoTheExplorer.Data;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -24,11 +25,24 @@ namespace ExpoTheExplorer.UI
     public class GameOverPopupView : MonoBehaviour
     {
         [SerializeField] private GameManager gameManager;
+
+        [Tooltip("Optional. The scene's HapticsBinder, so a paid Continue landing can be felt. Unwired means a silent rescue and nothing else changes.")]
+        [SerializeField] private HapticsBinder haptics;
+
         [SerializeField] private GameObject popupRoot;
         [SerializeField] private TMP_Text livesRefillText;
         [SerializeField] private Button gemButton;
         [SerializeField] private Button retryButton;
         [SerializeField] private Button mainMenuButton;
+
+        // The out-of-keys explanation, asked on every Retry (key-plan step 5). OPTIONAL,
+        // and the direction of that failure is chosen: unwired, Retry is simply never
+        // gated. A forgotten drag that costs an uncharged key is a small wrong; one that
+        // leaves the player unable to retry a lost day is a large one, and it would be
+        // indistinguishable from a bug in the key economy. NoKeysPopupView logs loudly at
+        // Start when it cannot work, which is what makes this findable.
+        [Tooltip("Shown when Retry is pressed with no keys left. Leave empty and Retry is never gated.")]
+        [SerializeField] private NoKeysPopupView noKeysPopup;
 
         private GameState state;
 
@@ -77,11 +91,36 @@ namespace ExpoTheExplorer.UI
 
         private void OnGemClicked()
         {
-            if (gameManager.LivesManager.TryContinueWithGems()) Hide();
+            if (!gameManager.LivesManager.TryContinueWithGems()) return;
+
+            // The most expensive tap in the game: hard currency spent to come back from a
+            // day that was over. Before D-072 it felt exactly like tapping a menu button,
+            // because the gem button's UiTap was the only thing this frame produced --
+            // LivesChanged goes UP here and HapticsBinder deliberately reads only the drop.
+            //
+            // The refusal side needs nothing: Show() disables this button when the player
+            // cannot afford it, so an unaffordable Continue is never a click to answer.
+            haptics?.Request(HapticMoment.ContinuePurchased);
+
+            Hide();
         }
 
         private void OnRetryClicked()
         {
+            // The key check happens on the CLICK, and the Retry button is never disabled
+            // for it (.claude/key-plan.md step 5). A greyed button would leave the player
+            // staring at a dead control with no explanation; this way the out-of-keys
+            // popup opens over this one and offers the two exits -- wait, or 40 Gems.
+            //
+            // Note what is NOT gated: Main Menu below. Blocking the only way out of a lost
+            // day at zero keys would be a softlock, so that path always works and simply
+            // spends nothing when there is nothing to spend (D-068).
+            //
+            // Hide() is deliberately not called on the refused branch: this popup must
+            // stay behind the explanation, or refusing to retry would dump the player onto
+            // a finished day with no UI at all.
+            if (noKeysPopup != null && !noKeysPopup.HasKeyOrShow()) return;
+
             gameManager.RetryDay();
             Hide();
         }

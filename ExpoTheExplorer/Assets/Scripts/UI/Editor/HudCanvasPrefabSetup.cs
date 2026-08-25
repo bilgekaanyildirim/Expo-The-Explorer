@@ -198,13 +198,24 @@ namespace ExpoTheExplorer.EditorTools
         // views' fields are private [SerializeField]s, so this goes through
         // SerializedObject and the property-name string must stay in step with the
         // field name in each view.
+        //
+        // LivesView was a third target until D-064. It is deliberately NOT one now: the
+        // heart row is a day-scene object rather than prefab content, and it binds to
+        // GameManager directly, so there is no 'walletSource' on it to point anywhere.
+        // Leaving it in the list would not merely be dead -- FindProperty would miss and
+        // this tool would log its own out-of-step error on every run.
         private static List<string> WireViews(GameObject root, HudWalletSource source)
         {
             var wired = new List<string>();
             var targets = new List<MonoBehaviour>();
             targets.AddRange(root.GetComponentsInChildren<SoftMoneyView>(true));
             targets.AddRange(root.GetComponentsInChildren<GemsView>(true));
-            targets.AddRange(root.GetComponentsInChildren<LivesView>(true));
+
+            // KeysView joins the list where LivesView left it (D-065 step 3). It belongs
+            // here for the reason LivesView stopped belonging: this readout IS prefab
+            // content shown on both screens, so its walletSource is prefab data that every
+            // instance should inherit -- exactly what this step exists to write.
+            targets.AddRange(root.GetComponentsInChildren<KeysView>(true));
 
             foreach (var view in targets)
             {

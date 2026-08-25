@@ -45,12 +45,32 @@
     single writer stays `GameManager` (day advance, the loaded-and-clamped value in
     `Awake`, and the completed-day exit to the main screen). Readers:
     `GameManager.CurrentDay` and `MainScreenView` (display only, from the file).
-  - lives → runtime `GameState.Lives`, persisted in **`player_profile.json`**
-    (`PlayerProfile.Lives`, added 2026-08-19 by decisions.md D-014). Single writer:
-    `LivesManager` — life loss, both paid Continues, the free retry/abandon refill,
-    and the load itself via `ApplyPersistedLives` (clamped 1..MaxLives). `MaxLives`
-    is not persisted: nothing varies it. Readers: `GameOverPopupView`,
-    `DayLifecycleManager.StarCount`, and `LivesView` through `HudWalletSource`.
+  - lives → runtime `GameState.Lives`, **NOT persisted** (decisions.md D-064,
+    2026-08-25, which removed `PlayerProfile.Lives` at save v6; D-014 had added it at
+    v3 and this entry claimed it was still there). Lives are a PER-DAY allowance now:
+    every day opens at `GameState.DefaultStartingLives`, including a successful
+    advance to the next one, so nothing carries a mistake forward. Single writer:
+    `LivesManager` — life loss, both paid Continues, and `RefillForNewDay`, which is
+    the only way they go back up (there is no load path any more). `MaxLives` is not
+    persisted either: nothing varies it. Readers: `GameOverPopupView`,
+    `DayLifecycleManager.StarCount`, and `LivesView`, which since D-064 binds
+    `GameManager` directly rather than reading through `HudWalletSource` and renders a
+    row of heart sprites that exists only in the day scene.
+  - keys — the META resource that gates playing at all, distinct from lives →
+    the three numbers (cap 5, 30-minute regen, 40-Gem refill) are authored on
+    **`KeyConfig`** (`Assets/Data/KeyConfig.asset`, decisions.md D-065). Runtime home
+    is `KeyManager`'s own private field, deliberately NOT `GameState`: a key outlives
+    the day, and a private field makes the single-writer rule a compile error rather
+    than a comment. Persisted since D-066 in **`player_profile.json`** as
+    `PlayerProfile.Keys` + `LastKeyRegenUtcTicks` (save **v7**) — the count AND the
+    regen anchor, because saving the count alone would restart the interval in flight
+    on every launch. The anchor is why keys accrue while the game is closed. An older
+    save carries no count, and 0 is a real "locked out" value rather than a safe
+    default, so the store writes the `-1` `KeysAbsentMarker` and `KeyManager`
+    resolves it into the cap — the store never learns what a key is worth. Single
+    writer: `KeyManager`. Gems for the refill go through `Wallet`, which stays their single
+    writer. **This is the project's only dependency on wall-clock time**, and it is
+    injected as a `Func<DateTime>` so every time rule is testable.
   - a NEW player's opening coin balance → **`GameConfig`** (`startingSoftMoney`,
     1000 in `GameConfig.asset`, added 2026-08-20 by decisions.md D-026). Not on
     `EconomyConfig`: that asset is the per-ticket tip math and is unreachable from

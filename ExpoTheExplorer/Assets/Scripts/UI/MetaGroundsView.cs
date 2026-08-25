@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using DG.Tweening;
+using ExpoTheExplorer.Bootstrap;
 using ExpoTheExplorer.Data;
 using ExpoTheExplorer.Session;
 using ExpoTheExplorer.Systems.MetaSystem;
@@ -95,6 +96,9 @@ namespace ExpoTheExplorer.UI
         // keeps MetaCatalog to price/position/art/unlock, and "how hard the map shakes" is
         // none of those. A prop authored tomorrow needs no new content for this to work.
         [Header("Purchase placement")]
+        [Tooltip("Optional. The scene's HapticsBinder, so the prop hitting the ground can be felt. Unwired means a silent landing and nothing else changes.")]
+        [SerializeField] private HapticsBinder haptics;
+
         [Tooltip("How far above its spot a just-bought prop starts, in the grounds' own units (the same space as the upcoming label's offset). Small on purpose: this is a thing being set down, not dropped off a roof.")]
         [SerializeField, Min(0f)] private float placementDropHeight = 48f;
 
@@ -433,6 +437,11 @@ namespace ExpoTheExplorer.UI
 
                 rect.anchoredPosition = landed;
                 image.color = solid;
+
+                // The impact, felt. Placed ABOVE the shake guard on purpose: the prop has
+                // landed whether or not the ground is authored to react, so a scene that
+                // turned the shake off should still get the thump in the hand.
+                haptics?.Request(HapticMoment.PropLanded);
 
                 if (placementShakeSeconds <= 0f || placementShakeStrength <= 0f) yield break;
 
@@ -814,6 +823,20 @@ namespace ExpoTheExplorer.UI
             // before the copy disappears matches the prop underneath it exactly.
             fillImage.fillAmount = 1f;
             silhouetteImage.color = baseColor;
+
+            // The prop is open, and this line is the one place both routes to that reach:
+            // the reveal running its course, and the player tapping past it. Skipping
+            // skips the ANIMATION, not the event, so it buzzes either way.
+            //
+            // Here rather than inside the loop above, for the reason the coin burst already
+            // established: that loop drives fillAmount frame by frame, so a request per
+            // iteration would be a second of undifferentiated rumble instead of one beat.
+            //
+            // A separate moment from PropLanded on purpose. Both end with a prop standing
+            // there, but a bought prop FALLS and hits the ground -- the map shakes under it
+            // -- while this one rises from silhouette to solid. Giving a gradual reveal an
+            // impact haptic would describe a blow the screen never struck.
+            haptics?.Request(HapticMoment.PropUnlocked);
 
             yield return WaitOrSkip(celebrationHoldSeconds);
 

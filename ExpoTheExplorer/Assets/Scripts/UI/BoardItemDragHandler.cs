@@ -46,6 +46,12 @@ namespace ExpoTheExplorer.UI
         private GameManager gameManager;
         private DragFeelSettings dragFeel;
         private BoardAnimationConfig animConfig;
+
+        // Optional, and null-checked at both call sites: a scene that never wired a
+        // HapticsBinder drags exactly as it always did, silently. Handed down through
+        // Configure like every other dependency here rather than looked up — a runtime
+        // search for a scene reference is ruled out project-wide.
+        private HapticsBinder haptics;
         private Collider2D ownCollider;
         private int cellX;
         private int cellY;
@@ -85,7 +91,7 @@ namespace ExpoTheExplorer.UI
         // to finalize the pickup or snap back to the board.
         public bool WasAcceptedByTray { get; set; }
 
-        public void Configure(BoardGrid board, Camera dragCamera, BoardView boardView, GameManager gameManager, DragFeelSettings dragFeel, BoardAnimationConfig animConfig)
+        public void Configure(BoardGrid board, Camera dragCamera, BoardView boardView, GameManager gameManager, DragFeelSettings dragFeel, BoardAnimationConfig animConfig, HapticsBinder haptics)
         {
             this.board = board;
             this.dragCamera = dragCamera;
@@ -93,6 +99,7 @@ namespace ExpoTheExplorer.UI
             this.gameManager = gameManager;
             this.dragFeel = dragFeel;
             this.animConfig = animConfig;
+            this.haptics = haptics;
         }
 
         public void SetCell(int x, int y, BoardItem item)
@@ -120,6 +127,11 @@ namespace ExpoTheExplorer.UI
             if (CurrentItem == null || gameManager.State.IsAwaitingContinue) return;
 
             ApplyPickupVisuals(eventData);
+
+            // After the gate, not before: a press the Continue popup swallowed produced
+            // no visual reaction either, and a buzz with nothing on screen to explain it
+            // reads as the game being broken rather than as input being blocked.
+            haptics?.Request(HapticMoment.ItemPickup);
         }
 
         // A blanket kill here is safe (and intended) — grabbing the item is
@@ -405,12 +417,26 @@ namespace ExpoTheExplorer.UI
                 boardView.BeginFlyInOverride(transform.position);
                 board.RequestSpawn(CurrentItem);
                 boardView.EndFlyInOverride();
+
+                // Rejected: the player aimed this somewhere and it did not take.
+                haptics?.Request(HapticMoment.DropRejected);
+
                 Destroy(gameObject);
             }
             else
             {
                 // GDD Section 5: "...snap-back animation on invalid drop."
                 positionTween = transform.DOMove(homePosition, animConfig.SnapBackDuration).SetEase(Ease.OutQuad);
+
+                // The two rejection branches buzz and the relocation branch above does
+                // NOT, which is the distinction worth keeping: moving an item to another
+                // empty cell is the drop working, not failing.
+                //
+                // OnPointerUp's settle-back is deliberately silent too, even though its
+                // own comment calls it "the same feel as an invalid drop". That path is a
+                // tap that never became a drag, and ItemPickup has already fired on the
+                // press -- buzzing again on release would make every stray tap a double.
+                haptics?.Request(HapticMoment.DropRejected);
             }
         }
 
@@ -444,6 +470,13 @@ namespace ExpoTheExplorer.UI
             if (slotTransform == null) return;
 
             currentTraySlotIndex = slotIndex;
+
+            // Only the drops that leave the item SITTING there buzz, because this method
+            // is not called for the drop that resolves the batch -- that one goes to
+            // ReleaseAndDestroy instead. The gap is exactly right rather than a hole to
+            // patch: the resolving drop is the one that publishes OrderDelivered or costs
+            // a life, and both of those outrank this tick in the same frame anyway.
+            haptics?.Request(HapticMoment.ItemDroppedInTray);
 
             // Reparent without letting the item jump to the slot's local
             // zero instantly — restoring its world position right after

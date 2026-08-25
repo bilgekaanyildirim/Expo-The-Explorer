@@ -26,6 +26,14 @@
      tier, so one authored value has to serve both). One-directional --
      EconomySystem references nothing in TicketSystem. -->
 - DayEditor — custom EditorWindow tooling for authoring Day JSON content (ticket sequence, Day Start board timeline) — depends on: DaySystem, TicketSystem
+- DataTooling — editor-only maintenance of the ScriptableObject config assets themselves (re-serializing `Assets/Data` so a `.asset` carries every field its class declares) — depends on: -
+<!-- DataTooling, added 2026-08-25 (decisions.md D-075): its own line rather than a
+     home inside DayEditor, because it names no game type at all -- it works on
+     ScriptableObject and the Assets/Data folder, so filing it under the Day authoring
+     tools would imply a dependency it does not have. It exists because the stale-asset
+     trap has now been recorded four times (D-004, D-011, D-063, D-074); a system line
+     is what lets its codemap entry carry a real `sys:` instead of `?`. -->
+
 - BoardUI — runtime board grid rendering + drag/drop (BoardView, board-visual config assets) — depends on: -
 - EconomySystem — delivery payout formula (order value from food prices + a tip stepped through three tiers keyed on remaining-time ratio) + its balancing config — depends on: -
 - ProgressionSystem — the single writer of SoftMoney/Gems (`Wallet`), the debt a completed day still owes the player (`DayRewardPurse`), the player-profile save boundary (JSON load/save + fallback on missing/corrupt file, currently unwired and carrying no fields), and the owning system of the wallet HUD (SoftMoneyView/GemsView) — depends on: -
@@ -40,7 +48,36 @@
 <!-- LivesSystem -> ProgressionSystem, added 2026-08-18 (economy-plan Adım 1):
      the two paid-Continue prices are charged through Wallet, because GameState's
      balance setters are internal to ProgressionSystem now. One-directional --
-     ProgressionSystem references nothing in LivesSystem. -->
+     ProgressionSystem references nothing in LivesSystem.
+
+     The arrow SURVIVED decisions.md D-064 even though lives stopped being persisted,
+     and that is worth stating: the reference is about the Continue PRICES, not about
+     the save file. What D-064 removed is the other direction of coupling -- lives are
+     no longer a field on PlayerProfile, so ProgressionSystem carries nothing of theirs.
+     Lives are a per-day resource: every day opens at a full bar, including a successful
+     advance to the next one, and LivesManager.RefillForNewDay is the single way they
+     ever go back up. -->
+- KeySystem — the meta resource that gates playing: 5 keys, +1 every 30 real minutes, spent on leaving a lost day, refillable to the cap for 40 Gems — depends on: ProgressionSystem
+<!-- KeySystem -> ProgressionSystem, added 2026-08-25 (decisions.md D-065, plan in
+     .claude/key-plan.md): the 40-Gem refill is charged through Wallet, the single
+     writer of Gems. Identical in shape to the LivesSystem arrow above and for the
+     identical reason. One-directional -- ProgressionSystem does not know keys exist.
+
+     KEYS AND LIVES ARE NOT THE SAME RESOURCE and neither reads the other. Lives are
+     a per-day allowance that resets every morning and is never saved (D-064); a key
+     is permission to play the day at all, is persisted, and refills in real time.
+     They ended up adjacent in the HUD, which is the only thing they share.
+
+     This system holds the project's ONLY dependency on wall-clock time. It is
+     injected (Func<DateTime>) rather than read from DateTime.UtcNow directly, so the
+     regen, cap, offline-accrual and clock-tampering rules are all reachable from a
+     test. If a second system ever needs the clock, it takes the same seam rather
+     than opening its own.
+
+     The count lives in KeyManager's own private field, NOT on GameState. That is a
+     deliberate departure from Lives, whose public setter leaves its single-writer
+     rule resting on a comment; here the compiler holds it. The second reason is
+     scope: GameState is the central state of a DAY. -->
 - DayLifecycle — per-day receipt bookkeeping (base tip / bonus tip / failed orders) feeding the Day Complete popup, and since D-057 the popup's payout HANDOVER (`DayRewardFlightView`) — depends on: EconomySystem
 <!-- The handover, added 2026-08-24 (decisions.md D-057): a day's earnings are no longer
      credited as they are made, so the Day Complete popup is where the money actually
@@ -56,6 +93,45 @@
      and this view only asks it to release what the purse already owes. -->
 
 - TraySystem — per-slot tray contents, batched order validation, scatter-back-to-board — depends on: -
+- HapticsSystem — which game moment plays which haptic, and which one wins when several land in the same frame — depends on: -
+<!-- HapticsSystem, added 2026-08-25 (decisions.md D-070). The arrow is `-` and stays `-`:
+     this system READS a config asset and nothing else. It does not know GameState, the
+     board, or the shop -- the subscribing and the calling both happen ABOVE it, in
+     HapticsBinder, which is a scene component in Assembly-CSharp rather than part of this
+     assembly. Nothing depends on it either, in the arrow sense: the four views that call
+     it (BoardItemDragHandler, DayRewardFlightView, MetaShopView, MetaGroundsView) are all
+     Assembly-CSharp too, so no system-to-system arrow is created in either direction.
+
+     THE SPLIT IS THE POINT, and it is the same predefined-assembly constraint the
+     `Scripts/<Area>/Editor/` note below is about: HapticsBinder needs GameManager, which
+     has no asmdef and therefore lands in Assembly-CSharp, and an asmdef assembly cannot
+     reference a predefined one. So the half that could be an asmdef is the half worth
+     testing -- HapticsService, pure C#, whose one rule (highest priority per frame wins)
+     is what HapticsSystemTests pins. The MonoBehaviour half carries the wiring and the
+     vendor call and has no tests, which is the same trade GameManager makes.
+
+     NICE VIBRATIONS IS QUARANTINED IN EXACTLY ONE FILE. HapticsBinder is the only place
+     in this project that names `Lofelt.NiceVibrations`; everything above it speaks in
+     `HapticMoment`, and `HapticConfig` stores the project's OWN `HapticPreset` mirror
+     enum rather than the vendor's. That is why `ExpoTheExplorer.Data` keeps its empty
+     reference list -- which in this project is how "data depends on nothing" is said --
+     and why swapping the haptics vendor is a one-file change. The mirror costs a nine-arm
+     switch, written out rather than cast, so a renumbering upstream stops the build
+     instead of quietly playing the wrong haptic.
+
+     THE PER-FRAME COALESCER IS NOT AN OPTIMISATION, it is a correctness fix for this
+     project's synchronous EventBus. Publish calls its handlers inline and the handlers
+     publish in turn, so several moments routinely land in one frame -- a correct drop
+     queues ItemDroppedInTray and then OrderDelivered, the last life queues LifeLost and
+     then GameOver. Played as they arrive those read as one smeared buzz. Two moments were
+     left out of the table for the same reason rather than added and then lost to it:
+     TicketAssigned (a delivery cascades straight into the next ticket's assignment) and
+     TraySlotScatterBegin (a scatter only ever happens alongside a life loss).
+
+     It has no scene presence of its own: HapticsBinder is added to an existing object in
+     each scene, and Nice Vibrations additionally wants exactly one HapticReceiver per
+     scene, the way a scene wants one AudioListener. -->
+
 - MainScreen — the main-screen presentation (day + wallet readout, Play) and the scene it lives in — depends on: ProgressionSystem, Bootstrap, MetaSystem
 <!-- MainScreen, added 2026-08-19 (decisions.md D-012): the meta side's navigation
      shell. -> ProgressionSystem because it READS the persisted profile (day index +
@@ -67,6 +143,31 @@
      exits back to here go through GameManager, which owns what must survive the
      scene: the persisted day index, and settling an abandoned attempt. -->
 - MetaSystem — the expo grounds the player decorates between days: a per-location catalog of props (bought with SoftMoney, or appearing at an authored Day), which of them the player owns, and the purchase rules — depends on: -
+- Testing — the EditMode test assembly and the reference list that decides what it can see — depends on: -
+<!-- Added 2026-08-25 (D-065's turn). NOT a game system, and it is listed here for one
+     mechanical reason: `ExpoTheExplorer.Tests.EditMode.asmdef` carried `sys: ?` in the
+     codemap, which the schema calls an unfinished line, and its own note argued the `?`
+     was honest because the assembly "belongs to no single system". That argument is
+     really an argument for a SHARED entry rather than for a question mark — the test
+     files themselves stay filed under the system each one tests (LivesSystemTests ->
+     LivesSystem, KeySystemTests -> KeySystem); it is only the assembly boundary that is
+     common ground.
+
+     The arrow is `-` even though this assembly plainly references a dozen systems, and
+     that is the deliberate choice of two bad options. Enumerating them would put a
+     SECOND copy of the asmdef's reference list here, which starts lying the first time
+     someone updates one and not the other -- and prose ("every testable system") is not
+     an option either: check_blueprint.py resolves each arrow against a real system line
+     and warned about exactly that when it was tried in this turn. So the truth lives in
+     the asmdef, and this entry exists to be a place to write the trap below down.
+
+     THE TRAP IT EXISTS TO MAKE VISIBLE: that reference list is EXPLICIT, so a new
+     system's assembly is invisible to the tests until it is added there by hand. That
+     is not hypothetical -- it broke the build in this very turn (KeySystemTests could
+     not see KeyManager, CS0234/CS0246), and the symptom appears in the TEST file rather
+     than anywhere near the new system, which is what makes it hard to place. Adding a
+     system whose code needs tests means editing this asmdef in the same task. -->
+
 <!-- MetaSystem, added 2026-08-20 (decisions.md D-015): the meta CONTENT the main
      screen was deliberately left empty for ("build the design first, then hang it
      here", ExpoTheExplorer/CLAUDE.md).
@@ -94,9 +195,10 @@
      the screen's composition root. Since D-017 the Day catalog is not among them, and
      since D-019 neither is `Wallet`.
 
-     Deliberately NOT an authority on the wallet, the day index or lives -- it reads
-     all three and writes only the owned-item list, through the same profile writer
-     GameManager uses. Two things it deliberately does NOT persist: whether a
+     Deliberately NOT an authority on the wallet or the day index -- it reads both and
+     writes only the owned-item list, through the same profile writer GameManager uses.
+     Lives used to be a third thing it read; since D-064 they are not in the profile at
+     all, so there is nothing there to read. Two things it deliberately does NOT persist: whether a
      Day-unlocked prop is open, and whether a location is unlocked. Both are DERIVED by
      comparing CurrentDayIndex against an authored index, so there is no second copy to
      fall out of step with the catalog. -->
@@ -106,8 +208,8 @@
 <!-- Every scene, starting with the boot/persistent scene. One line each:
      name — role — load mode (single | additive + trigger) — what lives
      in it. -->
-- MainScreen — the main screen the game launches into, and where a finished or abandoned day returns — single (build index 0) — Camera, EventSystem, the shared HUD Canvas prefab (wallet + lives, D-013), and a Canvas carrying MainScreenView (Play button captioned "Continue Day X" since D-025, optional Start Over button since D-026), the meta grounds and the meta shop
-- SampleScene — the day scene: the whole playable game — single (loaded by SceneFlow.LoadDay) — GameManager plus every hand-wired view (board, tray, ticket cards, HUD, the two popups)
+- MainScreen — the main screen the game launches into, and where a finished or abandoned day returns — single (build index 0) — Camera, EventSystem, the shared HUD Canvas prefab (wallet ONLY since D-064; it carried lives too from D-013), and a Canvas carrying MainScreenView (Play button captioned "Continue Day X" since D-025, optional Start Over button since D-026), the meta grounds and the meta shop, plus the out-of-keys popup since D-069
+- SampleScene — the day scene: the whole playable game — single (loaded by SceneFlow.LoadDay) — GameManager plus every hand-wired view (board, tray, ticket cards, HUD, the two popups, and since D-069 a THIRD: the out-of-keys popup, which sits over the Game Over one), and since D-064 the HEART ROW: LowerPanel/HeartPanel/Heart{1,2,3}/FilledHeart, added to the HUD Canvas prefab INSTANCE rather than to the prefab asset, which is the whole reason the main screen shows no lives
 <!-- Scene inventory filled in 2026-08-19 (D-012); it was still template text
      because the project had exactly one scene until then. There is deliberately NO
      persistent/boot scene: both loads are Single mode, so each scene builds itself
@@ -122,14 +224,26 @@
      instantiated from (authoring | spawner). scene-structure.md decides
      what becomes a prefab. -->
 - HudCanvas — ProgressionSystem — variant-of: - — authoring (placed in both scenes by hand / HudCanvasPrefabSetup)
+<!-- Carries a THIRD system's widget since D-065 step 3: KeysView (sys: KeySystem) sits
+     in the prefab beside the wallet, replacing the old lives readout on the same object.
+     That is not a repeat of the two-systems-one-prefab tangle D-064 untangled -- the
+     opposite. Hearts left the prefab because they are a DAY-scene thing; keys belong in
+     it because they are shown on BOTH screens and a prefab asset cannot hold a scene
+     reference, which is precisely what HudWalletSource (the seam) solves. Editing this
+     prefab intentionally changes both screens at once -- for keys that is the point. -->
 - TicketCard — TicketSystem — variant-of: - — spawned by TicketCardsView
 - TicketCard Into — TicketSystem — variant-of: TicketCard — spawned by TicketCardsView
 - TicketCard UpDown — TicketSystem — variant-of: TicketCard — spawned by TicketCardsView
 <!-- Prefab inventory filled in 2026-08-19 (D-013); it was template text until the
      HUD became the first thing deliberately SHARED between two scenes. HudCanvas is
      filed under ProgressionSystem because the wallet HUD is that system's per
-     blueprint, even though it also carries LivesView (sys: LivesSystem) -- one prefab,
-     two systems' widgets, and HudWalletSource is the seam. The three TicketCard rows
+     blueprint. It carried LivesView (sys: LivesSystem) as well until D-064 -- one
+     prefab, two systems' widgets, with HudWalletSource as the seam -- and now it does
+     not: the heart row is a SampleScene-only addition to the INSTANCE, so the prefab
+     asset is a single-system thing again and HudWalletSource has no lives members left
+     to forward. The hazard that replaces the old one: Apply All / Apply Added GameObject
+     on that instance would push the row into the asset and put hearts on the main
+     screen, which is the one thing D-064 was asked to prevent. The three TicketCard rows
      were already on disk and unlisted; they are recorded here rather than left for
      the next reader to discover, since assetmap.md cannot see them (see the UNMAPPED
      note in unitymap.md for why the asset/scene tooling reports zero). -->

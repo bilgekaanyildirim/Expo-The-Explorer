@@ -65,6 +65,11 @@ namespace ExpoTheExplorer.Tests.EditMode
         // that repeats it would pass while the asset says something else.
         private GameConfig gameConfig;
 
+        // The clock a session under test reads. A fixed instant rather than the real one,
+        // so a key case can move time by assigning to it and nothing here depends on when
+        // the suite happens to run.
+        private DateTime now = new(2026, 8, 25, 12, 0, 0, DateTimeKind.Utc);
+
         private GameSession CreateSession(int dayCount = 3, PlayerProfile saved = null)
         {
             var store = new PlayerProfileStore(testFilePath);
@@ -75,9 +80,11 @@ namespace ExpoTheExplorer.Tests.EditMode
             return new GameSession(
                 gameConfig,
                 CreateConfig<LivesConfig>(),
+                CreateConfig<KeyConfig>(),
                 foodCatalog: null,
                 profileStore: store,
-                dayCatalog: Catalog(dayCount));
+                dayCatalog: Catalog(dayCount),
+                utcNow: () => now);
         }
 
         // --- the day-index clamp ---------------------------------------------------------
@@ -144,12 +151,77 @@ namespace ExpoTheExplorer.Tests.EditMode
             Assert.AreEqual(500, session.State.SoftMoney);
         }
 
+        // The inversion of the old Lives_ComeFromTheProfile case (decisions.md D-064).
+        // Lives used to be seeded from the save file; now nothing seeds them, and this
+        // asserts that a session opens at a full bar NO MATTER what the profile says.
+        // Worth a test of its own rather than deletion: "the load path stopped reading
+        // a value" is exactly the kind of removal that a future save-field addition
+        // could quietly undo.
         [Test]
-        public void Lives_ComeFromTheProfile()
+        public void Lives_IgnoreTheProfile_AndOpenAtAFullBar()
         {
-            var session = CreateSession(saved: new PlayerProfile { Lives = 1 });
+            var session = CreateSession(saved: new PlayerProfile { SoftMoney = 40 });
 
-            Assert.AreEqual(1, session.State.Lives);
+            Assert.AreEqual(GameState.DefaultStartingLives, session.State.Lives);
+            Assert.AreEqual(session.State.MaxLives, session.State.Lives);
+        }
+
+        // --- keys (decisions.md D-065) ---------------------------------------------------
+
+        // The marker's whole job, asserted end to end rather than at the KeyManager seam:
+        // a save written before keys existed goes through the store's v7 upgrade as -1 and
+        // must come out of the session as a FULL bar. If this ever regresses the symptom
+        // is brutal and silent -- every existing player launches locked out of their game.
+        [Test]
+        public void Keys_FromASaveThatPredatesThem_LoadAsAFullBar()
+        {
+            var store = new PlayerProfileStore(testFilePath);
+            File.WriteAllText(testFilePath, "{\"Version\":6,\"SoftMoney\":500,\"Gems\":3,\"CurrentDayIndex\":2}");
+
+            gameConfig = CreateConfig<GameConfig>();
+            var keyConfig = CreateConfig<KeyConfig>();
+            var session = new GameSession(
+                gameConfig, CreateConfig<LivesConfig>(), keyConfig,
+                foodCatalog: null, profileStore: store, dayCatalog: Catalog(3), utcNow: () => now);
+
+            Assert.AreEqual(keyConfig.MaxKeys, session.KeyManager.Keys);
+            Assert.AreEqual(500, session.State.SoftMoney, "the rest of the old save must survive the upgrade");
+        }
+
+        // A brand-new player is the same question with a different origin, and it takes
+        // the same path: NewPlayer writes the marker rather than a count.
+        [Test]
+        public void Keys_WithNoSavedFile_StartFull()
+        {
+            var session = CreateSession();
+
+            Assert.AreEqual(session.KeyManager.MaxKeys, session.KeyManager.Keys);
+        }
+
+        // The opposite guard, and the one that makes keys a real resource: a CURRENT-version
+        // file's count is data. A player who spent down to zero has a save that says zero
+        // and must stay there -- resolving that as "absent" would refill on every launch and
+        // hand out infinite keys to anyone willing to relaunch.
+        [Test]
+        public void Keys_FromACurrentVersionSave_AreNotRefilled()
+        {
+            var session = CreateSession(saved: new PlayerProfile { Keys = 0, LastKeyRegenUtcTicks = now.Ticks });
+
+            Assert.AreEqual(0, session.KeyManager.Keys);
+        }
+
+        // Why an ANCHOR is persisted instead of a countdown: the wait continues while the
+        // game is closed, so a player who quits and comes back an hour later has earned two.
+        [Test]
+        public void Keys_AccrueWhileTheGameIsClosed()
+        {
+            var closedAt = now;
+            var saved = new PlayerProfile { Keys = 0, LastKeyRegenUtcTicks = closedAt.Ticks };
+
+            now = closedAt.AddHours(1);
+            var session = CreateSession(saved: saved);
+
+            Assert.AreEqual(2, session.KeyManager.Keys, "30-minute regen: an hour away is two keys");
         }
 
         [Test]
@@ -184,7 +256,7 @@ namespace ExpoTheExplorer.Tests.EditMode
         [Test]
         public void WithASavedFile_TheGrantIsNotHandedOutAgain()
         {
-            var session = CreateSession(saved: new PlayerProfile { SoftMoney = 0, Lives = 2 });
+            var session = CreateSession(saved: new PlayerProfile { SoftMoney = 0 });
 
             Assert.AreEqual(0, session.State.SoftMoney);
         }
@@ -219,7 +291,8 @@ namespace ExpoTheExplorer.Tests.EditMode
                     SoftMoney = 1250,
                     Gems = 8,
                     CurrentDayIndex = 3,
-                    Lives = 2,
+                    Keys = 2,
+                    LastKeyRegenUtcTicks = now.Ticks,
                     OwnedMetaItemIds = { "Meta1.Square" }
                 });
 
@@ -231,8 +304,13 @@ namespace ExpoTheExplorer.Tests.EditMode
             Assert.AreEqual(1250, reloaded.SoftMoney);
             Assert.AreEqual(8, reloaded.Gems);
             Assert.AreEqual(3, reloaded.CurrentDayIndex);
-            Assert.AreEqual(2, reloaded.Lives);
+            Assert.AreEqual(2, reloaded.Keys);
             Assert.AreEqual(new[] { "Meta1.Square" }, reloaded.OwnedMetaItemIds);
+
+            // Both halves of the key state, because saving the count alone would restart
+            // the interval in flight on every launch -- a player who quits 29 minutes into
+            // a wait would be handed a fresh 30 every single time.
+            Assert.AreEqual(now.Ticks, reloaded.LastKeyRegenUtcTicks);
         }
 
         // The set is live: this is how a purchase will commit, and Save has to pick it up

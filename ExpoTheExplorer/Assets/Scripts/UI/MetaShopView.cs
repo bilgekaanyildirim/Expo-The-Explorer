@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using ExpoTheExplorer.Bootstrap;
 using ExpoTheExplorer.Data;
 using ExpoTheExplorer.Session;
 using ExpoTheExplorer.Systems.MetaSystem;
@@ -54,6 +55,9 @@ namespace ExpoTheExplorer.UI
 
         [Tooltip("Which location's props to list. Read from the grounds rather than resolved again here, so the catalog reference lives in exactly one place.")]
         [SerializeField] private MetaGroundsView grounds;
+
+        [Tooltip("Optional. The scene's HapticsBinder, so a purchase going through can be felt. On the main screen that binder's GameManager field is left EMPTY — there is no GameState here.")]
+        [SerializeField] private HapticsBinder haptics;
 
         [Tooltip("The rows' parent — the ScrollRect's content. Must stay ACTIVE: hiding it to hide the template hides every real row too.")]
         [SerializeField] private Transform rowsParent;
@@ -316,6 +320,11 @@ namespace ExpoTheExplorer.UI
                 // is Ş5's job, and doing it here as well would put the appearance of a
                 // verdict in two places.
                 Debug.Log($"'{item.Id}' was not bought: {verdict}.", this);
+
+                // One moment for every refusal rather than one per verdict: to the hand,
+                // "not enough money", "area locked" and "already owned" are the same
+                // answer -- no. Which one it was is Ş5's job to say on screen.
+                haptics?.Request(HapticMoment.PurchaseRefused);
                 return;
             }
 
@@ -328,6 +337,11 @@ namespace ExpoTheExplorer.UI
                 Debug.LogWarning(
                     $"'{item.Id}' passed {nameof(MetaPurchase)} but the wallet refused to spend {item.Price}. " +
                     "Nothing was bought and nothing was written.", this);
+
+                // The wallet's own refusal, which Evaluate above should have caught first.
+                // Unreachable in practice today; buzzing here anyway costs one line and
+                // keeps the two refusal paths from feeling different if it ever is reached.
+                haptics?.Request(HapticMoment.PurchaseRefused);
                 return;
             }
 
@@ -337,6 +351,13 @@ namespace ExpoTheExplorer.UI
             // the file behind by one purchase -- PlayerProfileStore logs why. There is no
             // partial write to recover from, because the profile is one file written whole.
             session.Save();
+
+            // Here rather than on the tap: this is the first line at which the purchase is
+            // a fact -- the verdict passed, the wallet actually spent, and the file has the
+            // prop. A buzz on the tap would sometimes fire for a purchase that then failed.
+            // Deliberately the lightest preset in the table, because the payoff the player
+            // is waiting for is the prop hitting the ground a moment later.
+            haptics?.Request(HapticMoment.PropPurchased);
 
             // THE GROUNDS ARE TOLD FIRST, AND THE ORDER OF THESE TWO CALLS IS LOAD-BEARING
             // (D-049). RefreshAfterPurchase claims the map's framing before anything can ask

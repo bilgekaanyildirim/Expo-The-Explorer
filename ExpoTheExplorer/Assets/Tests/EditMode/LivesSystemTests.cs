@@ -35,45 +35,20 @@ namespace ExpoTheExplorer.Tests.EditMode
             serialized.ApplyModifiedPropertiesWithoutUndo();
         }
 
-        // ApplyPersistedLives (decisions.md D-014). Lives are saved now, and they come
-        // back through LivesManager because it is their single writer -- these cases
-        // pin the CLAMP, which is what stands between a corrupt or hand-edited file and
-        // a player who cannot act.
+        // The three ApplyPersistedLives cases that stood here are gone with the method
+        // (decisions.md D-064). They pinned the CLAMP that guarded a saved life count
+        // against a corrupt or hand-edited file; there is no saved count any more, so
+        // there is no clamp to guard and nothing here to test. What replaces them is
+        // the case directly below: a brand-new GameState opens at a full bar, which is
+        // now the ONLY thing that decides how many lives a day starts with.
         [Test]
-        public void ApplyPersistedLives_WithinRange_RestoresTheSavedCount()
+        public void NewState_OpensAtAFullBar_WithNothingSeedingIt()
         {
             var state = new GameState(gameConfig);
-            var manager = new LivesManager(state, livesConfig, new Wallet(state));
 
-            manager.ApplyPersistedLives(1);
-
-            Assert.AreEqual(1, state.Lives);
-        }
-
-        // A saved 0 is a player dead on arrival with no way to act, so it is refused
-        // rather than restored. PlayerProfileStore already upgrades pre-v3 files to full
-        // lives, so a 0 arriving here means a corrupt or hand-edited file.
-        [Test]
-        public void ApplyPersistedLives_Zero_ClampsToOne()
-        {
-            var state = new GameState(gameConfig);
-            var manager = new LivesManager(state, livesConfig, new Wallet(state));
-
-            manager.ApplyPersistedLives(0);
-
-            Assert.AreEqual(1, state.Lives);
-        }
-
-        // Above MaxLives would draw a life bar fuller than the game admits exists.
-        [Test]
-        public void ApplyPersistedLives_AboveMaxLives_ClampsToMaxLives()
-        {
-            var state = new GameState(gameConfig);
-            var manager = new LivesManager(state, livesConfig, new Wallet(state));
-
-            manager.ApplyPersistedLives(state.MaxLives + 5);
-
-            Assert.AreEqual(state.MaxLives, state.Lives);
+            Assert.AreEqual(GameState.DefaultStartingLives, state.Lives);
+            Assert.AreEqual(GameState.DefaultStartingLives, state.MaxLives);
+            Assert.AreEqual(state.MaxLives, state.Lives, "a day must open with every heart filled");
         }
 
         [Test]
@@ -141,8 +116,12 @@ namespace ExpoTheExplorer.Tests.EditMode
             Assert.IsFalse(published);
         }
 
+        // Renamed with the method (D-064): the free refill now serves the successful
+        // advance to the next day as well as the three retry/abandon paths, so it is
+        // named for the refill rather than for a retry. The behaviour it pins is
+        // unchanged -- full bar, flag cleared, and not a coin touched.
         [Test]
-        public void RetryDay_RefillsLivesToMaxLives_ClearsIsAwaitingContinue_NoCurrencyCheck()
+        public void RefillForNewDay_RefillsLivesToMaxLives_ClearsIsAwaitingContinue_NoCurrencyCheck()
         {
             var state = new GameState(gameConfig);
             state.MaxLives = 3;
@@ -152,7 +131,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             state.Gems = 0;
             var manager = new LivesManager(state, livesConfig, new Wallet(state));
 
-            manager.RetryDay();
+            manager.RefillForNewDay();
 
             Assert.AreEqual(state.MaxLives, state.Lives);
             Assert.IsFalse(state.IsAwaitingContinue);

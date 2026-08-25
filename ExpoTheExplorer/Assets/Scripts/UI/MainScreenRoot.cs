@@ -25,6 +25,11 @@ namespace ExpoTheExplorer.UI
         [SerializeField] private GameConfig gameConfig;
         [SerializeField] private LivesConfig livesConfig;
 
+        // Required, and it joins the guard below rather than getting one of its own
+        // (decisions.md D-065): the main screen needs a session for the same reason the
+        // day scene does, and a KeyManager cannot be built without this.
+        [SerializeField] private KeyConfig keyConfig;
+
         [Tooltip("Only used to parse the Day catalog, which this screen needs so it can tell which Day the player is on. Nothing on the menu reads a food item.")]
         [SerializeField] private FoodCatalog foodCatalog;
 
@@ -37,20 +42,21 @@ namespace ExpoTheExplorer.UI
         // ordering GameManager relies on, so both scenes behave identically.
         private void Awake()
         {
-            if (gameConfig == null || livesConfig == null)
+            if (gameConfig == null || livesConfig == null || keyConfig == null)
             {
                 // Loud, because the failure is otherwise quiet: with no session the HUD
                 // silently falls back to reading the save file, which looks correct until
                 // the first purchase fails to update the coin count.
                 Debug.LogError(
                     $"{nameof(MainScreenRoot)} on '{name}' is missing a config reference " +
-                    $"(gameConfig: {gameConfig != null}, livesConfig: {livesConfig != null}). " +
+                    $"(gameConfig: {gameConfig != null}, livesConfig: {livesConfig != null}, " +
+                    $"keyConfig: {keyConfig != null}). " +
                     "Run ExpoTheExplorer > Meta > Wire MainScreen Session.",
                     this);
                 return;
             }
 
-            session = new GameSession(gameConfig, livesConfig, foodCatalog);
+            session = new GameSession(gameConfig, livesConfig, keyConfig, foodCatalog);
         }
     }
 }

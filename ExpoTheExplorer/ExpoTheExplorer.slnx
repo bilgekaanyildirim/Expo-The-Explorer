@@ -18,6 +18,7 @@
   <Project Path="Unity.Services.Core.Environments.Editor.csproj" />
   <Project Path="Unity.VisualScripting.Flow.Editor.csproj" />
   <Project Path="ExpoTheExplorer.Systems.MetaSystem.csproj" />
+  <Project Path="Assembly-CSharp.csproj" />
   <Project Path="Unity.2D.SpriteShape.Editor.csproj" />
   <Project Path="Unity.VisualStudio.Editor.csproj" />
   <Project Path="Unity.2D.Animation.Editor.csproj" />
@@ -36,7 +37,6 @@
   <Project Path="Unity.2D.Tilemap.Extras.Editor.csproj" />
   <Project Path="ExpoTheExplorer.Data.csproj" />
   <Project Path="UnityEditor.Purchasing.csproj" />
-  <Project Path="Assembly-CSharp.csproj" />
   <Project Path="ExpoTheExplorer.Tests.EditMode.csproj" />
   <Project Path="PsdPlugin.csproj" />
   <Project Path="Unity.2D.IK.Editor.csproj" />
@@ -52,7 +52,9 @@
   <Project Path="Unity.InternalAPIEditorBridge.001.csproj" />
   <Project Path="Unity.Purchasing.AppleMacosStub.csproj" />
   <Project Path="Unity.Purchasing.Codeless.csproj" />
+  <Project Path="Lofelt.NiceVibrations.csproj" />
   <Project Path="Unity.Services.Core.Configuration.Editor.csproj" />
+  <Project Path="Lofelt.NiceVibrations.Demo.csproj" />
   <Project Path="ExpoTheExplorer.Core.csproj" />
   <Project Path="Unity.Services.Core.Configuration.csproj" />
   <Project Path="Assembly-CSharp-firstpass.csproj" />
@@ -72,6 +74,7 @@
   <Project Path="Unity.Mathematics.Editor.csproj" />
   <Project Path="Unity.VisualScripting.SettingsProvider.Editor.csproj" />
   <Project Path="Unity.2D.Common.Runtime.csproj" />
+  <Project Path="Lofelt.NiceVibrations.Editor.csproj" />
   <Project Path="Unity.Purchasing.Stores.XboxCloudServices.csproj" />
   <Project Path="Unity.Services.Core.Threading.csproj" />
   <Project Path="Unity.Purchasing.Utilities.csproj" />
@@ -85,11 +88,13 @@
   <Project Path="Unity.Purchasing.SecurityStub.csproj" />
   <Project Path="Unity.CollabProxy.Editor.csproj" />
   <Project Path="IAPResolver.csproj" />
+  <Project Path="ExpoTheExplorer.Systems.KeySystem.csproj" />
   <Project Path="ExpoTheExplorer.Systems.EconomySystem.csproj" />
   <Project Path="ExpoTheExplorer.Systems.LivesSystem.csproj" />
   <Project Path="Unity.Services.Core.Registration.csproj" />
   <Project Path="Unity.InputSystem.DocCodeSamples.csproj" />
   <Project Path="Sirenix.OdinInspector.Modules.UnityMathematics.csproj" />
+  <Project Path="ExpoTheExplorer.Systems.HapticsSystem.csproj" />
   <Project Path="ExpoTheExplorer.Session.csproj" />
   <Project Path="Unity.Services.Core.Networking.csproj" />
   <Project Path="Unity.VisualScripting.DocCodeExamples.csproj" />

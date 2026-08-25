@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using ExpoTheExplorer.Core;
 using ExpoTheExplorer.Data;
 using ExpoTheExplorer.Systems.DaySystem;
+using ExpoTheExplorer.Systems.KeySystem;
 using ExpoTheExplorer.Systems.LivesSystem;
 using ExpoTheExplorer.Systems.ProgressionSystem;
 
@@ -13,8 +14,8 @@ namespace ExpoTheExplorer.Session
     // props they own. Constructed identically by both screens -- the day scene's
     // GameManager and (from Adım 5b) the main screen's own root.
     //
-    // It exists because those two screens need the same five construction steps and the
-    // steps carry FOUR ordering rules that must not be duplicated:
+    // It exists because those two screens need the same construction steps and the steps
+    // carry FIVE ordering rules that must not be duplicated:
     //
     //   1. the wallet is built before ApplyPersistedBalances, because GameState's balance
     //      setters are internal to ProgressionSystem and nothing else can seed them;
@@ -22,9 +23,13 @@ namespace ExpoTheExplorer.Session
     //   3. the Day catalog is parsed before the day index is clamped, because the clamp
     //      needs its Count;
     //   4. ApplyPersistedBalances re-takes the day-start snapshot, so the first retry of
-    //      a session reverts to the RESTORED balance rather than to zero.
+    //      a session reverts to the RESTORED balance rather than to zero;
+    //   5. KeyManager is built after the wallet, because the Gem refill is charged
+    //      through it, and its ApplyPersisted follows immediately -- that call is what
+    //      turns the profile's -1 marker into a full bar AND pays out the keys earned
+    //      while the game was closed (decisions.md D-065).
     //
-    // A second class re-implementing those four is exactly the failure the single-writer
+    // A second class re-implementing those five is exactly the failure the single-writer
     // invariant exists to prevent, which is why the alternative -- a separate controller
     // for the main screen -- was rejected (decisions.md D-021).
     //
@@ -46,6 +51,11 @@ namespace ExpoTheExplorer.Session
 
         public GameState State { get; }
         public LivesManager LivesManager { get; }
+
+        // Handed out rather than wrapped, exactly like Wallet below: KeyManager is already
+        // the compiler-enforced single writer of the key count, so re-exposing its methods
+        // here would add a second surface to keep in step for no gain.
+        public KeyManager KeyManager { get; }
 
         // The parsed Day catalog. Exposed read-only because GameManager needs its Count
         // and its entries to build a Day; nothing outside may replace it.
@@ -78,9 +88,11 @@ namespace ExpoTheExplorer.Session
         public GameSession(
             GameConfig gameConfig,
             LivesConfig livesConfig,
+            KeyConfig keyConfig,
             FoodCatalog foodCatalog,
             PlayerProfileStore profileStore = null,
-            IReadOnlyList<DayDefinition> dayCatalog = null)
+            IReadOnlyList<DayDefinition> dayCatalog = null,
+            Func<DateTime> utcNow = null)
         {
             this.profileStore = profileStore ?? new PlayerProfileStore();
 
@@ -106,8 +118,25 @@ namespace ExpoTheExplorer.Session
 
             // Order 2: before anything that can lose a life. Nothing here can, but
             // GameManager's slot fill runs moments later and does.
+            //
+            // Nothing seeds Lives from the profile since D-064: lives are a per-day
+            // resource again, and `new GameState(config)` above already opened at a full
+            // bar. A line here restoring a saved count is precisely what "her gün 3 canla
+            // başlasın" removes -- and there is no saved count left to read.
             LivesManager = new LivesManager(State, livesConfig, wallet);
-            LivesManager.ApplyPersistedLives(profile.Lives);
+
+            // Order 5 (decisions.md D-065): AFTER the wallet, because the 40-Gem refill is
+            // charged through it, and paired with its ApplyPersisted the way the wallet and
+            // lives loads already are. This is the fifth rule that makes this class worth
+            // having as one place -- a second constructor re-deriving them is exactly what
+            // the single-writer invariant exists to prevent.
+            //
+            // ApplyPersisted does two jobs in one call: it resolves the profile's -1 marker
+            // (an older save, or a player who has never played) into a full bar, and it pays
+            // out whatever accrued while the game was CLOSED, which is the entire reason an
+            // anchor is persisted instead of a countdown.
+            KeyManager = new KeyManager(keyConfig, wallet, utcNow);
+            KeyManager.ApplyPersisted(profile.Keys, profile.LastKeyRegenUtcTicks);
 
             // Injectable so a test can supply a catalog without Resources or a FoodCatalog
             // asset; production passes null and gets the real parse.
@@ -157,7 +186,13 @@ namespace ExpoTheExplorer.Session
                 SoftMoney = State.SoftMoney,
                 Gems = State.Gems,
                 CurrentDayIndex = State.CurrentDayIndex,
-                Lives = State.Lives,
+
+                // Both halves of the key state, and both are required: the count alone
+                // would restart the current regen interval on every launch, handing the
+                // player a fresh 30-minute wait each time they quit near the end of one.
+                Keys = KeyManager.Keys,
+                LastKeyRegenUtcTicks = KeyManager.LastRegenUtcTicks,
+
                 OwnedMetaItemIds = new List<string>(OwnedMetaItemIds),
                 LastCelebratedDayIndex = LastCelebratedDayIndex,
             });

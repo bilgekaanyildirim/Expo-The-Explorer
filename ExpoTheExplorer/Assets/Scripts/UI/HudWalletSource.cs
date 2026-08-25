@@ -1,6 +1,7 @@
 using ExpoTheExplorer.Bootstrap;
 using ExpoTheExplorer.Core;
 using ExpoTheExplorer.Session;
+using ExpoTheExplorer.Systems.KeySystem;
 using ExpoTheExplorer.Systems.ProgressionSystem;
 using UnityEngine;
 using UnityEngine.Serialization;
@@ -17,9 +18,11 @@ namespace ExpoTheExplorer.UI
     //                  That scene has no GameManager by design (D-012), which is
     //                  what keeps each scene able to build itself from scratch.
     //
-    // The three HUD views reference THIS instead of a GameManager, so the rule lives
-    // in one place rather than being copy-pasted (and drifting) across three views,
-    // and the profile is read once per scene load instead of three times.
+    // The wallet HUD views reference THIS instead of a GameManager, so the rule lives
+    // in one place rather than being copy-pasted (and drifting) across each of them,
+    // and the profile is read once per scene load instead of once per view. There were
+    // three such views until D-064 took lives out of here; SoftMoneyView and GemsView
+    // are what is left, and they are the two the two-mode rule was really about.
     //
     // Strictly a READER. Nothing here writes a balance -- Wallet remains the single
     // writer, and this class never even holds one long enough to mutate it.
@@ -69,15 +72,28 @@ namespace ExpoTheExplorer.UI
         // Forwarded change events, so a view never has to know which mode it is in
         // (D-014). In the day scene these re-publish GameState's own events; on the
         // main screen they simply never fire, which is not a gap -- nothing there can
-        // earn, spend or lose anything, so one render at Start is the whole truth.
+        // earn or spend anything, so one render at Start is the whole truth.
         //
         // Separate buses rather than one "something changed" signal: each carries the
-        // real new value, so SoftMoneyView and GemsView need no lookup at all. Lives
-        // is one bus fed by BOTH of GameState's lives events, because the label it
-        // drives always renders "current/max" and cannot act on half of that pair.
+        // real new value, so SoftMoneyView and GemsView need no lookup at all.
+        //
+        // There is deliberately no lives bus any more (D-064). Lives stopped being
+        // persisted and the heart row became a day-scene object, so this class has
+        // neither a second mode to hide for them nor a reader to serve: LivesView
+        // binds straight to GameState now. What is left here is exactly what the
+        // class name claims -- the wallet.
         public EventBus<int> SoftMoneyChanged { get; } = new();
         public EventBus<int> GemsChanged { get; } = new();
-        public EventBus<int> LivesChanged { get; } = new();
+
+        // Keys are forwarded like the two balances, and unlike lives they genuinely
+        // belong here: the key readout lives INSIDE the shared HUD prefab and shows on
+        // both screens, which is the exact case this class was built for (D-013). The
+        // heart row went the other way in D-064 because it is a day-scene object.
+        //
+        // Not re-published from GameState like the balances: keys are not on GameState at
+        // all (D-065 keeps the count private to KeyManager, so the single-writer rule is a
+        // compile error rather than a comment). This forwards KeyManager's own bus.
+        public EventBus<int> KeysChanged { get; } = new();
 
         public int SoftMoney
         {
@@ -97,29 +113,70 @@ namespace ExpoTheExplorer.UI
             }
         }
 
-        // Lives are persisted since D-014, so off the day scene this reads the SAVED
-        // count -- the player's real remaining lives, not the placeholder constant it
-        // returned before. That change is the whole reason the main screen's lives
-        // readout stopped being decorative.
-        public int Lives
+        // The session's key manager, or null when this scene has no session. Exposed so a
+        // view can ask whether keys are readable at all -- see KeysAvailable below --
+        // rather than each view repeating the walk down the chain.
+        private KeyManager Keys => sessionHost?.Session?.KeyManager;
+
+        // False means "this scene has no session", which since D-022 is a LOST REFERENCE
+        // rather than an expected mode: both screens are supposed to have a SessionHost.
+        // KeysView uses it to stay silent instead of rendering a number, because the only
+        // number it could invent -- 0 -- would tell the player they are out of keys.
+        public bool KeysAvailable
         {
             get
             {
                 Resolve();
-                return LiveState != null ? LiveState.Lives : profile.Lives;
+                return Keys != null;
             }
         }
 
-        // Still the constant off the day scene: MaxLives is deliberately not persisted
-        // because nothing varies it (see PlayerProfile). The day an upgrade raises it,
-        // it becomes a saved field and this line follows Lives above.
-        public int MaxLives
+        public int KeyCount
         {
             get
             {
                 Resolve();
-                return LiveState != null ? LiveState.MaxLives : GameState.DefaultStartingLives;
+                return Keys?.Keys ?? 0;
             }
+        }
+
+        public int MaxKeys
+        {
+            get
+            {
+                Resolve();
+                return Keys?.MaxKeys ?? 0;
+            }
+        }
+
+        // The DISPLAY tick, and it is display-only by design (decisions.md D-065): every
+        // gate calls KeyManager.Refresh for itself, so no rule anywhere depends on this
+        // running. Its single job is that the number on screen climbs while the player is
+        // looking at it -- without it a key earned at minute 30 would appear only when
+        // something else happened to ask.
+        //
+        // ONCE PER SECOND, not per frame. A value that changes every 30 minutes does not
+        // need 60 clock reads a second; that is three orders of magnitude of waste for a
+        // counter whose smallest visible step is one second. Refresh publishes only on an
+        // actual grant, so a quiet second costs one subtraction and nothing else.
+        //
+        // It lives HERE rather than in KeysView so there is one ticker per scene instead
+        // of one per view -- and step 5's out-of-keys popup needs the same freshness.
+        private float secondsSinceKeyRefresh;
+
+        private void Update()
+        {
+            var keys = Keys;
+            if (keys == null) return;
+
+            secondsSinceKeyRefresh += Time.unscaledDeltaTime;
+            if (secondsSinceKeyRefresh < 1f) return;
+
+            secondsSinceKeyRefresh = 0f;
+
+            // UNSCALED time on purpose: a popup that pauses the game by zeroing timeScale
+            // must not also stop the wait the player is watching count down.
+            keys.Refresh();
         }
 
         // Symmetric with the forwarding in Resolve. Both GameState and this component
@@ -129,13 +186,17 @@ namespace ExpoTheExplorer.UI
         // expressions here match the ones subscribed above.
         private void OnDestroy()
         {
+            // Unsubscribed BEFORE the early return below, because keys hang off the
+            // session rather than off GameState -- pairing them with the state's null
+            // check would leak the subscription in exactly the case where a session
+            // exists but LiveState does not.
+            Keys?.KeysChanged.Unsubscribe(KeysChanged.Publish);
+
             var state = LiveState;
             if (state == null) return;
 
             state.SoftMoneyChanged.Unsubscribe(SoftMoneyChanged.Publish);
             state.GemsChanged.Unsubscribe(GemsChanged.Publish);
-            state.LivesChanged.Unsubscribe(LivesChanged.Publish);
-            state.MaxLivesChanged.Unsubscribe(LivesChanged.Publish);
         }
 
         // Lazy, and never from Awake: GameManager assigns State in its own Awake, and
@@ -160,9 +221,13 @@ namespace ExpoTheExplorer.UI
                 var state = live;
                 state.SoftMoneyChanged.Subscribe(SoftMoneyChanged.Publish);
                 state.GemsChanged.Subscribe(GemsChanged.Publish);
-                state.LivesChanged.Subscribe(LivesChanged.Publish);
-                state.MaxLivesChanged.Subscribe(LivesChanged.Publish);
             }
+
+            // Outside the live/save-file branch above, because keys hang off the SESSION
+            // rather than off GameState: a scene can have a session (and therefore keys)
+            // in both of that branch's cases. Null here means no session at all, which
+            // since D-022 is a lost reference rather than a mode -- the log below says so.
+            Keys?.KeysChanged.Subscribe(KeysChanged.Publish);
 
             // Says which of the two modes this instance picked, once per scene load.
             // Not noise: it is the only visible difference between "correctly reading

@@ -6,6 +6,7 @@
         "ExpoTheExplorer.Data",
         "ExpoTheExplorer.Systems.ProgressionSystem",
         "ExpoTheExplorer.Systems.LivesSystem",
+        "ExpoTheExplorer.Systems.KeySystem",
         "ExpoTheExplorer.Systems.DaySystem"
     ],
     "includePlatforms": [],

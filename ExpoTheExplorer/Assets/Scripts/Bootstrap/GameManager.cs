@@ -7,6 +7,7 @@ using ExpoTheExplorer.Systems.BoardDistribution;
 using ExpoTheExplorer.Systems.DayLifecycle;
 using ExpoTheExplorer.Systems.DaySystem;
 using ExpoTheExplorer.Systems.EconomySystem;
+using ExpoTheExplorer.Systems.KeySystem;
 using ExpoTheExplorer.Systems.LivesSystem;
 using ExpoTheExplorer.Systems.MetaSystem;
 using ExpoTheExplorer.Session;
@@ -33,6 +34,19 @@ namespace ExpoTheExplorer.Bootstrap
         [SerializeField] private FoodCatalog foodCatalog;
         [SerializeField] private EconomyConfig economyConfig;
         [SerializeField] private LivesConfig livesConfig;
+
+        // Required, like livesConfig beside it (decisions.md D-065). Not optional the way
+        // metaCatalog is: without it GameSession cannot build a KeyManager at all, and a
+        // null one would push a null check into every future caller instead of failing
+        // here, once, where the missing drag actually is.
+        [Tooltip("Key economy knobs (cap, regen minutes, refill cost). Create via Create > ExpoTheExplorer > Data > Key Config.")]
+        [SerializeField] private KeyConfig keyConfig;
+
+        // Optional, and it owns nothing: this class asks for one haptic (a key being
+        // spent) and is otherwise unaware haptics exist. The day's other moments reach
+        // HapticsBinder through GameState's events, without passing through here.
+        [Tooltip("Optional. The scene's HapticsBinder, used only so spending a key can be felt. Unwired changes nothing but that.")]
+        [SerializeField] private HapticsBinder haptics;
 
         // The four numbers behind the day's star rating (decisions.md D-060). Required,
         // unlike metaCatalog below: without it every completed day scores 0 stars and pays
@@ -78,6 +92,11 @@ namespace ExpoTheExplorer.Bootstrap
         // for no gain.
         public GameState State => Session?.State;
         public LivesManager LivesManager => Session?.LivesManager;
+
+        // Forwarding property, same shape and same reason as LivesManager above: the
+        // session owns it, and a dozen hand-wired views in the scene reach their systems
+        // through this component. Step 5's out-of-keys popup reads it too.
+        public KeyManager KeyManager => Session?.KeyManager;
 
         public TicketSlotManager TicketSlotManager { get; private set; }
         public TrayManager TrayManager { get; private set; }
@@ -127,7 +146,21 @@ namespace ExpoTheExplorer.Bootstrap
             //
             // A missing, corrupt or unversioned file loads as 0/0 (see PlayerProfileStore),
             // which is also what a brand-new player gets.
-            session = new GameSession(gameConfig, livesConfig, foodCatalog);
+            // Checked BEFORE the session is built, unlike the optional references below:
+            // GameSession cannot construct a KeyManager without it, so the failure would
+            // otherwise be a NullReferenceException from inside a constructor rather than
+            // a sentence naming the field and the menu that fills it.
+            if (keyConfig == null)
+            {
+                Debug.LogError(
+                    $"{nameof(GameManager)} on '{name}' has no {nameof(KeyConfig)} wired, so no session can be " +
+                    "built and the day scene will not run. Create the asset via " +
+                    "Create > ExpoTheExplorer > Data > Key Config and drag it into the Key Config field.",
+                    this);
+                return;
+            }
+
+            session = new GameSession(gameConfig, livesConfig, keyConfig, foodCatalog);
 
             if (metaCatalog == null)
             {
@@ -375,6 +408,43 @@ namespace ExpoTheExplorer.Bootstrap
         // to GameSession.Save (decisions.md D-021). The four callers below are unchanged.
         private void SaveProfile() => Session.Save();
 
+        // The key charge for giving up on a day (.claude/key-plan.md step 4). One place
+        // rather than two call sites, because this class cannot be reached by the EditMode
+        // suite at all -- it is in the predefined Assembly-CSharp (D-012) -- so the only
+        // protection this rule has is that there is exactly one copy of it to read.
+        //
+        // GATED ON IsAwaitingContinue, not on which method called: the user's rule is that
+        // a key is spent when a day is LOST and then left, so the flag states that
+        // literally. It also keeps DebugTicketDeliveryController's R key from eating a key
+        // when it replays a day that was going fine.
+        //
+        // CALLERS MUST READ THE FLAG BEFORE LivesManager.RefillForNewDay CLEARS IT, which
+        // is why this takes it as an argument instead of reading State itself. That
+        // ordering is the one thing here a mistake would break silently: the refill would
+        // clear the flag, this would see false, and giving up would quietly become free.
+        //
+        // The result is deliberately ignored. At zero keys the player must still be able
+        // to leave -- blocking that is a softlock -- so this floors at zero rather than
+        // refusing. Step 5 is what stops them arriving here with nothing to spend.
+        private void SpendKeyForLostDay(bool dayWasLost)
+        {
+            if (!dayWasLost) return;
+
+            KeyManager.TrySpendKey();
+
+            // Requested unconditionally rather than on TrySpendKey's result, and that is
+            // deliberate: at zero keys the spend floors and returns false, but leaving a
+            // lost day is exactly when the player most needs to be told the resource is
+            // gone. The rule itself (D-068 -- which exits cost a key, and that the exit is
+            // never blocked) is untouched; this line only reports it.
+            //
+            // The scene is about to be replaced on most routes here, so this can be lost
+            // to the load before LateUpdate flushes it. That is a known gap rather than a
+            // silent one -- worth a device check, and not worth pre-empting with a special
+            // immediate path that would bypass the coalescer for one moment only.
+            haptics?.Request(HapticMoment.KeySpent);
+        }
+
         // Day Complete popup's "Go Back". The day is finished, so what the main
         // screen should offer next is the NEXT Day -- that index is persisted here
         // and the scene is then dropped.
@@ -481,14 +551,27 @@ namespace ExpoTheExplorer.Bootstrap
 
             wallet.RevertToDayStart();
 
-            // Refills lives BEFORE the save, and this line is load-bearing since
-            // D-014 made lives persistent. This path is only reachable from the Game
-            // Over popup, i.e. with Lives at 0 -- persisting that would hand the
-            // player a save file they cannot play out of: 0 lives on launch, dead
-            // before the first ticket, forever. Abandoning an attempt resets it the
-            // same way the free Retry does, so the next attempt starts full either
+            // Kept, but no longer load-bearing for the SAVE. D-014 made lives persistent
+            // and this refill existed to stop a 0 being written -- a save file the player
+            // could not play out of: 0 lives on launch, dead before the first ticket,
+            // forever. D-064 took lives out of the profile entirely, so the save cannot
+            // carry a life count at all and this line's position relative to SaveProfile
+            // no longer decides anything.
+            //
+            // It stays because it is still true of the SCENE: this path is only reachable
+            // from the Game Over popup, i.e. with Lives at 0, and the day is reset here
+            // the same way the free Retry resets it. The next attempt starts full either
             // way; the only difference is where the player goes next.
-            LivesManager.RetryDay();
+            //
+            // Read the flag FIRST -- the line below clears it (key-plan step 4).
+            var dayWasLost = State.IsAwaitingContinue;
+
+            LivesManager.RefillForNewDay();
+
+            // Walking out of a lost day costs a key, exactly as retrying it does: the
+            // player is giving up on the attempt either way, and charging one route but
+            // not the other would just teach them which button is cheaper.
+            SpendKeyForLostDay(dayWasLost);
 
             SaveProfile();
             SceneFlow.LoadMainScreen();
@@ -509,16 +592,42 @@ namespace ExpoTheExplorer.Bootstrap
         public void RetryDay()
         {
             var ticketsBeforeRetry = State.TicketsDeliveredToday;
+
+            // Read BEFORE LivesManager.RefillForNewDay below clears it. A retry reached
+            // from the Game Over popup always has this set; the debug R key does not, and
+            // must not spend a key for replaying a day that was going fine
+            // (.claude/key-plan.md step 4).
+            var dayWasLost = State.IsAwaitingContinue;
+
             RefreshDayTicketSequenceProvider();
 
             State.Board.Clear();
             ApplyDayStartBoardPreSeed();
             TrayManager.DiscardAllForNewDay();
             TicketSlotManager.ResetSlotsForNewDay();
-            LivesManager.RetryDay();
+            LivesManager.RefillForNewDay();
             DayLifecycleManager.ResetForNewDay(CurrentDayTicketSeconds);
 
+            // Publishes DayRetried, which OnDayRetried answers with wallet.RevertToDayStart
+            // -- so the money is already rolled back by the time the save below runs.
             State.DayRetried.Publish(ticketsBeforeRetry);
+
+            if (!dayWasLost) return;
+
+            SpendKeyForLostDay(true);
+
+            // THIS PATH USED TO WRITE NOTHING, and that was a documented contract: a failed
+            // day was never permanent, so there was nothing to persist. The key breaks that
+            // -- if the spend is not written, a player can press Retry and force-quit to get
+            // the key back, which makes retries free and the whole economy decorative.
+            //
+            // It is LAST for a reason that is easy to undo by accident: DayRetried above has
+            // already reverted the wallet, so what reaches disk is the ROLLED-BACK money --
+            // the same figure the abandon path writes. Move this line any earlier and a
+            // failed attempt's earnings get banked, which is exactly the "a day attempt is
+            // atomic" rule this file exists to hold. Nothing new is banked here; only the
+            // key becomes permanent.
+            SaveProfile();
         }
 
         // Voluntary redo of a day that already succeeded (Day Complete
@@ -543,7 +652,7 @@ namespace ExpoTheExplorer.Bootstrap
             ApplyDayStartBoardPreSeed();
             TrayManager.DiscardAllForNewDay();
             TicketSlotManager.ResetSlotsForNewDay();
-            LivesManager.RetryDay();
+            LivesManager.RefillForNewDay();
             DayLifecycleManager.ResetForNewDay(CurrentDayTicketSeconds);
 
             // Writes the reverted balance back to disk, unlike the failed-day
@@ -551,18 +660,28 @@ namespace ExpoTheExplorer.Bootstrap
             // already banked the higher figure and the file would keep paying it
             // out on the next launch if we left it alone.
             //
-            // Deliberately LAST since D-014, where it used to be first: lives are
-            // persisted now, and RetryDay above refills them, so saving before that
-            // line would write the pre-refill count and hand the player back a
-            // half-empty life bar if they quit mid-redo.
+            // Position no longer matters, and that is worth stating rather than leaving
+            // as a silent invitation to move it. D-014 pushed this line LAST because
+            // lives were persisted and the refill above had to land in the file first,
+            // or a player quitting mid-redo got their half-empty bar back. D-064 removed
+            // lives from the profile, so there is nothing left here whose order against
+            // the refill can be got wrong. It stays last simply because nothing gains by
+            // moving it.
             SaveProfile();
         }
 
         // Free-win path: the day's goal was hit (GameManager.OnDayCompleted
-        // already paused ticket production). Mirrors RetryDay's reset order
-        // but deliberately skips LivesManager -- Lives are NOT reset on a
-        // successful advance, only a failed retry pays that cost (CLAUDE.md
-        // Section 3) -- and never publishes DayRetried.
+        // already paused ticket production). Mirrors RetryDay's reset order,
+        // LivesManager included, and never publishes DayRetried.
+        //
+        // THAT INCLUSION IS A REVERSAL, not an oversight (decisions.md D-064). This
+        // method used to skip LivesManager on purpose: "Lives are NOT reset on a
+        // successful advance, only a failed retry pays that cost". The user's rule is
+        // now that every day opens at a full bar, so the cost of a mistake is paid
+        // within the day that made it and never carried forward. Leaving the skip in
+        // would have split the behaviour by ROUTE rather than by rule -- a player who
+        // returned to the menu and pressed Play would get 3 hearts while one who took
+        // Next Day from the popup kept a half-empty row, for no reason they could see.
         public bool AdvanceToNextDay()
         {
             var nextIndex = State.CurrentDayIndex + 1;
@@ -595,6 +714,7 @@ namespace ExpoTheExplorer.Bootstrap
             ApplyDayStartBoardPreSeed();
             TrayManager.DiscardAllForNewDay();
             TicketSlotManager.ResetSlotsForNewDay();
+            LivesManager.RefillForNewDay();
             DayLifecycleManager.ResetForNewDay(CurrentDayTicketSeconds);
 
             return true;
