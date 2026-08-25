@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f83e5b40d0a3b4c3aa09277af96774c1, type: 3}
   m_Name: Mod_NoTomato
-  m_EditorClassIdentifier:
+  m_EditorClassIdentifier: 
   id: no_tomato
   displayName: No Tomato
   icon: {fileID: 21300000, guid: 4a3a44992b1fe4b5e9f2f03d870dedf4, type: 3}

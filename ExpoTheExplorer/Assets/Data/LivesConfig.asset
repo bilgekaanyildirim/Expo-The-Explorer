@@ -11,6 +11,6 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6f09abfc49444e7db387e196b8b39a32, type: 3}
   m_Name: LivesConfig
-  m_EditorClassIdentifier:
+  m_EditorClassIdentifier: 
   continueGemCost: 10
   continueSoftMoneyCost: 250
