@@ -341,6 +341,20 @@ namespace ExpoTheExplorer.UI
             CollectSlotChildren(mainDishSlot, itemTransforms);
             CollectSlotChildren(sideSlot, itemTransforms);
             CollectSlotChildren(drinkSlot, itemTransforms);
+
+            // Only the items already SEATED in the slots can be picked back
+            // up while this shake runs, so only they get a drag handler to
+            // check against below (see IsHeldByPlayer). finalItem is left
+            // with a null one deliberately: its OnEndDrag hasn't run yet when
+            // this is reached through OnDrop, so IsDragging can still read
+            // true, but it is being released rather than held and it has to
+            // shake along with the rest.
+            var itemHandlers = new BoardItemDragHandler[itemTransforms.Count + 1];
+            for (var i = 0; i < itemTransforms.Count; i++)
+            {
+                itemHandlers[i] = itemTransforms[i].GetComponent<BoardItemDragHandler>();
+            }
+
             itemTransforms.Add(finalItem.transform);
             foreach (var t in itemTransforms) t.DOKill();
 
@@ -362,13 +376,18 @@ namespace ExpoTheExplorer.UI
                     var itemOffset = wave * animConfig.ScatterShakeStrength * animConfig.ScatterShakeItemMultiplier;
                     for (var i = 0; i < itemTransforms.Count; i++)
                     {
+                        if (!IsShakeable(itemTransforms[i], itemHandlers[i])) continue;
                         SetWorldX(itemTransforms[i], itemBaseX[i] + itemOffset);
                     }
                 })
                 .OnComplete(() =>
                 {
                     SetWorldX(transform, trayBaseX);
-                    for (var i = 0; i < itemTransforms.Count; i++) SetWorldX(itemTransforms[i], itemBaseX[i]);
+                    for (var i = 0; i < itemTransforms.Count; i++)
+                    {
+                        if (!IsShakeable(itemTransforms[i], itemHandlers[i])) continue;
+                        SetWorldX(itemTransforms[i], itemBaseX[i]);
+                    }
 
                     if (wrongVisual != null) wrongVisual.SetActive(false);
                     ClearAllSlotVisuals();
@@ -381,6 +400,24 @@ namespace ExpoTheExplorer.UI
                     // each one's own OnComplete.
                     DOVirtual.DelayedCall(animConfig.SlotClearDuration, () => ticketCardView.SetTrayAnimating(false));
                 });
+        }
+
+        // A tray item the player has picked back up mid-shake belongs to the
+        // drag, not to this shake — BoardItemDragHandler is the single writer
+        // of a held item's transform, and this shake fighting it over the X
+        // axis is exactly what stranded one: OnDrag set X from the finger,
+        // the next OnUpdate here overwrote it back toward the tray, and the
+        // final restore snapped it there for good, while Y kept following
+        // normally. Since the item also hovers a cell above the finger by
+        // design, the player saw it stuck up and to the LEFT of the cursor.
+        // Rechecked every frame rather than filtered once up front, because
+        // the pickup happens DURING the shake — the same reason ClearSlot
+        // checks IsDragging on its own destroy pass. The null check covers an
+        // item that was dragged out and destroyed before the shake ended.
+        private static bool IsShakeable(Transform itemTransform, BoardItemDragHandler handler)
+        {
+            if (itemTransform == null) return false;
+            return handler == null || !handler.IsDragging;
         }
 
         private static void SetWorldX(Transform t, float x)
