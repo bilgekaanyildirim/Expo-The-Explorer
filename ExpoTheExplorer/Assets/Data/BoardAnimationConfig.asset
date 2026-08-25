@@ -15,4 +15,19 @@ MonoBehaviour:
   snapBackDuration: 0.25
   traySettleDuration: 0.2
   popInDuration: 0.2
+  popInJumpPower: 0.5
   slotClearDuration: 0.15
+  scatterShakeDuration: 0.5
+  scatterShakeStrength: 0.3
+  scatterShakeFrequency: 8
+  scatterShakeItemMultiplier: 1.2
+  deliveryGrowScale: 1.15
+  deliveryGrowDuration: 0.2
+  deliveryLiftDistance: 1.5
+  deliveryFadeDuration: 0.35
+  deliveryReentryDuration: 0.25
+  ticketExitLiftDistance: 150
+  ticketExitDuration: 0.3
+  ticketEntryDropDistance: 150
+  ticketEntryDuration: 0.3
+  ticketDangerBlinkPeriod: 0.8

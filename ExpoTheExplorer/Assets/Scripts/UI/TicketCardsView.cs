@@ -64,10 +64,26 @@ namespace ExpoTheExplorer.UI
         {
             var economy = gameManager.EconomyConfig;
 
-            if (remainingRatio <= economy.CriticalRatio) return visualsConfig.TimerCriticalColor;
+            if (IsInDangerZone(remainingRatio)) return visualsConfig.TimerCriticalColor;
             if (remainingRatio <= economy.WarningRatio) return visualsConfig.TimerWarningColor;
             return visualsConfig.TimerFillColor;
         }
+
+        // The critical tier, named — "the bar is red" and "the card is pulsing"
+        // are now literally the same expression, so they cannot drift apart into
+        // a window where one says the ticket is in trouble and the other doesn't.
+        // Deliberately NOT a third authored threshold: a danger number of its own
+        // would be a number the player can already see the wrong answer to, since
+        // the bar's colour is right there on the card. The warning (orange) tier
+        // is left out on purpose — two thirds of a ticket's life is where the tip
+        // starts stepping down, not where the ticket is about to be lost.
+        public bool IsInDangerZone(float remainingRatio) => remainingRatio <= gameManager.EconomyConfig.CriticalRatio;
+
+        // Which of the danger flash's two tints the card's paper wears right now.
+        // The card asks for a HALF, not a colour: how loud the alarm is belongs to
+        // the visuals asset, in the same place as the ticket sprites and the timer
+        // bar's three colours, so a card never holds an opinion about it.
+        public Color DangerFlashColorFor(bool lit) => lit ? visualsConfig.DangerFlashColor : visualsConfig.DangerFlashRestColor;
 
         private readonly List<TicketCardView> cards = new();
 

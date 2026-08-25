@@ -24,5 +24,5 @@ MonoBehaviour:
   timerFillColor: {r: 0.4941176, g: 0.8156863, b: 0.4941176, a: 1}
   timerWarningColor: {r: 1, g: 0.7686275, b: 0.4196078, a: 1}
   timerCriticalColor: {r: 1, g: 0.4823529, b: 0.4823529, a: 1}
-  timerWarningRatio: 0.666
-  timerCriticalRatio: 0.3
+  dangerFlashColor: {r: 1, g: 0.495283, b: 0.495283, a: 1}
+  dangerFlashRestColor: {r: 1, g: 1, b: 1, a: 1}

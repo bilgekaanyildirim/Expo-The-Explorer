@@ -52,6 +52,8 @@ namespace ExpoTheExplorer.Data
         [SerializeField] private float ticketEntryDropDistance = 150f;
         [Tooltip("Duration (seconds) of the next ticket card's drop-in-and-fade.")]
         [SerializeField] private float ticketEntryDuration = 0.3f;
+        [Tooltip("Seconds for ONE full on-off cycle of the danger flash a ticket card runs once its remaining time drops into EconomyConfig's Critical Ratio (the instant the timer bar turns red). The card is lit for the first half and rested for the second — a square wave, so this is the only speed knob. WHICH two colours it flashes between lives on TicketCardVisualsConfig. 0 turns the flash off and leaves the danger image showing solid instead — deliberately not a fast strobe.")]
+        [SerializeField, Min(0f)] private float ticketDangerBlinkPeriod = 0.6f;
 
         public float SnapBackDuration => snapBackDuration;
         public float TraySettleDuration => traySettleDuration;
@@ -71,5 +73,6 @@ namespace ExpoTheExplorer.Data
         public float TicketExitDuration => ticketExitDuration;
         public float TicketEntryDropDistance => ticketEntryDropDistance;
         public float TicketEntryDuration => ticketEntryDuration;
+        public float TicketDangerBlinkPeriod => ticketDangerBlinkPeriod;
     }
 }

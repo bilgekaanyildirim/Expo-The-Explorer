@@ -38,6 +38,8 @@ namespace ExpoTheExplorer.UI
         [SerializeField] private Image timerFillImage;
         [Tooltip("Inactive divider tick, cloned once per segment boundary. Must be a sibling AFTER the fill so the ticks draw over it, and anchored to the track's left edge with a vertical stretch — only its horizontal offset is moved. Keep its width equal to the track sprite's outline, or the ticks read as a different line weight.")]
         [SerializeField] private RectTransform timerDividerTemplate;
+        [Tooltip("OPTIONAL. A single Image that blinks hard on and off while this ticket's remaining time is inside the danger zone — the same instant the timer bar turns red. Its colours are never touched, so author it as loud as you like. Toggled through Image.enabled, not SetActive, so it keeps its layout footprint and never slides the card's other rows: author it as ONE Image drawn over the card (its own children would not be hidden with it), outside any layout group. Left empty, the ticket's paper still flashes and only the icon is missing.")]
+        [SerializeField] private Image dangerImage;
         [SerializeField] private Image dishImage;
         [SerializeField] private Transform modificationsListParent;
         [SerializeField] private ModificationSlotView modificationRowTemplate;
@@ -54,6 +56,8 @@ namespace ExpoTheExplorer.UI
         private bool isValid;
         private bool transitionInProgress;
         private bool trayAnimating;
+        private bool dangerPulsing;
+        private Color authoredBackgroundColor = Color.white;
         private RectTransform rectTransform;
         private readonly List<ModificationSlotView> modificationRows = new();
         private readonly List<RectTransform> timerDividers = new();
@@ -86,6 +90,12 @@ namespace ExpoTheExplorer.UI
 
             rectTransform = (RectTransform)transform;
 
+            // Read once, here, and never again: from the first danger flash onward the
+            // live value is a flash colour, so anything asking later would learn the
+            // alarm's colour rather than the card's. This is what the paper returns to
+            // when a ticket leaves the danger zone or the slot changes hands.
+            authoredBackgroundColor = background.color;
+
             // The container itself must stay active — only the template row
             // inside it (and the clones built from it) toggle. Prefab authoring
             // sometimes leaves this off after hiding the two sample rows in the
@@ -93,6 +103,20 @@ namespace ExpoTheExplorer.UI
             modificationsListParent.gameObject.SetActive(true);
             modificationRowTemplate.gameObject.SetActive(false);
             timerDividerTemplate.gameObject.SetActive(false);
+
+            // The one optional reference on this card, and the only one whose absence
+            // ValidateReferences deliberately does NOT fail on: that would set isValid
+            // false and take the WHOLE card down — an invisible ticket — over a missing
+            // decoration the card has a working degraded mode without (the paper still
+            // flashes).
+            // But an unwired one is a feature that is simply not there with nothing on
+            // screen to say why, so it says so here instead: once per card, at build
+            // time, naming the prefab to wire rather than going quiet.
+            if (dangerImage == null)
+            {
+                Debug.LogWarning($"{nameof(TicketCardView)} on '{name}' has no {nameof(dangerImage)} wired — a ticket running out of time will still flash its paper, but no danger icon will appear. Wire it on the TicketCard prefab.", this);
+            }
+
             RebuildContent(null);
         }
 
@@ -219,6 +243,11 @@ namespace ExpoTheExplorer.UI
 
         private void RebuildContent(Ticket ticket)
         {
+            // Handed back BEFORE the new sprite goes on, so a card that was mid-flash
+            // when its ticket left — delivered, cancelled, or timed out — does not
+            // hand that frame's alarm colour to whatever fills the slot next.
+            ResetDangerPulse();
+
             background.sprite = owner.TicketSpriteFor(ticket?.PatienceType ?? PatienceType.Normal);
 
             ClearModificationRows();
@@ -281,6 +310,74 @@ namespace ExpoTheExplorer.UI
 
             timerFillImage.fillAmount = remainingRatio;
             timerFillImage.color = owner.TimerFillColorFor(remainingRatio);
+            ApplyDangerPulse(owner.IsInDangerZone(remainingRatio));
+        }
+
+        // The danger flash rides the timer read above rather than running as its own
+        // looping tween, and that is a lifetime decision, not a style one: the two
+        // things it writes — the paper's colour and the icon's enabled flag — are both
+        // owned by RebuildContent as well, which runs whenever the slot's ticket
+        // changes. A loop tween would have to be killed on every one of those
+        // hand-offs, and PlayDeliveryTransition already kills and re-tweens this card;
+        // computing the flash here instead means Update's existing silence for the
+        // whole transition (transitionInProgress) is all the coordination needed.
+        //
+        // Phase comes from Time.time, not a per-card accumulator, so all three cards
+        // flash together: three alarms out of step read as clutter, one rhythm reads
+        // as an alarm.
+        private void ApplyDangerPulse(bool inDanger)
+        {
+            if (!inDanger)
+            {
+                // Guarded rather than written every frame: this is the state a ticket
+                // spends most of its life in, and the paper's colour belongs to whoever
+                // set it last. Only a flash that actually ran has something to give
+                // back. Reachable for a live ticket only if its clock ever moves UP —
+                // no mechanic does that today (a Time Reset powerup would) — but the
+                // restore is two lines and its absence would strand a card red.
+                if (dangerPulsing) ResetDangerPulse();
+                return;
+            }
+
+            dangerPulsing = true;
+
+            // A SQUARE wave, not a ramp: lit for the first half of the period, rested
+            // for the second. A smoothly interpolated flash reads as fading, which is
+            // exactly what the alpha version got wrong — an alarm switches.
+            //
+            // A zero period means "no flash", not "flash infinitely fast". Clamping it
+            // to some minimum would turn a 0 left in the asset into a ~20Hz strobe —
+            // unreadable, and the kind of flashing that is a genuine accessibility
+            // hazard. Lit-and-steady is the honest reading of "no cycle authored".
+            var period = animConfig.TicketDangerBlinkPeriod;
+            var lit = period <= 0f || Mathf.Repeat(Time.time, period) < period * 0.5f;
+
+            // The PAPER is what changes colour; the customer name, the dish photo, the
+            // modification rows and the timer bar printed on it all stay fully opaque.
+            // That is the whole reason this is a tint and not the CanvasGroup alpha it
+            // started as: dimming the card took the very numbers the player is reading
+            // down with it, at the one moment they are worth reading.
+            background.color = owner.DangerFlashColorFor(lit);
+
+            // Hard on/off, so the icon keeps its own artwork at full saturation instead
+            // of being faded through a half-transparent version of itself. It shares the
+            // paper's phase deliberately: both halves then say one thing — DANGER, or
+            // back to normal — rather than trading places and reading as motion.
+            if (dangerImage != null) dangerImage.enabled = lit;
+        }
+
+        // The paper goes back to the colour the PREFAB authored, not to the flash's
+        // own rest colour: those are two different things. The rest colour is half of
+        // a choreography (white by default, which is why the two usually look alike),
+        // while authoredBackgroundColor is the card's own tint, and a card that came
+        // out of the danger zone owes the player the second one. Captured once at
+        // Initialize, because after the first flash the live value is no longer it.
+        private void ResetDangerPulse()
+        {
+            dangerPulsing = false;
+
+            if (dangerImage != null) dangerImage.enabled = false;
+            background.color = authoredBackgroundColor;
         }
 
         // The bar spans the ticket's WHOLE time limit, so a tick belongs at
