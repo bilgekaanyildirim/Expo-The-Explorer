@@ -126,12 +126,29 @@ namespace ExpoTheExplorer.UI
         // a deliberate takeover of anything currently animating it (a
         // leftover pop-in, snap-back, or tray-settle tween), unlike
         // OnEndDrag below where a targeted kill is needed instead.
+        //
+        // COMPLETING that kill, and doing it BEFORE the home snapshot, is
+        // what makes the snapshot trustworthy. Every tween that can be live
+        // on a board item at pickup time (fly-in, snap-back, tray-settle)
+        // ends at the item's real resting place at full scale, so completing
+        // them means homePosition/homeScale describe where this item belongs
+        // rather than wherever it happened to be mid-flight. The case that
+        // forced this: a wrong-order scatter starts its items' fly-in with a
+        // delay (BoardView.RefreshCell, held for the tray's pre-scatter
+        // shake), so for that whole delay the container sits parked on the
+        // tray at localScale ZERO. Snapshotting first and killing after
+        // captured that zero as homeScale and cancelled the tween that would
+        // have grown it — the item then dragged invisibly and OnEndDrag's
+        // own `localScale = homeScale` re-applied the zero, so it stayed
+        // invisible after landing in a tray slot even though TrayManager had
+        // correctly counted it.
         private void ApplyPickupVisuals(PointerEventData eventData)
         {
+            transform.DOKill(true);
+
             homePosition = transform.position;
             homeScale = transform.localScale;
 
-            transform.DOKill();
             scaleTween = transform.DOScale(homeScale * dragFeel.pickupScaleMultiplier, dragFeel.pickupScaleDuration).SetEase(Ease.OutBack);
 
             // Snap straight to the resting hover position (finger + offset)

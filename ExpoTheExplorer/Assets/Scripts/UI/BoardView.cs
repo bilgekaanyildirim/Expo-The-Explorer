@@ -278,12 +278,19 @@ namespace ExpoTheExplorer.UI
 
                 if (flyInOrigin.HasValue)
                 {
-                    // container.position is already this cell's correct
-                    // destination (set above for a brand-new container, or
-                    // never moved for a reused one) — captured before it
-                    // gets overwritten below, then animated back to it, so
-                    // the item visually flies in from flyInOrigin and grows
-                    // into place rather than just popping in place.
+                    // The destination is recomputed from the cell, never read
+                    // off container.position. A reused container is only
+                    // still standing on its cell if every tween that ever
+                    // moved it ran to completion, and an interrupted fly-in
+                    // (the player grabbing an item mid-flight) leaves it
+                    // stranded wherever it was killed — trusting the
+                    // transform there would bake that stranded spot in as
+                    // this cell's destination from then on. Captured after
+                    // the reset and before flyInOrigin overwrites it below,
+                    // then animated back to, so the item visually flies in
+                    // from flyInOrigin and grows into place rather than just
+                    // popping in place.
+                    container.localPosition = CellPosition(x, y, -0.1f);
                     var destinationWorldPos = container.position;
                     container.position = flyInOrigin.Value;
                     container.localScale = Vector3.zero;
@@ -297,6 +304,25 @@ namespace ExpoTheExplorer.UI
                     // pre-scatter shake finishes, so the two stay in sync.
                     container.DOJump(destinationWorldPos, animConfig.PopInJumpPower * cellSize, 1, animConfig.PopInDuration).SetEase(Ease.OutQuad).SetDelay(flyInDelay);
                     container.DOScale(Vector3.one, animConfig.PopInDuration).SetEase(Ease.OutBack).SetDelay(flyInDelay);
+
+                    // For the length of a delayed fly-in (only ever a
+                    // wrong-order scatter) this container is active, at
+                    // scale zero, parked on the tray it came from — and with
+                    // its collider live that is a stack of invisible but
+                    // fully grabbable items sitting exactly where the
+                    // player's finger just released. Held out of the raycast
+                    // until it actually starts appearing; the drag handler
+                    // owns this flag from the moment a real drag begins, and
+                    // the two never overlap because no drag can start while
+                    // it's off.
+                    if (flyInDelay > 0f && container.TryGetComponent<Collider2D>(out var itemCollider))
+                    {
+                        itemCollider.enabled = false;
+                        DOVirtual.DelayedCall(flyInDelay, () =>
+                        {
+                            if (itemCollider != null) itemCollider.enabled = true;
+                        });
+                    }
                 }
                 else
                 {
