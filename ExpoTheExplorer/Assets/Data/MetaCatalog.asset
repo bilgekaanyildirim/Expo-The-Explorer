@@ -235,3 +235,9 @@ MonoBehaviour:
       sortOrder: 0
       requiresAreaId: building
       unlocksArea: 1
+  - id: meta2
+    displayName: meta2
+    backgroundSprite: {fileID: 21300000, guid: 9fc6569daf0904c458d21e263cc67f55, type: 3}
+    backgroundBgSprite: {fileID: 0}
+    unlockAtDayIndex: 29
+    items: []
