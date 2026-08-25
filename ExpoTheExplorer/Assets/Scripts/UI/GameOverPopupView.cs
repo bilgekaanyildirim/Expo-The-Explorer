@@ -26,7 +26,6 @@ namespace ExpoTheExplorer.UI
         [SerializeField] private GameManager gameManager;
         [SerializeField] private GameObject popupRoot;
         [SerializeField] private TMP_Text livesRefillText;
-        [SerializeField] private Button softMoneyButton;
         [SerializeField] private Button gemButton;
         [SerializeField] private Button retryButton;
         [SerializeField] private Button mainMenuButton;
@@ -42,7 +41,6 @@ namespace ExpoTheExplorer.UI
             state = gameManager.State;
             state.LivesDepleted.Subscribe(Show);
 
-            softMoneyButton.onClick.AddListener(OnSoftMoneyClicked);
             gemButton.onClick.AddListener(OnGemClicked);
             retryButton.onClick.AddListener(OnRetryClicked);
             mainMenuButton.onClick.AddListener(OnMainMenuClicked);
@@ -52,7 +50,6 @@ namespace ExpoTheExplorer.UI
         {
             if (state != null) state.LivesDepleted.Unsubscribe(Show);
 
-            softMoneyButton.onClick.RemoveListener(OnSoftMoneyClicked);
             gemButton.onClick.RemoveListener(OnGemClicked);
             retryButton.onClick.RemoveListener(OnRetryClicked);
             mainMenuButton.onClick.RemoveListener(OnMainMenuClicked);
@@ -64,7 +61,6 @@ namespace ExpoTheExplorer.UI
 
             popupRoot.SetActive(true);
             livesRefillText.text = state.MaxLives.ToString();
-            softMoneyButton.interactable = state.SoftMoney >= config.ContinueSoftMoneyCost;
             gemButton.interactable = state.Gems >= config.ContinueGemCost;
             retryButton.interactable = true;
         }
@@ -108,7 +104,6 @@ namespace ExpoTheExplorer.UI
             if (gameManager == null) missing.Add(nameof(gameManager));
             if (popupRoot == null) missing.Add(nameof(popupRoot));
             if (livesRefillText == null) missing.Add(nameof(livesRefillText));
-            if (softMoneyButton == null) missing.Add(nameof(softMoneyButton));
             if (gemButton == null) missing.Add(nameof(gemButton));
             if (retryButton == null) missing.Add(nameof(retryButton));
             if (mainMenuButton == null) missing.Add(nameof(mainMenuButton));
