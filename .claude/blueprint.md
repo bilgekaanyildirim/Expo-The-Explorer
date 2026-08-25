@@ -17,7 +17,14 @@
      ownership problem: apply procedures/ownership.md before writing it
      down. One line per system: name — responsibility — depends-on. -->
 - <System — one-line responsibility — depends on: a, b>
-- Bootstrap — central runtime composition root / game flow orchestration (GameManager) — depends on: DaySystem, BoardDistribution, TicketSystem
+- Bootstrap — central runtime composition root / game flow orchestration (GameManager) — depends on: DaySystem, BoardDistribution, TicketSystem, EconomySystem
+<!-- EconomySystem added to this line 2026-08-25 (decisions.md D-076/D-077): it was missing
+     and had been for a while -- GameManager constructs EconomyCalculator and calls it
+     on every delivery, so the arrow was already there in code and only the map denied
+     it. Repaired as part of the task that touched that very handler -- and KEPT when that task
+     was reverted (D-077), because the arrow was never the receipt's: GameManager still builds and
+     calls EconomyCalculator on every delivery. -->
+
 - DaySystem — Day content authoring/parsing/playback (ticket-sequence rolling, Day Start board replay, JSON schema, validation) — depends on: TicketSystem
 - BoardDistribution — live required-pool + noise-pool board food spawning (probabilistic guaranteed-ticket selection) — depends on: -
 - TicketSystem — active-slot ticket lifecycle (assignment/delivery/cancellation) + ticket generation — depends on: EconomySystem
@@ -78,6 +85,38 @@
      deliberate departure from Lives, whose public setter leaves its single-writer
      rule resting on a comment; here the compiler holds it. The second reason is
      scope: GameState is the central state of a DAY. -->
+- PowerupSystem — the STOCK behind GDD 5.2's three powerups: how many charges of each the player holds, earning them by completing a day, buying them with Gems, and what spending one costs — depends on: ProgressionSystem
+<!-- PowerupSystem -> ProgressionSystem, added 2026-08-25 (decisions.md D-081; GDD 5.2
+     reopened by the user; plan in .claude/powerup-plan.md): the Gem purchase is charged through Wallet, the
+     single writer of Gems. Identical in shape to the LivesSystem and KeySystem arrows
+     above and for the identical reason. One-directional -- ProgressionSystem does not
+     know powerups exist.
+
+     IT DELIBERATELY DOES NOT KNOW WHAT A POWERUP DOES, and that is the whole reason this
+     arrow list is one line long instead of four. The three effects need the board, the
+     trays and the ticket slots; taking references to them would point this system at
+     TraySystem, TicketSystem and BoardUI at once. Instead each effect is handed in as a
+     `Func<bool>` by whoever can actually perform it -- the day scene's composition root --
+     which is the same shape TrayManager and BoardDistributor already use to stay out of
+     each other's assemblies.
+
+     THAT SEAM IS ALSO THE TWO-SCREEN SPLIT, not just tidiness. Buying happens on the MAIN
+     SCREEN and spending in the day scene (the user's decision, 2026-08-25). Both screens
+     build a GameSession and therefore both hold a PowerupManager -- the menu needs the
+     counts to sell against -- but only GameManager registers effects. So a use button
+     that ended up on the menu by mistake cannot spend a charge: TryUse finds nothing
+     registered and refuses. The rule is enforced by what is absent rather than by a
+     scene check.
+
+     The count lives in PowerupManager's own private field, NOT on GameState, for the two
+     reasons KeyManager's note gives: a charge outlives the day, and a private field makes
+     the single-writer rule a compile error rather than a comment.
+
+     The `Func<bool>` return value is a RULE, not plumbing: false means the effect had no
+     work to do, and GDD 5.2 says such a press costs no charge. All three powerups have
+     reachable moments with nothing to do (an empty board, no active tickets, a finished
+     day), so this is the difference between a convenience and a resource quietly lost. -->
+
 - DayLifecycle — per-day receipt bookkeeping (base tip / bonus tip / failed orders) feeding the Day Complete popup, and since D-057 the popup's payout HANDOVER (`DayRewardFlightView`) — depends on: EconomySystem
 <!-- The handover, added 2026-08-24 (decisions.md D-057): a day's earnings are no longer
      credited as they are made, so the Day Complete popup is where the money actually

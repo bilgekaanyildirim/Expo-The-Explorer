@@ -55,6 +55,12 @@ namespace ExpoTheExplorer.Data
         [Tooltip("Seconds for ONE full on-off cycle of the danger flash a ticket card runs once its remaining time drops into EconomyConfig's Critical Ratio (the instant the timer bar turns red). The card is lit for the first half and rested for the second — a square wave, so this is the only speed knob. WHICH two colours it flashes between lives on TicketCardVisualsConfig. 0 turns the flash off and leaves the danger image showing solid instead — deliberately not a fast strobe.")]
         [SerializeField, Min(0f)] private float ticketDangerBlinkPeriod = 0.6f;
 
+        [Header("Life Lost")]
+        [Tooltip("How far the broken heart rises over the tray that cost a life, in RectTransform units — the hearts are canvas Images, so this is the same unit as the ticket card's own 150-unit exit lift, NOT world units.")]
+        [SerializeField] private float lifeLostHeartRiseDistance = 120f;
+        [Tooltip("Duration (seconds) of that rise-and-fade. Floored in code at a tenth of a second, so a 0 here is a very quick heart rather than an invisible one.")]
+        [SerializeField, Min(0f)] private float lifeLostHeartDuration = 1f;
+
         public float SnapBackDuration => snapBackDuration;
         public float TraySettleDuration => traySettleDuration;
         public float PopInDuration => popInDuration;
@@ -74,5 +80,7 @@ namespace ExpoTheExplorer.Data
         public float TicketEntryDropDistance => ticketEntryDropDistance;
         public float TicketEntryDuration => ticketEntryDuration;
         public float TicketDangerBlinkPeriod => ticketDangerBlinkPeriod;
+        public float LifeLostHeartRiseDistance => lifeLostHeartRiseDistance;
+        public float LifeLostHeartDuration => lifeLostHeartDuration;
     }
 }

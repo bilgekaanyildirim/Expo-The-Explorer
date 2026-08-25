@@ -84,7 +84,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             }
 
             var state = new GameState(gameConfig);
-            var slotManager = new TicketSlotManager(state, CountingProvider, () => { });
+            var slotManager = new TicketSlotManager(state, CountingProvider, _ => { });
 
             Assert.DoesNotThrow(() =>
             {
@@ -141,7 +141,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             Ticket NextOrNull() => sequenceProvider.HasNext ? sequenceProvider.NextTicket() : null;
 
             var state = new GameState(gameConfig);
-            var slotManager = new TicketSlotManager(state, NextOrNull, () => { });
+            var slotManager = new TicketSlotManager(state, NextOrNull, _ => { });
             // No StarScoreConfig: this test is about the day COMPLETING, and the star score
             // it would produce is DayLifecycleManagerTests' subject. Null is the honest
             // argument here rather than a config nothing reads.

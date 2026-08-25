@@ -31,3 +31,5 @@ MonoBehaviour:
   ticketEntryDropDistance: 150
   ticketEntryDuration: 0.3
   ticketDangerBlinkPeriod: 0.8
+  lifeLostHeartRiseDistance: 200
+  lifeLostHeartDuration: 2

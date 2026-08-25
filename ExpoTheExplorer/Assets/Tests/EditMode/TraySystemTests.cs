@@ -64,7 +64,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             state.TicketSlots[0] = ticket;
 
             var delivered = new List<int>();
-            var manager = new TrayManager(state, slotIndex => delivered.Add(slotIndex), () => state.Lives--);
+            var manager = new TrayManager(state, slotIndex => delivered.Add(slotIndex), _ => state.Lives--);
 
             var accepted = manager.TryAddItem(0, new BoardItem(main, ticket.Modifications));
 
@@ -88,7 +88,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             state.TicketSlots[0] = ticket;
 
             var callOrder = new List<string>();
-            var manager = new TrayManager(state, _ => callOrder.Add("delivered"), () => { });
+            var manager = new TrayManager(state, _ => callOrder.Add("delivered"), _ => { });
 
             manager.TryAddItem(0, new BoardItem(main, ticket.Modifications), () => callOrder.Add("detached"));
 
@@ -100,7 +100,7 @@ namespace ExpoTheExplorer.Tests.EditMode
         {
             var state = new GameState(gameConfig);
             var main = CreateFoodItem();
-            var manager = new TrayManager(state, _ => { }, () => state.Lives--);
+            var manager = new TrayManager(state, _ => { }, _ => state.Lives--);
 
             var onAcceptedCalled = false;
             var accepted = manager.TryAddItem(0, new BoardItem(main, new List<Modification>()), () => onAcceptedCalled = true);
@@ -120,7 +120,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             var startingLives = state.Lives;
 
             var delivered = new List<int>();
-            var manager = new TrayManager(state, slotIndex => delivered.Add(slotIndex), () => state.Lives--);
+            var manager = new TrayManager(state, slotIndex => delivered.Add(slotIndex), _ => state.Lives--);
 
             var accepted = manager.TryAddItem(0, new BoardItem(wrongMain, ticket.Modifications));
 
@@ -170,7 +170,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             state.TicketSlots[0] = ticket;
             var startingLives = state.Lives;
 
-            var manager = new TrayManager(state, _ => { }, () => state.Lives--);
+            var manager = new TrayManager(state, _ => { }, _ => state.Lives--);
 
             manager.TryAddItem(0, new BoardItem(main, new List<Modification>()));
 
@@ -188,7 +188,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             state.TicketSlots[0] = ticket;
 
             var delivered = new List<int>();
-            var manager = new TrayManager(state, slotIndex => delivered.Add(slotIndex), () => state.Lives--);
+            var manager = new TrayManager(state, slotIndex => delivered.Add(slotIndex), _ => state.Lives--);
 
             manager.TryAddItem(0, new BoardItem(main, ticket.Modifications));
 
@@ -201,7 +201,7 @@ namespace ExpoTheExplorer.Tests.EditMode
         {
             var state = new GameState(gameConfig);
             var main = CreateFoodItem();
-            var manager = new TrayManager(state, _ => { }, () => state.Lives--);
+            var manager = new TrayManager(state, _ => { }, _ => state.Lives--);
 
             var accepted = manager.TryAddItem(0, new BoardItem(main, new List<Modification>()));
 
@@ -216,7 +216,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             var ticket = CreateTicket(new List<FoodItemConfig> { main });
             ticket.State = TicketState.Delivered;
             state.TicketSlots[0] = ticket;
-            var manager = new TrayManager(state, _ => { }, () => state.Lives--);
+            var manager = new TrayManager(state, _ => { }, _ => state.Lives--);
 
             var accepted = manager.TryAddItem(0, new BoardItem(main, new List<Modification>()));
 
@@ -233,7 +233,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             state.TicketSlots[0] = ticket;
             var startingLives = state.Lives;
 
-            var manager = new TrayManager(state, _ => { }, () => state.Lives--);
+            var manager = new TrayManager(state, _ => { }, _ => state.Lives--);
             manager.TryAddItem(0, new BoardItem(main, ticket.Modifications));
 
             manager.OnTicketAssigned(0);
@@ -247,7 +247,7 @@ namespace ExpoTheExplorer.Tests.EditMode
         public void OnTicketAssigned_EmptyTray_DoesNothingWithoutThrowing()
         {
             var state = new GameState(gameConfig);
-            var manager = new TrayManager(state, _ => { }, () => state.Lives--);
+            var manager = new TrayManager(state, _ => { }, _ => state.Lives--);
 
             Assert.DoesNotThrow(() => manager.OnTicketAssigned(0));
             Assert.AreEqual(0, state.Board.OccupiedCellCount);
@@ -264,7 +264,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             state.TicketSlots[0] = ticketA;
             state.TicketSlots[1] = ticketB;
 
-            var manager = new TrayManager(state, _ => { }, () => state.Lives--);
+            var manager = new TrayManager(state, _ => { }, _ => state.Lives--);
             manager.TryAddItem(0, new BoardItem(main, ticketA.Modifications));
             manager.TryAddItem(1, new BoardItem(main, ticketB.Modifications));
 
@@ -293,7 +293,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             var wrongMain = CreateFoodItem();
             var ticket = CreateTicket(new List<FoodItemConfig> { main });
             state.TicketSlots[0] = ticket;
-            var manager = new TrayManager(state, _ => { }, () => state.Lives--);
+            var manager = new TrayManager(state, _ => { }, _ => state.Lives--);
 
             Assert.DoesNotThrow(() => manager.TryAddItem(0, new BoardItem(wrongMain, ticket.Modifications)));
             Assert.AreEqual(1, state.Board.PendingSpawnCount);

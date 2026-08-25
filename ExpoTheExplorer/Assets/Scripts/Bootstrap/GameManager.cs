@@ -10,10 +10,12 @@ using ExpoTheExplorer.Systems.EconomySystem;
 using ExpoTheExplorer.Systems.KeySystem;
 using ExpoTheExplorer.Systems.LivesSystem;
 using ExpoTheExplorer.Systems.MetaSystem;
+using ExpoTheExplorer.Systems.PowerupSystem;
 using ExpoTheExplorer.Session;
 using ExpoTheExplorer.Systems.ProgressionSystem;
 using ExpoTheExplorer.Systems.TicketSystem;
 using ExpoTheExplorer.Systems.TraySystem;
+using ExpoTheExplorer.UI;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -42,11 +44,40 @@ namespace ExpoTheExplorer.Bootstrap
         [Tooltip("Key economy knobs (cap, regen minutes, refill cost). Create via Create > ExpoTheExplorer > Data > Key Config.")]
         [SerializeField] private KeyConfig keyConfig;
 
+        // Required in practice, but it FAILS OPEN rather than aborting Awake the way
+        // keyConfig above does (GDD 5.2, .claude/powerup-plan.md). The difference is what
+        // each one costs when missing: without a KeyConfig there is no session at all and
+        // the scene cannot run, while without this there is simply no powerup stock -- the
+        // day is fully playable, three buttons are just absent. That is the same trade
+        // NoKeysPopupView documents: a forgotten drag must never be the thing that makes
+        // the game unplayable. It is still LOUD, because an unwired field and a player
+        // who has spent all their charges look identical on screen.
+        [Tooltip("Powerup stock knobs (starting charges, Gem price, per-day grant, clarity window). Create via Create > ExpoTheExplorer > Data > Powerup Config.")]
+        [SerializeField] private PowerupConfig powerupConfig;
+
         // Optional, and it owns nothing: this class asks for one haptic (a key being
         // spent) and is otherwise unaware haptics exist. The day's other moments reach
         // HapticsBinder through GameState's events, without passing through here.
         [Tooltip("Optional. The scene's HapticsBinder, used only so spending a key can be felt. Unwired changes nothing but that.")]
         [SerializeField] private HapticsBinder haptics;
+
+        // Optional, and the reason it hangs off this class rather than off the tray:
+        // the two life-loss routes both end here and NOWHERE else, so this is the one
+        // place that knows a life was actually spent -- and since D-078 it also knows
+        // on which slot. The tray could only ever see half of it.
+        [Tooltip("Optional. The scene's LifeLostHeartView, shown which slot just cost a life so a broken heart can rise from that tray. Unwired, nothing but that animation is missing.")]
+        [SerializeField] private LifeLostHeartView lifeLostHeartView;
+
+        // Optional, and the failure is genuinely harmless: with this empty the Auto-Collect
+        // powerup finds nothing registered to perform it, so pressing its button refuses
+        // and -- because the refusal is honest -- costs the player no charge. The other two
+        // powerups are unaffected.
+        //
+        // It is a UI object rather than a system, and that is forced rather than chosen:
+        // placing an item has to go through the tray's ordinary drop path or the tray draws
+        // nothing (see AutoCollectRunner), and that path lives in MonoBehaviours.
+        [Tooltip("Optional. The scene's AutoCollectRunner. Without it the Auto-Collect powerup does nothing and spends nothing.")]
+        [SerializeField] private AutoCollectRunner autoCollectRunner;
 
         // The four numbers behind the day's star rating (decisions.md D-060). Required,
         // unlike metaCatalog below: without it every completed day scores 0 stars and pays
@@ -97,6 +128,18 @@ namespace ExpoTheExplorer.Bootstrap
         // session owns it, and a dozen hand-wired views in the scene reach their systems
         // through this component. Step 5's out-of-keys popup reads it too.
         public KeyManager KeyManager => Session?.KeyManager;
+
+        // Forwarding property, same shape and same reason as KeyManager above. NULL when
+        // no PowerupConfig was wired (see the field's note) — every reader null-checks,
+        // which is the price of failing open and is deliberately paid here rather than in
+        // GameSession, where a Debug.LogError would fail every EditMode test that builds a
+        // session without one.
+        //
+        // The day scene is also the ONLY place that registers powerup effects (Adım 4-6 of
+        // .claude/powerup-plan.md fill these in). That is what makes the two-screen split
+        // safe: the main screen builds the same manager to sell against, registers nothing,
+        // and therefore cannot spend a charge even if a use button ended up there.
+        public PowerupManager PowerupManager => Session?.PowerupManager;
 
         public TicketSlotManager TicketSlotManager { get; private set; }
         public TrayManager TrayManager { get; private set; }
@@ -160,7 +203,17 @@ namespace ExpoTheExplorer.Bootstrap
                 return;
             }
 
-            session = new GameSession(gameConfig, livesConfig, keyConfig, foodCatalog);
+            if (powerupConfig == null)
+            {
+                Debug.LogError(
+                    $"{nameof(GameManager)} on '{name}' has no {nameof(PowerupConfig)} wired, so this day has no " +
+                    "powerups at all — no charges, no HUD buttons, and a save written from here keeps whatever " +
+                    "stock the profile already had rather than zeroing it. Create the asset via " +
+                    "Create > ExpoTheExplorer > Data > Powerup Config and drag it into the Powerup Config field.",
+                    this);
+            }
+
+            session = new GameSession(gameConfig, livesConfig, keyConfig, foodCatalog, powerupConfig);
 
             if (metaCatalog == null)
             {
@@ -200,6 +253,9 @@ namespace ExpoTheExplorer.Bootstrap
             // brand new), which is why this is the only day-start call.
             DayLifecycleManager.ResetForNewDay(CurrentDayTicketSeconds);
 
+            // After TicketSlotManager exists, because the shared gate below reads it.
+            RegisterPowerupEffects();
+
             // Subscribe before the initial fill so the first 3 tickets trigger
             // board playback too, not just later deliveries/cancellations.
             State.TicketAssigned.Subscribe(OnTicketAssigned);
@@ -209,6 +265,59 @@ namespace ExpoTheExplorer.Bootstrap
             ApplyDayStartBoardPreSeed();
             TicketSlotManager.FillEmptySlots();
         }
+
+        // The ONE place a powerup is connected to something that can actually perform it,
+        // and it is this class for the reason every other system-to-system join is: this is
+        // the day's composition root. PowerupSystem stays unaware of tickets, trays and the
+        // board; it holds charges and calls a delegate.
+        //
+        // It is also what makes the two-screen split safe rather than merely tidy. The main
+        // screen builds the same PowerupManager -- it needs the counts to sell against --
+        // and registers NOTHING here, so a use button that ended up on the menu by mistake
+        // cannot spend a charge: TryUse finds no effect and refuses without deducting.
+        //
+        // Adım 5 and 6 of .claude/powerup-plan.md add one line each. They go behind the
+        // same gate; that is the point of writing it once.
+        private void RegisterPowerupEffects()
+        {
+            var powerups = PowerupManager;
+            if (powerups == null) return;
+
+            powerups.RegisterEffect(
+                PowerupType.TimeReset,
+                () => CanUsePowerups() && PowerupEffects.ResetActiveTicketTimers(State));
+
+            powerups.RegisterEffect(
+                PowerupType.NoiseClear,
+                () => CanUsePowerups() && PowerupEffects.ClearUnneededItems(State));
+
+            // The only one of the three whose effect is not a static call, because placing
+            // an item has to go through the tray's ordinary drop path. Registered even when
+            // the runner is unwired -- the lambda's null check turns that into an honest
+            // "nothing happened", which costs no charge, rather than a missing registration
+            // that would look identical from the outside anyway.
+            powerups.RegisterEffect(
+                PowerupType.AutoCollect,
+                () => CanUsePowerups() && autoCollectRunner != null && autoCollectRunner.Run());
+        }
+
+        // The shared gate for every powerup: the day has to actually be running.
+        //
+        // IsAwaitingContinue is the important half. When the last life goes the day freezes
+        // and the player is looking at the Continue popup -- spending a charge behind it
+        // would be paying for a world they cannot see, and the timers it refilled would be
+        // the timers of a day they may be about to abandon. BoardItemDragHandler gates
+        // dragging on the identical flag, which is the precedent this follows rather than
+        // invents.
+        //
+        // IsDayComplete is the cheap half: with the day over every slot is empty, so each
+        // effect would find nothing to do and refuse on its own anyway. It is named here
+        // regardless, so the rule reads as "the day must be live" rather than resting on
+        // three separate effects each happening to no-op.
+        //
+        // Checked at USE time rather than by disabling the buttons, the same choice D-069
+        // made for keys: a greyed-out button does not say why, and this state lasts seconds.
+        private bool CanUsePowerups() => !State.IsAwaitingContinue && !TicketSlotManager.IsDayComplete;
 
         private void OnDestroy()
         {
@@ -288,14 +397,24 @@ namespace ExpoTheExplorer.Bootstrap
         // split lives HERE and only here: this class is the one that hands each system its
         // delegate, so no system had to learn what kind of failure it causes, and neither
         // can report the wrong kind.
-        private void HandleTicketTimeout() => HandleLifeLoss(DayFailureCause.Timeout);
+        private void HandleTicketTimeout(int slotIndex) => HandleLifeLoss(DayFailureCause.Timeout, slotIndex);
 
-        private void HandleWrongDelivery() => HandleLifeLoss(DayFailureCause.WrongDelivery);
+        private void HandleWrongDelivery(int slotIndex) => HandleLifeLoss(DayFailureCause.WrongDelivery, slotIndex);
 
-        private void HandleLifeLoss(DayFailureCause cause)
+        private void HandleLifeLoss(DayFailureCause cause, int slotIndex)
         {
             LivesManager.LoseLife();
             DayLifecycleManager.RecordFailure(cause);
+
+            // AFTER the life is actually gone, never before: a heart flying up for a
+            // loss that did not happen would be the one kind of lie this readout must
+            // not tell. It is asked on both causes and both are equal here -- to the
+            // player a heart is a heart, and which mistake spent it is what the shake
+            // or the vanishing card already says.
+            //
+            // Optional and silent when unwired, the shape `haptics` above established
+            // (D-070): a forgotten drag costs the animation, never a life.
+            lifeLostHeartView?.Show(slotIndex);
         }
 
         // The day ended in failure and is being replayed, so this attempt's
@@ -323,6 +442,18 @@ namespace ExpoTheExplorer.Bootstrap
             pendingReward = new DayRewardPurse(
                 DayLifecycleManager.Total,
                 DayLifecycleManager.StarCount * gameConfig.GemsPerStar);
+
+            // The powerup earn path GDD 5.2 settled on, and it belongs HERE rather than in
+            // the purse beside it for one reason: the purse is a DEBT the reward flight
+            // hands over icon by icon, while charges are not shown flying anywhere and are
+            // simply owned the moment the day is won. Granting them through the purse would
+            // mean a player who force-quits on the popup loses them, which is a rule money
+            // has for its own reasons (D-057) and powerups have no reason to copy.
+            //
+            // Before SaveProfile below, so the same write that banks the day banks the
+            // grant. A FAILED day never reaches this method at all, which is what keeps
+            // this consistent with "a day attempt is atomic" without a rule of its own.
+            PowerupManager?.GrantForDayCompleted();
 
             // Still saves, and still saves NOTHING of the reward. What this write banks
             // is everything the day changed that is not money: lives lost, and the day

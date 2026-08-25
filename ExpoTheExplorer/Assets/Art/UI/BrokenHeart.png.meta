@@ -1,0 +1,572 @@
+fileFormatVersion: 2
+guid: 937dedf10d1fe4260bec679e57f12508
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: -837054542096858341
+    second: BrokenHeart_0
+  - first:
+      213: -9096089702735761336
+    second: BrokenHeart_1
+  - first:
+      213: -2617998828688642962
+    second: BrokenHeart_2
+  - first:
+      213: 2239584820290867937
+    second: BrokenHeart_3
+  - first:
+      213: 5693935152616205030
+    second: BrokenHeart_4
+  - first:
+      213: 8688749930657902980
+    second: BrokenHeart_5
+  - first:
+      213: -261097931093072684
+    second: BrokenHeart_6
+  - first:
+      213: 942965291645377427
+    second: BrokenHeart_7
+  - first:
+      213: 8679378811893883512
+    second: BrokenHeart_8
+  - first:
+      213: 1410841938014565665
+    second: BrokenHeart_9
+  - first:
+      213: -5868631942155355935
+    second: BrokenHeart_10
+  - first:
+      213: -270857422074794066
+    second: BrokenHeart_11
+  - first:
+      213: -2233164675289333918
+    second: BrokenHeart_12
+  - first:
+      213: 7819972132140883245
+    second: BrokenHeart_13
+  - first:
+      213: 7099017059730243561
+    second: BrokenHeart_14
+  - first:
+      213: -7557859580998425481
+    second: BrokenHeart_15
+  - first:
+      213: 6804430725137310749
+    second: BrokenHeart_16
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 1
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: iOS
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: BrokenHeart_0
+      rect:
+        serializedVersion: 2
+        x: 665
+        y: 1197
+        width: 31
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b1380b0345f2264f0800000000000000
+      internalID: -837054542096858341
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: BrokenHeart_1
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 47
+        width: 636
+        height: 1107
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 840b857cb9234c180800000000000000
+      internalID: -9096089702735761336
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: BrokenHeart_2
+      rect:
+        serializedVersion: 2
+        x: 750
+        y: 1068
+        width: 83
+        height: 51
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e6cef91afeffaabd0800000000000000
+      internalID: -2617998828688642962
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: BrokenHeart_3
+      rect:
+        serializedVersion: 2
+        x: 864
+        y: 1080
+        width: 142
+        height: 102
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1e25bc9378a941f10800000000000000
+      internalID: 2239584820290867937
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: BrokenHeart_4
+      rect:
+        serializedVersion: 2
+        x: 611
+        y: 908
+        width: 82
+        height: 111
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6ea6cc18adbe40f40800000000000000
+      internalID: 5693935152616205030
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: BrokenHeart_5
+      rect:
+        serializedVersion: 2
+        x: 617
+        y: 228
+        width: 588
+        height: 828
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4817017e604a49870800000000000000
+      internalID: 8688749930657902980
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: BrokenHeart_6
+      rect:
+        serializedVersion: 2
+        x: 416
+        y: 150
+        width: 37
+        height: 43
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4d4ab95a0d4606cf0800000000000000
+      internalID: -261097931093072684
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: BrokenHeart_7
+      rect:
+        serializedVersion: 2
+        x: 494
+        y: 182
+        width: 22
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 39b9b0ccfe5161d00800000000000000
+      internalID: 942965291645377427
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: BrokenHeart_8
+      rect:
+        serializedVersion: 2
+        x: 613
+        y: 155
+        width: 80
+        height: 85
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 872acf94b09537870800000000000000
+      internalID: 8679378811893883512
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: BrokenHeart_9
+      rect:
+        serializedVersion: 2
+        x: 796
+        y: 119
+        width: 43
+        height: 66
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 125f4958441549310800000000000000
+      internalID: 1410841938014565665
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: BrokenHeart_10
+      rect:
+        serializedVersion: 2
+        x: 818
+        y: 190
+        width: 19
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1e8b15a875e6e8ea0800000000000000
+      internalID: -5868631942155355935
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: BrokenHeart_11
+      rect:
+        serializedVersion: 2
+        x: 834
+        y: 176
+        width: 53
+        height: 53
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: eaf24741c98bd3cf0800000000000000
+      internalID: -270857422074794066
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: BrokenHeart_12
+      rect:
+        serializedVersion: 2
+        x: 450
+        y: 162
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 26fbd644f843201e0800000000000000
+      internalID: -2233164675289333918
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: BrokenHeart_13
+      rect:
+        serializedVersion: 2
+        x: 456
+        y: 162
+        width: 8
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d2d16b1e83f168c60800000000000000
+      internalID: 7819972132140883245
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: BrokenHeart_14
+      rect:
+        serializedVersion: 2
+        x: 482
+        y: 128
+        width: 36
+        height: 25
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9efb8a35766c48260800000000000000
+      internalID: 7099017059730243561
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: BrokenHeart_15
+      rect:
+        serializedVersion: 2
+        x: 543
+        y: 97
+        width: 21
+        height: 24
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7746e4c11c61d1790800000000000000
+      internalID: -7557859580998425481
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: BrokenHeart_16
+      rect:
+        serializedVersion: 2
+        x: 760
+        y: 0
+        width: 29
+        height: 160
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d14209e61b13e6e50800000000000000
+      internalID: 6804430725137310749
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 5e97eb03825dee720800000000000000
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      BrokenHeart_0: -837054542096858341
+      BrokenHeart_1: -9096089702735761336
+      BrokenHeart_10: -5868631942155355935
+      BrokenHeart_11: -270857422074794066
+      BrokenHeart_12: -2233164675289333918
+      BrokenHeart_13: 7819972132140883245
+      BrokenHeart_14: 7099017059730243561
+      BrokenHeart_15: -7557859580998425481
+      BrokenHeart_16: 6804430725137310749
+      BrokenHeart_2: -2617998828688642962
+      BrokenHeart_3: 2239584820290867937
+      BrokenHeart_4: 5693935152616205030
+      BrokenHeart_5: 8688749930657902980
+      BrokenHeart_6: -261097931093072684
+      BrokenHeart_7: 942965291645377427
+      BrokenHeart_8: 8679378811893883512
+      BrokenHeart_9: 1410841938014565665
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

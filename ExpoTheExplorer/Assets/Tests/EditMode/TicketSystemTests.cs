@@ -51,7 +51,7 @@ namespace ExpoTheExplorer.Tests.EditMode
         // on the real LivesManager implementation.
         private TicketSlotManager CreateManager(GameState state, Func<Ticket> provider = null)
         {
-            return new TicketSlotManager(state, provider ?? (() => CreateSimpleTicket()), () => state.Lives--);
+            return new TicketSlotManager(state, provider ?? (() => CreateSimpleTicket()), _ => state.Lives--);
         }
 
         private FoodItemConfig CreateFoodItem(FoodCategory category, List<ModificationConfig> availableModifications = null)

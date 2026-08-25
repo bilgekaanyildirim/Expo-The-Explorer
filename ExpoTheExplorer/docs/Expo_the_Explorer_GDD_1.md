@@ -123,26 +123,41 @@ Kontrol **tepsi dolduğunda** (yani gerekli ürün sayısına ulaşıldığında
 
 ### 5.2 Powerup Sistemi
 
-**⚠️ Geliştirme kapsamı dışında (ertelendi):** Powerup sistemi şu anki geliştirme fazında **kodlanmayacak**. Tasarım aşağıda referans olarak saklanıyor; ne zaman geliştirileceğine dair bir tarih/faz henüz belirlenmedi. Bu bölümdeki açık soru (kazanım miktarı/Gem maliyeti) da bu yüzden şimdilik ele alınmıyor — sistem tekrar kapsama alındığında netleştirilecek.
+**✅ Kapsama alındı (2026-08-25):** Powerup sistemi artık geliştiriliyor. Bu bölüm bir referans tasarım olmaktan çıkıp uygulanan kuralların kaydı oldu; adım adım yol haritası `.claude/powerup-plan.md`'de. Aşağıdaki "Ertelendi" başlığı altındaki soruların üçü bu turda kapandı, biri (cooldown) bilinçli olarak kapsam dışı bırakıldı.
 
 Prototipte, alt kısımda görülen **3 gri daire ikonu** aslında bir **powerup sistemidir** (önceki sürümde işlevi bilinmiyordu, bkz. Bölüm 14):
 
-1. **Powerup 1 — Oto-Toplama:** Board'daki zorunlu havuz ürünlerini (aktif biletler için gereken ürünleri) otomatik olarak ilgili tepsilere yerleştirir.
-2. **Powerup 2 — Süre Sıfırlama:** Aktif biletlerin sürelerini sıfırlar/yeniler.
-3. **Powerup 3 — Gürültü Temizleme (Board Netleştirme):** ✅ Onaylandı. Birkaç saniyeliğine gürültü öğelerini soluklaştırır / zorunlu havuz öğelerini vurgular, böylece oyuncu doğru ürünü çok daha kolay bulur.
+1. **Powerup 1 — Oto-Toplama:** Board'daki zorunlu havuz ürünlerini (aktif biletler için gereken ürünleri) otomatik olarak ilgili tepsilere yerleştirir. **Tepsiyi doldurursa Bölüm 5'teki toplu kontrol normal şekilde çalışır ve bilet teslim edilir** — power-up ayrı bir teslimat yolu açmaz, oyuncunun elle yaptığı hareketin aynısını yapar. Board'da gereken ürün yoksa tepsi kısmen dolar; hiçbir ürün taşınamıyorsa hak harcanmaz.
+2. **Powerup 2 — Süre Sıfırlama:** Aktif biletlerin sürelerini kendi zaman limitlerine geri çeker. Hiç aktif bilet yoksa hak harcanmaz.
+3. **Powerup 3 — Gürültü Temizleme:** ✅ Onaylandı, **düzeltildi (2026-08-25).** Aktif biletlerin hiçbirine gerekmeyen ürünleri **board'dan kaldırır.** Görsel bir efekt DEĞİLDİR ve süresi yoktur: anlık ve kalıcıdır. Board'da kalan tek şey elindeki biletlerin istediği ürünlerdir.
+
+   *(Bu bölüm daha önce "birkaç saniyeliğine soluklaştırır / vurgular" diyordu ve sistem de öyle planlanmıştı. Kullanıcı düzeltti: soluklaştırma yok, doğrudan kaldırma var. Fark önemsiz değil — soluklaştırma oyuncunun ARAMASINI kolaylaştıran bir okuma yardımıydı, kaldırma ise board'un kendisini değiştiriyor, hücre boşaltıyor ve bu yüzden üçünün en güçlüsü hâline geliyor. Adı da artık daha doğru: "netleştirme" değil, gerçekten temizleme.)*
+
+   **Ne kalkar:** bir ürünün kimliği (yemek + modifikasyon kombinasyonu) aktif biletlerin hâlâ ihtiyaç duyduğu kimliklerden biri değilse kalkar. **Fazlalıklar kalır** — bir bilet tek burger istiyorsa board'daki üç burgerin üçü de kalır. Kural kimlik üzerinedir, sayı üzerine değil: oyuncu üçüncü burger için "buna gerek yok" demez, "fazla var" der.
+
+   **Boşalan hücreler:** board'un bekleyen doğum kuyruğu varsa (dolu board yüzünden yerleşememiş ürünler) boşalan hücreler anında onlarla dolar — yani temizleme, sıkışıp kalmış zorunlu havuz ürünlerinin nihayet board'a inmesini de sağlar.
 
 Bu üçlü, oyunun üç ana zorluk kaynağını (ürün toplama, zaman baskısı, görsel karmaşa) birer birer hafifleten tutarlı bir set oluşturuyor.
+
+**Üçü için ortak kural:** Bir power-up'ın etkisi gerçekten uygulanmadıysa hak düşmez. "Boşa basma" bu oyunda bir ceza değil — üç efektin de yapacak işi olmayabilecek anlar var (board'da gereken ürün yok, aktif bilet yok, gün bitmiş), ve oyuncunun kıt bir kaynağı hiçbir şey için kaybetmesi bu sistemin vaat ettiği güvenin tersi olur.
 
 ### ✅ Çözüldü — Powerup Kazanım ve Kullanım Kuralları
 
 Powerup'lar iki yoldan elde edilir:
-1. **Meta-ilerleme yoluyla:** Belli bir miktarda powerup, belirli etkinlikler (events) tamamlandığında ödül olarak verilir. *(v1.0: "level atlandıkça" kazanım yolu geçersiz — level sistemi yok. Powerup sistemi zaten ertelenmiş durumda; hayata geçerse yeni bir kazanım tetiği tanımlanmalı, doğal aday Day tamamlama.)*
-2. **Gem ile satın alma:** Oyuncu, Gem harcayarak ek powerup satın alabilir (bkz. Bölüm 10).
+1. **İlerleme yoluyla — gün tamamlama.** Bir gün başarıyla bitirildiğinde her power-up tipi için o tipin authored kazanım miktarı kadar hak eklenir. *(v1.0: "level atlandıkça" kazanım yolu geçersizdi — level sistemi yok — ve bu bölüm eskiden "belirli etkinlikler" diyordu. Bu projede henüz etkinlik sistemi yok, o yüzden bu bölümün kendi işaret ettiği doğal aday, gün tamamlama, onun yerine geçti. Etkinlikler geldiğinde ikinci bir kazanım tetiği olarak eklenebilir.)*
+2. **Gem ile satın alma — yalnızca ANA EKRANDA.** Oyuncu, Gem harcayarak ek powerup satın alabilir (bkz. Bölüm 10), ama bunu gün içinde değil ana ekrandaki kendi dükkânında yapar. Harcama **Wallet üzerinden** yapılır — Gem'in tek yazarı odur. Gün sahnesi power-up'ı yalnızca KULLANIR; orada satın alma butonu yoktur. Bunun sebebi tasarımsal: bir günün ortasında mağaza açmak zaman baskısını (Bölüm 7) askıya alır, ve power-up'ın kendisi zaten o baskıyı hafifletmek için var — ikisini üst üste koymak günü bir alışveriş molasına çevirirdi.
 
 *(Bu, powerup'ların sınırsız bir kaynak olmadığını, hem ilerlemeyle kazanılan hem de Gem ile desteklenen bir "stok" sistemi olduğunu gösteriyor.)*
 
+**Stok kalıcıdır.** Power-up hakları anahtarlar gibi oturumlar arasında saklanır (`player_profile.json`), canlar gibi her gün sıfırlanmaz: bir hak, kazanıldığı günün değil oyuncunun malıdır.
+
+**Başarısız gün, harcanan hakkı geri vermez.** Bu, cüzdanın "bir gün denemesi atomiktir" kuralının aynısı: kaybedilen bir gün ne kazandığını geri alır, ne harcadığını iade eder. Aksi hâlde power-up'ı kullanıp günü kasten kaybetmek onları bedava yapardı.
+
+### ✅ Çözüldü — Sayıların yeri
+Başlangıç stoğu, Gem fiyatı ve gün-tamamlama kazanımı — hepsi tip başına `PowerupConfig` asset'inde authored değerlerdir, kodda sabit yoktur. (Gürültü Temizleme'nin "süre" ve "karartma" alanları vardı; yukarıdaki düzeltmeyle ikisi de anlamsızlaştı ve silindi — süresiz bir efektin süresi, görsel olmayan bir efektin opaklığı yok.) İlk yazılan değerler dengeleme placeholder'ıdır (`LivesConfig`'in şekli), gerçek denge oyundan gelir.
+
 ### Ertelendi (açık soru değil, kapsam dışı):
-Meta-ilerleme yoluyla verilen powerup miktarı, hangi etkinliklerin ödüllendirdiği, Gem maliyeti ve kullanım limiti/cooldown soruları — powerup sistemi geliştirmeye alınmadığı için şimdilik yanıtlanmıyor.
+**Kullanım limiti / cooldown.** Bir günde kaç kez kullanılabileceğine dair ayrı bir sınır yok: stoğun kendisi zaten sınır. Kimsenin çevirmeyeceği bir ayar taşımak yerine, gerçekten istendiğinde eklenecek.
 
 ---
 

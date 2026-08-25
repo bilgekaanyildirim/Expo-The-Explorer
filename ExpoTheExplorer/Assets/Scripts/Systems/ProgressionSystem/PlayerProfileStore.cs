@@ -60,7 +60,29 @@ namespace ExpoTheExplorer.Systems.ProgressionSystem
         //     boundary that knows nothing about what a key means.
         //     The anchor needs no branch: 0 means "no timestamp recorded" and the load
         //     path starts the clock then, which also keeps System.DateTime out of here.
-        public const int CurrentVersion = 7;
+        // v9: BoardClarityCharges RENAMED to NoiseClearCharges, hours after v8 shipped it,
+        //     when the user corrected what that powerup does (it removes board items; it
+        //     does not fade them). This is the first version whose only change is a NAME,
+        //     and it needs a branch for a reason that is easy to miss: JsonUtility matches
+        //     on the KEY, so a v8 file's BoardClarityCharges is simply not read and the new
+        //     field comes back 0 -- a real count meaning "you have none". Silent, and wrong
+        //     in the direction that costs a player something they bought. The branch writes
+        //     the usual marker, so a v8 file resolves to the authored starting stock; the
+        //     other two charge fields keep their real values because their keys are intact.
+        //     Bumping rather than quietly reusing v8 is the same rule v6 followed for a
+        //     removal: the version number is what tells a reader the file's shape, and a
+        //     v8 file genuinely has a different one.
+        // v8: + AutoCollectCharges, TimeResetCharges, BoardClarityCharges (GDD 5.2, plan
+        //     in .claude/powerup-plan.md). The SAME shape as v7 and for the same reason,
+        //     which is why it needed no new thinking: 0 is a real count ("you have none of
+        //     this one"), the correct value for an older file is the authored starting
+        //     stock, that number lives on PowerupConfig, and this class has no config
+        //     reference and must not gain one. So all three get the -1 marker and
+        //     PowerupManager.ApplyPersisted resolves them.
+        //     THREE FIELDS RATHER THAN AN ARRAY on purpose -- see PlayerProfile's note:
+        //     the runtime indexes charges by (int)PowerupType, and a named field per type
+        //     keeps the FILE correct through a renumbering that would scramble an array.
+        public const int CurrentVersion = 9;
 
         // What this class writes into PlayerProfile.Keys when it cannot know the real
         // answer -- an older save, or a player who has never played. The real answer is
@@ -74,6 +96,14 @@ namespace ExpoTheExplorer.Systems.ProgressionSystem
         // half-written file carrying -2 means the same thing and must not lock a player
         // out. So this names the value written; it does not narrow what is accepted.
         public const int KeysAbsentMarker = -1;
+
+        // The same -1, under its own name, for the three powerup stocks (v8). It could
+        // have reused KeysAbsentMarker -- the value is identical and always will be --
+        // but a constant called "Keys..." appearing in a powerup upgrade branch is
+        // exactly the kind of borrowed name that survives until someone changes one of
+        // the two meanings and silently changes both. The reading end is equally
+        // permissive: PowerupManager.ApplyPersisted treats ANY negative count as absent.
+        public const int PowerupChargesAbsentMarker = -1;
 
         private const string FileName = "player_profile.json";
 
@@ -147,6 +177,14 @@ namespace ExpoTheExplorer.Systems.ProgressionSystem
                 // keys existed" deserve the identical answer, so they take the identical
                 // path rather than each inventing one.
                 Keys = KeysAbsentMarker,
+
+                // Same marker, same reasoning, one version later (v8): a brand-new player
+                // opens on PowerupConfig's authored starting stock, and this class cannot
+                // see that asset. "Never played" and "played before powerups existed" get
+                // the identical answer by taking the identical path.
+                AutoCollectCharges = PowerupChargesAbsentMarker,
+                TimeResetCharges = PowerupChargesAbsentMarker,
+                NoiseClearCharges = PowerupChargesAbsentMarker,
             };
         }
 
@@ -179,6 +217,32 @@ namespace ExpoTheExplorer.Systems.ProgressionSystem
             // v3's Lives refill used to sit here. It went out with the field in v6 --
             // there is nothing to restore, and a removal is the one schema change that
             // needs no branch, since JsonUtility drops a key with no matching field.
+
+            // Runs for a v8 file only -- everything older is already covered by the v8
+            // branch below, which writes all three markers anyway. Deliberately a separate
+            // branch rather than folding the rename into that one: this is the version
+            // where the KEY changed, and a reader tracing why a v8 save loses one stock
+            // should find the answer under its own number.
+            if (profile.Version == 8)
+            {
+                profile.NoiseClearCharges = PowerupChargesAbsentMarker;
+            }
+
+            if (profile.Version < 8)
+            {
+                // -1 on all three, not 0, and not the starting stock: 0 is a real count
+                // meaning "you have none of this one", and the starting stock is authored
+                // on PowerupConfig, which this class has no reference to and must not gain
+                // -- the property that keeps it a pure file boundary. The marker travels
+                // to PowerupManager.ApplyPersisted, which resolves it where the config is.
+                //
+                // An existing player therefore launches with the same free stock a new one
+                // gets, which is the intended reading: they have never had the chance to
+                // earn or buy a charge, so they have not spent one either.
+                profile.AutoCollectCharges = PowerupChargesAbsentMarker;
+                profile.TimeResetCharges = PowerupChargesAbsentMarker;
+                profile.NoiseClearCharges = PowerupChargesAbsentMarker;
+            }
 
             if (profile.Version < 7)
             {

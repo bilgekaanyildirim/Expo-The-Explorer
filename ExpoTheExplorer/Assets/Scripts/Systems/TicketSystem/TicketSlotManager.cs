@@ -24,7 +24,7 @@ namespace ExpoTheExplorer.Systems.TicketSystem
     {
         private readonly GameState state;
         private readonly Func<Ticket> nextTicketProvider;
-        private readonly Action loseLife;
+        private readonly Action<int> loseLife;
 
         // Set once the Day's authored ticket sequence is exhausted AND every
         // slot it fed has resolved (delivered or cancelled) -- see AssignTicket.
@@ -50,7 +50,16 @@ namespace ExpoTheExplorer.Systems.TicketSystem
         // in one place shared with TrayManager's wrong-delivery case, instead
         // of two systems separately decrementing the same field (GDD Section
         // 3/6, CLAUDE.md Section 5 — Lives System).
-        public TicketSlotManager(GameState state, Func<Ticket> nextTicketProvider, Action loseLife)
+        //
+        // It carries the SLOT the life was lost on. That is not this class
+        // learning what kind of failure it caused — decisions.md D-060 keeps the
+        // cause split up in GameManager's two named entry points and that is
+        // unchanged — it is the index this class already loops over, handed on so
+        // a view can point at the ticket that ran out instead of guessing. The
+        // tray cannot work it out for itself: its own poll only notices a timeout
+        // that had items to scatter, so an untouched ticket expiring left no trace
+        // anywhere (decisions.md D-078).
+        public TicketSlotManager(GameState state, Func<Ticket> nextTicketProvider, Action<int> loseLife)
         {
             this.state = state;
             this.nextTicketProvider = nextTicketProvider;
@@ -163,7 +172,7 @@ namespace ExpoTheExplorer.Systems.TicketSystem
                 ticket.RemainingSeconds = Math.Max(0f, ticket.RemainingSeconds - deltaSeconds);
                 if (ticket.RemainingSeconds <= 0f)
                 {
-                    loseLife();
+                    loseLife(i);
                     CancelTicket(i);
                 }
             }

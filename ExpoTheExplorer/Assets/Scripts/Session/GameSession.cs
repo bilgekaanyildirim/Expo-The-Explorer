@@ -5,6 +5,7 @@ using ExpoTheExplorer.Data;
 using ExpoTheExplorer.Systems.DaySystem;
 using ExpoTheExplorer.Systems.KeySystem;
 using ExpoTheExplorer.Systems.LivesSystem;
+using ExpoTheExplorer.Systems.PowerupSystem;
 using ExpoTheExplorer.Systems.ProgressionSystem;
 
 namespace ExpoTheExplorer.Session
@@ -27,7 +28,11 @@ namespace ExpoTheExplorer.Session
     //   5. KeyManager is built after the wallet, because the Gem refill is charged
     //      through it, and its ApplyPersisted follows immediately -- that call is what
     //      turns the profile's -1 marker into a full bar AND pays out the keys earned
-    //      while the game was closed (decisions.md D-065).
+    //      while the game was closed (decisions.md D-065);
+    //   6. PowerupManager is built after the wallet for the identical reason -- the Gem
+    //      purchase is charged through it -- and its ApplyPersisted follows immediately,
+    //      resolving the same style of -1 marker into the authored starting stock
+    //      (GDD 5.2, .claude/powerup-plan.md Adım 1).
     //
     // A second class re-implementing those five is exactly the failure the single-writer
     // invariant exists to prevent, which is why the alternative -- a separate controller
@@ -56,6 +61,27 @@ namespace ExpoTheExplorer.Session
         // the compiler-enforced single writer of the key count, so re-exposing its methods
         // here would add a second surface to keep in step for no gain.
         public KeyManager KeyManager { get; }
+
+        // The powerup stock, shared by both screens: the day scene spends charges, the
+        // main screen sells them (GDD 5.2). Handed out rather than wrapped, exactly like
+        // KeyManager and Wallet above -- it is already the single writer of the counts.
+        //
+        // **NULL when no PowerupConfig was supplied**, and that is deliberate rather than
+        // an oversight. The project's rule for a forgotten Inspector drag is that it FAILS
+        // OPEN (see NoKeysPopupView's note in CLAUDE.md): a missing config costs the
+        // player their powerups, never their ability to play the day. The two scene roots
+        // are the ones that say so out loud; this class stays silent because it also runs
+        // inside EditMode tests, where a Debug.LogError is a test failure.
+        public PowerupManager PowerupManager { get; }
+
+        // What the profile said the three stocks were, kept ONLY for the null-manager case
+        // above. Without it, saving a session whose PowerupConfig was never wired would
+        // write zeros over a real player's purchased charges -- destroying data this
+        // session was never able to manage in the first place. With a manager present
+        // these are never read.
+        private readonly int savedAutoCollectCharges;
+        private readonly int savedTimeResetCharges;
+        private readonly int savedNoiseClearCharges;
 
         // The parsed Day catalog. Exposed read-only because GameManager needs its Count
         // and its entries to build a Day; nothing outside may replace it.
@@ -90,6 +116,11 @@ namespace ExpoTheExplorer.Session
             LivesConfig livesConfig,
             KeyConfig keyConfig,
             FoodCatalog foodCatalog,
+            // Optional so the existing callers and tests that pass everything after
+            // foodCatalog by NAME keep compiling, and because a day without powerups is
+            // still a playable day (see the PowerupManager property). Both scene roots
+            // treat it as required and say so; only a test may legitimately omit it.
+            PowerupConfig powerupConfig = null,
             PlayerProfileStore profileStore = null,
             IReadOnlyList<DayDefinition> dayCatalog = null,
             Func<DateTime> utcNow = null)
@@ -137,6 +168,28 @@ namespace ExpoTheExplorer.Session
             // anchor is persisted instead of a countdown.
             KeyManager = new KeyManager(keyConfig, wallet, utcNow);
             KeyManager.ApplyPersisted(profile.Keys, profile.LastKeyRegenUtcTicks);
+
+            // Order 6 (GDD 5.2): AFTER the wallet, because the Gem purchase is charged
+            // through it, and paired with its ApplyPersisted the way the wallet, lives and
+            // keys already are. Same -1-marker resolution as keys -- 0 is a real charge
+            // count, so an older save cannot use it to mean "absent", and the authored
+            // starting stock lives on the config this line is the first to see.
+            //
+            // Nothing is registered as an EFFECT here. That happens in the day scene's
+            // root and nowhere else, which is what makes a charge unspendable on the main
+            // screen even though the counts are fully available there to be sold against.
+            savedAutoCollectCharges = profile.AutoCollectCharges;
+            savedTimeResetCharges = profile.TimeResetCharges;
+            savedNoiseClearCharges = profile.NoiseClearCharges;
+
+            if (powerupConfig != null)
+            {
+                PowerupManager = new PowerupManager(powerupConfig, wallet);
+                PowerupManager.ApplyPersisted(
+                    profile.AutoCollectCharges,
+                    profile.TimeResetCharges,
+                    profile.NoiseClearCharges);
+            }
 
             // Injectable so a test can supply a catalog without Resources or a FoodCatalog
             // asset; production passes null and gets the real parse.
@@ -192,6 +245,15 @@ namespace ExpoTheExplorer.Session
                 // player a fresh 30-minute wait each time they quit near the end of one.
                 Keys = KeyManager.Keys,
                 LastKeyRegenUtcTicks = KeyManager.LastRegenUtcTicks,
+
+                // The three powerup stocks (v8). When no config was wired there is no
+                // manager to ask, so what was LOADED is written straight back rather than
+                // zeroed -- a forgotten Inspector drag must not cost a player charges they
+                // paid Gems for. That also means a marker (-1) read from an older file is
+                // written back as a marker, so the next launch still resolves it properly.
+                AutoCollectCharges = PowerupManager?.ChargesOf(PowerupType.AutoCollect) ?? savedAutoCollectCharges,
+                TimeResetCharges = PowerupManager?.ChargesOf(PowerupType.TimeReset) ?? savedTimeResetCharges,
+                NoiseClearCharges = PowerupManager?.ChargesOf(PowerupType.NoiseClear) ?? savedNoiseClearCharges,
 
                 OwnedMetaItemIds = new List<string>(OwnedMetaItemIds),
                 LastCelebratedDayIndex = LastCelebratedDayIndex,

@@ -102,6 +102,36 @@ namespace ExpoTheExplorer.UI
             itemContainers[x, y] = null;
         }
 
+        // The seam the Auto-Collect powerup needs (.claude/powerup-plan.md Adım 6), and it
+        // is deliberately the SAME object a finger would have grabbed. That powerup places
+        // items by calling WorldTrayView.TryAcceptDrop with this handler, which is the
+        // ordinary drop path -- detach from the board, reparent into the tray slot, let
+        // TrayManager run its batch check. The alternative, writing straight into the data
+        // model, would leave the tray visually EMPTY: a tray's contents are drawn entirely
+        // by the dragged object being reparented, and nothing rebuilds them from state.
+        //
+        // Returns false for an empty or not-yet-built cell rather than throwing, because
+        // the caller is walking a board that its own previous move may have changed.
+        public bool TryGetDragHandler(int x, int y, out BoardItemDragHandler handler)
+        {
+            handler = null;
+
+            // board is assigned in Start, and a powerup press cannot reach this before
+            // then -- but a null here would be a NullReferenceException inside a button
+            // handler, which is the one place it is least readable.
+            if (board == null || itemContainers == null || !board.IsInBounds(x, y)) return false;
+
+            var container = itemContainers[x, y];
+
+            // An inactive container is a cell whose item was removed: RefreshCell switches
+            // the object off rather than destroying it, so "there is a container" and
+            // "there is an item" are different questions.
+            if (container == null || !container.gameObject.activeSelf) return false;
+
+            handler = container.GetComponent<BoardItemDragHandler>();
+            return handler != null && handler.CurrentItem != null;
+        }
+
         // Brackets whatever call below is expected to trigger RefreshCell for
         // a "new appearance" — a board-to-board move (BoardItemDragHandler),
         // a tray pickup dropped somewhere invalid (BoardItemDragHandler), or

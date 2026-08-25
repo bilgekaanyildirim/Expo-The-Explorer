@@ -58,6 +58,7 @@
   <Project Path="ExpoTheExplorer.Core.csproj" />
   <Project Path="Unity.Services.Core.Configuration.csproj" />
   <Project Path="Assembly-CSharp-firstpass.csproj" />
+  <Project Path="ExpoTheExplorer.Systems.PowerupSystem.csproj" />
   <Project Path="ExpoTheExplorer.Editor.csproj" />
   <Project Path="Assembly-CSharp-Editor.csproj" />
   <Project Path="ExpoTheExplorer.Systems.DaySystem.csproj" />

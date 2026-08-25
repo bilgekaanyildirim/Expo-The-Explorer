@@ -84,6 +84,33 @@ namespace ExpoTheExplorer.Systems.ProgressionSystem
         // -- the file never has to invent a timestamp, it just says it has none.
         public long LastKeyRegenUtcTicks;
 
+        // The three powerup stocks, added in v8 (GDD Section 5.2, plan in
+        // .claude/powerup-plan.md). Powerups are earned by completing days and bought
+        // with Gems, so like keys -- and unlike lives, which D-064 made a per-day
+        // allowance -- they are exactly the kind of thing that has to survive quitting.
+        //
+        // **-1 IS THE "ABSENT" VALUE HERE TOO, NOT 0**, for the same reason it is on
+        // Keys: 0 is a real, reachable count meaning "you have none of this one", so it
+        // cannot double as "this file predates powerups" the way an absent
+        // CurrentDayIndex could safely read as Day 0. The correct value for an older file
+        // is the authored starting stock, which lives on PowerupConfig, which
+        // PlayerProfileStore has no reference to and must never gain. So
+        // UpgradeToCurrent writes -1 and PowerupManager.ApplyPersisted resolves it.
+        //
+        // THREE NAMED FIELDS RATHER THAN AN ARRAY, and that is deliberate: the runtime
+        // indexes its charge array by (int)PowerupType, so a renumbering of that enum
+        // would reshuffle an array-shaped save file silently. Named fields make the file
+        // survive a renumbering the runtime would not, and JsonUtility handles them
+        // without the List<> caveat OwnedMetaItemIds documents below.
+        // NoiseClearCharges was BoardClarityCharges for one afternoon (v8), before the user
+        // corrected what that powerup does. The rename is the reason v9 exists: JsonUtility
+        // matches on the KEY NAME, so a v8 file's BoardClarityCharges would simply not be
+        // read and the field would come back 0 -- a real count meaning "you have none",
+        // which is silent and wrong. See PlayerProfileStore's v9 branch.
+        public int AutoCollectCharges;
+        public int TimeResetCharges;
+        public int NoiseClearCharges;
+
         // Meta props the player has BOUGHT, added in v4. Each entry is the qualified
         // "<location>.<item>" key MetaCatalog.OwnershipKey composes -- local ids alone
         // would collide the moment a second location reuses a name, which it is expected

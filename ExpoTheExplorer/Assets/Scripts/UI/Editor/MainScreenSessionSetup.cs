@@ -67,6 +67,20 @@ namespace ExpoTheExplorer.UI.EditorTools
                     "then run this menu item again.",
                     root);
             }
+
+            // A plain Log rather than a Warning, and the difference is the point: this
+            // field failing open is the DESIGNED behaviour (GDD 5.2), so an author who
+            // has not built the powerup shop yet should not be nagged in yellow. It is
+            // said at all because an empty field and a player with no charges look the
+            // same on screen.
+            if (new SerializedObject(root).FindProperty("powerupConfig")?.objectReferenceValue == null)
+            {
+                Debug.Log(
+                    $"No {nameof(PowerupConfig)} asset was found, so '{root.name}' cannot show or sell powerup " +
+                    "charges. Everything else on this screen still works. Create one via " +
+                    "Create > ExpoTheExplorer > Data > Powerup Config, then run this menu item again.",
+                    root);
+            }
         }
 
         // Matches SceneFlow.MainScreenSceneName without referencing Core from an editor
@@ -93,6 +107,13 @@ namespace ExpoTheExplorer.UI.EditorTools
             // KeyConfig.asset is not an error, it just has nothing to assign. The report
             // below is what tells the author which is which.
             Fill<KeyConfig>(serialized, "keyConfig");
+
+            // Added with the powerup stock (GDD 5.2, .claude/powerup-plan.md Adım 1).
+            // Unlike KeyConfig above, a missing one degrades rather than blocks -- the
+            // screen opens and simply cannot sell charges -- so this line is a convenience
+            // rather than a rescue. It is here anyway because the alternative is an author
+            // discovering the empty field only when the powerup shop shows nothing.
+            Fill<PowerupConfig>(serialized, "powerupConfig");
 
             Fill<FoodCatalog>(serialized, "foodCatalog");
 

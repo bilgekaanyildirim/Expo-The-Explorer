@@ -38,14 +38,16 @@ namespace ExpoTheExplorer.Systems.TraySystem
             if (ticket == null) return false;
             if (items.Count != ticket.RequiredItems.Count) return false;
 
-            var requiredCounts = new Dictionary<RequiredItemKey, int>();
-            foreach (var food in ticket.RequiredItems)
-            {
-                var mods = food.Category == FoodCategory.Main ? ticket.Modifications : Array.Empty<Modification>();
-                var key = new RequiredItemKey(food, mods);
-                requiredCounts.TryGetValue(key, out var count);
-                requiredCounts[key] = count + 1;
-            }
+            // The required side moved to TicketRequirements in powerup-plan Adım 5. It used
+            // to be spelled out here, and the "modifications count for Main only" rule with
+            // it -- which is exactly the rule two powerups now need as well. Three copies of
+            // a rule that decides whether a delivery costs a life is three chances for one
+            // of them to be fixed alone.
+            //
+            // The ACTUAL side below stays here and is deliberately NOT extracted: it reads
+            // BoardItems, which already carry the modifications they were built with, so it
+            // has no rule in it at all -- just a count.
+            var requiredCounts = TicketRequirements.RequiredCounts(ticket);
 
             var actualCounts = new Dictionary<RequiredItemKey, int>();
             foreach (var item in items)

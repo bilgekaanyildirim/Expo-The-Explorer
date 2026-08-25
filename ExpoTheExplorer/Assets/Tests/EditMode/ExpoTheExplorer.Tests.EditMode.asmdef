@@ -11,6 +11,7 @@
         "ExpoTheExplorer.Systems.EconomySystem",
         "ExpoTheExplorer.Systems.LivesSystem",
         "ExpoTheExplorer.Systems.KeySystem",
+        "ExpoTheExplorer.Systems.PowerupSystem",
         "ExpoTheExplorer.Systems.ProgressionSystem",
         "ExpoTheExplorer.Systems.DayLifecycle",
         "ExpoTheExplorer.Systems.DaySystem",

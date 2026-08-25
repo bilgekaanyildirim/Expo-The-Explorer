@@ -1,0 +1,18 @@
+{
+    "name": "ExpoTheExplorer.Systems.PowerupSystem",
+    "rootNamespace": "ExpoTheExplorer.Systems.PowerupSystem",
+    "references": [
+        "ExpoTheExplorer.Core",
+        "ExpoTheExplorer.Data",
+        "ExpoTheExplorer.Systems.ProgressionSystem"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

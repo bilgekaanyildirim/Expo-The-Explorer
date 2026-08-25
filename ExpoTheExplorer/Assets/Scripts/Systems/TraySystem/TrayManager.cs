@@ -17,7 +17,7 @@ namespace ExpoTheExplorer.Systems.TraySystem
     {
         private readonly GameState state;
         private readonly Action<int> deliverTicket;
-        private readonly Action loseLife;
+        private readonly Action<int> loseLife;
         private readonly System.Random random;
         private readonly TraySlot[] slots;
 
@@ -26,7 +26,13 @@ namespace ExpoTheExplorer.Systems.TraySystem
         // Systems.LivesSystem reference while still centralizing life loss in
         // one place shared with TicketSlotManager's timeout case (CLAUDE.md
         // Section 5 — Lives System).
-        public TrayManager(GameState state, Action<int> deliverTicket, Action loseLife, System.Random random = null)
+        //
+        // Like deliverTicket it now carries the SLOT, for the same reason and at
+        // no cost: the wrong batch was resolved for one known slot, so a view can
+        // show the loss on the tray it happened on rather than guessing which of
+        // the three (decisions.md D-078). The cause still stays out of here —
+        // D-060's split lives in GameManager's two entry points.
+        public TrayManager(GameState state, Action<int> deliverTicket, Action<int> loseLife, System.Random random = null)
         {
             this.state = state;
             this.deliverTicket = deliverTicket;
@@ -95,7 +101,7 @@ namespace ExpoTheExplorer.Systems.TraySystem
                 }
                 else
                 {
-                    loseLife();
+                    loseLife(slotIndex);
                     ScatterBackToBoard(slotIndex, slot);
                     slot.Clear();
                 }
