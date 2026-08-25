@@ -142,7 +142,10 @@ namespace ExpoTheExplorer.Tests.EditMode
 
             var state = new GameState(gameConfig);
             var slotManager = new TicketSlotManager(state, NextOrNull, () => { });
-            var dayLifecycle = new DayLifecycleManager(state);
+            // No StarScoreConfig: this test is about the day COMPLETING, and the star score
+            // it would produce is DayLifecycleManagerTests' subject. Null is the honest
+            // argument here rather than a config nothing reads.
+            var dayLifecycle = new DayLifecycleManager(state, null);
             var samplePayout = new DeliveryPayoutResult(orderValue: 10, tier: TipTier.Critical, tipRate: 0f);
             state.TicketDelivered.Subscribe(_ => dayLifecycle.RecordDelivery(samplePayout));
 

@@ -36,6 +36,7 @@
   <Project Path="Unity.2D.Tilemap.Extras.Editor.csproj" />
   <Project Path="ExpoTheExplorer.Data.csproj" />
   <Project Path="UnityEditor.Purchasing.csproj" />
+  <Project Path="Assembly-CSharp.csproj" />
   <Project Path="ExpoTheExplorer.Tests.EditMode.csproj" />
   <Project Path="PsdPlugin.csproj" />
   <Project Path="Unity.2D.IK.Editor.csproj" />
@@ -53,7 +54,6 @@
   <Project Path="Unity.Purchasing.Codeless.csproj" />
   <Project Path="Unity.Services.Core.Configuration.Editor.csproj" />
   <Project Path="ExpoTheExplorer.Core.csproj" />
-  <Project Path="Assembly-CSharp.csproj" />
   <Project Path="Unity.Services.Core.Configuration.csproj" />
   <Project Path="Assembly-CSharp-firstpass.csproj" />
   <Project Path="ExpoTheExplorer.Editor.csproj" />

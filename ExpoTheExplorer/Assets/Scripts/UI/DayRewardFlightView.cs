@@ -13,6 +13,9 @@ namespace ExpoTheExplorer.UI
     // Nothing reaches the player's balance during a day; this is what hands the day's
     // earnings over, and the handover IS the animation:
     //
+    //   0. the score bar travels from empty toward what the day scored, and each star seats
+    //      as the fill crosses ITS OWN notch (decisions.md D-061) -- optional, and without
+    //      it the stars keep the fixed-interval rhythm below;
     //   1. the stars the day scored seat themselves one at a time;
     //   2. as each one lands, a gem leaves it and flies to the HUD gem counter --
     //      the counter ticks up when the gem arrives, not before;
@@ -59,6 +62,14 @@ namespace ExpoTheExplorer.UI
 
         [Tooltip("Overshoot of the star's seat bounce. 1 is no bounce.")]
         [SerializeField, Min(1f)] private float starOvershoot = 1.7f;
+
+        // OPTIONAL, and it changes the star row's PACING when present (decisions.md D-061):
+        // each star waits for the bar's fill to reach its own notch instead of a fixed
+        // interval, so the thing that earned the star and the star itself are one motion.
+        // Left empty, the sequence keeps the fixed-interval rhythm exactly as before -- the
+        // whole feature degrades to what shipped in D-057.
+        [Tooltip("Optional. The score bar the stars stand on. When set, each star seats as the fill passes its notch instead of on a fixed interval.")]
+        [SerializeField] private StarScoreBarView scoreBar;
 
         [Header("Coins")]
         [Tooltip("How many coin icons the day's total is split across — a visual count, not one per coin. Clamped down when the day earned less than this, so no coin is ever worth nothing.")]
@@ -140,6 +151,7 @@ namespace ExpoTheExplorer.UI
             if (!referencesValid || coinOrigin == null)
             {
                 SeatRemainingStarsInstantly(starsToSeat);
+                if (scoreBar != null) scoreBar.ShowTargetWithoutAnimating();
                 return;
             }
 
@@ -180,9 +192,12 @@ namespace ExpoTheExplorer.UI
             KillFlights();
 
             // Any star that had not seated yet is simply put in place. The player asked
-            // to move on; they should still see the score they got.
+            // to move on; they should still see the score they got -- and the bar has to
+            // land on the same figure, or a skipped payout leaves three stars standing on a
+            // half-empty bar.
             SeatRemainingStarsInstantly(starsBeingSeated);
             starsBeingSeated.Clear();
+            if (scoreBar != null) scoreBar.SnapToTarget();
 
             if (gameManager != null) gameManager.CompleteRewardHandover();
         }
@@ -207,10 +222,26 @@ namespace ExpoTheExplorer.UI
             var gemsOwed = gameManager.PendingRewardGems;
             var starCount = starsBeingSeated.Count;
 
+            // The bar starts travelling before the first star, and from here on it is the
+            // CLOCK: each star waits for the fill to reach its own notch (decisions.md
+            // D-061). The first star's notch is the bar's left edge, so it pops immediately,
+            // which is the right reading -- that star was earned by finishing, not by speed.
+            if (scoreBar != null) scoreBar.BeginFill();
+
             for (var i = 0; i < starCount; i++)
             {
                 var star = starsBeingSeated[i];
                 if (star == null) continue;
+
+                // Two exits, both needed: the fill reaching this star, or the fill being
+                // done. The second is what stops a bar with a zero duration, an unwired fill
+                // Image or a score that never reaches the notch from stalling a coroutine
+                // that is holding the day's payout.
+                if (scoreBar != null)
+                {
+                    var notch = scoreBar.PositionOf(i);
+                    yield return new WaitUntil(() => scoreBar.CurrentFill >= notch - 0.0001f || scoreBar.IsFillFinished);
+                }
 
                 star.SetActive(true);
                 star.transform.localScale = Vector3.zero;
@@ -228,7 +259,10 @@ namespace ExpoTheExplorer.UI
                 var share = DayRewardPurse.ShareOf(gemsOwed, i, starCount);
                 Launch(gemSprite, ToFlightLocal(star.transform), gemFlightTarget, () => gameManager.ClaimRewardGems(share));
 
-                yield return new WaitForSeconds(starSeatInterval);
+                // Only when the bar is not pacing this: with a bar, the wait above already
+                // spaces the stars by however long the fill takes to cross to the next
+                // notch, and adding a fixed pause on top would push every star late by it.
+                if (scoreBar == null) yield return new WaitForSeconds(starSeatInterval);
             }
 
             yield return new WaitForSeconds(coinBurstDelay);

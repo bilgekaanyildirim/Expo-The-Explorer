@@ -62,6 +62,24 @@
     never tops up a saved profile. The current balance itself is NOT authored
     anywhere: it lives in `player_profile.json` and at runtime in
     `GameState.SoftMoney`.
+  - a day's STAR RATING — the two score thresholds and the two failure penalties →
+    **`StarScoreConfig`** (`Assets/Data/StarScoreConfig.asset`, added 2026-08-24 by
+    decisions.md D-060). Exactly one reader, `DayLifecycleManager`, which holds the RULE
+    (code, so it is testable) while the asset holds the numbers (content, per the root
+    CLAUDE.md invariant). Not on `GameConfig`: that asset owns `GemsPerStar`, which is
+    what a star is WORTH once earned — a different question from what earns one.
+  - the DAY'S TOTAL TICKET SECONDS — the score's denominator → **the Day JSON file**
+    (`runtime.ticketSequence` + `runtime.ticketRuntime`), summed on demand by
+    `DayDefinition.TotalTicketSeconds`. Deliberately NOT stored: a Day already states
+    its length twice (`TicketsRequiredForDay` and a sequence of exactly that many
+    entries), and a third hand-typed total would be the one free to disagree. The
+    override-vs-patience rule behind each entry's limit lives in exactly one place,
+    `ResolvedTicketEntry.TimeLimitSecondsWith`, read by both `TicketEntryFactory` (the
+    ticket the player plays) and that sum (the score they are graded on).
+  - a delivery's SAVED SECONDS → the `Ticket` itself (`RemainingSeconds`), carried to the
+    receipt on `DeliveryPayoutResult` by `EconomyCalculator` — the same instance the tip
+    tier was read from, so the money paid and the time scored cannot disagree. It is also
+    the last moment that number exists; the slot refills immediately after.
   - meta props the player has BOUGHT → **`player_profile.json`**
     (`PlayerProfile.OwnedMetaItemIds`, added v4 by decisions.md D-020), as qualified
     `"<location>.<item>"` keys whose format's single authority is

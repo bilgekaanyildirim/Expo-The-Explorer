@@ -34,6 +34,12 @@ namespace ExpoTheExplorer.Bootstrap
         [SerializeField] private EconomyConfig economyConfig;
         [SerializeField] private LivesConfig livesConfig;
 
+        // The four numbers behind the day's star rating (decisions.md D-060). Required,
+        // unlike metaCatalog below: without it every completed day scores 0 stars and pays
+        // no gems, so Awake says so as an ERROR rather than a note.
+        [Tooltip("Star thresholds and the two failure penalties. A completed day scores 0 stars while this is empty.")]
+        [SerializeField] private StarScoreConfig starScoreConfig;
+
         // OPTIONAL, and read for exactly one question: will the day the player is about to
         // enter open a Day-unlocked prop? If it does, "Next Day" sends them to the main
         // screen so the celebration (decisions.md D-041) cannot be skipped.
@@ -104,6 +110,12 @@ namespace ExpoTheExplorer.Bootstrap
         // consumer falls back to the pre-Day-system GameConfig behavior.
         private DayDefinition CurrentDay => Session.CurrentDay;
 
+        // The star score's denominator: every ticket this Day will hand out, its own time
+        // limit summed (decisions.md D-060). Asked of the Day rather than tracked here, so
+        // it cannot drift from the limits TicketEntryFactory actually gives the tickets.
+        // Zero with no Day loaded, which reads as "scored nothing" downstream.
+        private float CurrentDayTicketSeconds => CurrentDay == null ? 0f : CurrentDay.TotalTicketSeconds;
+
         private void Awake()
         {
             EnsurePhysics2DRaycaster();
@@ -124,16 +136,36 @@ namespace ExpoTheExplorer.Bootstrap
                     "main screen for a prop unlock. Drag the catalog in if you want unlocks to be shown.", this);
             }
 
+            if (starScoreConfig == null)
+            {
+                Debug.LogError(
+                    $"{nameof(GameManager)}: no {nameof(StarScoreConfig)} wired, so every completed day will score " +
+                    "0 stars and pay no gems. Drag Assets/Data/StarScoreConfig.asset into the Star Score Config slot.",
+                    this);
+            }
+
             ticketFactory = new TicketFactory(ticketGenerationConfig);
-            DayLifecycleManager = new DayLifecycleManager(State);
-            TicketSlotManager = new TicketSlotManager(State, CreateNextTicket, HandleLifeLoss);
-            TrayManager = new TrayManager(State, slotIndex => TicketSlotManager.DeliverTicket(slotIndex), HandleLifeLoss);
+            DayLifecycleManager = new DayLifecycleManager(State, starScoreConfig);
+
+            // The two life-loss paths pass DIFFERENT methods here, and that is the only
+            // place the difference is decided (decisions.md D-060): a timeout and a wrong
+            // delivery cost the star score different amounts, and neither system should
+            // have to know that. TicketSlotManager and TrayManager keep taking a plain
+            // Action and stay unaware there are now two of them.
+            TicketSlotManager = new TicketSlotManager(State, CreateNextTicket, HandleTicketTimeout);
+            TrayManager = new TrayManager(State, slotIndex => TicketSlotManager.DeliverTicket(slotIndex), HandleWrongDelivery);
             economyCalculator = new EconomyCalculator(economyConfig);
 
             // The catalog parse and the day-index clamp moved into GameSession, which is
             // where their ordering rule lives now. Both still happen BEFORE this line, so
             // the provider and distributor are still built off a resolved CurrentDay.
             RefreshDayTicketSequenceProvider();
+
+            // The day's star budget, handed over on the way in exactly as it is on the
+            // three retry/advance paths -- so day one of a session is scored by the same
+            // line as every day after it. Nothing else here needs resetting (the state is
+            // brand new), which is why this is the only day-start call.
+            DayLifecycleManager.ResetForNewDay(CurrentDayTicketSeconds);
 
             // Subscribe before the initial fill so the first 3 tickets trigger
             // board playback too, not just later deliveries/cancellations.
@@ -214,13 +246,23 @@ namespace ExpoTheExplorer.Bootstrap
         }
 
         // Both life-loss paths (TicketSlotManager's timeout, TrayManager's wrong
-        // delivery) share this single delegate so the Day Complete popup's
+        // delivery) funnel through the same method below so the Day Complete popup's
         // "Orders failed" count catches either cause -- there's no other place
         // both funnel through.
-        private void HandleLifeLoss()
+        //
+        // They now arrive through two named entry points instead of one shared delegate
+        // (decisions.md D-060), because the star score charges them different amounts. The
+        // split lives HERE and only here: this class is the one that hands each system its
+        // delegate, so no system had to learn what kind of failure it causes, and neither
+        // can report the wrong kind.
+        private void HandleTicketTimeout() => HandleLifeLoss(DayFailureCause.Timeout);
+
+        private void HandleWrongDelivery() => HandleLifeLoss(DayFailureCause.WrongDelivery);
+
+        private void HandleLifeLoss(DayFailureCause cause)
         {
             LivesManager.LoseLife();
-            DayLifecycleManager.RecordFailure();
+            DayLifecycleManager.RecordFailure(cause);
         }
 
         // The day ended in failure and is being replayed, so this attempt's
@@ -474,7 +516,7 @@ namespace ExpoTheExplorer.Bootstrap
             TrayManager.DiscardAllForNewDay();
             TicketSlotManager.ResetSlotsForNewDay();
             LivesManager.RetryDay();
-            DayLifecycleManager.ResetForNewDay();
+            DayLifecycleManager.ResetForNewDay(CurrentDayTicketSeconds);
 
             State.DayRetried.Publish(ticketsBeforeRetry);
         }
@@ -502,7 +544,7 @@ namespace ExpoTheExplorer.Bootstrap
             TrayManager.DiscardAllForNewDay();
             TicketSlotManager.ResetSlotsForNewDay();
             LivesManager.RetryDay();
-            DayLifecycleManager.ResetForNewDay();
+            DayLifecycleManager.ResetForNewDay(CurrentDayTicketSeconds);
 
             // Writes the reverted balance back to disk, unlike the failed-day
             // retry path: this day already COMPLETED, so OnDayCompleted has
@@ -553,7 +595,7 @@ namespace ExpoTheExplorer.Bootstrap
             ApplyDayStartBoardPreSeed();
             TrayManager.DiscardAllForNewDay();
             TicketSlotManager.ResetSlotsForNewDay();
-            DayLifecycleManager.ResetForNewDay();
+            DayLifecycleManager.ResetForNewDay(CurrentDayTicketSeconds);
 
             return true;
         }

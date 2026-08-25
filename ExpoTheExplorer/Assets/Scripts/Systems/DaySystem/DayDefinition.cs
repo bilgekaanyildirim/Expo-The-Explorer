@@ -28,6 +28,36 @@ namespace ExpoTheExplorer.Systems.DaySystem
         // only need a DayDefinition to run DayValidator over don't have to invent one.
         public TicketRuntimeSettings TicketRuntime { get; }
 
+        // The whole day's clock: every authored ticket's own time limit, summed. This is
+        // the denominator of the star score (decisions.md D-060) -- the player's score is
+        // the fraction of it they handed back by delivering early.
+        //
+        // Deliberately summed from the ticket sequence rather than stored as an authored
+        // number: a Day already states its length twice over (TicketsRequiredForDay and a
+        // sequence of exactly that many entries, which DayValidator enforces), and a third
+        // hand-typed total would be the one free to disagree with the tickets actually
+        // played. It is read once per day start, so the loop costs nothing worth naming.
+        //
+        // NOT wall-clock time, and it must not be read as a target duration: three slots
+        // run concurrently, so a day whose tickets total 390s is over in well under half
+        // that. What the number measures is customer patience granted, all of it added up.
+        public float TotalTicketSeconds
+        {
+            get
+            {
+                if (TicketSequence == null) return 0f;
+
+                var total = 0f;
+                foreach (var entry in TicketSequence)
+                {
+                    if (entry == null) continue;
+                    total += entry.TimeLimitSecondsWith(TicketRuntime);
+                }
+
+                return total;
+            }
+        }
+
         public DayDefinition(
             int dayIndex,
             int ticketsRequiredForDay,
@@ -67,6 +97,24 @@ namespace ExpoTheExplorer.Systems.DaySystem
                 if (DrinkItem != null) items.Add(DrinkItem);
                 return items;
             }
+        }
+
+        // How long this entry's ticket gets: its own override if one is authored, else the
+        // PLAYED Day's limit for its patience type (decisions.md D-005, so two Days can
+        // give the same type different limits).
+        //
+        // The single home of that rule. TicketEntryFactory used to hold its own copy and
+        // DayDefinition.TotalTicketSeconds would have needed a second one -- two places
+        // deciding how long a ticket is, one of them feeding the ticket the player plays
+        // and the other the score they are graded on, is exactly the drift the data-source
+        // procedure forbids. A null ticketRuntime (the authoring-side DayDefinition that
+        // exists only to be validated) leaves an un-overridden entry at 0 rather than
+        // throwing, since nothing plays that object.
+        public float TimeLimitSecondsWith(TicketRuntimeSettings ticketRuntime)
+        {
+            if (TimeLimitSecondsOverride > 0f) return TimeLimitSecondsOverride;
+
+            return ticketRuntime == null ? 0f : ticketRuntime.TimeLimitSecondsFor(PatienceType);
         }
 
         public ResolvedTicketEntry(

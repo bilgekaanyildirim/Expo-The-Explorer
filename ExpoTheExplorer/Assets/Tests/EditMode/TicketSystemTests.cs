@@ -463,7 +463,9 @@ namespace ExpoTheExplorer.Tests.EditMode
             var manager = CreateManager(state, () => callCount++ < GameState.TicketSlotCount ? CreateSimpleTicket() : null);
             manager.FillEmptySlots(); // consumes all 3 -- provider is now exhausted
 
-            var dayLifecycle = new DayLifecycleManager(state);
+            // No StarScoreConfig: what is under test is that a timed-out ticket still lets
+            // the day complete, not what it scores (see DayLifecycleManagerTests for that).
+            var dayLifecycle = new DayLifecycleManager(state, null);
             var samplePayout = new DeliveryPayoutResult(orderValue: 10, tier: TipTier.Critical, tipRate: 0f);
             state.TicketDelivered.Subscribe(_ => dayLifecycle.RecordDelivery(samplePayout));
 

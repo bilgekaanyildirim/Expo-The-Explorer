@@ -32,13 +32,28 @@ namespace ExpoTheExplorer.Systems.EconomySystem
         public float Tip { get; }
         public float Total { get; }
 
-        public DeliveryPayoutResult(int orderValue, TipTier tier, float tipRate)
+        // How many seconds were still on the delivered ticket's clock -- the seconds the
+        // player handed back, which is what the day's star score is built from
+        // (DayLifecycleManager, decisions.md D-060). Never negative.
+        //
+        // It rides along on the payout instead of being fetched from the Ticket a second
+        // time because the tier above was READ from it: the tip paid and the time scored
+        // then come from one measurement of one instant, and a delivery cannot end up
+        // paying a green-bar tip while scoring as a red-bar one. It is also the only
+        // moment that number still exists -- the slot is refilled immediately after.
+        //
+        // Zero by default so the four call sites that construct a payout to test the
+        // MONEY (and pass no timing) keep compiling and read as "scored nothing".
+        public float RemainingSeconds { get; }
+
+        public DeliveryPayoutResult(int orderValue, TipTier tier, float tipRate, float remainingSeconds = 0f)
         {
             OrderValue = orderValue;
             Tier = tier;
             TipRate = tipRate;
             Tip = orderValue * tipRate;
             Total = orderValue + Tip;
+            RemainingSeconds = remainingSeconds < 0f ? 0f : remainingSeconds;
         }
     }
 
@@ -69,7 +84,7 @@ namespace ExpoTheExplorer.Systems.EconomySystem
             var orderValue = ResolveOrderValue(ticket);
             var tier = ResolveTipTier(ResolveRemainingRatio(ticket));
 
-            return new DeliveryPayoutResult(orderValue, tier, ResolveTipRate(tier));
+            return new DeliveryPayoutResult(orderValue, tier, ResolveTipRate(tier), ticket.RemainingSeconds);
         }
 
         // A null entry is skipped rather than throwing: a Day authored against a

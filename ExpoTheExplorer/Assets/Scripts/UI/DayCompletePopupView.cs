@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using ExpoTheExplorer.Bootstrap;
 using ExpoTheExplorer.Core;
+using ExpoTheExplorer.Systems.DayLifecycle;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -12,9 +13,14 @@ namespace ExpoTheExplorer.UI
     // "Orders delivered" = the day's summed Order Value (the guaranteed food
     // price of everything delivered), "Tips" = the summed tip on top of that,
     // "Total" = both combined, which already equals the SoftMoney the player
-    // gained today. Stars are one per life still held and are computed in
-    // DayLifecycleManager.StarCount (decisions.md D-008) -- the per-Day authored
-    // thresholds this class once compared Total against are gone.
+    // gained today. Stars are computed in DayLifecycleManager.StarCount -- the per-Day
+    // authored thresholds this class once compared Total against are gone.
+    //
+    // Since D-060 the rating is a SCORE, not a count of surviving lives: the seconds the
+    // player handed back across the day, as a fraction of the day's whole ticket clock,
+    // minus what their mistakes cost. So the receipt shows that arithmetic too (see
+    // WriteStarScoreBreakdown) -- a star lost to a slow day and a star lost to a wrong
+    // order are different information, and a bare star count cannot tell them apart.
     //
     // Since D-057 the receipt is not just a report: nothing is credited during a day, so
     // this popup is where the day actually PAYS. The figures above are written straight
@@ -40,6 +46,15 @@ namespace ExpoTheExplorer.UI
         [SerializeField] private GameObject star1Filled;
         [SerializeField] private GameObject star2Filled;
         [SerializeField] private GameObject star3Filled;
+
+        // The visual half of the same three numbers (decisions.md D-061): the score as a
+        // bar the three stars stand on. Optional for the same reason the rows above are --
+        // a scene that has not built it yet keeps the old fixed-interval star seating.
+        //
+        // This view only hands it the two numbers; the FLIGHT drives it, because the bar's
+        // fill is what paces the seating and the flight owns that sequence.
+        [Tooltip("Optional. The score bar the three stars stand on. Leave it empty and the stars seat on their old fixed rhythm instead.")]
+        [SerializeField] private StarScoreBarView starScoreBar;
         [SerializeField] private Button nextDayButton;
         [SerializeField] private Button retryButton;
         [SerializeField] private Button goBackButton;
@@ -81,6 +96,15 @@ namespace ExpoTheExplorer.UI
             tipsValueText.text = summary.TipsValue.ToString();
             totalText.text = summary.Total.ToString();
 
+            // Before the popup goes live, so the markers are already where this day's
+            // thresholds put them and nothing is seen sliding into place. Anchors resolve on
+            // activation, so an inactive hierarchy is the right time to write them -- unlike
+            // the flight's own measurements, which need the layout to exist first.
+            if (starScoreBar != null)
+            {
+                starScoreBar.Prepare(summary.ScoreProgressToMaxStars, summary.TwoStarProgressPosition);
+            }
+
             popupRoot.SetActive(true);
 
             // The stars are no longer switched on here. Since D-057 they are SEATED, one
@@ -95,7 +119,24 @@ namespace ExpoTheExplorer.UI
             star2Filled.SetActive(false);
             star3Filled.SetActive(false);
 
-            rewardFlight.Play(EarnedStarObjects(summary.StarCount), totalText.rectTransform);
+            var earned = EarnedStarObjects(summary.StarCount);
+
+            // No flight wired is a wiring MISTAKE, not a mode -- but it must not cost the
+            // player the whole popup. D-057's own rule is that the money is safe without
+            // this object (every exit commits the purse through GameManager), so the
+            // fallback is to show the score plainly and let the exits pay. Before this, a
+            // single empty slot made ValidateReferences fail, which returned out of Start,
+            // which meant the popup never subscribed to DayCompleted at all -- so finishing
+            // a day showed NOTHING, and the one thing on screen that could have explained
+            // it was the popup that failed to appear.
+            if (rewardFlight == null)
+            {
+                foreach (var star in earned) star.SetActive(true);
+                if (starScoreBar != null) starScoreBar.ShowTargetWithoutAnimating();
+                return;
+            }
+
+            rewardFlight.Play(earned, totalText.rectTransform);
         }
 
         // The earned stars in seating order, and nothing else -- the flight seats exactly
@@ -178,7 +219,20 @@ namespace ExpoTheExplorer.UI
             if (nextDayButton == null) missing.Add(nameof(nextDayButton));
             if (retryButton == null) missing.Add(nameof(retryButton));
             if (goBackButton == null) missing.Add(nameof(goBackButton));
-            if (rewardFlight == null) missing.Add(nameof(rewardFlight));
+
+            // rewardFlight is deliberately NOT in this list any more. It used to be, and
+            // that turned one empty slot into "finishing a day shows nothing at all": this
+            // method returning false returns out of Start, and Start is where the popup
+            // subscribes to DayCompleted. Everything left in the list above is something the
+            // popup cannot render a receipt without; the flight is a performance, and Show
+            // already falls back to seating the stars plainly when it is missing. It is
+            // still reported, just not fatally.
+            if (rewardFlight == null)
+            {
+                Debug.LogError(
+                    $"{nameof(DayCompletePopupView)} on '{name}': {nameof(rewardFlight)} is not wired, so the day's " +
+                    "reward will not animate. The receipt still shows and the exits still pay out in full.", this);
+            }
 
             if (missing.Count == 0) return true;
 
