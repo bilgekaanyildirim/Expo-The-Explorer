@@ -38,9 +38,17 @@ from datetime import date
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from shards import load_shards, shard_of  # noqa: E402
+from unityparse import VENDOR_DIRS  # noqa: E402
 
 MARKERS = ("STALE", "ORPHAN", "MOVED")
+
+# Build artifacts and tooling state: nothing here is source at all.
 SKIP_DIRS = ("Library", "Temp", "obj", "Logs", "UserSettings", "Build", "Builds", ".git", ".claude")
+
+# VENDOR_DIRS (third-party folders inside Assets/) is imported from unityparse so
+# every map excludes the same set -- see the comment on it there for why. SRDebugger
+# alone added 194 lines here and pushed codemap-core from 47 missing-role to 142,
+# at which point 57% of the map was vendor noise and DEGRADED stopped meaning anything.
 
 
 def project_root() -> str:
@@ -143,7 +151,7 @@ def collect_sources(root: str):
     assets = os.path.join(root, "Assets")
     base = assets if os.path.isdir(assets) else root
     for dirpath, dirnames, filenames in os.walk(base):
-        dirnames[:] = sorted(d for d in dirnames if d not in SKIP_DIRS)
+        dirnames[:] = sorted(d for d in dirnames if d not in SKIP_DIRS and d not in VENDOR_DIRS)
         for fn in sorted(filenames):
             if fn.endswith(".meta"):
                 continue

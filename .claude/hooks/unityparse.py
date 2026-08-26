@@ -20,6 +20,20 @@ import re
 
 SKIP_DIRS = ("Library", "Temp", "obj", "Logs", "UserSettings", "Build", "Builds", ".git")
 
+# Third-party source and content that ships INSIDE Assets/. Real files, which is
+# why they are not in SKIP_DIRS, but not files this project owns or will ever
+# document: an asset-store package's scripts land as permanent `sys: ?` codemap
+# lines, and its demo scenes and UI prefabs bury ours in the unitymap (the
+# NiceVibrations demo scene alone carries 458 objects). Excluding them is what
+# keeps a map's health counters meaningful instead of permanently DEGRADED.
+#
+# THE SINGLE SOURCE for this list -- build_codemap.py imports it from here rather
+# than keeping its own copy, so a newly vendored folder is added in one place and
+# every map agrees about what is ours. Matched by directory NAME anywhere under
+# the walk. Adding a name is a claim that the folder is vendored and read-only;
+# a package we fork and edit belongs in the maps like any other source.
+VENDOR_DIRS = ("StompyRobot", "ThirdParty", "Plugins", "TextMesh Pro")
+
 # Unity class ids used by name below
 CLS_GAMEOBJECT = 1
 CLS_TRANSFORM = 4
@@ -52,12 +66,43 @@ class Doc:
         return r[0] if r else None
 
 
+def unity_assets_dir(root: str):
+    """The Assets/ folder of the Unity project, which need not sit at the repo root.
+
+    A repo may nest the Unity project one level down (this one does:
+    `ExpoTheExplorer/Assets`), and the flat `<root>/Assets` assumption is why
+    unitymap.md stamped `scenes:0` while four scenes existed on disk, assetmap.md
+    reported 0 prefabs, and check_blueprint printed "no Assets/ directory yet".
+    A map that reports zero is indistinguishable from an empty project, so the
+    failure was silent rather than loud -- the worst kind for a map.
+
+    Only ONE level down is searched, and a candidate must carry `ProjectSettings`
+    beside `Assets` so that a stray folder named Assets/ cannot be mistaken for a
+    Unity project. Returns None when there is no Unity project to walk; callers
+    keep `root` for relpath, so emitted paths stay repo-relative either way.
+    """
+    flat = os.path.join(root, "Assets")
+    if os.path.isdir(flat):
+        return flat
+    try:
+        entries = sorted(os.listdir(root))
+    except OSError:
+        return None
+    for name in entries:
+        if name in SKIP_DIRS:
+            continue
+        cand = os.path.join(root, name)
+        if os.path.isdir(os.path.join(cand, "Assets")) and os.path.isdir(os.path.join(cand, "ProjectSettings")):
+            return os.path.join(cand, "Assets")
+    return None
+
+
 def walk_assets(root: str, suffixes):
-    base = os.path.join(root, "Assets")
-    if not os.path.isdir(base):
+    base = unity_assets_dir(root)
+    if base is None:
         return
     for dirpath, dirnames, filenames in os.walk(base):
-        dirnames[:] = sorted(d for d in dirnames if d not in SKIP_DIRS)
+        dirnames[:] = sorted(d for d in dirnames if d not in SKIP_DIRS and d not in VENDOR_DIRS)
         for fn in sorted(filenames):
             if fn.endswith(suffixes):
                 yield os.path.join(dirpath, fn)

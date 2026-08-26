@@ -42,9 +42,18 @@
     (`PlayerProfile.CurrentDayIndex`, added 2026-08-19 by decisions.md D-012). It is
     a POSITION in the resolved Day catalog, not a Day file's own `dayIndex` (that
     only decides sort order). Runtime mirror: `GameState.CurrentDayIndex`, whose
-    single writer stays `GameManager` (day advance, the loaded-and-clamped value in
-    `Awake`, and the completed-day exit to the main screen). Readers:
-    `GameManager.CurrentDay` and `MainScreenView` (display only, from the file).
+    single writer is **`GameSession.GoToDay(int)`** since decisions.md D-092.
+    This entry used to name `GameManager`, and that was WRONG rather than merely
+    stale: the field was assigned in three places — GameManager's day advance,
+    GameManager's completed-day exit, and GameSession's own constructor — and the
+    error stayed invisible because the three never ran together. D-092's
+    main-screen day jump needed a fourth caller in a scene where GameManager does
+    not exist, so all three now route through `GoToDay`, the constructor included.
+    It clamps against `DayCatalog.Count` (an index past the last authored Day
+    resolves `CurrentDay` to null and throws on the first ticket) and deliberately
+    does NOT persist — saving stays the caller's sentence, because two of them
+    write several fields in the same breath. Readers: `GameManager.CurrentDay`,
+    the meta views, and `MainScreenView` (display only, from the file).
   - lives → runtime `GameState.Lives`, **NOT persisted** (decisions.md D-064,
     2026-08-25, which removed `PlayerProfile.Lives` at save v6; D-014 had added it at
     v3 and this entry claimed it was still there). Lives are a PER-DAY allowance now:

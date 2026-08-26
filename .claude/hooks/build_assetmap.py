@@ -27,7 +27,9 @@ import sys
 from datetime import datetime, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from unityparse import CLS_PREFAB_INSTANCE, guid_index, parse_docs, walk_assets  # noqa: E402
+from unityparse import (  # noqa: E402
+    CLS_PREFAB_INSTANCE, guid_index, parse_docs, unity_assets_dir, walk_assets,
+)
 
 MAX_PER_SECTION = 200
 
@@ -95,8 +97,8 @@ def section(title, rows, empty="- (none)"):
 def special_folder(root, name):
     """Every folder called <name> under Assets, with its file count."""
     hits = []
-    base = os.path.join(root, "Assets")
-    if not os.path.isdir(base):
+    base = unity_assets_dir(root)
+    if base is None:
         return hits
     for dirpath, dirnames, _files in os.walk(base):
         dirnames[:] = sorted(d for d in dirnames if d not in ("Library", "Temp", ".git"))

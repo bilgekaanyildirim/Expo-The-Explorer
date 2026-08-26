@@ -35,6 +35,7 @@
   <Project Path="Unity.Purchasing.Editor.Shared.csproj" />
   <Project Path="Unity.PerformanceTesting.csproj" />
   <Project Path="Unity.2D.Tilemap.Extras.Editor.csproj" />
+  <Project Path="StompyRobot.SRDebugger.csproj" />
   <Project Path="ExpoTheExplorer.Data.csproj" />
   <Project Path="UnityEditor.Purchasing.csproj" />
   <Project Path="ExpoTheExplorer.Tests.EditMode.csproj" />
@@ -48,11 +49,13 @@
   <Project Path="ScriptablePacker.csproj" />
   <Project Path="Unity.Rider.Editor.csproj" />
   <Project Path="Unity.2D.Tooling.Editor.csproj" />
+  <Project Path="StompyRobot.SRF.csproj" />
   <Project Path="Unity.VisualScripting.State.csproj" />
   <Project Path="Unity.InternalAPIEditorBridge.001.csproj" />
   <Project Path="Unity.Purchasing.AppleMacosStub.csproj" />
   <Project Path="Unity.Purchasing.Codeless.csproj" />
   <Project Path="Lofelt.NiceVibrations.csproj" />
+  <Project Path="StompyRobot.SRDebugger.Editor.csproj" />
   <Project Path="Unity.Services.Core.Configuration.Editor.csproj" />
   <Project Path="Lofelt.NiceVibrations.Demo.csproj" />
   <Project Path="ExpoTheExplorer.Core.csproj" />
@@ -83,6 +86,7 @@
   <Project Path="Unity.VisualScripting.Shared.Editor.csproj" />
   <Project Path="Unity.2D.Aseprite.Common.csproj" />
   <Project Path="Unity.Services.Core.Device.csproj" />
+  <Project Path="ExpoTheExplorer.Systems.Tutorial.csproj" />
   <Project Path="Unity.Services.Core.Analytics.csproj" />
   <Project Path="ExpoTheExplorer.Systems.DayLifecycle.csproj" />
   <Project Path="Unity.Purchasing.AppleStub.csproj" />
@@ -93,6 +97,7 @@
   <Project Path="ExpoTheExplorer.Systems.EconomySystem.csproj" />
   <Project Path="ExpoTheExplorer.Systems.LivesSystem.csproj" />
   <Project Path="Unity.Services.Core.Registration.csproj" />
+  <Project Path="StompyRobot.SRF.Editor.csproj" />
   <Project Path="Unity.InputSystem.DocCodeSamples.csproj" />
   <Project Path="Sirenix.OdinInspector.Modules.UnityMathematics.csproj" />
   <Project Path="ExpoTheExplorer.Systems.HapticsSystem.csproj" />

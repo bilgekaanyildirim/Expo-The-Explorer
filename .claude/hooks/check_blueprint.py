@@ -21,7 +21,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from maps import find_cycles, read_blueprint, read_codemaps  # noqa: E402
-from unityparse import walk_assets  # noqa: E402
+from unityparse import VENDOR_DIRS, unity_assets_dir, walk_assets  # noqa: E402
 
 IGNORED_TOP = {"Art", "Audio", "Plugins", "Settings", "TextMesh Pro", "TutorialInfo",
                "AddressableAssetsData", "XR", "Samples", "ThirdParty", "Editor Default Resources"}
@@ -52,18 +52,23 @@ def main() -> int:
     declared = {d.rstrip("/") for d in bp["folders"] if not d.startswith("<")}
     declared_norm = {d if d.startswith("Assets/") else f"Assets/{d}"
                      for d in declared if d not in ("Assets",)}
-    assets = os.path.join(root, "Assets")
-    if os.path.isdir(assets):
+    assets = unity_assets_dir(root)
+    if assets is not None:
+        # The blueprint writes its paths relative to the UNITY project, not to the
+        # repo, and the two are only the same when the project sits at the repo root.
+        # Joining `root` here is what made every declared folder report "not created
+        # yet" for a nested project while it sat on disk the whole time.
+        unity_root = os.path.dirname(assets)
         real_top = {f"Assets/{d}" for d in os.listdir(assets)
                     if os.path.isdir(os.path.join(assets, d)) and d not in IGNORED_TOP
-                    and not d.startswith(".")}
+                    and d not in VENDOR_DIRS and not d.startswith(".")}
         for d in sorted(real_top):
             if not any(x == d or x.startswith(d + "/") for x in declared_norm):
                 add("WARN", f"folder on disk but not in the blueprint layout: {d}/")
         for d in sorted(declared_norm):
             if "<" in d or ">" in d:
                 continue
-            if not os.path.isdir(os.path.join(root, d)):
+            if not os.path.isdir(os.path.join(unity_root, d)):
                 add("INFO", f"folder declared in the blueprint, not created yet: {d}/")
     else:
         add("INFO", "no Assets/ directory yet — folder layout not checked.")

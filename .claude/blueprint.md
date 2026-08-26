@@ -40,6 +40,14 @@
      tools would imply a dependency it does not have. It exists because the stale-asset
      trap has now been recorded four times (D-004, D-011, D-063, D-074); a system line
      is what lets its codemap entry carry a real `sys:` instead of `?`. -->
+- PlayTesting — editor-only jump into any authored Day: sets the saved profile's day POSITION, opens a scene and enters play — depends on: DaySystem, ProgressionSystem
+<!-- PlayTesting, added 2026-08-26 (decisions.md D-091): its own line rather than a home
+     inside DayEditor, for the reason DataTooling got one -- it authors NOTHING. DayEditor
+     writes Day JSON; this reads the finished catalog and writes the SAVE FILE, which is a
+     different direction and a different dependency (ProgressionSystem, an arrow DayEditor
+     does not have and should not gain). Both arrows are one-directional: neither DaySystem
+     nor ProgressionSystem knows this exists, and neither would compile differently if it
+     were deleted. -->
 
 - BoardUI — runtime board grid rendering + drag/drop (BoardView, board-visual config assets) — depends on: -
 - EconomySystem — delivery payout formula (order value from food prices + a tip stepped through three tiers keyed on remaining-time ratio) + its balancing config — depends on: -
@@ -132,6 +140,59 @@
      and this view only asks it to release what the purse already owes. -->
 
 - TraySystem — per-slot tray contents, batched order validation, scatter-back-to-board — depends on: -
+- Tutorial — teaching the game: the day scene's forced opening (a Day's authored sequence of steps, each either a move the player must make or a panel they must read) AND the main screen's first-run welcome and store hint — depends on: -
+<!-- Became a step LIST in D-083 (2026-08-26), one turn after it shipped as a single step.
+     That is the note D-082 wrote in advance: one authored step meant one step, and the
+     second authored moment is what earned the generalisation. It is STILL not a framework
+     -- a list and an index, no interface, no state machine class, no per-step subclass.
+
+     THE MAIN SCREEN'S HALF SHARES NO CODE WITH THE DAY SCENE'S, on purpose (D-088). This system's
+     name covers both, but MainScreenTutorialView does not use TutorialDirector: that director's
+     entire surface is board cells, trays and drop gates, and the main screen has no board, no
+     trays and no Day. Reusing it would have meant carrying Day-shaped fields into a screen with
+     none of them, so the two flows share a `sys:` and nothing else. The main screen's texts are
+     authored in the SCENE rather than in a Day file or a config asset, which is where every
+     other player-facing string in this project already lives.
+
+     TutorialStep is this system's OWN type rather than DaySystem's ResolvedTutorialStep,
+     which is the one thing protecting the empty reference list below: taking DaySystem's
+     type would have been the first entry on it. GameManager translates at the boundary,
+     exactly as it hands PowerupManager a Func instead of the systems an effect touches. -->
+
+<!-- Tutorial, added 2026-08-26 (decisions.md D-082; the user's ask: on Day 0 everything
+     darkens except one hotdog and one tray, a ghost hotdog loops between them, and the
+     player cannot do anything else until they make that move).
+
+     The arrow is `-` and the assembly references NOTHING, which is the whole shape of this
+     system. TutorialDirector is handed three plain ints (source cell x/y, target tray
+     index) and answers two questions -- may this cell be picked up, may this tray accept --
+     plus "is it done". It does not know what a BoardItem is, what a Ticket is, or that
+     trays have contents. That is what makes every rule in it reachable from a test with no
+     MonoBehaviour, no scene, and no Day catalog, and it is the same trick PowerupSystem
+     uses to avoid pointing at the board, the trays and the tickets at once.
+
+     WHERE THE CONTENT LIVES IS THE OTHER HALF: the three numbers are authored per Day in
+     the Day JSON (`runtime.tutorial`), because they describe THIS Day's board, which the
+     Day file is already the single authority for. A TutorialConfig asset was rejected --
+     it would be a second authority for what happens on Day 0, free to name a cell the
+     Day's own boardTimeline never fills, with nothing checking the two against each other.
+     DayValidator now checks exactly that pairing at authoring time, which is only possible
+     because both halves live in the same file.
+
+     IT OWNS NO SCENE PRESENCE AND NO ASSET. The spotlight (the dim, the sorting lifts, the
+     looping ghost) is built at runtime by TutorialSpotlightView, which the TARGET
+     WorldTrayView creates in its own Start -- that tray is the one object already holding
+     both of the ghost's endpoints (a serialized BoardView for the source cell, its own
+     transform for the destination), so the effect needs no new scene object, no prefab, no
+     art and nothing dragged into an Inspector. The view lives in Scripts/UI (shard ui)
+     rather than in this system's folder for the usual reason: it is a MonoBehaviour that
+     must see GameManager, so it belongs to Assembly-CSharp and could not compile inside an
+     asmdef assembly.
+
+     DELIBERATELY NOT A FRAMEWORK. There is one authored step, so there is no step list, no
+     interface and no state machine -- abstraction-level.md's default answer. A second
+     tutorial moment is the thing that would justify those, and it does not exist yet. -->
+
 - HapticsSystem — which game moment plays which haptic, and which one wins when several land in the same frame — depends on: -
 <!-- HapticsSystem, added 2026-08-25 (decisions.md D-070). The arrow is `-` and stays `-`:
      this system READS a config asset and nothing else. It does not know GameState, the
@@ -182,6 +243,25 @@
      exits back to here go through GameManager, which owns what must survive the
      scene: the persisted day index, and settling an abandoned attempt. -->
 - MetaSystem — the expo grounds the player decorates between days: a per-location catalog of props (bought with SoftMoney, or appearing at an authored Day), which of them the player owns, and the purchase rules — depends on: -
+- DebugMenu — development-only cheat and inspection surface on SRDebugger's Options tab: grants currency/keys/powerups, refills lives, jumps to any authored Day, forces a save — depends on: Bootstrap, ProgressionSystem, KeySystem, PowerupSystem, LivesSystem, TicketSystem, MetaSystem
+<!-- DebugMenu, added 2026-08-26 (decisions.md D-092). It is a READER-AND-COMMANDER, never
+     an owner: every arrow above exists because it CALLS that system's public API, and it
+     introduces no writer of its own. That is the whole design constraint -- a cheat menu is
+     the most tempting place in a codebase to assign a field directly, and doing so would
+     hand every balance a second writer and quietly void the root invariant. Money goes
+     through `Wallet`, keys through `KeyManager`, charges through `PowerupManager`, lives
+     through `LivesManager`, the day index through `GameSession.GoToDay`.
+
+     It has no assembly of its own AND THAT IS LOAD-BEARING, not laziness: SRDebugger exposes
+     options by having you extend its `SROptions` partial class, which lives in
+     Assets/StompyRobot/SROptions/ with no asmdef and therefore compiles into
+     Assembly-CSharp. A partial's halves must share an assembly, so ours must land there too.
+     It costs nothing -- every project asmdef is `autoReferenced: true`, so Assembly-CSharp
+     already sees all of them.
+
+     Nothing references it, in either direction: deleting the folder removes the panel and
+     changes no other file. The one exception is the day-index owner move that D-092 made in
+     GameSession, which stands on its own merits and stays if this folder goes. -->
 - Testing — the EditMode test assembly and the reference list that decides what it can see — depends on: -
 <!-- Added 2026-08-25 (D-065's turn). NOT a game system, and it is listed here for one
      mechanical reason: `ExpoTheExplorer.Tests.EditMode.asmdef` carried `sys: ?` in the
@@ -262,7 +342,16 @@
 <!-- Every prefab: name — owning system — variant-of (or -) — where it is
      instantiated from (authoring | spawner). scene-structure.md decides
      what becomes a prefab. -->
-- HudCanvas — ProgressionSystem — variant-of: - — authoring (placed in both scenes by hand / HudCanvasPrefabSetup)
+- HUDCanvas — ProgressionSystem — variant-of: - — authoring (placed in both scenes by hand / HudCanvasPrefabSetup)
+<!-- Spelled HUDCanvas, matching Assets/Prefabs/UI/HUDCanvas.prefab on disk. It read
+     "HudCanvas" here until 2026-08-26, which check_blueprint reported as BOTH a prefab on
+     disk with no line AND a line with no prefab -- one case mismatch wearing two hats. It
+     went unseen because the checker could not find Assets/ at all in this nested repo
+     layout until D-092 fixed the map generators' project-root resolution. -->
+- NoKeysPopup — KeySystem — variant-of: - — authoring (placed in MainScreen by hand, wired into MainScreenView's optional popup slot)
+<!-- Added 2026-08-26 during D-092's map repair: the prefab shipped with the out-of-keys
+     popup (D-069) and never got an inventory line, which the same blind checker hid. -->
+
 <!-- Carries a THIRD system's widget since D-065 step 3: KeysView (sys: KeySystem) sits
      in the prefab beside the wallet, replacing the old lives readout on the same object.
      That is not a repeat of the two-systems-one-prefab tangle D-064 untangled -- the
@@ -317,6 +406,12 @@ Assets/
                            (codemap: core — shards.json has no Systems pattern,
                            so these land in the catch-all, same as every other
                            system on disk today)
+  Scripts/Debug/       ← .cs: the SRDebugger cheat/inspection panel. NO asmdef, for the
+                           same mechanical reason as Bootstrap but a different cause: it
+                           extends SRDebugger's `SROptions` PARTIAL class, and a partial's
+                           halves must share an assembly — SRDebugger's half has no asmdef,
+                           so neither may ours. Everything in here is wrapped in
+                           `UNITY_EDITOR || DEVELOPMENT_BUILD` and ships in no release build
   Scripts/Gameplay/    ← .cs: mechanics, systems (codemap: gameplay)
   Scripts/UI/          ← .cs: UI code (codemap: ui)
   Scripts/<Area>/Editor/ ← editor-only code that must SEE Assembly-CSharp types
