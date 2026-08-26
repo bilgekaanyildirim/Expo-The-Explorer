@@ -1,4 +1,4 @@
-<!-- stamp: 2026-08-26T12:42Z source-sig:a0d577e76edd scenes:5 prefabs:5 generator:python-fallback status: DEGRADED 293 missing-script -->
+<!-- stamp: 2026-08-26T15:16Z source-sig:fff5c3f7b15c scenes:5 prefabs:5 generator:python-fallback status: DEGRADED 338 missing-script -->
 # unitymap — scene and prefab structure
 
 Read this instead of opening a `.unity`/`.prefab` file. Tree indentation is
@@ -71,7 +71,7 @@ Unity menu item Tools > unity-dev > Export unitymap.
 - MISSING SCRIPT | ExpoTheExplorer/Assets/Scenes/MainScreen.unity | Panel
 - MISSING SCRIPT | ExpoTheExplorer/Assets/Scenes/MainScreen.unity | PlayButton
 - MISSING SCRIPT | ExpoTheExplorer/Assets/Scenes/MainScreen.unity | PlayButtonLabel
-- ... 171 more
+- ... 193 more
 
 ## PREFAB ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab   (12 object(s))
 - HUDCanvas  [RectTransform, Canvas, MISSING SCRIPT (guid:0cd44c10), MISSING SCRIPT (guid:dc42784c), HudWalletSource]  refs: sessionHost=NULL
@@ -134,16 +134,14 @@ Unity menu item Tools > unity-dev > Export unitymap.
   - Clock  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
   - DangerImage  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
 
-## SCENE ExpoTheExplorer/Assets/Scenes/MainScreen.unity   (60 object(s))
+## SCENE ExpoTheExplorer/Assets/Scenes/MainScreen.unity   (58 object(s))
 - EventSystem  [MISSING SCRIPT (guid:01614664), MISSING SCRIPT (guid:76c392e4), Transform]
-- Canvas  [MainScreenView, MISSING SCRIPT (guid:dc42784c), MISSING SCRIPT (guid:0cd44c10), Canvas, RectTransform, NoKeysPopupView]  refs: noKeysPopup=set, playButton=set, playLabel=set, resetButton=set, resetLabel=set, sessionHost=set, tutorial=set, closeButton=set, countdownText=set, gemButton=set, gemCostLabel=set, haptics=set, notEnoughGemsLabel=set, popupRoot=set, sessionHost=set
+- Canvas  [MainScreenView, MISSING SCRIPT (guid:dc42784c), MISSING SCRIPT (guid:0cd44c10), Canvas, RectTransform, NoKeysPopupView]  refs: noKeysPopup=set, playButton=set, playLabel=set, sessionHost=set, tutorial=set, closeButton=set, countdownText=set, gemButton=set, gemCostLabel=set, haptics=set, notEnoughGemsLabel=set, popupRoot=set, sessionHost=set
   - MetaGrounds  [RectTransform, MISSING SCRIPT (guid:1aa08ab6), MetaGroundsView]  refs: background=set, catalog=set, haptics=set, locationLabel=NULL, lockedHintLabel=NULL, nextButton=NULL, previousButton=NULL, scroll=set, sessionHost=set
     - Viewport  [RectTransform, MISSING SCRIPT (guid:3312d773)]
       - Background  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
   - PlayButton  [MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, RectTransform, HapticButton]  refs: haptics=set
     - PlayButtonLabel  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
-  - ResetButton  [MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, RectTransform]
-    - ResetButtonLabel  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
   - MetaShop  [RectTransform, MetaShopView]  refs: confirmBox=set, confirmBuyButton=set, confirmCancelButton=set, confirmNameLabel=set, confirmPopup=set, confirmPriceLabel=set, grounds=set, haptics=set, marketButton=set, panel=set, rowTemplate=set, rowsParent=set, sessionHost=set
     - Panel  [RectTransform, MISSING SCRIPT (guid:1aa08ab6), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
       - ListViewport  [RectTransform, MISSING SCRIPT (guid:3312d773)]
@@ -190,12 +188,12 @@ Unity menu item Tools > unity-dev > Export unitymap.
           - Buy  [RectTransform, MISSING SCRIPT (guid:306cc8c2), MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
             - Label  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
   - MainScreenTutorial  [RectTransform, MainScreenTutorialView]  refs: sessionHost=set, shop=set, texts=set
-- Session  [MainScreenRoot, Transform, HapticsBinder, MISSING SCRIPT (guid:ceb29a83)]  refs: foodCatalog=set, gameConfig=set, keyConfig=set, livesConfig=set, powerupConfig=set, config=set, gameManager=NULL
+- Session  [MainScreenRoot, Transform, HapticsBinder, MISSING SCRIPT (guid:ceb29a83), DebugMenuBinder]  refs: foodCatalog=set, gameConfig=set, keyConfig=set, livesConfig=set, powerupConfig=set, config=set, gameManager=NULL, sessionHost=set, host=set, metaCatalog=set
 - Main Camera  [Camera, Transform, MISSING SCRIPT (guid:a79441f3)]
 - * HUDCanvas  (prefab instance of ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab)
 - * NoKeysPopup  (prefab instance of ExpoTheExplorer/Assets/Prefabs/UI/NoKeysPopup.prefab)
 
-## SCENE ExpoTheExplorer/Assets/Scenes/SampleScene.unity   (97 object(s))
+## SCENE ExpoTheExplorer/Assets/Scenes/SampleScene.unity   (134 object(s))
 - TrayArea  [WorldTrayView, BoxCollider2D, SpriteRenderer, Transform]  refs: animConfig=set, boardView=set, drinkSlot=set, gameManager=set, highlightVisual=set, mainDishSlot=set, sideSlot=set, ticketCardsView=set, wrongVisual=set
   - MainDishSlot  [Transform]
   - SideSlot  [Transform]
@@ -245,7 +243,7 @@ Unity menu item Tools > unity-dev > Export unitymap.
         - Star3  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
           - Star3Filled  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
 - Global Light 2D  [MISSING SCRIPT (guid:073797af), Transform]
-- GameManager  [GameManager, Transform, DebugTicketDeliveryController, HapticsBinder]  refs: autoCollectRunner=set, economyConfig=set, foodCatalog=set, gameConfig=set, haptics=set, keyConfig=set, lifeLostHeartView=set, livesConfig=set, metaCatalog=set, powerupConfig=set, starScoreConfig=set, ticketGenerationConfig=set, gameManager=set, config=set, gameManager=set
+- GameManager  [GameManager, Transform, HapticsBinder, DebugMenuBinder]  refs: autoCollectRunner=set, economyConfig=set, foodCatalog=set, gameConfig=set, haptics=set, keyConfig=set, lifeLostHeartView=set, livesConfig=set, metaCatalog=set, powerupConfig=set, starScoreConfig=set, ticketGenerationConfig=set, config=set, gameManager=set, sessionHost=set, host=set, metaCatalog=set
 - TrayArea (1)  [WorldTrayView, BoxCollider2D, SpriteRenderer, Transform]  refs: animConfig=set, boardView=set, drinkSlot=set, gameManager=set, highlightVisual=set, mainDishSlot=set, sideSlot=set, ticketCardsView=set, wrongVisual=set
   - MainDishSlot  [Transform]
   - SideSlot  [Transform]
@@ -256,6 +254,43 @@ Unity menu item Tools > unity-dev > Export unitymap.
 - EventSystem  [MISSING SCRIPT (guid:01614664), MISSING SCRIPT (guid:76c392e4), Transform]
 - StartingPoint  [Transform]
 - BoardView  [BoardView, Transform]  refs: animConfig=set, dragFeelConfig=set, gameManager=set, haptics=set, startingPoint=set, targetCamera=NULL, visualsConfig=set
+- SettingsCanvas  [SettingsPopupView, MISSING SCRIPT (guid:dc42784c), MISSING SCRIPT (guid:0cd44c10), Canvas, RectTransform]  refs: dayNumberText=set, filledStars=set, gameManager=set, hapticsOffIndicator=set, hapticsOnIndicator=set, hapticsToggleButton=set, mainMenuButton=set, mainMenuConfirmNoButton=set, mainMenuConfirmRoot=set, mainMenuConfirmYesButton=set, openButton=set, popupRoot=set, resumeButton=set, retryButton=set, retryConfirmNoButton=set, retryConfirmRoot=set, retryConfirmYesButton=set
+  - OpenButton  [MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:fe87c0e1), HapticButton, CanvasRenderer, RectTransform]  refs: haptics=set
+  - PopupRoot [inactive]  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
+    - Panel  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
+      - Title  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
+      - DayLabel  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
+      - DayNumber  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
+      - Star1  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
+        - Filled [inactive]  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
+      - Star2  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
+        - Filled [inactive]  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
+      - Star3  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
+        - Filled [inactive]  [MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, RectTransform]
+      - HapticsToggleButton  [RectTransform, HapticButton, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, MISSING SCRIPT (guid:4e29b1a8)]  refs: haptics=set
+        - Label  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
+        - OnIndicator  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
+        - OffIndicator [inactive]  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
+      - ResumeButton  [RectTransform, HapticButton, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, MISSING SCRIPT (guid:4e29b1a8)]  refs: haptics=set
+        - Label  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
+      - RetryButton  [RectTransform, HapticButton, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, MISSING SCRIPT (guid:4e29b1a8)]  refs: haptics=set
+        - Label  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
+      - MainMenuButton  [RectTransform, HapticButton, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, MISSING SCRIPT (guid:4e29b1a8)]  refs: haptics=set
+        - Label  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
+    - RetryConfirm [inactive]  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
+      - Panel  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
+        - Question  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
+        - YesButton  [RectTransform, HapticButton, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, MISSING SCRIPT (guid:4e29b1a8)]  refs: haptics=set
+          - Label  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
+        - NoButton  [RectTransform, HapticButton, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, MISSING SCRIPT (guid:4e29b1a8)]  refs: haptics=set
+          - Label  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
+    - MainMenuConfirm [inactive]  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
+      - Panel  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
+        - Question  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
+        - YesButton  [RectTransform, HapticButton, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, MISSING SCRIPT (guid:4e29b1a8)]  refs: haptics=set
+          - Label  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
+        - NoButton  [RectTransform, HapticButton, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, MISSING SCRIPT (guid:4e29b1a8)]  refs: haptics=set
+          - Label  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
 - Backgroundcanvas  [MISSING SCRIPT (guid:dc42784c), MISSING SCRIPT (guid:0cd44c10), Canvas, RectTransform]
   - Background  [RectTransform, CanvasRenderer, MetaBackdropView, MISSING SCRIPT (guid:1344c3c8)]  refs: catalog=set, sessionHost=set, target=set
 - HapticReciever  [MISSING SCRIPT (guid:ceb29a83), Transform]
@@ -362,7 +397,7 @@ Unity menu item Tools > unity-dev > Export unitymap.
         - RetryButton  [RectTransform, MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
         - GoBackButton  [RectTransform, MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
 - Global Light 2D  [MISSING SCRIPT (guid:073797af), Transform]
-- GameManager  [GameManager, Transform, DebugTicketDeliveryController]  refs: economyConfig=set, foodCatalog=set, gameConfig=set, levelProgressionConfig=set, livesConfig=set, ticketGenerationConfig=set, gameManager=set
+- GameManager  [GameManager, Transform, MISSING SCRIPT (guid:8b34a210)]  refs: economyConfig=set, foodCatalog=set, gameConfig=set, levelProgressionConfig=set, livesConfig=set, ticketGenerationConfig=set, gameManager=set
 - TrayArea (1)  [WorldTrayView, BoxCollider2D, SpriteRenderer, Transform]  refs: animConfig=set, boardView=set, drinkSlot=set, gameManager=set, highlightVisual=set, mainDishSlot=set, sideSlot=set, ticketCardsView=set, wrongVisual=set
   - MainDishSlot  [Transform]
   - SideSlot  [Transform]
@@ -407,7 +442,7 @@ Unity menu item Tools > unity-dev > Export unitymap.
 - BoardView | ExpoTheExplorer/Assets/Scripts/UI/BoardView.cs
 - DayCompletePopupView | ExpoTheExplorer/Assets/Scripts/UI/DayCompletePopupView.cs
 - DayRewardFlightView | ExpoTheExplorer/Assets/Scripts/UI/DayRewardFlightView.cs
-- DebugTicketDeliveryController | ExpoTheExplorer/Assets/Scripts/Bootstrap/DebugTicketDeliveryController.cs
+- DebugMenuBinder | ExpoTheExplorer/Assets/Scripts/Debug/DebugMenuBinder.cs
 - GameManager | ExpoTheExplorer/Assets/Scripts/Bootstrap/GameManager.cs
 - GameOverPopupView | ExpoTheExplorer/Assets/Scripts/UI/GameOverPopupView.cs
 - GemsView | ExpoTheExplorer/Assets/Scripts/UI/GemsView.cs
@@ -427,6 +462,7 @@ Unity menu item Tools > unity-dev > Export unitymap.
 - ModificationSlotView | ExpoTheExplorer/Assets/Scripts/UI/ModificationSlotView.cs
 - NoKeysPopupView | ExpoTheExplorer/Assets/Scripts/UI/NoKeysPopupView.cs
 - PowerupShopView | ExpoTheExplorer/Assets/Scripts/UI/PowerupShopView.cs
+- SettingsPopupView | ExpoTheExplorer/Assets/Scripts/UI/SettingsPopupView.cs
 - SoftMoneyView | ExpoTheExplorer/Assets/Scripts/UI/SoftMoneyView.cs
 - StarScoreBarView | ExpoTheExplorer/Assets/Scripts/UI/StarScoreBarView.cs
 - TicketCardView | ExpoTheExplorer/Assets/Scripts/UI/TicketCardView.cs

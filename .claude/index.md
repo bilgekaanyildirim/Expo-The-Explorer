@@ -10,7 +10,7 @@ maps and never invents a name.
 |---|---|---|---|---|---|---|
 | BoardDistribution | core | ExpoTheExplorer/Assets/Data/DataScripts/BoardDistributionSettings.cs, ExpoTheExplorer/Assets/Scripts/Core/RequiredItemKey.cs (+3) | - | - | - | OK |
 | BoardUI | core, ui | ExpoTheExplorer/Assets/Data/DataScripts/GameConfig.cs, ExpoTheExplorer/Assets/Scripts/Core/BoardGrid.cs (+5) | - | - | ExpoTheExplorer/Assets/Data | OK |
-| Bootstrap | core | ExpoTheExplorer/Assets/Scripts/Bootstrap/GameManager.cs, ExpoTheExplorer/Assets/Scripts/Core/GameState.cs (+6) | - | - | - | OK |
+| Bootstrap | core, editor, ui | ExpoTheExplorer/Assets/Scripts/Core/GameState.cs, ExpoTheExplorer/Assets/Scripts/Session/GameSession.cs (+7) | - | - | - | OK |
 | DataTooling | editor | ExpoTheExplorer/Assets/Editor/DataConfigReserializer.cs | - | - | - | OK |
 | DayEditor | editor | ExpoTheExplorer/Assets/Editor/DayEditorDayStartPreview.cs, ExpoTheExplorer/Assets/Editor/DayEditorModel.cs (+4) | - | - | - | OK |
 | DayLifecycle | core, ui | ExpoTheExplorer/Assets/Data/DataScripts/StarScoreConfig.cs, ExpoTheExplorer/Assets/Scripts/Systems/DayLifecycle/DayLifecycleManager.cs (+5) | - | - | ExpoTheExplorer/Assets/Data | OK |
@@ -20,16 +20,16 @@ maps and never invents a name.
 | HapticsSystem | core, ui | ExpoTheExplorer/Assets/Data/DataScripts/HapticConfig.cs, ExpoTheExplorer/Assets/Scripts/Bootstrap/HapticsBinder.cs (+4) | - | - | ExpoTheExplorer/Assets/Data | OK |
 | KeySystem | core, ui | ExpoTheExplorer/Assets/Scripts/Systems/KeySystem/ExpoTheExplorer.Systems.KeySystem.asmdef, ExpoTheExplorer/Assets/Scripts/Systems/KeySystem/KeyManager.cs (+4) | - | NoKeysPopup | ExpoTheExplorer/Assets/Data | OK |
 | LivesSystem | core, ui | ExpoTheExplorer/Assets/Scripts/Systems/LivesSystem/ExpoTheExplorer.Systems.LivesSystem.asmdef, ExpoTheExplorer/Assets/Scripts/Systems/LivesSystem/LivesManager.cs (+4) | - | - | ExpoTheExplorer/Assets/Data | OK |
-| MainScreen | editor, ui | ExpoTheExplorer/Assets/Scripts/UI/MainScreenRoot.cs, ExpoTheExplorer/Assets/Scripts/UI/MainScreenView.cs (+4) | MainScreen | - | - | OK |
-| MetaSystem | core, editor, ui | ExpoTheExplorer/Assets/Data/DataScripts/MetaCatalog.cs, ExpoTheExplorer/Assets/Scripts/Systems/MetaSystem/MetaLayout.cs (+15) | - | - | ExpoTheExplorer/Assets/Data | OK |
+| MainScreen | editor, ui | ExpoTheExplorer/Assets/Scripts/UI/MainScreenRoot.cs, ExpoTheExplorer/Assets/Scripts/UI/MainScreenView.cs (+3) | MainScreen | - | - | OK |
+| MetaSystem | core, editor, ui | ExpoTheExplorer/Assets/Data/DataScripts/MetaCatalog.cs, ExpoTheExplorer/Assets/Scripts/Systems/MetaSystem/MetaLayout.cs (+13) | - | - | ExpoTheExplorer/Assets/Data | OK |
 | PlayTesting | editor | ExpoTheExplorer/Assets/Editor/DayJumpWindow.cs | - | - | - | OK |
 | PowerupSystem | core, editor, ui | ExpoTheExplorer/Assets/Data/DataScripts/PowerupType.cs, ExpoTheExplorer/Assets/Scripts/Systems/PowerupSystem/ExpoTheExplorer.Systems.PowerupSystem.asmdef (+8) | - | - | ExpoTheExplorer/Assets/Data | OK |
 | ProgressionSystem | core, ui | ExpoTheExplorer/Assets/Scripts/Systems/ProgressionSystem/Wallet.cs, ExpoTheExplorer/Assets/Scripts/Systems/ProgressionSystem/DayRewardPurse.cs (+9) | - | HUDCanvas | - | OK |
 | Testing | core | ExpoTheExplorer/Assets/Tests/EditMode/ExpoTheExplorer.Tests.EditMode.asmdef | - | - | - | OK |
-| TicketSystem | core, ui | ExpoTheExplorer/Assets/Scripts/Core/Ticket.cs, ExpoTheExplorer/Assets/Scripts/Systems/TicketSystem/TicketSlotManager.cs (+9) | - | TicketCard, TicketCard Into, TicketCard UpDown | ExpoTheExplorer/Assets/Data | OK |
-| TraySystem | core, ui | ExpoTheExplorer/Assets/Scripts/Systems/TraySystem/TrayManager.cs, ExpoTheExplorer/Assets/Scripts/Systems/TraySystem/ExpoTheExplorer.Systems.TraySystem.asmdef (+3) | - | - | - | OK |
-| Tutorial | core, ui | ExpoTheExplorer/Assets/Scripts/Systems/Tutorial/TutorialDirector.cs, ExpoTheExplorer/Assets/Data/DataScripts/TutorialTextConfig.cs (+5) | - | - | ExpoTheExplorer/Assets/Data | OK |
+| TicketSystem | core, ui | ExpoTheExplorer/Assets/Scripts/Core/Ticket.cs, ExpoTheExplorer/Assets/Data/DataScripts/TicketCardVisualsConfig.cs (+7) | - | TicketCard, TicketCard Into, TicketCard UpDown | ExpoTheExplorer/Assets/Data | OK |
+| TraySystem | core | ExpoTheExplorer/Assets/Scripts/Systems/TraySystem/ExpoTheExplorer.Systems.TraySystem.asmdef, ExpoTheExplorer/Assets/Scripts/Systems/TraySystem/TraySlot.cs | - | - | - | OK |
+| Tutorial | core, ui | ExpoTheExplorer/Assets/Data/DataScripts/TutorialTextConfig.cs, ExpoTheExplorer/Assets/Scripts/Systems/Tutorial/ExpoTheExplorer.Systems.Tutorial.asmdef (+3) | - | - | ExpoTheExplorer/Assets/Data | OK |
 
 ## Gaps
 - `sys: ?` on 24 codemap line(s) — first: ExpoTheExplorer/Assets/Data/ExpoTheExplorer.Data.asmdef, ExpoTheExplorer/Assets/Data/DataScripts/DragFeelConfig.cs, ExpoTheExplorer/Assets/Data/DataScripts/FoodCatalog.cs
-- 14 flagged codemap line(s) excluded from this table (STALE)
+- 24 flagged codemap line(s) excluded from this table (STALE)
