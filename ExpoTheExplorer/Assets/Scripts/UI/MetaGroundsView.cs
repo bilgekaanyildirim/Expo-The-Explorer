@@ -273,6 +273,28 @@ namespace ExpoTheExplorer.UI
             DrawLocationBar(location, currentDay);
         }
 
+        // Is a purchase still playing out on screen? True from the moment one is handed over
+        // until the prop has landed, the ground has stopped shaking AND the map has finished
+        // travelling back out -- the whole payoff, not just the drop.
+        //
+        // It exists for exactly one caller: the shop, which reopens itself after an
+        // area-unlocking purchase and must not slide a bottom sheet up over a map still in
+        // motion (D-096). It is a QUESTION, not an event: the grounds keep owning when the
+        // animation ends and what it looks like, and the shop keeps owning what it does about
+        // it. A completion callback would have been the other shape and was rejected because
+        // the early-exit paths in RefreshAfterPurchase finish synchronously -- the callback
+        // would fire BEFORE the shop's own SetOpen(false) ran and be undone by it, so the
+        // grounds would have owed the shop a "never called synchronously" promise that
+        // nothing in the type system could keep.
+        //
+        // Two halves because the framing changes hands between them: `placing` covers the
+        // drop and the shake, and the tween covers RestoreFocus's journey home, which starts
+        // in the same call that clears `placing` -- so there is no frame where this reads
+        // false in the middle. A placement that never zoomed the map leaves no tween and
+        // settles the instant the drop ends, which is correct rather than a gap.
+        public bool IsSettlingPurchase =>
+            placing || (background != null && DOTween.IsTweening(background.rectTransform));
+
         // What the shop calls instead of Refresh once a purchase has gone through. ONE method
         // rather than letting the shop call Refresh and then an animate method: the animation
         // has to prepare the prop in the SAME FRAME the prop is drawn (see below), so the two

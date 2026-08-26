@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using ExpoTheExplorer.Bootstrap;
 using ExpoTheExplorer.Data;
@@ -118,6 +119,12 @@ namespace ExpoTheExplorer.UI
         // same thing, so they cannot come to disagree about WHICH prop is being bought.
         private MetaItemDefinition pendingItem;
 
+        // The wait between an area-unlocking purchase and the shop coming back up (D-096).
+        // HELD so it can be abandoned: every other transition of this state machine cancels
+        // it, which is what stops a timer started a second ago from reopening a panel the
+        // player has since closed with their own thumb.
+        private Coroutine reopenRoutine;
+
         // Keeps the popup off the very edge when the previewed prop sits at a corner of the
         // map. Not serialized: it is a "do not touch the screen border" constant, not a look.
         private const float ScreenMargin = 24f;
@@ -173,6 +180,15 @@ namespace ExpoTheExplorer.UI
         // its visibility had more than one owner (D-024/D-027).
         private void SetOpen(bool open)
         {
+            // The one door is also where a pending auto-reopen dies (D-096). Every caller of
+            // this method is either the player working the shop or the purchase path itself,
+            // and in both cases a timer left running from an earlier purchase would act on a
+            // decision the player has already overtaken. The purchase path is unharmed
+            // because it starts its wait AFTER its own SetOpen(false), and the wait clears
+            // the handle before reopening, so this line cannot cancel the coroutine that is
+            // calling it.
+            CancelPendingReopen();
+
             isOpen = open;
 
             // Closing the shop from ÖNİZLEME goes through the one exit door, so the ghost
@@ -402,7 +418,69 @@ namespace ExpoTheExplorer.UI
             // will be then rather than as it is now.
             SetOpen(false);
 
+            // ...and comes STRAIGHT BACK for one kind of prop: the one that opens an area
+            // (D-096, the user's instruction). This is not a second opinion about D-047 above
+            // -- the shop still closes on every purchase, and the screen still ends on the
+            // prop -- it is the one case where closing for good hides something that just
+            // came into existence. MetaPurchase.ShopItems HIDES area-locked props entirely
+            // (D-019 + the user's 2026-08-21 call), so buying the square is the only purchase
+            // in the game whose payoff is partly a LIST: a handful of rows that were not there
+            // a moment ago. Leaving them behind a market button the player has no reason to
+            // tap again is what makes an area unlock feel like it bought nothing.
+            //
+            // Read from the catalog's own UnlocksArea flag rather than from a list of ids
+            // here, so authoring a second expansion in the Meta window needs no code.
+            //
+            // Started AFTER SetOpen(false), which is what keeps the two from arguing: the
+            // close is the shop's own exit path and must run whole before anything schedules
+            // a return. The wait itself is in the coroutine below.
+            if (item.UnlocksArea)
+            {
+                reopenRoutine = StartCoroutine(ReopenWhenTheGroundsSettle(location));
+            }
+
             Debug.Log($"Bought '{item.Id}' for {item.Price}. Balance is now {session.State.SoftMoney}.", this);
+        }
+
+        // Waits out the purchase the player is watching, then puts the list back up.
+        //
+        // Polled rather than told, and the poll is the cheap half of this: one bool and one
+        // tween query per frame, alive only for the second or so a placement lasts, at most
+        // once per purchase. The expensive half would have been a completion callback on the
+        // grounds -- see IsSettlingPurchase for why that shape was rejected. Nothing here
+        // knows what the animation IS; it asks the grounds whether they are done.
+        //
+        // WAITS FOR THE WHOLE SETTLE, not just the drop: the prop lands, the ground shakes,
+        // the map travels back out, and only then does the sheet come up. Reopening at the
+        // earlier moment would slide a panel that covers most of the map over a map still
+        // moving underneath it, which reads as the shop interrupting the payoff it was
+        // supposed to be rewarding.
+        private IEnumerator ReopenWhenTheGroundsSettle(MetaLocation boughtOn)
+        {
+            while (grounds.IsSettlingPurchase) yield return null;
+
+            // Cleared BEFORE the reopen, because SetOpen cancels whatever this field points
+            // at -- and what it points at right now is this coroutine.
+            reopenRoutine = null;
+
+            // ABANDONED rather than forced, if the player walked to another location while
+            // the prop was landing. The rows would be rebuilt for wherever they are standing
+            // now, so the shop would open somewhere they never asked for it -- and the tap
+            // this exists to save them is not worth taking the screen away from something
+            // they did with their own hands. The other two ways out -- opening the shop
+            // themselves, or reopening it into a preview -- cannot reach this line at all,
+            // because both go through SetOpen, which cancels this coroutine.
+            if (grounds.ViewedLocation != boughtOn) yield break;
+
+            SetOpen(true);
+        }
+
+        private void CancelPendingReopen()
+        {
+            if (reopenRoutine == null) return;
+
+            StopCoroutine(reopenRoutine);
+            reopenRoutine = null;
         }
 
         // The shop asks; it does not decide. Which props are offered comes from
