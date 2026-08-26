@@ -218,6 +218,32 @@ namespace ExpoTheExplorer.Systems.KeySystem
             return true;
         }
 
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        // The debug menu's key cheat (decisions.md D-092). It exists because there is
+        // otherwise NO free way to move this number: TryRefillWithGems charges 40 Gems and
+        // refuses at the cap, and TrySpendKey only goes down -- which is correct for the
+        // game and useless for a tester who wants to watch the empty-keys popup and then
+        // carry on.
+        //
+        // It stays inside this class rather than being a field the panel writes, because
+        // that is the entire point of the private field: KeyManager is the compiler-enforced
+        // single writer of the key count, and a cheat is not a reason to hand out a second
+        // one. This is the owner performing an unusual write, not a bypass of the owner.
+        //
+        // The anchor is restarted rather than preserved. A tester who sets 2 keys wants a
+        // known clean interval ahead of them, not whatever fraction happened to be in
+        // flight; and setting the cap while a partial interval ran would otherwise leave a
+        // stale anchor that Refresh's "a full bar does not bank time" rule has to mop up.
+        //
+        // Compiled out of release builds entirely -- see the folder note on Scripts/Debug/.
+        public void DebugSetKeys(int count)
+        {
+            keys = Math.Clamp(count, 0, config.MaxKeys);
+            anchorUtc = utcNow();
+            KeysChanged.Publish(keys);
+        }
+#endif
+
         // For the popup's countdown. Rounded UP so the display never shows 0 while the
         // key is still a fraction of a second away -- a counter that sits on zero
         // without anything happening reads as broken.

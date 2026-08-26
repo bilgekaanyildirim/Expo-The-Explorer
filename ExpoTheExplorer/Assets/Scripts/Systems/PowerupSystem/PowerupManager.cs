@@ -158,6 +158,29 @@ namespace ExpoTheExplorer.Systems.PowerupSystem
             return true;
         }
 
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        // The debug menu's powerup cheat (decisions.md D-092). A negative amount removes,
+        // so one method covers "give me ten" and "take them away and let me see the button
+        // dim" without a second entry point.
+        //
+        // IT IS NOT ApplyPersisted, and that distinction cost a bug to find rather than to
+        // fix: ApplyPersisted assigns the three counts and publishes NOTHING, because at
+        // load time no view is subscribed yet and there is nothing to tell. Reusing it here
+        // would set the numbers correctly and leave the HUD showing the old ones until some
+        // unrelated event happened to repaint -- the cheat would look broken while working
+        // perfectly. Publishing is the whole difference, so this is its own method.
+        //
+        // Floors at zero rather than going negative: a negative charge count would make
+        // CanUse false and TryUse false in the same way an empty stock does, but it would
+        // also need N presses of "give" before the first one had any visible effect.
+        public void DebugGrant(PowerupType type, int amount)
+        {
+            var index = (int)type;
+            charges[index] = Math.Max(0, charges[index] + amount);
+            ChargesChanged.Publish((type, charges[index]));
+        }
+#endif
+
         // The earn path GDD 5.2 settled on (its own "natural candidate", now that there
         // is neither a level system nor an event system to hang rewards off).
         //
