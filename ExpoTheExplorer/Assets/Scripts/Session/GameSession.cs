@@ -107,6 +107,26 @@ namespace ExpoTheExplorer.Session
         // root invariant allows and the map records.
         public int LastCelebratedDayIndex { get; set; }
 
+        // Whether the phone may buzz (v10, decisions.md D-094). Settable for the same
+        // reason LastCelebratedDayIndex is -- one value rather than a collection -- and it
+        // lives HERE rather than on GameState because it outlives the day exactly the way
+        // keys and powerup charges do: GameState is rebuilt per day scene, and a setting
+        // that reset itself on the way to the main screen would look like a bug.
+        //
+        // Its SINGLE WRITER is SettingsPopupView, the only thing that can be told to change
+        // it, and its only reader is HapticsBinder. Both scenes reach it the same way,
+        // through their SessionHost, which is what makes one switch cover the menu's shop
+        // buttons as well as the day.
+        //
+        // NOT SAVED ON CHANGE, and that is the one subtle thing about it: Save() below
+        // writes the whole profile, so calling it mid-day would bank an unfinished day's
+        // earnings -- the "a day attempt is atomic" contract RetryDay's comment defends.
+        // So the flip is remembered here and reaches disk at the next existing save point
+        // (a completed day, or walking out to the main screen, both of which write a
+        // settled wallet). The cost is bounded and known: flipping the switch and then
+        // force-quitting mid-day loses the flip, and nothing else.
+        public bool HapticsEnabled { get; set; }
+
         // Null until a Day catalog exists, so every consumer falls back the same way it
         // did when this lived on GameManager.
         public DayDefinition CurrentDay => DayCatalogNavigator.GetDayAt(DayCatalog, State.CurrentDayIndex);
@@ -203,6 +223,7 @@ namespace ExpoTheExplorer.Session
 
             OwnedMetaItemIds = new HashSet<string>(profile.OwnedMetaItemIds);
             LastCelebratedDayIndex = profile.LastCelebratedDayIndex;
+            HapticsEnabled = profile.HapticsEnabled;
         }
 
         // The wallet is handed out rather than wrapped: it is already the compiler-enforced
@@ -288,6 +309,12 @@ namespace ExpoTheExplorer.Session
 
                 OwnedMetaItemIds = new List<string>(OwnedMetaItemIds),
                 LastCelebratedDayIndex = LastCelebratedDayIndex,
+
+                // v10. Written back unconditionally like every other field here -- the
+                // property carries the loaded value when nothing has touched it, so a
+                // player who never opens the settings popup keeps whatever their file said
+                // rather than being reset to the default on every save.
+                HapticsEnabled = HapticsEnabled,
             });
         }
     }
