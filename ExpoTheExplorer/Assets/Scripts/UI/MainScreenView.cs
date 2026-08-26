@@ -1,4 +1,3 @@
-using System.Collections;
 using System.Collections.Generic;
 using ExpoTheExplorer.Core;
 using ExpoTheExplorer.Session;
@@ -72,35 +71,17 @@ namespace ExpoTheExplorer.UI
         [Tooltip("The Play button's caption. This class overwrites it with \"Continue Day X\".")]
         [SerializeField] private TMP_Text playLabel;
 
-        // The second button, and the only one that can destroy something: it throws the
-        // save away and starts the player over (decisions.md D-026). OPTIONAL on purpose
-        // -- a MainScreen built before this existed still runs, and a project that does
-        // not want the button on screen just leaves it unwired instead of editing this
-        // class. Play is the button this screen cannot work without; this one is not.
-        [Header("Start Over")]
-        [SerializeField] private Button resetButton;
-
-        // Authored rather than compiled, because it is player-facing text (root CLAUDE.md:
-        // content is never embedded in code). The IDLE caption is not here at all -- it is
-        // whatever the button says in the scene, cached at Start and never overwritten,
-        // which is one less string for this class to own. Only the transient confirm
-        // caption needs a home, since no scene object holds it.
-        [Tooltip("What the button says after the first tap, while it waits for the confirming second one.")]
-        [SerializeField] private string resetConfirmLabel = "Tap again to erase";
-
-        [Tooltip("How long the confirming second tap is accepted. After this the button goes back to its normal caption and the next tap only arms it again.")]
-        [SerializeField, Min(0.5f)] private float resetConfirmSeconds = 3f;
-
-        // A two-tap confirm rather than a popup: one mis-tap must not be able to delete a
-        // real player's progress, and the cheapest guard that cannot be missed is the
-        // button contradicting itself for three seconds. A confirmation dialog would be a
-        // second piece of UI to build, wire and localise for one button.
-        [Tooltip("The Start Over button's caption. Whatever it says in the scene IS the idle caption — this class caches that and puts it back when the confirm window closes.")]
-        [SerializeField] private TMP_Text resetLabel;
-
-        private bool resetArmed;
-        private Coroutine disarmRoutine;
-        private string resetIdleLabel;
+        // START OVER USED TO LIVE HERE (decisions.md D-026): a second, optional button that
+        // threw the save file away and reloaded the scene, guarded by a two-tap confirm.
+        // D-095 moved it into the SRDebugger debug panel, where the same delete-and-reload
+        // now sits under Save. It was a testing convenience wearing player-facing clothes,
+        // and the shipping main menu is the wrong place to keep a button whose whole job is
+        // erasing progress.
+        //
+        // The two-tap confirm did not move with it and is not missed: it existed because a
+        // player could mis-tap this button, and nobody reaches the debug panel by accident.
+        // If a real player-facing "reset progress" is ever wanted, D-026 still describes how
+        // that guard worked and is the place to start -- this class is not it.
 
         private void Start()
         {
@@ -124,13 +105,6 @@ namespace ExpoTheExplorer.UI
             SetPlayLabel(profile.CurrentDayIndex + 1);
 
             playButton.onClick.AddListener(OnPlayClicked);
-
-            if (resetButton == null) return;
-
-            // Whatever the scene's caption says IS the idle text, cached once and never
-            // overwritten -- one less player-facing string for this class to own.
-            resetIdleLabel = resetLabel != null ? resetLabel.text : null;
-            resetButton.onClick.AddListener(OnResetClicked);
         }
 
         private void SetPlayLabel(int playerFacingDayNumber)
@@ -149,7 +123,6 @@ namespace ExpoTheExplorer.UI
         private void OnDestroy()
         {
             if (playButton != null) playButton.onClick.RemoveListener(OnPlayClicked);
-            if (resetButton != null) resetButton.onClick.RemoveListener(OnResetClicked);
         }
 
         private void OnPlayClicked()
@@ -194,71 +167,6 @@ namespace ExpoTheExplorer.UI
             if (session?.OwnedMetaItemIds == null) return false;
 
             return session.OwnedMetaItemIds.Count == 0;
-        }
-
-        // First tap arms, second tap within resetConfirmSeconds erases. Nothing is written
-        // by this class: the save file's owner is PlayerProfileStore, so the reset is a
-        // COMMAND to it (UI rules: UI reads state and asks the owner to change it).
-        private void OnResetClicked()
-        {
-            if (!resetArmed)
-            {
-                Arm();
-                return;
-            }
-
-            Disarm();
-
-            // A failed delete leaves the player exactly where they were, which is the
-            // honest outcome -- the store has already logged why. Reloading anyway would
-            // show them a "fresh" screen still backed by the old file.
-            if (!new PlayerProfileStore().Delete()) return;
-
-            // Reload rather than patch. Everything on this screen -- the session and its
-            // wallet, the HUD, the grounds, the shop -- is built from the profile in
-            // Awake/Start, so rebuilding the scene is the only path that resets all of
-            // them through their existing single writers. Editing the live session in
-            // place would mean a second writer for the balance, the day index and the
-            // owned props, which is precisely what the wallet's `internal` setters exist
-            // to prevent.
-            SceneFlow.LoadMainScreen();
-        }
-
-        private void Arm()
-        {
-            resetArmed = true;
-            if (resetLabel != null) resetLabel.text = resetConfirmLabel;
-
-            // A coroutine rather than a timestamp checked on the next click: the caption
-            // has to go back on its own, or the button keeps saying "tap again to erase"
-            // long after that tap would no longer erase anything.
-            if (disarmRoutine != null) StopCoroutine(disarmRoutine);
-            disarmRoutine = StartCoroutine(DisarmAfterDelay());
-        }
-
-        private IEnumerator DisarmAfterDelay()
-        {
-            // Realtime, not scaled: a menu has no reason to run at timeScale 0 today, but
-            // a paused-looking screen that never disarms would be a silent trap.
-            yield return new WaitForSecondsRealtime(resetConfirmSeconds);
-
-            // Cleared BEFORE the call, so Disarm does not StopCoroutine the routine it is
-            // being called from -- stopping a coroutine from inside itself would abandon
-            // the rest of Disarm and leave the confirm caption on screen forever.
-            disarmRoutine = null;
-            Disarm();
-        }
-
-        private void Disarm()
-        {
-            resetArmed = false;
-            if (disarmRoutine != null)
-            {
-                StopCoroutine(disarmRoutine);
-                disarmRoutine = null;
-            }
-
-            if (resetLabel != null && resetIdleLabel != null) resetLabel.text = resetIdleLabel;
         }
 
         // Every field here is wired by hand in the Editor (or by the scene builder)

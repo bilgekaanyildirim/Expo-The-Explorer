@@ -2,6 +2,7 @@
 using ExpoTheExplorer.Data;
 using ExpoTheExplorer.Session;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace ExpoTheExplorer.DebugMenu
 {
@@ -40,6 +41,17 @@ namespace ExpoTheExplorer.DebugMenu
                  "works with this empty.")]
         private MetaCatalog metaCatalog;
 
+        [Header("Opening the panel")]
+        [SerializeField]
+        [Tooltip("Touch anywhere with this many fingers to open the panel. This is the one " +
+                 "that matters on device.")]
+        [Min(2)]
+        private int fingersToOpen = 3;
+
+        [SerializeField]
+        [Tooltip("Opens the panel in the editor and on desktop.")]
+        private Key openKey = Key.F1;
+
         internal SessionHost Host => host;
 
         internal MetaCatalog Catalog => metaCatalog;
@@ -56,6 +68,79 @@ namespace ExpoTheExplorer.DebugMenu
         private void OnDisable()
         {
             SROptions.UnbindDebugMenu(this);
+        }
+
+        // WHY THIS OPENER EXISTS, when SRDebugger ships with a triple-tap trigger of its own:
+        // that trigger is a tiny UI rect pinned to ONE CORNER of the screen, sized at runtime
+        // from screen DPI. Tapping the middle of the screen three times does nothing, which
+        // reads exactly like a broken install -- and on a phone, hitting a few-millimetre
+        // corner target three times in a row while the game's own UI sits in the same corner
+        // is not a gesture anyone wants to rely on for a debug build.
+        //
+        // A whole-screen multi-finger touch cannot be missed and cannot collide with the
+        // game: nothing here is played with three fingers at once. SRDebugger's own trigger
+        // and keyboard shortcuts are left enabled -- this is an addition, not a replacement.
+        //
+        // Frame-frequency work, which the cost model normally makes us justify: it is a
+        // handful of memory reads and an int compare per frame, O(1), at the cheapest tier
+        // there is, and the whole file is compiled out of release builds. Nothing here is
+        // measurable.
+        private void Update()
+        {
+            if (WasOpenKeyPressed() || WasMultiFingerTapStarted()) TogglePanel();
+        }
+
+        // Modifier-free on purpose. SRDebugger's own shortcuts are Ctrl+Shift+F1..F4, so a
+        // bare `keyboard[openKey].wasPressedThisFrame` would fire on Ctrl+Shift+F1 as well as
+        // on F1 -- both openers would run on the same keypress, toggling the panel open and
+        // straight back shut. The symptom of that is "the shortcut does nothing", which is
+        // the exact complaint this whole opener exists to answer.
+        private bool WasOpenKeyPressed()
+        {
+            var keyboard = Keyboard.current;
+            if (keyboard == null || !keyboard[openKey].wasPressedThisFrame) return false;
+
+            return !keyboard.ctrlKey.isPressed
+                   && !keyboard.shiftKey.isPressed
+                   && !keyboard.altKey.isPressed;
+        }
+
+        // Edge-triggered on the frame the finger count REACHES the threshold, so holding
+        // three fingers down does not toggle the panel once per frame.
+        private bool WasMultiFingerTapStarted()
+        {
+            var touchscreen = Touchscreen.current;
+            if (touchscreen == null) return false;
+
+            var pressed = 0;
+            foreach (var touch in touchscreen.touches)
+            {
+                if (touch.press.isPressed) pressed++;
+            }
+
+            var reached = pressed >= fingersToOpen;
+            var justReached = reached && !wasAtFingerCount;
+            wasAtFingerCount = reached;
+            return justReached;
+        }
+
+        private bool wasAtFingerCount;
+
+        private static void TogglePanel()
+        {
+            var service = SRDebug.Instance;
+            if (service == null) return;
+
+            if (service.IsDebugPanelVisible)
+            {
+                service.HideDebugPanel();
+                return;
+            }
+
+            // requireEntryCode: false because this gesture IS the gate. The entry code exists
+            // to stop a player who found the trigger by accident; someone deliberately holding
+            // three fingers on a development build is not that person.
+            service.ShowDebugPanel(false);
         }
     }
 }

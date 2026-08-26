@@ -316,12 +316,38 @@ public partial class SROptions
         Debug.Log("[DebugMenu] Profile written.");
     }
 
+    // Took over the main screen's Start Over button (decisions.md D-095), which is why it
+    // reloads rather than just deleting: D-026 built that button to delete AND reload, and
+    // the reload is the half that makes it useful -- the session, the HUD, the grounds and
+    // the shop are all built from the profile in Awake/Start, so rebuilding the scene is
+    // the only path that resets every one of them through its existing single writer.
+    // Patching the live session instead would need a second writer for the balance, the day
+    // index and the owned props, which is exactly what Wallet's `internal` setters prevent.
+    //
+    // The two-tap confirm did NOT come across, deliberately. That guard existed so one
+    // mis-tap could not erase a real player's progress on a screen players use; someone who
+    // opened a debug panel with three fingers and walked into the Save category is not
+    // making that mistake.
     [Category("Save"), Sort(2), DisplayName("Delete Save File")]
     public void DeleteSaveFile()
     {
-        Debug.Log(new PlayerProfileStore().Delete()
-            ? "[DebugMenu] Save deleted. Restart play mode for a fresh player."
-            : "[DebugMenu] No save file to delete.");
+        if (!new PlayerProfileStore().Delete())
+        {
+            Debug.Log("[DebugMenu] No save file to delete.");
+            return;
+        }
+
+        // Same host test Go To Day makes, for the same reason: reloading out of a running
+        // day would abandon that attempt without settling its wallet, and what happens to
+        // an abandoned day's money is a question ReturnToMainScreenAbandoningDay already
+        // answers. The file is gone either way; only the refresh waits.
+        if (Day != null)
+        {
+            Debug.Log("[DebugMenu] Save deleted. Leave the day to come back as a fresh player.");
+            return;
+        }
+
+        SceneFlow.LoadMainScreen();
     }
 
     [Category("Save"), Sort(3), DisplayName("Save File Path")]

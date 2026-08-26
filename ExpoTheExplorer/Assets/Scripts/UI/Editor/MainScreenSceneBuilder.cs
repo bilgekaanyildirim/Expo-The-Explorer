@@ -132,34 +132,25 @@ namespace ExpoTheExplorer.EditorTools
             // the day number -- it is a placeholder for the Editor, not authored text.
             var playButton = CreateButton("PlayButton", root, "PLAY", new Vector2(0f, -20f), new Vector2(520f, 170f));
 
-            // The second button (decisions.md D-026): smaller, muted red, directly under
-            // Play, because it destroys progress and must not read as the main action. Its
-            // caption is authored from here on -- MainScreenView caches whatever the scene
-            // says and only swaps in its confirm text -- so "Start Over" is real text, not
-            // the placeholder "PLAY" above.
-            //
-            // A scene that already exists never reaches this method (the guard at the top
-            // refuses to overwrite one), which is why the same button also has a setup step
-            // of its own: MainScreenResetButtonSetup.
-            var resetButton = CreateButton(
-                "ResetButton", root, "Start Over", new Vector2(0f, -190f), new Vector2(320f, 90f), fontSize: 34);
-            resetButton.targetGraphic.color = new Color(0.45f, 0.18f, 0.18f);
-
+            // A Start Over button used to be built here too (decisions.md D-026), muted red
+            // under Play. D-095 moved that capability into the SRDebugger debug panel, so a
+            // freshly built MainScreen no longer ships a button whose job is erasing the
+            // save -- and MainScreenResetButtonSetup, the step that retrofitted it into an
+            // already-built scene, went with it.
             var view = canvasObject.AddComponent<MainScreenView>();
-            WireView(view, playButton, resetButton);
+            WireView(view, playButton);
             return view;
         }
 
         // The view's references are private [SerializeField]s -- assigning them from
         // an editor script goes through SerializedObject, and the property names
         // below must stay in step with the field names in MainScreenView.
-        private static void WireView(MainScreenView view, Button playButton, Button resetButton)
+        private static void WireView(MainScreenView view, Button playButton)
         {
             var serialized = new SerializedObject(view);
             var wiring = new Dictionary<string, UnityEngine.Object>
             {
                 ["playButton"] = playButton,
-                ["resetButton"] = resetButton,
             };
 
             foreach (var pair in wiring)
