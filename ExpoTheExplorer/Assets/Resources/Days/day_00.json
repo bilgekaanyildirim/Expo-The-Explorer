@@ -95,12 +95,39 @@
             {
                 "triggerStepIndex": -1,
                 "itemId": "hotdog",
-                "modifications": [],
+                "modifications": [
+                    {
+                        "modificationId": "extramustard",
+                        "isAddition": true
+                    }
+                ],
                 "useExactCell": true,
                 "x": 2,
                 "y": 0
             }
-        ]
+        ],
+        "tutorial": {
+            "enabled": true,
+            "steps": [
+                {
+                    "sourceX": 1,
+                    "sourceY": 2,
+                    "targetTraySlotIndex": 0,
+                    "message": "",
+                    "highlightModification": false
+                },
+                {
+                    "sourceX": 2,
+                    "sourceY": 0,
+                    "targetTraySlotIndex": 2,
+                    "message": "Modifications matter. This order wants extra mustard - bring the hotdog that already has it.",
+                    "highlightModification": true
+                },
+                {
+                    "kind": "PowerupIntro"
+                }
+            ]
+        }
     },
     "editorMeta": {
         "allowedFoodItemIds": [

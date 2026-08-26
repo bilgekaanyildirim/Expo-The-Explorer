@@ -13,15 +13,20 @@ MonoBehaviour:
   m_Name: PowerupConfig
   m_EditorClassIdentifier: ExpoTheExplorer.Data::ExpoTheExplorer.Data.PowerupConfig
   autoCollect:
-    startingCharges: 56
+    displayName: Auto-Collect
+    description: Fills your trays with what the current orders still need.
+    startingCharges: 2
     gemCost: 5
     chargesPerDayCompleted: 0
   timeReset:
+    displayName: Time Reset
+    description: Gives every waiting customer their full time back.
     startingCharges: 1
     gemCost: 5
     chargesPerDayCompleted: 0
   noiseClear:
+    displayName: Noise Clear
+    description: Clears the board of every item no current order asks for.
     startingCharges: 2
     gemCost: 5
     chargesPerDayCompleted: 0
-  autoCollectStepSeconds: 0.18

@@ -68,6 +68,20 @@ namespace ExpoTheExplorer.UI
         // whole window instead of just this card's own slide/fade.
         public bool IsAnimating => transitionInProgress || trayAnimating;
 
+        // The first modification row this card is currently showing, or null when the
+        // ticket asks for none. Read-only and for POINTING AT: the tutorial's arrow needs to
+        // indicate the modification on the card, and this row is built here at runtime so
+        // there is nothing in the scene to reference instead. Nothing outside may write to
+        // it -- the rows are rebuilt from the ticket on every refresh, so a change made from
+        // outside would vanish on the next one anyway.
+        //
+        // Returns the row's RectTransform rather than the ModificationSlotView so callers
+        // get a position and a size and no way to repaint the row's contents.
+        public RectTransform FirstModificationRow =>
+            modificationRows.Count > 0 && modificationRows[0] != null
+                ? (RectTransform)modificationRows[0].transform
+                : null;
+
         // Called by WorldTrayView at the start/end of its own tray
         // animations (delivery grow/lift/reentry, wrong-order shake/scatter,
         // timeout scatter) — this card has no way to observe those on its

@@ -33,3 +33,10 @@ MonoBehaviour:
   ticketDangerBlinkPeriod: 0.8
   lifeLostHeartRiseDistance: 200
   lifeLostHeartDuration: 2
+  tutorialDimOpacity: 0.72
+  tutorialGhostOpacity: 0.55
+  tutorialGhostTravelDuration: 0.9
+  tutorialGhostLoopPause: 0.45
+  tutorialMessageScreenHeight: 0.28
+  tutorialMessageFontSize: 36
+  tutorialHintFadeDuration: 0.35

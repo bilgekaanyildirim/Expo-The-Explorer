@@ -61,6 +61,25 @@ namespace ExpoTheExplorer.Data
         [Tooltip("Duration (seconds) of that rise-and-fade. Floored in code at a tenth of a second, so a 0 here is a very quick heart rather than an invisible one.")]
         [SerializeField, Min(0f)] private float lifeLostHeartDuration = 1f;
 
+        [Header("Tutorial Spotlight")]
+        [Tooltip("How dark the scene goes behind the tutorial's one lit hotdog and one lit tray. 0 = no dimming at all, 1 = solid black. The lit pair and the target tray's ticket card are unaffected -- this is the opacity of the black sheet everything ELSE sits behind.")]
+        [SerializeField, Range(0f, 1f)] private float tutorialDimOpacity = 0.72f;
+        [Tooltip("Opacity of the ghost hotdog that loops from the lit item to the lit tray. It is a copy of the real item, so 1 would make it indistinguishable from the one the player is meant to grab.")]
+        [SerializeField, Range(0f, 1f)] private float tutorialGhostOpacity = 0.55f;
+        [Tooltip("Seconds the ghost takes to travel from the item to the tray, once per loop.")]
+        [SerializeField, Min(0.05f)] private float tutorialGhostTravelDuration = 0.9f;
+        [Tooltip("Seconds of stillness between one ghost arriving and the next one setting off. 0 makes it a continuous stream rather than a repeated gesture.")]
+        [SerializeField, Min(0f)] private float tutorialGhostLoopPause = 0.45f;
+
+        [Tooltip("Where a tutorial step's message sits, as a fraction of screen height from the bottom (0 = bottom edge, 1 = top). Tunable rather than fixed because it has to miss the board, the trays and the ticket cards, and only the scene knows where those are.")]
+        [SerializeField, Range(0f, 1f)] private float tutorialMessageScreenHeight = 0.28f;
+
+        [Tooltip("Font size of a tutorial step's message, in the same units as the ticket card's own text (it borrows that card's font so the two match).")]
+        [SerializeField, Min(1f)] private float tutorialMessageFontSize = 36f;
+
+        [Tooltip("Seconds the arrows and the message take to fade in when a step begins. They appear AFTER the dim so the eye lands on the lit pair first rather than on text.")]
+        [SerializeField, Min(0f)] private float tutorialHintFadeDuration = 0.35f;
+
         public float SnapBackDuration => snapBackDuration;
         public float TraySettleDuration => traySettleDuration;
         public float PopInDuration => popInDuration;
@@ -82,5 +101,12 @@ namespace ExpoTheExplorer.Data
         public float TicketDangerBlinkPeriod => ticketDangerBlinkPeriod;
         public float LifeLostHeartRiseDistance => lifeLostHeartRiseDistance;
         public float LifeLostHeartDuration => lifeLostHeartDuration;
+        public float TutorialDimOpacity => tutorialDimOpacity;
+        public float TutorialGhostOpacity => tutorialGhostOpacity;
+        public float TutorialGhostTravelDuration => tutorialGhostTravelDuration;
+        public float TutorialGhostLoopPause => tutorialGhostLoopPause;
+        public float TutorialMessageScreenHeight => tutorialMessageScreenHeight;
+        public float TutorialMessageFontSize => tutorialMessageFontSize;
+        public float TutorialHintFadeDuration => tutorialHintFadeDuration;
     }
 }

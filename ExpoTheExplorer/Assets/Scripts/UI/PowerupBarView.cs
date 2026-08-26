@@ -54,6 +54,10 @@ namespace ExpoTheExplorer.UI
         // swapped, so caching is safe and re-walking the property would not be.
         private PowerupManager manager;
 
+        // The tutorial's powerup panel while it is up, or null. Held so a step boundary that
+        // is not a dismissal (a retry, an abort) can take it down.
+        private TutorialPowerupIntroView introView;
+
         // Paired with the fields above once, so every loop below reads one list instead
         // of repeating the three-way spelling. Built in Start rather than being a static
         // table because the entries carry this instance's scene references.
@@ -105,6 +109,91 @@ namespace ExpoTheExplorer.UI
 
             manager.ChargesChanged.Subscribe(OnChargesChanged);
             RefreshAll();
+
+            // Subscribe, then sync -- the same shape WorldTrayView uses, and for the same
+            // reason: a step boundary is a mid-day event, but the tutorial may already be on
+            // this step by the time Start runs.
+            gameManager.TutorialStepChanged += OnTutorialStepChanged;
+            OnTutorialStepChanged();
+        }
+
+        // This view builds the powerup-intro step for the reason the target tray builds a
+        // move step's spotlight: it is the object that already holds what the step needs.
+        // The three icons are the sprites on the three live buttons, and nothing else in the
+        // project knows where those are.
+        private void OnTutorialStepChanged()
+        {
+            var holdingForReading = gameManager.Tutorial != null && gameManager.Tutorial.IsHoldingForReading;
+
+            // The step moved on without the panel being dismissed -- a retry, an abort, the
+            // day scene going away. Take it down rather than leaving a modal over a game
+            // that is running again.
+            if (!holdingForReading)
+            {
+                if (introView != null) Destroy(introView.gameObject);
+                introView = null;
+                return;
+            }
+
+            if (introView != null) return;
+
+            // Borrowed off a count label rather than serialized, so the panel matches the
+            // game's own type with nothing wired by hand -- same trick the step message uses
+            // on the ticket card.
+            var font = FindFont();
+            if (font == null)
+            {
+                Debug.LogWarning(
+                    $"{nameof(PowerupBarView)} on '{name}': no TextMeshPro font could be borrowed from the powerup " +
+                    "count labels, so the powerup tutorial panel cannot be drawn. Skipping that step.", this);
+                gameManager.Tutorial.NotifyReadingFinished();
+                return;
+            }
+
+            introView = TutorialPowerupIntroView.Create(
+                gameManager.PowerupConfig,
+                GetComponentInParent<Canvas>(),
+                font,
+                IconFor,
+                OnIntroDismissed);
+
+            if (introView == null)
+            {
+                Debug.LogWarning(
+                    $"{nameof(PowerupBarView)} on '{name}': the powerup tutorial panel could not be built (no " +
+                    $"{nameof(PowerupConfig)} wired?), so that step is skipped rather than left blocking the day.", this);
+                gameManager.Tutorial.NotifyReadingFinished();
+            }
+        }
+
+        private void OnIntroDismissed()
+        {
+            introView = null;
+            gameManager.Tutorial?.NotifyReadingFinished();
+        }
+
+        // Read-only, and the only thing this view exposes about its buttons. The three
+        // button fields stay private: a caller has no business reaching the Button itself,
+        // which is what spends a charge.
+        private Sprite IconFor(PowerupType type)
+        {
+            foreach (var (slotType, ui) in slots)
+            {
+                if (slotType != type) continue;
+                return ui?.Button != null ? ui.Button.image != null ? ui.Button.image.sprite : null : null;
+            }
+
+            return null;
+        }
+
+        private TMP_FontAsset FindFont()
+        {
+            foreach (var (_, ui) in slots)
+            {
+                if (ui?.CountLabel != null && ui.CountLabel.font != null) return ui.CountLabel.font;
+            }
+
+            return null;
         }
 
         private void OnDestroy()
@@ -112,6 +201,7 @@ namespace ExpoTheExplorer.UI
             // Guarded because Start returns early on a missing GameManager, and OnDestroy
             // runs regardless of how far Start got.
             if (manager != null) manager.ChargesChanged.Unsubscribe(OnChargesChanged);
+            if (gameManager != null) gameManager.TutorialStepChanged -= OnTutorialStepChanged;
 
             // The listeners go too. The scene is usually being torn down anyway, but this
             // view is also legal to disable and re-enable, and a second Start would

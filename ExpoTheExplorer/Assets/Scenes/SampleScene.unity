@@ -1853,6 +1853,7 @@ GameObject:
   - component: {fileID: 527858027}
   - component: {fileID: 527858026}
   - component: {fileID: 527858028}
+  - component: {fileID: 527858029}
   m_Layer: 5
   m_Name: PowerUpPanel
   m_TagString: Untagged
@@ -1938,6 +1939,24 @@ MonoBehaviour:
   noiseClear:
     button: {fileID: 231122849}
     countLabel: {fileID: 109225326}
+--- !u!114 &527858029
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 527858024}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b5795ea4b89be41918318f7f009bb90b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ExpoTheExplorer.UI.AutoCollectRunner
+  gameManager: {fileID: 800000002}
+  boardView: {fileID: 900000002}
+  trays:
+  - {fileID: 245410313}
+  - {fileID: 822939966}
+  - {fileID: 1828292240}
 --- !u!1 &551174197
 GameObject:
   m_ObjectHideFlags: 0
@@ -3162,6 +3181,7 @@ MonoBehaviour:
   powerupConfig: {fileID: 11400000, guid: 5865e80a9e64541c0827b3c33ea821d5, type: 2}
   haptics: {fileID: 800000005}
   lifeLostHeartView: {fileID: 276944343}
+  autoCollectRunner: {fileID: 527858029}
   starScoreConfig: {fileID: 11400000, guid: 3b5e655a4e48437e87494a2ff0689c11, type: 2}
   metaCatalog: {fileID: 11400000, guid: 4433558fc5f314cc2b5f173692b4e8ed, type: 2}
 --- !u!4 &800000003

@@ -83,6 +83,17 @@ namespace ExpoTheExplorer.Data
     [Serializable]
     public class PowerupSettings
     {
+        // The player-facing words for this powerup, and the reason they live HERE rather
+        // than in the tutorial that first showed them: they describe the POWERUP, not the
+        // moment it is explained. The tutorial's third step reads them, and the main-screen
+        // shop -- whose rows are hand-labelled in the scene today -- can read the same two
+        // strings instead of keeping a second copy that is free to disagree.
+        [Tooltip("The powerup's name as the player sees it.")]
+        [SerializeField] private string displayName;
+
+        [Tooltip("One sentence saying what pressing it does. Shown by the tutorial that introduces the three powerups.")]
+        [SerializeField, TextArea] private string description;
+
         [Tooltip("How many charges a brand-new player owns. Also what an older save (which predates powerups) resolves to.")]
         [Min(0)]
         [SerializeField] private int startingCharges;
@@ -102,6 +113,8 @@ namespace ExpoTheExplorer.Data
             this.chargesPerDayCompleted = chargesPerDayCompleted;
         }
 
+        public string DisplayName => displayName;
+        public string Description => description;
         public int StartingCharges => startingCharges;
         public int GemCost => gemCost;
         public int ChargesPerDayCompleted => chargesPerDayCompleted;

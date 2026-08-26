@@ -31,6 +31,80 @@ namespace ExpoTheExplorer.Systems.DaySystem
         public TicketEntryJson[] ticketSequence;
         public BoardSpawnEntryJson[] boardTimeline;
 
+        // This Day's forced first move, or absent for every Day that has none (which is
+        // all of them but day_00). Under runtime rather than editorMeta for the same
+        // reason boardDistribution is: it is read while the Day is PLAYED, and
+        // DayCatalogParser is contractually blind to editorMeta.
+        //
+        // Its absence has to be detected by CONTENT, not by null -- JsonUtility hands back
+        // a zeroed instance for a missing object, never null (the same trap
+        // ResolveBoardDistribution and ResolveTicketRuntime already work around). A zeroed
+        // block would read as "cell (0,0), tray 0", which is a real cell and a real tray,
+        // so the absence marker cannot be a coordinate. That is what `enabled` is for:
+        // false (the default for every Day file that has never heard of this block) means
+        // no tutorial, and it has to be typed on purpose to turn one on.
+        public TutorialJson tutorial;
+    }
+
+    // This Day's forced opening: a SEQUENCE of moves the player is walked through, each
+    // locking the board to one cell and one tray until they make it.
+    //
+    // It became a list rather than a single step when the second step was authored (D-083),
+    // which is the repetition abstraction-level.md asks for before generalising -- D-082
+    // deliberately shipped one step as one step.
+    [Serializable]
+    public class TutorialJson
+    {
+        // The whole-tutorial absence marker, not a designer convenience toggle -- see the
+        // `tutorial` field comment above for why a zeroed block cannot be told apart from
+        // a real one by content. It survives the move to a list because it also lets a
+        // tutorial be switched off during authoring without deleting the authored steps.
+        public bool enabled;
+
+        public TutorialStepJson[] steps;
+    }
+
+    // One forced move. The cell, the tray, and how that step teaches -- nothing about what
+    // it LOOKS like: the dim opacity, the ghost's speed and the message's size and position
+    // are presentation and live on BoardAnimationConfig.
+    [Serializable]
+    public class TutorialStepJson
+    {
+        // What SHAPE of step this is: "ForcedMove" (the default) or "PowerupIntro". A
+        // string rather than the enum itself, for the reason BoardDistributionJson's mode
+        // already gives: JsonUtility writes an enum as a bare ordinal, which is unreadable
+        // in a hand-edited Day file and degrades a typo to whatever happens to be 0.
+        //
+        // EMPTY MEANS ForcedMove, which is what makes this field additive: every step
+        // authored before kinds existed keeps working untouched, and the absence marker
+        // problem that forced `enabled` onto the block above does not arise here because
+        // there is a sensible default.
+        //
+        // The fields below belong to ForcedMove and are ignored for an intro step -- which
+        // is why DayValidator skips its cell and tray checks for one.
+        public string kind;
+
+        // The only cell that can be picked up while this step is unfinished. It must hold
+        // an item when the step BEGINS -- for the first step DayValidator can check that
+        // against the Day's own boardTimeline, and for every step the runtime re-checks it
+        // against the live board rather than trusting the author.
+        public int sourceX;
+        public int sourceY;
+
+        // The only tray that will accept that item, 0..2. Authoring this is what decides
+        // whether the forced move DELIVERS or costs a life, and nothing checks it: the
+        // tray's ticket has to actually want what is on the source cell.
+        public int targetTraySlotIndex;
+
+        // Shown while the step runs, or empty for a step whose ghost speaks for itself.
+        // Text is content and belongs here rather than in a string literal in code.
+        public string message;
+
+        // Points an arrow at the ingredient a modification added to the source item, and a
+        // second one at that modification's box on the target tray's ticket card. Only
+        // meaningful for a source item that actually carries a modification; a step that
+        // asks for it on a plain item simply gets no arrows.
+        public bool highlightModification;
     }
 
     [Serializable]

@@ -15,7 +15,15 @@ using ExpoTheExplorer.Session;
 using ExpoTheExplorer.Systems.ProgressionSystem;
 using ExpoTheExplorer.Systems.TicketSystem;
 using ExpoTheExplorer.Systems.TraySystem;
+using ExpoTheExplorer.Systems.Tutorial;
 using ExpoTheExplorer.UI;
+
+// DaySystem and Tutorial each declare a TutorialStepKind -- deliberately, so the Tutorial
+// assembly can keep an empty reference list (see blueprint.md). This class is the ONE place
+// that holds both, and the translation between them; unqualified, the name means the
+// Tutorial system's, which is what every gate here reads. The DaySystem one is spelled out
+// in full at the single point it is converted.
+using TutorialStepKind = ExpoTheExplorer.Systems.Tutorial.TutorialStepKind;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -110,6 +118,11 @@ namespace ExpoTheExplorer.Bootstrap
         // actually paid can never disagree about where a tier starts.
         public EconomyConfig EconomyConfig => economyConfig;
 
+        // Exposed for the same reason EconomyConfig is: a HUD view needs the authored
+        // numbers (here, each powerup's name and description) and reading them through the
+        // scene's one composition root beats a second serialized slot on every view.
+        public PowerupConfig PowerupConfig => powerupConfig;
+
         // Everything a PLAYER owns rather than a day: state, wallet, lives, the Day
         // catalog, the day index and the owned meta props. Shared with the main screen
         // (decisions.md D-021), which is why it is a class and not more fields here.
@@ -140,6 +153,37 @@ namespace ExpoTheExplorer.Bootstrap
         // safe: the main screen builds the same manager to sell against, registers nothing,
         // and therefore cannot spend a charge even if a use button ended up there.
         public PowerupManager PowerupManager => Session?.PowerupManager;
+
+        // This Day's forced first move while it is unfinished, and null the rest of the time
+        // -- which is every Day but the first, and the first Day once the player has made
+        // the move. Rebuilt on every day start by ArmTutorial.
+        public TutorialDirector Tutorial { get; private set; }
+
+        // Fires whenever the current tutorial step changes -- a Day start arming one, the
+        // player finishing a step, the tutorial ending or being aborted. WorldTrayView
+        // listens so that whichever tray is the NEW target can raise the spotlight and the
+        // old one can tear its own down. It has to be an event rather than a one-time read
+        // for two reasons: a RETRY re-arms mid-scene long after every Start has run, and
+        // (since D-083) a step boundary is a mid-day event by definition. The trays also
+        // check the already-armed case on their own Start, since the first arm happens in
+        // Awake -- before anything could have subscribed. Same subscribe-then-sync shape
+        // BoardView uses for CellChanged.
+        //
+        // A plain event, not a GameState EventBus: GameState lives in Core, and putting a
+        // Tutorial type on it would point Core at a system that depends on nothing.
+        public event Action TutorialStepChanged;
+
+        // The two gates the tutorial imposes, asked by the board item being pressed and by
+        // the tray being dropped on. They are null-safe here rather than at the call sites
+        // so "no tutorial" is answered in ONE place -- and both read as an ordinary
+        // permission check rather than as a tutorial special case.
+        public bool IsBoardPickupAllowed(int x, int y) => Tutorial == null || Tutorial.IsPickupAllowed(x, y);
+
+        public bool IsTrayDropAllowed(int slotIndex) => Tutorial == null || Tutorial.IsTrayDropAllowed(slotIndex);
+
+        // Asked before a drop turns into a board-to-board move. Null-safe here like the
+        // other two, so a day with no tutorial relocates items exactly as it always has.
+        public bool IsBoardRelocationAllowed() => Tutorial == null || Tutorial.IsBoardRelocationAllowed();
 
         public TicketSlotManager TicketSlotManager { get; private set; }
         public TrayManager TrayManager { get; private set; }
@@ -317,7 +361,14 @@ namespace ExpoTheExplorer.Bootstrap
         //
         // Checked at USE time rather than by disabling the buttons, the same choice D-069
         // made for keys: a greyed-out button does not say why, and this state lasts seconds.
-        private bool CanUsePowerups() => !State.IsAwaitingContinue && !TicketSlotManager.IsDayComplete;
+        //
+        // The tutorial joins that list for a reason the other two share: during the forced
+        // first move there is exactly one legal action, and all three powerups act on the
+        // board or the tickets. Auto-Collect in particular would sweep the very item the
+        // player is being told to drag, leaving a ghost pointing at an empty cell and a step
+        // that can no longer be completed.
+        private bool CanUsePowerups() => !State.IsAwaitingContinue && !TicketSlotManager.IsDayComplete
+            && (Tutorial == null || !Tutorial.IsActive);
 
         private void OnDestroy()
         {
@@ -335,6 +386,13 @@ namespace ExpoTheExplorer.Bootstrap
         private void Update()
         {
             if (State.IsAwaitingContinue) return;
+
+            // A tutorial step that asks the player to READ stops the clock. It is not a
+            // nicety: the powerup panel carries three descriptions, which takes longer than
+            // a Patient ticket has, so a running countdown would make the tutorial itself
+            // cost lives. Its own condition rather than a second use of IsAwaitingContinue,
+            // which means "the Continue popup is up" and is read by four other places.
+            if (Tutorial != null && Tutorial.IsHoldingForReading) return;
 
             TicketSlotManager.Tick(Time.deltaTime);
         }
@@ -652,7 +710,11 @@ namespace ExpoTheExplorer.Bootstrap
             var nextIndex = State.CurrentDayIndex + 1;
             if (Session.DayCatalog != null && nextIndex < Session.DayCatalog.Count)
             {
-                State.CurrentDayIndex = nextIndex;
+                // Through the session, which is the single writer of this field since
+                // D-092. The bounds test above is kept rather than left to GoToDay's clamp:
+                // clamping would silently pin the player to the last Day, while this branch
+                // deliberately leaves the index ALONE when there is no next Day.
+                Session.GoToDay(nextIndex);
             }
 
             SaveProfile();
@@ -830,7 +892,10 @@ namespace ExpoTheExplorer.Bootstrap
             // first retry of the new day would revert the reward away.
             CommitPendingReward();
 
-            State.CurrentDayIndex = nextIndex;
+            // Through the session (D-092): it is the single writer of the day index. The
+            // early return above already proved nextIndex is in range, so the clamp inside
+            // is a no-op here and the behaviour is unchanged.
+            Session.GoToDay(nextIndex);
             wallet.CaptureDayStart();
 
             // Persists the new index, and now also whatever the line above just paid
@@ -892,6 +957,94 @@ namespace ExpoTheExplorer.Bootstrap
         {
             if (CurrentDay == null) return;
             DayBoardTimelinePlayer.ApplyForStep(State.Board, CurrentDay.BoardTimeline, -1);
+            ArmTutorial();
+        }
+
+        // This Day's forced first move, if it authored one. Armed from inside the pre-seed
+        // rather than from Awake because all FOUR day-start paths run through there (first
+        // load, both retries, and the advance to the next Day) -- one call site instead of
+        // four, and it cannot drift out of step with the board it is gating.
+        //
+        // Rebuilding rather than keeping one instance is what makes the next Day correct:
+        // Day 1 authors no tutorial, so this sets the director back to null and every gate
+        // opens again. A director left over from Day 0 would silently lock Day 1 to one
+        // cell.
+        private void ArmTutorial()
+        {
+            if (Tutorial != null) Tutorial.StepChanged -= OnTutorialStepChanged;
+            Tutorial = null;
+
+            var authored = CurrentDay.Tutorial;
+            if (authored == null) return;
+
+            // Translated into the Tutorial system's own step type at this boundary rather
+            // than handing it DaySystem's -- that is what keeps the Tutorial assembly's
+            // reference list empty, which is what keeps its rules testable with no Day
+            // catalog. The same trade PowerupManager already makes with its Func effects.
+            var steps = new List<TutorialStep>(authored.Steps.Count);
+            foreach (var step in authored.Steps)
+            {
+                // Written out rather than cast, so a kind added to DaySystem without teaching
+                // the Tutorial system about it stops the build instead of quietly becoming
+                // whatever number happens to line up. Same stance HapticConfig takes on its
+                // mirror of the vendor's preset enum.
+                var kind = step.Kind switch
+                {
+                    ExpoTheExplorer.Systems.DaySystem.TutorialStepKind.PowerupIntro => TutorialStepKind.PowerupIntro,
+                    _ => TutorialStepKind.ForcedMove,
+                };
+
+                steps.Add(new TutorialStep(
+                    kind, step.SourceX, step.SourceY, step.TargetTraySlotIndex, step.Message, step.HighlightModification));
+            }
+
+            Tutorial = new TutorialDirector(steps);
+            Tutorial.StepChanged += OnTutorialStepChanged;
+
+            // Validated the same way every later step is, through the one method, so the
+            // first step gets no special treatment and no second copy of the rule.
+            if (!EnsureCurrentTutorialStepIsPossible()) return;
+
+            TutorialStepChanged?.Invoke();
+        }
+
+        // The softlock guard, and the reason it exists at runtime as well as in DayValidator:
+        // a hand-edited Day file never passes through the editor's Save gate at all, and --
+        // more importantly for a multi-step tutorial -- the BOARD MOVES between steps. An
+        // authoring-time check can only see the Day Start layout, so a later step's item may
+        // genuinely be gone by the time its turn arrives. With no item on the source cell
+        // there is nothing to pick up and no tray that will accept anything: the day would
+        // read as a freeze. Aborting turns that into an ordinary day plus a sentence naming
+        // the cell.
+        private bool EnsureCurrentTutorialStepIsPossible()
+        {
+            var step = Tutorial?.Current;
+            if (step == null) return false;
+
+            // A step that is not a forced move names no cell, so there is nothing on the
+            // board that could make it impossible. Without this it would be checked against
+            // its unused (0,0) and abort the whole tutorial the moment that cell is empty.
+            if (step.Kind != TutorialStepKind.ForcedMove) return true;
+
+            if (State.Board.ItemAt(step.SourceX, step.SourceY) != null) return true;
+
+            Debug.LogError(
+                $"Day {CurrentDay.DayIndex}'s tutorial expects an item at cell ({step.SourceX}, {step.SourceY}) " +
+                "for its next step, but that cell is empty, so the forced move would be impossible. Ending the " +
+                "tutorial and running the rest of the day normally. Check the Day's boardTimeline and the order of " +
+                "the tutorial steps.", this);
+            Tutorial.Abort();
+            return false;
+        }
+
+        // Each step re-validates as it becomes current, and a step that survives that is
+        // announced so the new target tray can raise its spotlight. Abort() also lands here
+        // (with Current null), which is exactly right: the trays tear down what they built.
+        private void OnTutorialStepChanged()
+        {
+            if (Tutorial != null && Tutorial.IsActive && !EnsureCurrentTutorialStepIsPossible()) return;
+
+            TutorialStepChanged?.Invoke();
         }
 
         // Lets the same EventSystem that already drives the UGUI Canvas

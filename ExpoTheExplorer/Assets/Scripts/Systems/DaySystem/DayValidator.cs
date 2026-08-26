@@ -72,8 +72,86 @@ namespace ExpoTheExplorer.Systems.DaySystem
 
             ValidateTicketRuntime(day.TicketRuntime, errors, warnings);
             ValidateBoardDistribution(day.BoardDistribution, day.TicketRuntime, warnings);
+            ValidateTutorial(day, errors);
 
             return new DayValidationResult(errors, warnings);
+        }
+
+        // The one rule here is a PAIRING between two halves of the same file, which is
+        // exactly the kind of check nothing else in the project is positioned to make: the
+        // tutorial names a cell, the boardTimeline fills cells, and only a reader holding
+        // both can see that they disagree. Getting it wrong is not a cosmetic mistake --
+        // a tutorial pointing at an empty cell means nothing on the board can be picked up
+        // and no tray will accept anything, which is a softlock on the game's first day.
+        //
+        // Errors rather than warnings for both, unlike most of this file: the Save button is
+        // gated on IsValid, and "you may not save a Day that cannot be played" is a call this
+        // gate IS entitled to make. The runtime keeps its own refusal anyway (TutorialDirector
+        // will not start on an empty cell), because a hand-edited JSON never passes through
+        // here at all -- these two guards cover different doors, not the same one twice.
+        private static void ValidateTutorial(DayDefinition day, List<string> errors)
+        {
+            var tutorial = day.Tutorial;
+            if (tutorial == null) return;
+
+            for (var i = 0; i < tutorial.Steps.Count; i++)
+            {
+                var step = tutorial.Steps[i];
+
+                // An intro step names no cell and no tray, so every rule below would be
+                // checking fields it does not use -- and would reject a perfectly good step
+                // for leaving them at zero.
+                if (step.Kind != TutorialStepKind.ForcedMove) continue;
+
+                if (step.TargetTraySlotIndex < 0 || step.TargetTraySlotIndex >= GameState.TicketSlotCount)
+                {
+                    errors.Add($"Tutorial step {i + 1}: target tray {step.TargetTraySlotIndex} does not exist -- there are {GameState.TicketSlotCount} trays, so it must be 0..{GameState.TicketSlotCount - 1}.");
+                }
+
+                // EVERY step's source cell is checked against the Day Start board, and for
+                // steps after the first that is a NECESSARY condition rather than a
+                // sufficient one: the board moves as the tutorial is played, so a later
+                // step's item could be gone by the time its turn comes even though it was
+                // authored here. The runtime re-checks each step against the live board when
+                // it begins -- this check catches the author who names a cell the Day never
+                // fills at all, which is the mistake that is invisible until someone plays.
+                //
+                // Day Start entries only (triggerStepIndex -1), and useExactCell only: an
+                // entry without it lands wherever the board has room, so there is no
+                // guarantee it will be the authored cell -- which is the same as having no
+                // item there.
+                var hasItemAtSourceCell = false;
+                foreach (var spawn in day.BoardTimeline ?? Array.Empty<ResolvedBoardSpawnEntry>())
+                {
+                    if (spawn == null || spawn.TriggerStepIndex != -1 || !spawn.UseExactCell) continue;
+                    if (spawn.X != step.SourceX || spawn.Y != step.SourceY) continue;
+
+                    hasItemAtSourceCell = true;
+                    break;
+                }
+
+                if (!hasItemAtSourceCell)
+                {
+                    errors.Add($"Tutorial step {i + 1}: no Day Start board entry places an item at the source cell ({step.SourceX}, {step.SourceY}) with Use Exact Cell on, so the one item the player is allowed to pick up would not be there.");
+                }
+            }
+
+            // Two steps sending the player to the same cell is always an authoring slip: the
+            // first one consumes that item, so the second could never be completed. A warning
+            // would be too weak -- this is a guaranteed softlock, not a smell.
+            for (var i = 0; i < tutorial.Steps.Count; i++)
+            {
+                if (tutorial.Steps[i].Kind != TutorialStepKind.ForcedMove) continue;
+
+                for (var j = i + 1; j < tutorial.Steps.Count; j++)
+                {
+                    if (tutorial.Steps[j].Kind != TutorialStepKind.ForcedMove) continue;
+                    if (tutorial.Steps[i].SourceX != tutorial.Steps[j].SourceX) continue;
+                    if (tutorial.Steps[i].SourceY != tutorial.Steps[j].SourceY) continue;
+
+                    errors.Add($"Tutorial steps {i + 1} and {j + 1} both use source cell ({tutorial.Steps[i].SourceX}, {tutorial.Steps[i].SourceY}), but step {i + 1} takes that item off the board, so step {j + 1} could never be finished.");
+                }
+            }
         }
 
         // WHAT THIS METHOD CAN AND CANNOT SEE -- worth stating, because getting it wrong

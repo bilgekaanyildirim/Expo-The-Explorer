@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using ExpoTheExplorer.Core;
+using ExpoTheExplorer.Session;
 using ExpoTheExplorer.Systems.ProgressionSystem;
 using TMPro;
 using UnityEngine;
@@ -51,6 +52,12 @@ namespace ExpoTheExplorer.UI
         // the misconfiguration findable rather than silent.
         [Tooltip("Shown when Play is pressed with no keys left. Leave empty and Play is never gated.")]
         [SerializeField] private NoKeysPopupView noKeysPopup;
+
+        [Tooltip("Where the player is: read at click time to see whether they have bought anything yet. Assigned by ExpoTheExplorer > Tutorial > Set Up Main Screen Tutorial.")]
+        [SerializeField] private SessionHost sessionHost;
+
+        [Tooltip("Asked to point at the store when Play is pressed before the first building is bought. Assigned by the same menu item.")]
+        [SerializeField] private MainScreenTutorialView tutorial;
 
         // Dragged in, never searched for. The project rule since 2026-08-21: no runtime
         // code resolves a scene reference by name or by type — every one is a serialized
@@ -157,7 +164,36 @@ namespace ExpoTheExplorer.UI
             // the field's comment for why a forgotten drag must fail OPEN.
             if (noKeysPopup != null && !noKeysPopup.HasKeyOrShow()) return;
 
+            // A player who has bought nothing has not renovated the stall yet, and the game
+            // does not open until they have. Same click-time shape as the key gate above and
+            // for the identical reason (D-069): Play stays pressable and ANSWERS, because a
+            // dead button on a new player's first screen explains nothing.
+            //
+            // Read live rather than from the profile snapshot this view loaded at Start --
+            // buying the building is exactly the event that opens this gate, so a snapshot
+            // taken before it would keep the player locked out after they had complied.
+            if (IsAwaitingFirstBuilding())
+            {
+                tutorial.PointAtStoreAfterBlockedPlay();
+                return;
+            }
+
             SceneFlow.LoadDay();
+        }
+
+        // EVERY uncertainty here resolves toward LET THEM PLAY, and that is not defensiveness
+        // -- this gate sits on the only path into the game, so a wrong answer in the other
+        // direction is an unplayable build that looks exactly like a save bug. An unwired
+        // reference, a session that has not been built, or a null owned-list all mean "do not
+        // block", the same stance noKeysPopup takes on a forgotten drag.
+        private bool IsAwaitingFirstBuilding()
+        {
+            if (sessionHost == null || tutorial == null) return false;
+
+            var session = sessionHost.Session;
+            if (session?.OwnedMetaItemIds == null) return false;
+
+            return session.OwnedMetaItemIds.Count == 0;
         }
 
         // First tap arms, second tap within resetConfirmSeconds erases. Nothing is written

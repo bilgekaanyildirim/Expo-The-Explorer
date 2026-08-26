@@ -446,6 +446,18 @@ namespace ExpoTheExplorer.Editor
         [UnityEngine.HideInInspector]
         public List<DayEditorBoardSpawnEntry> BoardTimeline = new();
 
+        // CARRIED, NOT EDITED -- the raw JSON block, held so Save writes back exactly what
+        // Load read. It exists because ToDayJson rebuilds the runtime section field by field
+        // rather than mutating what it loaded: any runtime field this model does not name is
+        // silently DELETED the first time a Day is opened here and saved, which for the
+        // tutorial would mean day_00 quietly losing its forced first move because someone
+        // retimed a ticket. There is no editor UI for it yet (D-082 authors day_00's block
+        // by hand); this is the pass-through that makes that safe, and the place a real
+        // inspector would hang off later. HideInInspector for the same reason BoardTimeline
+        // is: showing a raw serializable here would invite editing it without validation.
+        [UnityEngine.HideInInspector]
+        public TutorialJson Tutorial;
+
         // Named for what it is since D-006 removed the override layer: these settings are not
         // overrides of anything, they are the record of how this Day's ticketSequence was
         // generated, and the input the next Generate uses.
@@ -1057,6 +1069,7 @@ namespace ExpoTheExplorer.Editor
                     ticketRuntime = TicketRuntime.ToJson(),
                     ticketSequence = TicketSequence.Select(e => e.ToJson()).ToArray(),
                     boardTimeline = BoardTimeline.Select(e => e.ToJson()).ToArray(),
+                    tutorial = Tutorial,
                 },
                 editorMeta = EditorMeta.ToJson(),
             };
@@ -1066,8 +1079,13 @@ namespace ExpoTheExplorer.Editor
         {
             var ticketSequence = TicketSequence.Select(e => e.ToResolved()).ToList();
             var boardTimeline = BoardTimeline.Select(e => e.ToResolved()).ToList();
+            // Resolved through the runtime parser's own method rather than re-implemented
+            // here, so the Day Editor's validation preview cannot disagree with what the
+            // game will actually load. This is what makes DayValidator's tutorial rule fire
+            // on the Save button instead of only at runtime.
             return new DayDefinition(DayIndex, TicketsRequiredForDay, ticketSequence, boardTimeline,
-                BoardDistribution.ToResolved(), TicketRuntime.ToResolved());
+                BoardDistribution.ToResolved(), TicketRuntime.ToResolved(),
+                DayCatalogParser.ResolveTutorial(Tutorial));
         }
 
         public static DayEditorModel FromDayJson(DayJson json, FoodCatalog catalog)
@@ -1083,6 +1101,7 @@ namespace ExpoTheExplorer.Editor
                     .Select(e => DayEditorTicketEntry.FromJson(e, catalog)).ToList(),
                 BoardTimeline = (runtime?.boardTimeline ?? Array.Empty<BoardSpawnEntryJson>())
                     .Select(e => DayEditorBoardSpawnEntry.FromJson(e, catalog)).ToList(),
+                Tutorial = runtime?.tutorial,
                 EditorMeta = DayEditorMetaModel.FromJson(json?.editorMeta, catalog),
             };
 

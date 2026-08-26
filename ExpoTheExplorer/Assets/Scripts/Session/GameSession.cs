@@ -195,8 +195,11 @@ namespace ExpoTheExplorer.Session
             // asset; production passes null and gets the real parse.
             DayCatalog = dayCatalog ?? DayCatalogParser.ParseAll(new DayJsonSource().LoadAll(), foodCatalog);
 
-            // Order 3: after the parse, because the clamp reads DayCatalog.Count.
-            State.CurrentDayIndex = ResolveStartingDayIndex(profile.CurrentDayIndex);
+            // Order 3: after the parse, because the clamp reads DayCatalog.Count. Routed
+            // through GoToDay rather than assigning, so that method is the ONLY statement in
+            // the project that writes this field (D-092) -- a rule that is worth nothing if
+            // the class declaring it exempts its own constructor.
+            GoToDay(profile.CurrentDayIndex);
 
             OwnedMetaItemIds = new HashSet<string>(profile.OwnedMetaItemIds);
             LastCelebratedDayIndex = profile.LastCelebratedDayIndex;
@@ -215,12 +218,40 @@ namespace ExpoTheExplorer.Session
         //
         // Internal rather than private only so the test suite can reach it; it is the one
         // piece of this class that had no test at all while it lived in GameManager.
-        internal int ResolveStartingDayIndex(int persistedIndex)
+        internal int ResolveStartingDayIndex(int persistedIndex) => ClampToCatalog(persistedIndex);
+
+        // THE SINGLE WRITER of GameState.CurrentDayIndex (decisions.md D-092).
+        //
+        // It did not used to be. The number was assigned in three places -- twice in
+        // GameManager (the day advance, and the completed-day exit to the main screen) and
+        // once in the constructor above -- while fingerprint.md claimed GameManager was its
+        // single writer. That claim was simply false, and it had gone unnoticed because the
+        // three sites never ran at the same time. D-092 needed a FOURTH caller from the main
+        // screen, where GameManager does not exist at all, which is the point at which a
+        // split ownership stops being a documentation error and becomes a real one.
+        //
+        // Deliberately does NOT save. Every existing caller already decides that for itself
+        // and two of them save several other things in the same breath (the advance writes
+        // the freshly-paid reward alongside the new index); a save in here would double-write
+        // on those paths and, worse, make the write order of a multi-field save depend on
+        // which field happened to be set last. A writer sets the value; persisting it is the
+        // caller's sentence.
+        //
+        // Clamped rather than trusted for the reason the constructor's load is: an index past
+        // the last authored Day resolves CurrentDay to null and throws on the first ticket.
+        // Same clamp, one implementation, so a hand-typed debug index and a restored save
+        // cannot disagree about what "Day 40" means.
+        public void GoToDay(int index)
+        {
+            State.CurrentDayIndex = ClampToCatalog(index);
+        }
+
+        private int ClampToCatalog(int index)
         {
             if (DayCatalog == null || DayCatalog.Count == 0) return 0;
-            if (persistedIndex <= 0) return 0;
+            if (index <= 0) return 0;
 
-            return Math.Min(persistedIndex, DayCatalog.Count - 1);
+            return Math.Min(index, DayCatalog.Count - 1);
         }
 
         // The single place that decides WHAT reaches the file. PlayerProfileStore stays the

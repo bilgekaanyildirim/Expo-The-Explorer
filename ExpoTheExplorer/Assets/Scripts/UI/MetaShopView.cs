@@ -42,6 +42,12 @@ namespace ExpoTheExplorer.UI
     // will ASK them in Ş2, and it will still not own a rule.
     public class MetaShopView : MonoBehaviour
     {
+        // Where the store button IS, for something that needs to point at it -- the
+        // main-screen tutorial's arrow, and nothing else today. Read-only and deliberately
+        // the RectTransform rather than the Button: a caller gets a position and a size, and
+        // no way to press the store on the player's behalf or to restyle it.
+        public RectTransform MarketButtonRect => marketButton != null ? (RectTransform)marketButton.transform : null;
+
         [Header("Bound by ExpoTheExplorer > Meta > Build Meta Shop")]
         [Tooltip("Opens and closes the panel. Drawn ON TOP of the panel on purpose, so it can still be tapped to close a panel that covers it.")]
         [SerializeField] private Button marketButton;

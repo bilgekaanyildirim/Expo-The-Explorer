@@ -41,7 +41,16 @@ namespace ExpoTheExplorer.Core
                     // the cell center), not just have each layer inflate in place
                     // while every layer's relative offset stays fixed.
                     var offset = (layer.Offset + cumulativePush) * Config.OverallScale;
-                    result.Add(new ResolvedLayer(layer.Sprite, offset, layer.Scale * Config.OverallScale));
+
+                    // Carried through only for a layer that exists BECAUSE of a
+                    // modification (HiddenByDefault -- see IsVisible below); an
+                    // always-visible or default-visible layer leaves it null. That makes
+                    // "which of these sprites IS the extra mustard" answerable by a reader
+                    // holding nothing but the resolved list. The tutorial's arrow is the
+                    // first such reader -- before it, this fact was computed here and
+                    // thrown away.
+                    var sourceModification = layer.Visibility == LayerVisibility.HiddenByDefault ? layer.Modification : null;
+                    result.Add(new ResolvedLayer(layer.Sprite, offset, layer.Scale * Config.OverallScale, sourceModification));
                     cumulativePush += layer.PushAmount;
                 }
 
@@ -90,11 +99,21 @@ namespace ExpoTheExplorer.Core
         public Vector2 Offset { get; }
         public float Scale { get; }
 
-        public ResolvedLayer(Sprite sprite, Vector2 offset, float scale)
+        // Non-null only when this layer is on the item BECAUSE of a modification -- the
+        // extra mustard, the added cheese. Null for the bun, the sausage, and for any
+        // layer that is merely still visible because a modification did NOT remove it.
+        // BoardView draws every layer the same way and ignores this; it exists so a reader
+        // can point at one specific ingredient, which is what the tutorial's arrow does.
+        public ModificationConfig SourceModification { get; }
+
+        // Optional so the fallback construction below (a config with no layers at all,
+        // drawing its plain Sprite) does not have to say "no modification" out loud.
+        public ResolvedLayer(Sprite sprite, Vector2 offset, float scale, ModificationConfig sourceModification = null)
         {
             Sprite = sprite;
             Offset = offset;
             Scale = scale;
+            SourceModification = sourceModification;
         }
     }
 }

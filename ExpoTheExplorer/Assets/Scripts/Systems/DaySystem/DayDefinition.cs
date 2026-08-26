@@ -58,13 +58,21 @@ namespace ExpoTheExplorer.Systems.DaySystem
             }
         }
 
+        // This Day's forced first move, or NULL for every Day that has none -- which is the
+        // normal case and the reason this is a reference type rather than a struct with an
+        // IsEnabled flag: "no tutorial" is then unrepresentable-as-half-configured, and
+        // every reader's check is a null check rather than a convention it could forget.
+        // DayCatalogParser produces one only for a block that says enabled.
+        public ResolvedTutorial Tutorial { get; }
+
         public DayDefinition(
             int dayIndex,
             int ticketsRequiredForDay,
             IReadOnlyList<ResolvedTicketEntry> ticketSequence,
             IReadOnlyList<ResolvedBoardSpawnEntry> boardTimeline,
             BoardDistributionSettings boardDistribution = null,
-            TicketRuntimeSettings ticketRuntime = null)
+            TicketRuntimeSettings ticketRuntime = null,
+            ResolvedTutorial tutorial = null)
         {
             DayIndex = dayIndex;
             TicketsRequiredForDay = ticketsRequiredForDay;
@@ -72,6 +80,64 @@ namespace ExpoTheExplorer.Systems.DaySystem
             BoardTimeline = boardTimeline;
             BoardDistribution = boardDistribution;
             TicketRuntime = ticketRuntime;
+            Tutorial = tutorial;
+        }
+    }
+
+    // The resolved form of TutorialJson: the one cell that may be picked up and the one
+    // tray that may accept it, for as long as the step is unfinished. Nothing here says
+    // what it looks like -- the dim, the sorting lifts and the ghost are presentation, and
+    // their tuning lives on BoardAnimationConfig with every other animation number.
+    //
+    // It exists only when the Day authored one, so its presence IS the "this Day has a
+    // tutorial" answer; there is no enabled flag on this side, unlike the JSON, which needs
+    // one because JsonUtility cannot express absence.
+    public class ResolvedTutorial
+    {
+        // Never null and never empty when a ResolvedTutorial exists at all: the parser
+        // produces one only for an enabled block with at least one usable step, so no
+        // reader has to handle "a tutorial with nothing to do".
+        public IReadOnlyList<ResolvedTutorialStep> Steps { get; }
+
+        public ResolvedTutorial(IReadOnlyList<ResolvedTutorialStep> steps)
+        {
+            Steps = steps;
+        }
+    }
+
+    // Two genuinely different authored shapes in one sequence -- a move the player must
+    // make, and a panel they must read. Not an extension point: a third kind is a design
+    // decision, and this enum is where it would have to be argued for.
+    public enum TutorialStepKind
+    {
+        // The default, and what every step authored before kinds existed is.
+        ForcedMove = 0,
+
+        // Explains the three powerups. Carries no cell and no tray.
+        PowerupIntro = 1,
+    }
+
+    public class ResolvedTutorialStep
+    {
+        public TutorialStepKind Kind { get; }
+        public int SourceX { get; }
+        public int SourceY { get; }
+        public int TargetTraySlotIndex { get; }
+
+        // Empty rather than null for an unauthored message, so every reader can ask
+        // string.IsNullOrEmpty and none of them can dereference it.
+        public string Message { get; }
+
+        public bool HighlightModification { get; }
+
+        public ResolvedTutorialStep(TutorialStepKind kind, int sourceX, int sourceY, int targetTraySlotIndex, string message, bool highlightModification)
+        {
+            Kind = kind;
+            SourceX = sourceX;
+            SourceY = sourceY;
+            TargetTraySlotIndex = targetTraySlotIndex;
+            Message = message ?? string.Empty;
+            HighlightModification = highlightModification;
         }
     }
 

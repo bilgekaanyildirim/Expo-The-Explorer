@@ -91,7 +91,53 @@ namespace ExpoTheExplorer.Systems.DaySystem
             }
 
             return new DayDefinition(runtime.dayIndex, runtime.ticketsRequiredForDay, ticketSequence, boardTimeline,
-                boardDistribution, ticketRuntime);
+                boardDistribution, ticketRuntime, ResolveTutorial(runtime.tutorial));
+        }
+
+        // Unlike every other Resolve* here, a bad block is NOT fatal to the Day: null means
+        // "this Day has no forced first move", which is the correct outcome both for the 39
+        // Days that never authored one and for a Day whose tutorial is unusable. Dropping
+        // the whole Day over a broken tutorial would take a playable day off the calendar to
+        // punish a decoration -- and the two ways it can be broken are already caught where
+        // they can be acted on: DayValidator errors at authoring time, and TutorialDirector
+        // refuses to start when the source cell turns out to be empty at Day Start.
+        //
+        // The absence check is `enabled`, not a coordinate: see TutorialJson's own comment
+        // for why a zeroed block cannot be told apart from a real (0,0)/tray-0 tutorial.
+        // Public because the Day Editor resolves the same block for its validation preview
+        // (DayEditorModel.ToDayDefinition). One rule, one implementation: a second copy of
+        // "enabled means present" would be free to disagree with this one about what a Day
+        // file means, and the disagreement would only show up as a Day that validates in
+        // the editor and behaves differently at runtime.
+        public static ResolvedTutorial ResolveTutorial(TutorialJson tutorial)
+        {
+            if (tutorial == null || !tutorial.enabled) return null;
+
+            var steps = new List<ResolvedTutorialStep>();
+            foreach (var step in tutorial.steps ?? Array.Empty<TutorialStepJson>())
+            {
+                if (step == null) continue;
+
+                // An unreadable kind is NOT silently downgraded to the default: a typo in
+                // "PowerupIntro" would otherwise turn an intro panel into a forced move at
+                // cell (0,0), which is a step the player can never complete. Same stance
+                // ResolveBoardDistribution takes on its own enum string, and the same reason
+                // the field is a string in the first place.
+                var kind = TutorialStepKind.ForcedMove;
+                if (!string.IsNullOrEmpty(step.kind) && !Enum.TryParse(step.kind, out kind))
+                {
+                    Debug.LogError($"Tutorial step has kind '{step.kind}', which is not a TutorialStepKind. Dropping this Day's tutorial.");
+                    return null;
+                }
+
+                steps.Add(new ResolvedTutorialStep(
+                    kind, step.sourceX, step.sourceY, step.targetTraySlotIndex, step.message, step.highlightModification));
+            }
+
+            // An enabled tutorial with no steps is treated as no tutorial rather than as an
+            // empty one, which is what lets every reader take "a ResolvedTutorial exists" as
+            // "there is at least one move to make".
+            return steps.Count > 0 ? new ResolvedTutorial(steps) : null;
         }
 
         // Same absence-by-content detection as ResolveBoardDistribution (JsonUtility gives

@@ -49,6 +49,11 @@ namespace ExpoTheExplorer.UI
         private TicketCardView ticketCardView;
         private bool inDropCall;
 
+        // The spotlight THIS tray raised, while it is the tutorial's target. Held so it can
+        // be dismissed synchronously at the step boundary rather than left to Unity's
+        // end-of-frame Destroy -- see DismissTutorialSpotlight.
+        private TutorialSpotlightView tutorialSpotlight;
+
         private void Awake()
         {
             isValid = ValidateReferences();
@@ -72,6 +77,14 @@ namespace ExpoTheExplorer.UI
             // instead, safe because Unity finishes every object's Awake()
             // before any Start() runs.
             ticketCardView = ticketCardsView.GetCard(slotIndex);
+
+            // Subscribe, then sync -- the same shape BoardView uses for CellChanged, and
+            // for the same reason: the FIRST arm happens in GameManager.Awake, before any
+            // Start could have subscribed, while a RETRY re-arms mid-scene long after every
+            // Start has run. One of the two would be missed by either half alone.
+            gameManager.TutorialStepChanged += OnTutorialStepChanged;
+            OnTutorialStepChanged();
+
             gameManager.State.TicketDelivered.Subscribe(OnTicketDelivered);
             gameManager.State.TraySlotScatterBegin.Subscribe(OnTraySlotScatterBegin);
             gameManager.State.TraySlotScatterEnd.Subscribe(OnTraySlotScatterEnd);
@@ -80,6 +93,7 @@ namespace ExpoTheExplorer.UI
         private void OnDestroy()
         {
             if (!isValid) return;
+            gameManager.TutorialStepChanged -= OnTutorialStepChanged;
             gameManager.State.TicketDelivered.Unsubscribe(OnTicketDelivered);
             gameManager.State.TraySlotScatterBegin.Unsubscribe(OnTraySlotScatterBegin);
             gameManager.State.TraySlotScatterEnd.Unsubscribe(OnTraySlotScatterEnd);
@@ -119,6 +133,90 @@ namespace ExpoTheExplorer.UI
         private void OnTraySlotScatterEnd(int scatteringSlotIndex)
         {
             if (scatteringSlotIndex == slotIndex) boardView.EndFlyInOverride();
+        }
+
+        // Only the ONE tray the Day named raises the spotlight, and it does so because it is
+        // the only object already holding both of the ghost's endpoints -- a serialized
+        // boardView for the source cell, and its own transform for the destination. That is
+        // what lets the whole effect exist with no new scene object and nothing to wire.
+        // Runs on every step boundary, in every tray -- so the tray that just stopped being
+        // the target tears its spotlight down and the tray that just became one raises the
+        // next. A tray that is neither does nothing, which is why this needs no coordination
+        // between the three of them.
+        private void OnTutorialStepChanged()
+        {
+            DismissTutorialSpotlight();
+
+            if (!IsTutorialTarget()) return;
+
+            // Deferred by one tween tick: BoardView builds its item containers in its OWN
+            // Start, and Unity does not order Starts between root objects, so on a scene's
+            // first day the source item may genuinely not exist at this instant. Later steps
+            // and retries run long after that, where the delay is simply harmless.
+            DOVirtual.DelayedCall(0f, RaiseTutorialSpotlight).SetLink(gameObject);
+        }
+
+        // Torn down through Dismiss rather than plain Destroy so the sorting orders it lifted
+        // are put back SYNCHRONOUSLY. Unity defers Destroy to the end of the frame while the
+        // next step's spotlight is built immediately, so anything else would restore the old
+        // step's renderers after the new step had already lifted its own.
+        private void DismissTutorialSpotlight()
+        {
+            if (tutorialSpotlight == null) return;
+
+            tutorialSpotlight.Dismiss();
+            tutorialSpotlight = null;
+        }
+
+        private bool IsTutorialTarget()
+        {
+            var step = gameManager.Tutorial?.Current;
+            return step != null && step.TargetTraySlotIndex == slotIndex;
+        }
+
+        private void RaiseTutorialSpotlight()
+        {
+            // Re-checked rather than trusted from OnTutorialStepChanged: a frame passed, and
+            // a step boundary, a retry or a scene teardown can have landed in between.
+            if (this == null || !IsTutorialTarget()) return;
+
+            var tutorial = gameManager.Tutorial;
+            var step = tutorial.Current;
+            if (!boardView.TryGetDragHandler(step.SourceX, step.SourceY, out var sourceHandler))
+            {
+                // GameManager already refused to start a step whose cell is empty, so reaching
+                // here means the MODEL has an item the VIEW never built a container for. That
+                // is a BoardView problem rather than a content one, hence a different sentence
+                // than the step guard's.
+                Debug.LogError(
+                    $"{nameof(WorldTrayView)}: the tutorial step's source cell ({step.SourceX}, {step.SourceY}) " +
+                    "has an item in the board model but no rendered container, so no ghost can be shown. The step " +
+                    "is still enforced -- it just has nothing to point at.", this);
+                return;
+            }
+
+            var dimmedCards = new List<RectTransform>();
+            for (var i = 0; i < GameState.TicketSlotCount; i++)
+            {
+                // Every card BUT this tray's own: the target's ticket is what tells the
+                // player which order the forced move is filling, so it stays lit. It needs
+                // nothing done to it -- Canvas UI already composites above the world-space
+                // dim, so staying bright is the default and only the others are covered.
+                if (i == slotIndex) continue;
+
+                var card = ticketCardsView.GetCard(i);
+                if (card != null && card.transform is RectTransform cardRect) dimmedCards.Add(cardRect);
+            }
+
+            tutorialSpotlight = TutorialSpotlightView.Create(
+                tutorial,
+                animConfig,
+                sourceHandler.transform,
+                sourceHandler.CurrentItem,
+                transform,
+                new[] { transform },
+                dimmedCards,
+                ticketCardView);
         }
 
         private bool ValidateReferences()
@@ -202,6 +300,12 @@ namespace ExpoTheExplorer.UI
         {
             if (!isValid || dragHandler == null || dragHandler.CurrentItem == null) return false;
 
+            // The tutorial's second gate. Refusing HERE rather than inside TrayManager is
+            // deliberate: a false return is already this method's "not accepted" answer, so
+            // the item snaps back exactly as it does for any other rejected drop, and
+            // TraySystem never learns that tutorials exist.
+            if (!gameManager.IsTrayDropAllowed(slotIndex)) return false;
+
             var item = dragHandler.CurrentItem;
             justDelivered = false;
 
@@ -219,6 +323,18 @@ namespace ExpoTheExplorer.UI
 
             dragHandler.WasAcceptedByTray = accepted;
             if (!accepted) return false;
+
+            // The forced move has landed, so this step is over and the next one (if any)
+            // takes over. Announced on ACCEPTANCE rather than on delivery: what a step asks
+            // for is "put that item in that tray", and tying it to the payout would leave the
+            // scene dark through the whole delivery animation -- or forever, for a step whose
+            // order needs more than one item.
+            //
+            // No spotlight teardown is needed here: this publishes StepChanged, which every
+            // tray answers by dismissing its own spotlight synchronously, and only THEN (a
+            // tween tick later) does the new target raise the next one. One mechanism for the
+            // boundary rather than a second copy of it on this path.
+            gameManager.Tutorial?.NotifyTrayAccepted(slotIndex);
 
             var newCount = gameManager.TrayManager.GetContents(slotIndex).Count;
             if (newCount == 0)

@@ -64,6 +64,15 @@ namespace ExpoTheExplorer.UI
         private int? currentTraySlotIndex;
         private int? pickupSourceTraySlotIndex;
 
+        // True for the rest of a gesture whose press was refused (a popup is up, or the
+        // tutorial's forced move does not allow this cell). It exists because refusing in
+        // OnPointerDown alone DOES NOT STOP A DRAG: UGUI still calls OnBeginDrag/OnDrag for
+        // the same gesture, and their own `CurrentItem == null` guards pass, so the item
+        // was picked up and flown around anyway -- with none of the pickup bookkeeping
+        // done. Every handler in the gesture now checks this flag, which is what makes a
+        // refusal actually mean "you cannot move this".
+        private bool pickupRefused;
+
         private Vector3 homePosition;
         private Vector3 homeScale;
         private float lastFingerX;
@@ -124,7 +133,12 @@ namespace ExpoTheExplorer.UI
         // Over/Continue popup needs to block board input from.
         public void OnPointerDown(PointerEventData eventData)
         {
-            if (CurrentItem == null || gameManager.State.IsAwaitingContinue) return;
+            // The tutorial gate applies to BOARD cells only: cellX/cellY are stale leftovers
+            // while an item sits in a tray (see currentTraySlotIndex), so asking about them
+            // there would refuse a pickup based on a coordinate that means nothing.
+            var refusedByTutorial = !currentTraySlotIndex.HasValue && !gameManager.IsBoardPickupAllowed(cellX, cellY);
+            pickupRefused = CurrentItem == null || gameManager.State.IsAwaitingContinue || refusedByTutorial;
+            if (pickupRefused) return;
 
             ApplyPickupVisuals(eventData);
 
@@ -196,7 +210,7 @@ namespace ExpoTheExplorer.UI
 
         public void OnBeginDrag(PointerEventData eventData)
         {
-            if (CurrentItem == null) return;
+            if (pickupRefused || CurrentItem == null) return;
 
             IsDragging = true;
 
@@ -215,7 +229,7 @@ namespace ExpoTheExplorer.UI
 
         public void OnDrag(PointerEventData eventData)
         {
-            if (CurrentItem == null || dragCamera == null) return;
+            if (pickupRefused || CurrentItem == null || dragCamera == null) return;
 
             var fingerWorldPos = ComputeFingerWorldPos(eventData.position);
 
@@ -297,7 +311,8 @@ namespace ExpoTheExplorer.UI
         // so there's nothing left to do here.
         public void OnPointerUp(PointerEventData eventData)
         {
-            if (CurrentItem == null || IsDragging) return;
+            // A refused press applied no pickup visuals, so there is nothing to undo here.
+            if (pickupRefused || CurrentItem == null || IsDragging) return;
 
             scaleTween?.Kill();
             transform.localScale = homeScale;
@@ -323,7 +338,10 @@ namespace ExpoTheExplorer.UI
 
         public void OnEndDrag(PointerEventData eventData)
         {
-            if (CurrentItem == null) return;
+            // Nothing was ever picked up, so there is no teardown to run -- and running it
+            // would be actively wrong: the snap-back branch at the bottom tweens toward a
+            // homePosition this gesture never captured.
+            if (pickupRefused || CurrentItem == null) return;
 
             IsDragging = false;
 
@@ -388,7 +406,16 @@ namespace ExpoTheExplorer.UI
             // empty board cell, or (if it came from a tray) scatter it back
             // onto the board the same way a wrong delivery/timeout already
             // does; anything else just snaps back to where it was.
-            if (boardView.TryGetCellAt(transform.position, out var newX, out var newY)
+            // The tutorial refuses this branch outright for the whole of a step, and falls
+            // through to the snap-back below. Without it the step could be made
+            // uncompletable in one gesture: parking the item on any other empty cell moved
+            // it off the ONE cell the pickup gate permits, so it could never be picked up
+            // again and the day was stuck with nothing draggable and no tray accepting.
+            // Snapping back is not extra work here -- that branch already tweens to
+            // homePosition and touches BoardGrid not at all, so the item returns to its
+            // starting cell in the view and never left it in the model.
+            if (gameManager.IsBoardRelocationAllowed()
+                && boardView.TryGetCellAt(transform.position, out var newX, out var newY)
                 && board.IsCellEmpty(newX, newY)
                 && (!wasOnBoard || newX != cellX || newY != cellY))
             {
