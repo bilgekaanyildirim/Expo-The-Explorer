@@ -93,6 +93,22 @@ namespace ExpoTheExplorer.Core
         // player is looking at whatever "continue?" UI reacts to LivesDepleted.
         public bool IsAwaitingContinue { get; set; }
 
+        // True while the settings popup holds the day still (decisions.md D-094). Read by
+        // GameManager.Update, which is the ONLY reader -- this is a pause of the ticket
+        // clock and of nothing else, because the ticket clock is the only thing in this
+        // game that moves on its own. Tweens, the UI and the flight animations keep
+        // running, which is what a menu on top of a frozen day should look like.
+        //
+        // ITS OWN FLAG rather than a second use of IsAwaitingContinue, for the reason
+        // that one's comment already gives: that field means "the Continue popup is up"
+        // and four other places read it to decide whether a key is spent and whether a
+        // day was lost. Borrowing it here would make opening a menu look like losing.
+        //
+        // Single writer: SettingsPopupView, which clears it on every exit it offers.
+        // Deliberately NOT reset anywhere else -- a flag that several places clear is a
+        // flag nobody owns, and the popup is the only thing that can set it.
+        public bool IsPaused { get; set; }
+
         // Carries the slot index alongside the ticket — WorldTrayView needs it
         // to tell whether a just-resolved batch on ITS OWN slot was a delivery
         // (plays the delivery-success lift/fade) as opposed to a wrong-order

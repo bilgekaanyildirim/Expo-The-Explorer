@@ -26,6 +26,13 @@ namespace ExpoTheExplorer.Systems.TicketSystem
         private readonly Func<Ticket> nextTicketProvider;
         private readonly Action<int> loseLife;
 
+        // Which slots timed out on the last life and are still waiting to be cancelled
+        // (D-099). Sized like the slot array and indexed the same way, so a deferral cannot
+        // point at a slot that does not exist. Not a queue and not a list of "pending
+        // commands": the only postponed action is this class's own CancelTicket, and the only
+        // thing worth remembering about it is which slot it is owed on.
+        private readonly bool[] deferredTimeouts = new bool[GameState.TicketSlotCount];
+
         // Set once the Day's authored ticket sequence is exhausted AND every
         // slot it fed has resolved (delivered or cancelled) -- see AssignTicket.
         // Deliberately NOT keyed to a delivery-count goal (bug: fixed 2026-08):
@@ -118,6 +125,11 @@ namespace ExpoTheExplorer.Systems.TicketSystem
 
             for (var i = 0; i < GameState.TicketSlotCount; i++)
             {
+                // A deferred cancellation is owed on a ticket this loop is about to discard,
+                // so it dies with it (D-099). Carrying one across a reset would cancel a slot
+                // of the NEW day on its first live frame -- the day would open having already
+                // thrown a ticket away.
+                deferredTimeouts[i] = false;
                 state.TicketSlots[i] = null;
             }
 
@@ -173,8 +185,55 @@ namespace ExpoTheExplorer.Systems.TicketSystem
                 if (ticket.RemainingSeconds <= 0f)
                 {
                     loseLife(i);
+
+                    // The order is load-bearing and unchanged: the life goes first, so the
+                    // heart breaks on the tray that lost it (D-078) and the popup is already
+                    // up by the time we get here. What changed is what follows -- see below.
+                    if (state.IsAwaitingContinue)
+                    {
+                        // That life was the LAST one, and the popup went up inside the call
+                        // above. Cancelling now would replace this ticket and cascade a whole
+                        // board round -- new items popping in, an orphaned tray scattering --
+                        // behind a popup the player is reading (D-099). So the ticket is left
+                        // standing at 0 seconds and the cancellation waits for Continue.
+                        //
+                        // Marked per SLOT rather than remembered as "the one that expired":
+                        // two tickets can run out in the same frame, and deferring only the
+                        // first would leave the second sitting at 0 to expire again on the
+                        // very next live tick, spending a life from the freshly refilled bar.
+                        deferredTimeouts[i] = true;
+                        continue;
+                    }
+
                     CancelTicket(i);
                 }
+            }
+        }
+
+        // Runs the cancellations the hold above postponed. Called from GameManager.Update on
+        // the first live frame after the day resumes -- driven by reading IsAwaitingContinue
+        // rather than by an event LivesManager would publish, because the hold is lifted by
+        // four different callers (two paid Continues, the retry, and the debug refill) and a
+        // publisher any one of them forgets leaves a slot empty for the rest of the day, with
+        // the day unable to complete. The flag cannot be forgotten: it is the same one the
+        // gate already reads.
+        //
+        // Safe to call on any frame: with nothing deferred it is three bool reads.
+        public void ResolveDeferredTimeouts()
+        {
+            if (IsDayComplete) return;
+
+            for (var i = 0; i < GameState.TicketSlotCount; i++)
+            {
+                if (!deferredTimeouts[i]) continue;
+
+                // Cleared BEFORE the cancel, not after: CancelTicket publishes
+                // TicketCancelled and assigns a replacement, both synchronously, and that
+                // cascade reaches GameManager -> BoardDistributor -> back here. Clearing
+                // afterwards would let a re-entrant pass see a flag for work already in
+                // progress and cancel the fresh ticket that just arrived.
+                deferredTimeouts[i] = false;
+                CancelTicket(i);
             }
         }
     }

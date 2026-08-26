@@ -54,6 +54,19 @@ namespace ExpoTheExplorer.Tests.EditMode
             return new TicketSlotManager(state, provider ?? (() => CreateSimpleTicket()), _ => state.Lives--);
         }
 
+        // The same stand-in, plus the ONE thing LivesManager does that this class now reads:
+        // the last life going raises IsAwaitingContinue, synchronously, inside the loseLife
+        // call (D-099). The deferral tests need that half; the ones above deliberately do not
+        // have it, so they keep exercising the ordinary mid-day timeout with lives to spare.
+        private TicketSlotManager CreateManagerThatEndsTheDay(GameState state, Func<Ticket> provider = null)
+        {
+            return new TicketSlotManager(state, provider ?? (() => CreateSimpleTicket()), _ =>
+            {
+                state.Lives--;
+                if (state.Lives <= 0) state.IsAwaitingContinue = true;
+            });
+        }
+
         private FoodItemConfig CreateFoodItem(FoodCategory category, List<ModificationConfig> availableModifications = null)
         {
             var foodConfig = ScriptableObject.CreateInstance<FoodItemConfig>();
@@ -271,6 +284,114 @@ namespace ExpoTheExplorer.Tests.EditMode
             Assert.AreEqual(TicketState.Cancelled, ticket.State);
             Assert.IsNotNull(state.TicketSlots[0]);
             Assert.AreNotSame(ticket, state.TicketSlots[0]);
+        }
+
+        // D-099. The board round a cancellation cascades -- new ticket, new required items,
+        // an orphaned tray emptying -- must not play behind the Game Over popup. The life is
+        // still spent and the popup still goes up; only the replacement waits.
+        [Test]
+        public void Tick_WhenTheLastLifeTimesOut_LeavesTheTicketStandingInsteadOfCancellingBehindThePopup()
+        {
+            var state = new GameState(gameConfig);
+            var manager = CreateManagerThatEndsTheDay(state);
+            var ticket = CreateSimpleTicket(1f);
+            state.TicketSlots[0] = ticket;
+            state.Lives = 1;
+
+            manager.Tick(2f);
+
+            Assert.IsTrue(state.IsAwaitingContinue, "The last life going is what puts the day on hold.");
+            Assert.AreSame(ticket, state.TicketSlots[0], "No replacement may arrive while the popup is up.");
+            Assert.AreEqual(TicketState.Active, ticket.State, "The ticket is left standing, not cancelled.");
+            Assert.AreEqual(0f, ticket.RemainingSeconds, 0.0001f, "It sits at zero -- the clock did run out.");
+        }
+
+        [Test]
+        public void ResolveDeferredTimeouts_OnceTheDayResumes_CancelsAndRefillsTheSlot()
+        {
+            var state = new GameState(gameConfig);
+            var manager = CreateManagerThatEndsTheDay(state);
+            var ticket = CreateSimpleTicket(1f);
+            state.TicketSlots[0] = ticket;
+            state.Lives = 1;
+            manager.Tick(2f);
+
+            // What a Continue does, in the only part this class can see.
+            state.IsAwaitingContinue = false;
+            state.Lives = state.MaxLives;
+
+            manager.ResolveDeferredTimeouts();
+
+            Assert.AreEqual(TicketState.Cancelled, ticket.State);
+            Assert.IsNotNull(state.TicketSlots[0], "The slot refills, exactly as an undeferred timeout would.");
+            Assert.AreNotSame(ticket, state.TicketSlots[0]);
+        }
+
+        // The reason the deferral is per-slot rather than a single remembered index: both
+        // tickets expire in the same Tick, and deferring only the first would leave the
+        // second sitting at 0 to expire again on the next live frame -- spending a life from
+        // the bar the player just paid to refill.
+        [Test]
+        public void Tick_WhenTwoTicketsExpireOnTheSameFrame_BothAreDeferred_AndBothResolveOnResume()
+        {
+            var state = new GameState(gameConfig);
+            var manager = CreateManagerThatEndsTheDay(state);
+            var first = CreateSimpleTicket(1f);
+            var second = CreateSimpleTicket(1f);
+            state.TicketSlots[0] = first;
+            state.TicketSlots[1] = second;
+            state.Lives = 1;
+
+            manager.Tick(2f);
+
+            Assert.AreSame(first, state.TicketSlots[0]);
+            Assert.AreSame(second, state.TicketSlots[1], "The second must not be cancelled behind the popup either.");
+
+            state.IsAwaitingContinue = false;
+            state.Lives = state.MaxLives;
+            manager.ResolveDeferredTimeouts();
+
+            Assert.AreEqual(TicketState.Cancelled, first.State);
+            Assert.AreEqual(TicketState.Cancelled, second.State);
+            Assert.AreNotSame(first, state.TicketSlots[0]);
+            Assert.AreNotSame(second, state.TicketSlots[1]);
+        }
+
+        [Test]
+        public void ResolveDeferredTimeouts_WithNothingDeferred_DoesNothing()
+        {
+            var state = new GameState(gameConfig);
+            var manager = CreateManager(state);
+            var ticket = CreateSimpleTicket(10f);
+            state.TicketSlots[0] = ticket;
+
+            manager.ResolveDeferredTimeouts();
+
+            Assert.AreSame(ticket, state.TicketSlots[0], "It runs on every live frame -- it must be inert.");
+            Assert.AreEqual(TicketState.Active, ticket.State);
+        }
+
+        // A deferral is owed on a ticket the reset is about to throw away. Carried across, it
+        // would cancel a slot of the NEW day on its first live frame -- the day would open
+        // having already discarded a ticket.
+        [Test]
+        public void ResetSlotsForNewDay_ClearsADeferredTimeout_SoTheNewDayKeepsItsTickets()
+        {
+            var state = new GameState(gameConfig);
+            var manager = CreateManagerThatEndsTheDay(state);
+            state.TicketSlots[0] = CreateSimpleTicket(1f);
+            state.Lives = 1;
+            manager.Tick(2f);
+
+            manager.ResetSlotsForNewDay();
+            state.IsAwaitingContinue = false;
+            state.Lives = state.MaxLives;
+            var freshTicket = state.TicketSlots[0];
+
+            manager.ResolveDeferredTimeouts();
+
+            Assert.AreSame(freshTicket, state.TicketSlots[0], "The new day's ticket must survive.");
+            Assert.AreEqual(TicketState.Active, freshTicket.State);
         }
 
         [Test]

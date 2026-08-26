@@ -387,12 +387,44 @@ namespace ExpoTheExplorer.Bootstrap
         {
             if (State.IsAwaitingContinue) return;
 
-            // A tutorial step that asks the player to READ stops the clock. It is not a
-            // nicety: the powerup panel carries three descriptions, which takes longer than
-            // a Patient ticket has, so a running countdown would make the tutorial itself
-            // cost lives. Its own condition rather than a second use of IsAwaitingContinue,
+            // The settings popup (D-094). Third gate on the same line rather than a
+            // condition folded into one of the other two: all three mean "hold the ticket
+            // clock", but they are held by different things for different reasons, and a
+            // combined condition would make it impossible to tell from a stuck clock which
+            // one forgot to let go.
+            if (State.IsPaused) return;
+
+            // The tutorial stops the clock for the WHOLE of its run, not only for the steps
+            // that ask the player to read (D-097). It started as the reading gate alone, on
+            // the reasoning that a panel takes longer than a Patient ticket has; the same
+            // thing turned out to be true of the moves. A forced move is TAUGHT, not raced —
+            // a player working out which item goes where is reading the board for the first
+            // time, while three tickets they did not order drain behind the dim and can time
+            // out mid-lesson. Its own condition rather than a second use of IsAwaitingContinue,
             // which means "the Continue popup is up" and is read by four other places.
-            if (Tutorial != null && Tutorial.IsHoldingForReading) return;
+            //
+            // Safe by construction against a tutorial that never ends: every way one stops —
+            // the last step completing, an impossible step aborting (EnsureCurrentTutorialStep-
+            // IsPossible), Abort() — moves the same IsActive this reads, so a released
+            // tutorial is a released clock with nothing extra to remember.
+            if (Tutorial != null && Tutorial.IsActive) return;
+
+            // The day is live again. Anything the Continue hold postponed runs HERE, before
+            // the clock starts, so the board settles into the frame the player is looking at
+            // rather than having moved while they read a popup (D-099).
+            //
+            // Reached by reading the flag above rather than by subscribing to a "the day
+            // resumed" event, and that is the whole safety argument: the hold is lifted by
+            // four callers -- both paid Continues, RetryDay, and SRDebugger's refill -- and a
+            // publisher any one of them forgot would strand a slot empty for the rest of the
+            // day, with the day then unable to complete. There is no flag to forget here,
+            // because it is the same one that gates the return above.
+            //
+            // Tray before tickets: that is the order the two failures happened in, and a
+            // deferred cancellation assigns a new ticket whose required items are spawned
+            // from the board -- the scattered items should be back on it before that asks.
+            TrayManager.ResolveDeferredScatters();
+            TicketSlotManager.ResolveDeferredTimeouts();
 
             TicketSlotManager.Tick(Time.deltaTime);
         }

@@ -48,7 +48,8 @@ namespace ExpoTheExplorer.Systems.Tutorial
         // finished tutorial permits everything, exactly like no tutorial at all.
         // An intro step refuses EVERYTHING rather than falling back to its unused cell and
         // tray fields: it is a panel to be read, and anything reachable behind it is a way
-        // to lose a life while reading. That is also why it stops the clock (GameManager).
+        // to lose a life while reading. The clock is stopped for every kind of step alike
+        // (D-097) -- GameManager gates its tick on IsActive, not on the kind.
         public bool IsPickupAllowed(int x, int y)
         {
             var step = Current;
@@ -65,10 +66,27 @@ namespace ExpoTheExplorer.Systems.Tutorial
             return slotIndex == step.TargetTraySlotIndex;
         }
 
-        // True exactly while a step is asking the player to READ rather than to act. The one
-        // question the day's clock needs to ask, kept here so "which kinds stop time" stays a
-        // property of the step list rather than a switch statement in GameManager.Update.
+        // True exactly while a step is asking the player to READ rather than to act. It used
+        // to be the day clock's question too; since D-097 the clock holds for the whole
+        // tutorial (IsActive), and this one is left with its other reader: the powerup bar,
+        // which builds and tears down the intro panel from it. It stays a property of the
+        // step list rather than a Kind comparison at that call site, so "which kinds are a
+        // panel" is answered in one place.
         public bool IsHoldingForReading => Current != null && Current.Kind == TutorialStepKind.PowerupIntro;
+
+        // The tray the current step points its ghost at, or -1 when nothing points at one --
+        // no step running, or a step that names no tray. This exists because of a trap in the
+        // step's own shape (D-098): a panel step leaves the cell and tray fields UNSET, and
+        // unset is 0, not "absent". A caller that reads TargetTraySlotIndex before asking
+        // about the Kind is told "tray 0, cell (0,0)" by a step that named neither -- which is
+        // exactly how the powerup panel came to have tray 0 raise a spotlight over it.
+        //
+        // Answered here rather than by a Kind comparison at the call site for the reason
+        // IsHoldingForReading is: which kinds have a tray is a property of the step list. The
+        // sentinel cannot collide with a real answer -- slot indices are 0..TicketSlotCount-1,
+        // and DayValidator already refuses an authored index outside that range.
+        public int SpotlightTraySlotIndex =>
+            Current != null && Current.Kind == TutorialStepKind.ForcedMove ? Current.TargetTraySlotIndex : -1;
 
         // Whether an item may be PARKED on the board -- moved from one cell to another
         // instead of going to a tray. False for the whole of a step, and that is not a

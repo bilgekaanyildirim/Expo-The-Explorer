@@ -1,5 +1,6 @@
 using ExpoTheExplorer.Core;
 using ExpoTheExplorer.Data;
+using ExpoTheExplorer.Session;
 using ExpoTheExplorer.Systems.HapticsSystem;
 using Lofelt.NiceVibrations;
 using UnityEngine;
@@ -32,6 +33,9 @@ namespace ExpoTheExplorer.Bootstrap
 
         [Tooltip("OPTIONAL. Wire it in the day scene to feel deliveries, life loss and game over. Leave it EMPTY on the main screen, which has no GameState; purchase haptics are called directly there.")]
         [SerializeField] private GameManager gameManager;
+
+        [Tooltip("OPTIONAL. Whichever component provides this scene's session -- GameManager here, MainScreenRoot on the menu. Only used to read the player's haptics switch; left empty, haptics are always on.")]
+        [SerializeField] private SessionHost sessionHost;
 
         private HapticsService service;
 
@@ -106,6 +110,23 @@ namespace ExpoTheExplorer.Bootstrap
         {
             if (service == null) return;
             if (!service.TryTakePending(out var preset)) return;
+
+            // THE PLAYER'S SWITCH, and this is the only place it is read (D-094). Checked
+            // HERE rather than in Request, which is what makes it a mute rather than a
+            // second set of rules: every request still reaches the service, so the
+            // once-per-frame coalescing and the priority ordering behave identically
+            // whether the switch is on or off. Flip it back mid-day and the very next
+            // moment plays, with nothing to re-arm.
+            //
+            // AFTER TryTakePending on purpose. Returning before it would leave the pending
+            // moment sitting in the service, and the first moment after switching haptics
+            // back on would be a stale buzz for something that happened minutes ago.
+            //
+            // Fails ON: an unwired sessionHost, or a scene whose host has not built its
+            // session yet, both read as "allowed". A forgotten drag that leaves haptics
+            // always on is a nuisance; one that leaves the game silently unable to
+            // vibrate looks exactly like the vendor being broken on that device.
+            if (sessionHost != null && sessionHost.Session != null && !sessionHost.Session.HapticsEnabled) return;
 
             HapticPatterns.PlayPreset(ToPresetType(preset));
         }

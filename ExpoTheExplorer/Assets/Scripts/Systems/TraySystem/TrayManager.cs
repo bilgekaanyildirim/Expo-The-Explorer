@@ -21,6 +21,12 @@ namespace ExpoTheExplorer.Systems.TraySystem
         private readonly System.Random random;
         private readonly TraySlot[] slots;
 
+        // Which slots owe a scatter that the Continue hold postponed (D-099). Indexed like
+        // slots, so a deferral cannot name a tray that does not exist. One bool rather than a
+        // saved copy of the contents: the items stay in the tray, which is both what the
+        // player sees and what the scatter reads when it finally runs.
+        private readonly bool[] deferredScatters = new bool[GameState.TicketSlotCount];
+
         // Takes a loseLife delegate (LivesManager.LoseLife in practice), same
         // rationale as deliverTicket: keeps this decoupled from a concrete
         // Systems.LivesSystem reference while still centralizing life loss in
@@ -102,6 +108,22 @@ namespace ExpoTheExplorer.Systems.TraySystem
                 else
                 {
                     loseLife(slotIndex);
+
+                    // The life goes first, as it always has, so the popup is already up when
+                    // the last one goes. If it was the last one, the scatter waits (D-099):
+                    // throwing this tray's items across the board is the most visible thing
+                    // that can happen behind a Game Over popup, and the player is looking at
+                    // the popup rather than at the board it lands on.
+                    //
+                    // The tray is deliberately NOT cleared either -- the items stay where the
+                    // player put them, so the scatter on resume starts from the picture that
+                    // was on screen when the day stopped.
+                    if (state.IsAwaitingContinue)
+                    {
+                        deferredScatters[slotIndex] = true;
+                        return true;
+                    }
+
                     ScatterBackToBoard(slotIndex, slot);
                     slot.Clear();
                 }
@@ -120,9 +142,36 @@ namespace ExpoTheExplorer.Systems.TraySystem
         // empty trays and no-ops instead of scattering.
         public void DiscardAllForNewDay()
         {
-            foreach (var slot in slots)
+            for (var i = 0; i < slots.Length; i++)
             {
-                slot.Clear();
+                // A deferred scatter is owed on items this loop is about to discard, so it
+                // dies with them (D-099) -- for the same reason this method does not scatter
+                // in the first place: the board is being wiped in the same reset, and a
+                // scatter surviving into the new day would drop the old day's items onto it.
+                deferredScatters[i] = false;
+                slots[i].Clear();
+            }
+        }
+
+        // Runs the scatter the hold above postponed. Called from GameManager.Update on the
+        // first live frame after the day resumes -- driven by reading IsAwaitingContinue
+        // rather than by an event, for the reason TicketSlotManager.ResolveDeferredTimeouts
+        // gives: four callers lift the hold and a publisher any one of them forgets would
+        // strand the items in the tray for the rest of the day.
+        //
+        // Safe to call on any frame: with nothing deferred it is three bool reads.
+        public void ResolveDeferredScatters()
+        {
+            for (var i = 0; i < slots.Length; i++)
+            {
+                if (!deferredScatters[i]) continue;
+
+                // Cleared BEFORE the scatter, matching ResolveDeferredTimeouts: the scatter
+                // publishes TraySlotScatterBegin/End and touches the board, and clearing
+                // afterwards would let anything re-entering see a flag for work in progress.
+                deferredScatters[i] = false;
+                ScatterBackToBoard(i, slots[i]);
+                slots[i].Clear();
             }
         }
 

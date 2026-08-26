@@ -240,14 +240,67 @@ namespace ExpoTheExplorer.Tests.EditMode
             Assert.IsTrue(director.IsBoardRelocationAllowed());
         }
 
-        // The clock only stops for a step that asks the player to read; a forced move is
-        // played against a running day like any other moment.
+        // Asks what IsHoldingForReading means -- "this step is a panel" -- and no longer what
+        // it used to imply. It stopped being the day clock's question at D-097: the clock now
+        // holds for the whole tutorial, forced moves included, so a forced move being no
+        // reading step says nothing about whether time is running.
         [Test]
-        public void AForcedMove_DoesNotStopTheClock()
+        public void AForcedMove_IsNotAReadingStep()
         {
             var director = CreateTwoStepDirector();
 
             Assert.IsFalse(director.IsHoldingForReading);
+        }
+
+        // The trap D-098 closed, pinned in place. A panel step authors no cell and no tray, so
+        // those fields are UNSET -- and unset is 0, which is a real tray, and specifically the
+        // very tray day_00's first move names. Nothing about the step itself distinguishes the
+        // two; only the Kind does. This is why the answer lives here rather than at each call
+        // site: WorldTrayView asked the fields directly and had tray 0 raise a ghost from cell
+        // (0,0) over the powerup panel.
+        [Test]
+        public void AnIntroStep_PointsAtNoTray_ThoughItsUnsetFieldReadsAsTrayZero()
+        {
+            var director = CreateIntroOnlyDirector();
+
+            Assert.AreEqual(0, director.Current.TargetTraySlotIndex, "The unset field really is 0 -- that IS the trap.");
+            Assert.AreEqual(StepOneTray, director.Current.TargetTraySlotIndex, "And 0 is a tray a real step uses.");
+            Assert.AreEqual(-1, director.SpotlightTraySlotIndex, "No tray may claim a step that names none.");
+        }
+
+        [Test]
+        public void AForcedMove_PointsAtItsOwnTray_AndTheSpotlightFollowsTheBoundary()
+        {
+            var director = CreateTwoStepDirector();
+
+            Assert.AreEqual(StepOneTray, director.SpotlightTraySlotIndex);
+
+            director.NotifyTrayAccepted(StepOneTray);
+
+            Assert.AreEqual(StepTwoTray, director.SpotlightTraySlotIndex);
+        }
+
+        // Same shape as the gates: once it is over, it points at nothing -- so a tray needs no
+        // "was there a tutorial" branch to know it has no spotlight to raise.
+        [Test]
+        public void AFinishedTutorial_PointsAtNoTray()
+        {
+            var director = CreateTwoStepDirector();
+            director.NotifyTrayAccepted(StepOneTray);
+            director.NotifyTrayAccepted(StepTwoTray);
+
+            Assert.IsFalse(director.IsActive);
+            Assert.AreEqual(-1, director.SpotlightTraySlotIndex);
+        }
+
+        [Test]
+        public void AnAbortedTutorial_PointsAtNoTray()
+        {
+            var director = CreateTwoStepDirector();
+
+            director.Abort();
+
+            Assert.AreEqual(-1, director.SpotlightTraySlotIndex, "An abort must take the spotlight's claim with it.");
         }
 
         [Test]

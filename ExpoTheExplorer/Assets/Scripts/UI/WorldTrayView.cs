@@ -168,10 +168,15 @@ namespace ExpoTheExplorer.UI
             tutorialSpotlight = null;
         }
 
+        // Asked of the director rather than worked out from Current's fields (D-098). Reading
+        // TargetTraySlotIndex here was wrong in a way that looked right: a step that names NO
+        // tray -- the powerup panel -- leaves that field unset, and unset is 0, so tray 0
+        // claimed the panel as its own forced move and went looking for an item at the equally
+        // unset cell (0,0). SpotlightTraySlotIndex answers -1 for every such step.
         private bool IsTutorialTarget()
         {
-            var step = gameManager.Tutorial?.Current;
-            return step != null && step.TargetTraySlotIndex == slotIndex;
+            var tutorial = gameManager.Tutorial;
+            return tutorial != null && tutorial.SpotlightTraySlotIndex == slotIndex;
         }
 
         private void RaiseTutorialSpotlight()

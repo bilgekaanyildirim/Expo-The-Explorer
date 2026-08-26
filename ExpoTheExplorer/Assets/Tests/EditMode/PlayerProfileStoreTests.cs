@@ -569,5 +569,62 @@ namespace ExpoTheExplorer.Tests.EditMode
         {
             Assert.IsTrue(new PlayerProfileStore(testFilePath).Delete());
         }
+
+        // --- Haptics switch, v10 (decisions.md D-094) -------------------------------------
+
+        // The migration that matters, and it is the FIRST bool in this file: a bool has no
+        // spare value to mean "absent" the way Keys and the charge fields use -1, so the
+        // absent case can only be answered by a version branch. Without one, every existing
+        // player launches with haptics silently switched off -- a change they never made,
+        // with nothing on screen to connect it to.
+        //
+        // The payload is a full v9 file rather than a bare version stamp, because the other
+        // half of this is that no field the file already carried may be disturbed on the
+        // way through the new branch.
+        [Test]
+        public void Load_WhenFileIsV9_TurnsHapticsOn_AndDisturbsNothingElse()
+        {
+            File.WriteAllText(
+                testFilePath,
+                "{\"Version\":9,\"SoftMoney\":740,\"Gems\":11,\"CurrentDayIndex\":6,\"Keys\":3," +
+                "\"AutoCollectCharges\":2,\"TimeResetCharges\":1,\"NoiseClearCharges\":0,\"LastCelebratedDayIndex\":5}");
+            var store = new PlayerProfileStore(testFilePath);
+
+            var profile = store.Load();
+
+            Assert.IsTrue(profile.HapticsEnabled, "a player who predates the setting never switched it off");
+
+            Assert.AreEqual(740, profile.SoftMoney, "a v9 file's money must survive the v10 upgrade untouched");
+            Assert.AreEqual(11, profile.Gems);
+            Assert.AreEqual(6, profile.CurrentDayIndex);
+            Assert.AreEqual(3, profile.Keys, "the v10 branch must not re-run the key marker");
+            Assert.AreEqual(2, profile.AutoCollectCharges);
+            Assert.AreEqual(1, profile.TimeResetCharges);
+            Assert.AreEqual(0, profile.NoiseClearCharges, "0 is a real charge count and must not be read as absent");
+            Assert.AreEqual(5, profile.LastCelebratedDayIndex);
+        }
+
+        // The other direction, and the reason the migration is a branch rather than a field
+        // initializer: a CURRENT-version file is returned before UpgradeToCurrent does
+        // anything, so a player who deliberately switched haptics OFF must get that back.
+        // An initializer on PlayerProfile would pass the test above and fail this one only
+        // if JsonUtility ever stopped writing the field -- which is exactly the kind of
+        // implicit dependency the store's own comment refuses to rest on.
+        [Test]
+        public void SaveThenLoad_PreservesHapticsSwitchedOff()
+        {
+            var store = new PlayerProfileStore(testFilePath);
+            store.Save(new PlayerProfile { HapticsEnabled = false });
+
+            Assert.IsFalse(new PlayerProfileStore(testFilePath).Load().HapticsEnabled);
+        }
+
+        // A brand-new player is a separate answer from a migrated one, given in a separate
+        // place (NewPlayer, beside every other new-player value), so it gets its own test.
+        [Test]
+        public void NewPlayer_StartsWithHapticsOn()
+        {
+            Assert.IsTrue(PlayerProfileStore.NewPlayer(1000).HapticsEnabled);
+        }
     }
 }

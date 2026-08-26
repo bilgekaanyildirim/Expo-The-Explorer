@@ -82,7 +82,19 @@ namespace ExpoTheExplorer.Systems.ProgressionSystem
         //     THREE FIELDS RATHER THAN AN ARRAY on purpose -- see PlayerProfile's note:
         //     the runtime indexes charges by (int)PowerupType, and a named field per type
         //     keeps the FILE correct through a renumbering that would scramble an array.
-        public const int CurrentVersion = 9;
+        // v10: + HapticsEnabled, with the day scene's settings popup. The first field in
+        //     this file that is a device PREFERENCE rather than progress, and the first
+        //     bool -- which is what makes it interesting: a bool has no spare value to use
+        //     as an "absent" marker the way Keys and the charge fields do, because both of
+        //     its values are real answers. So it takes the OTHER shape this file already
+        //     knows, the one LastCelebratedDayIndex (v5) uses: a plain semantic migration,
+        //     writing the value an existing player should have. That value is true --
+        //     absent-reads-as-false would switch haptics off for every player who already
+        //     has the game, with no event to connect it to.
+        //     No marker and no ApplyPersisted hand-off here, unlike v7/v8: the correct
+        //     default is not authored content, it is simply "on", so this class can name it
+        //     without learning anything about what a haptic is.
+        public const int CurrentVersion = 10;
 
         // What this class writes into PlayerProfile.Keys when it cannot know the real
         // answer -- an older save, or a player who has never played. The real answer is
@@ -185,6 +197,13 @@ namespace ExpoTheExplorer.Systems.ProgressionSystem
                 AutoCollectCharges = PowerupChargesAbsentMarker,
                 TimeResetCharges = PowerupChargesAbsentMarker,
                 NoiseClearCharges = PowerupChargesAbsentMarker,
+
+                // Haptics start ON (v10). Written here rather than as a field initializer on
+                // PlayerProfile for the reason that class spells out: an initializer would
+                // also silently cover the MIGRATION case and make the v10 branch above look
+                // redundant, so the two answers would stop being separable. This one answers
+                // "never played"; the branch answers "played before the setting existed".
+                HapticsEnabled = true,
             };
         }
 
@@ -217,6 +236,16 @@ namespace ExpoTheExplorer.Systems.ProgressionSystem
             // v3's Lives refill used to sit here. It went out with the field in v6 --
             // there is nothing to restore, and a removal is the one schema change that
             // needs no branch, since JsonUtility drops a key with no matching field.
+
+            // Every file older than v10 predates the settings popup, so its player never
+            // had the chance to switch haptics off -- they were simply always on, and that
+            // is the state this restores. Written for EVERY older version rather than for
+            // `== 9`, unlike the v9 rename branch: this field is absent from all of them
+            // equally, so there is no per-version detail to separate out.
+            if (profile.Version < 10)
+            {
+                profile.HapticsEnabled = true;
+            }
 
             // Runs for a v8 file only -- everything older is already covered by the v8
             // branch below, which writes all three markers anyway. Deliberately a separate

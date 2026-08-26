@@ -159,5 +159,29 @@ namespace ExpoTheExplorer.Systems.ProgressionSystem
         // A NEW player starts at 0 and is correct without a migration: the comparison is
         // strictly-after, so a prop authored at day 0 is not treated as having just arrived.
         public int LastCelebratedDayIndex;
+
+        // Whether the phone is allowed to buzz, added in v10 with the settings popup. The
+        // FIRST field here that is a device preference rather than progress -- nothing about
+        // it is earned, spent or balanced -- and it lives in the profile anyway because this
+        // project has exactly one persistence boundary and a second one for a single bool
+        // would be more machinery than the datum is worth.
+        //
+        // **FALSE IS NOT A SAFE DEFAULT**, which is the whole reason v10 exists rather than
+        // being a silent addition. A bool's absent-reads-as-false lands on exactly the wrong
+        // side here: every existing player would launch with their haptics quietly switched
+        // OFF and no event to connect it to, which reads as the vendor breaking rather than
+        // as a setting they chose. So UpgradeToCurrent writes true.
+        //
+        // DELIBERATELY NO `= true` INITIALIZER, tempting as it is -- it would make the
+        // migration look unnecessary while doing its job by accident, which is exactly what
+        // UpgradeToCurrent's own comment warns against: it would rely on JsonUtility leaving
+        // an absent field alone, is invisible from the file's point of view, and stops being
+        // true the day a profile is built some other way. "New player" is answered where
+        // every other new-player value is answered, in NewPlayer.
+        //
+        // The runtime never reads this field: GameSession carries the live value and
+        // HapticsBinder asks IT, so the file stays a file. Its single writer is
+        // SettingsPopupView, through GameSession.
+        public bool HapticsEnabled;
     }
 }
