@@ -20,38 +20,25 @@
         },
         "ticketSequence": [
             {
-                "mainItemId": "burger",
+                "mainItemId": "hotdog",
                 "sideItemId": "fries",
                 "drinkItemId": "fanta",
-                "modifications": [],
+                "modifications": [
+                    {
+                        "modificationId": "extramustard",
+                        "isAddition": true
+                    }
+                ],
                 "patienceType": "Patient",
                 "customerNameOverride": "",
                 "timeLimitSecondsOverride": 0.0
             },
             {
-                "mainItemId": "burger",
-                "sideItemId": "",
-                "drinkItemId": "cola",
+                "mainItemId": "hotdog",
+                "sideItemId": "fries",
+                "drinkItemId": "fanta",
                 "modifications": [],
                 "patienceType": "Normal",
-                "customerNameOverride": "",
-                "timeLimitSecondsOverride": 0.0
-            },
-            {
-                "mainItemId": "hotdog",
-                "sideItemId": "fries",
-                "drinkItemId": "sprite",
-                "modifications": [],
-                "patienceType": "Patient",
-                "customerNameOverride": "",
-                "timeLimitSecondsOverride": 0.0
-            },
-            {
-                "mainItemId": "hotdog",
-                "sideItemId": "fries",
-                "drinkItemId": "fanta",
-                "modifications": [],
-                "patienceType": "Impatient",
                 "customerNameOverride": "",
                 "timeLimitSecondsOverride": 0.0
             },
@@ -72,33 +59,10 @@
             {
                 "mainItemId": "burger",
                 "sideItemId": "fries",
-                "drinkItemId": "sprite",
+                "drinkItemId": "cola",
                 "modifications": [
                     {
-                        "modificationId": "extra_cheese",
-                        "isAddition": true
-                    }
-                ],
-                "patienceType": "Normal",
-                "customerNameOverride": "",
-                "timeLimitSecondsOverride": 0.0
-            },
-            {
-                "mainItemId": "burger",
-                "sideItemId": "fries",
-                "drinkItemId": "fanta",
-                "modifications": [],
-                "patienceType": "Patient",
-                "customerNameOverride": "",
-                "timeLimitSecondsOverride": 0.0
-            },
-            {
-                "mainItemId": "burger",
-                "sideItemId": "fries",
-                "drinkItemId": "",
-                "modifications": [
-                    {
-                        "modificationId": "extra_cheese",
+                        "modificationId": "no_tomato",
                         "isAddition": false
                     }
                 ],
@@ -110,14 +74,19 @@
                 "mainItemId": "burger",
                 "sideItemId": "fries",
                 "drinkItemId": "cola",
-                "modifications": [],
+                "modifications": [
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
+                    }
+                ],
                 "patienceType": "Patient",
                 "customerNameOverride": "",
                 "timeLimitSecondsOverride": 0.0
             },
             {
-                "mainItemId": "burger",
-                "sideItemId": "",
+                "mainItemId": "hotdog",
+                "sideItemId": "fries",
                 "drinkItemId": "sprite",
                 "modifications": [],
                 "patienceType": "Normal",
@@ -130,8 +99,22 @@
                 "drinkItemId": "sprite",
                 "modifications": [
                     {
-                        "modificationId": "extra_cheese",
-                        "isAddition": false
+                        "modificationId": "extra_patty",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "fries",
+                "drinkItemId": "sprite",
+                "modifications": [
+                    {
+                        "modificationId": "extra_patty",
+                        "isAddition": true
                     }
                 ],
                 "patienceType": "Patient",
@@ -140,12 +123,39 @@
             },
             {
                 "mainItemId": "hotdog",
+                "sideItemId": "",
+                "drinkItemId": "cola",
+                "modifications": [],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "fries",
+                "drinkItemId": "cola",
+                "modifications": [],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
                 "sideItemId": "fries",
                 "drinkItemId": "sprite",
+                "modifications": [],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "fries",
+                "drinkItemId": "cola",
                 "modifications": [
                     {
-                        "modificationId": "extraketchup",
-                        "isAddition": true
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
                     }
                 ],
                 "patienceType": "Patient",
@@ -153,7 +163,11 @@
                 "timeLimitSecondsOverride": 0.0
             }
         ],
-        "boardTimeline": []
+        "boardTimeline": [],
+        "tutorial": {
+            "enabled": false,
+            "steps": []
+        }
     },
     "editorMeta": {
         "allowedFoodItemIds": [

@@ -43,7 +43,7 @@
                 "drinkItemId": "",
                 "modifications": [
                     {
-                        "modificationId": "extramustard",
+                        "modificationId": "extramayonnaise",
                         "isAddition": true
                     }
                 ],
@@ -57,7 +57,7 @@
                 "drinkItemId": "",
                 "modifications": [
                     {
-                        "modificationId": "extramustard",
+                        "modificationId": "extramayonnaise",
                         "isAddition": true
                     }
                 ],
@@ -97,7 +97,7 @@
                 "itemId": "hotdog",
                 "modifications": [
                     {
-                        "modificationId": "extramustard",
+                        "modificationId": "extramayonnaise",
                         "isAddition": true
                     }
                 ],
@@ -110,6 +110,7 @@
             "enabled": true,
             "steps": [
                 {
+                    "kind": "",
                     "sourceX": 1,
                     "sourceY": 2,
                     "targetTraySlotIndex": 0,
@@ -117,6 +118,7 @@
                     "highlightModification": false
                 },
                 {
+                    "kind": "",
                     "sourceX": 2,
                     "sourceY": 0,
                     "targetTraySlotIndex": 2,
@@ -124,7 +126,12 @@
                     "highlightModification": true
                 },
                 {
-                    "kind": "PowerupIntro"
+                    "kind": "PowerupIntro",
+                    "sourceX": 0,
+                    "sourceY": 0,
+                    "targetTraySlotIndex": 0,
+                    "message": "",
+                    "highlightModification": false
                 }
             ]
         }

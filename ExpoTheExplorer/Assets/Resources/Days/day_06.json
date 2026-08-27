@@ -39,8 +39,8 @@
             },
             {
                 "mainItemId": "hotdog",
-                "sideItemId": "fries",
-                "drinkItemId": "sprite",
+                "sideItemId": "",
+                "drinkItemId": "",
                 "modifications": [
                     {
                         "modificationId": "extraketchup",
@@ -81,7 +81,7 @@
             },
             {
                 "mainItemId": "hotdog",
-                "sideItemId": "fries",
+                "sideItemId": "",
                 "drinkItemId": "fanta",
                 "modifications": [],
                 "patienceType": "Normal",
@@ -104,7 +104,7 @@
             },
             {
                 "mainItemId": "hotdog",
-                "sideItemId": "",
+                "sideItemId": "fries",
                 "drinkItemId": "",
                 "modifications": [
                     {
@@ -145,7 +145,20 @@
                 "timeLimitSecondsOverride": 0.0
             }
         ],
-        "boardTimeline": []
+        "boardTimeline": [
+            {
+                "triggerStepIndex": -1,
+                "itemId": "fries",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 2,
+                "y": 2
+            }
+        ],
+        "tutorial": {
+            "enabled": false,
+            "steps": []
+        }
     },
     "editorMeta": {
         "allowedFoodItemIds": [

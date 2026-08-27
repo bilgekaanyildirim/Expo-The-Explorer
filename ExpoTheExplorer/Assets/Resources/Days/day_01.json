@@ -46,7 +46,12 @@
                 "mainItemId": "hotdog",
                 "sideItemId": "",
                 "drinkItemId": "",
-                "modifications": [],
+                "modifications": [
+                    {
+                        "modificationId": "extramustard",
+                        "isAddition": true
+                    }
+                ],
                 "patienceType": "Patient",
                 "customerNameOverride": "",
                 "timeLimitSecondsOverride": 0.0
@@ -71,7 +76,7 @@
                 "drinkItemId": "",
                 "modifications": [
                     {
-                        "modificationId": "extramustard",
+                        "modificationId": "extraketchup",
                         "isAddition": true
                     }
                 ],
@@ -103,7 +108,85 @@
                 "timeLimitSecondsOverride": 0.0
             }
         ],
-        "boardTimeline": []
+        "boardTimeline": [
+            {
+                "triggerStepIndex": -1,
+                "itemId": "hotdog",
+                "modifications": [
+                    {
+                        "modificationId": "extramustard",
+                        "isAddition": true
+                    }
+                ],
+                "useExactCell": true,
+                "x": 1,
+                "y": 2
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "hotdog",
+                "modifications": [
+                    {
+                        "modificationId": "extraketchup",
+                        "isAddition": true
+                    }
+                ],
+                "useExactCell": true,
+                "x": 2,
+                "y": 2
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "hotdog",
+                "modifications": [
+                    {
+                        "modificationId": "extramayonnaise",
+                        "isAddition": true
+                    }
+                ],
+                "useExactCell": true,
+                "x": 3,
+                "y": 2
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "hotdog",
+                "modifications": [
+                    {
+                        "modificationId": "extramustard",
+                        "isAddition": true
+                    }
+                ],
+                "useExactCell": true,
+                "x": 3,
+                "y": 1
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "hotdog",
+                "modifications": [
+                    {
+                        "modificationId": "extramayonnaise",
+                        "isAddition": true
+                    }
+                ],
+                "useExactCell": true,
+                "x": 1,
+                "y": 1
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "hotdog",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 2,
+                "y": 1
+            }
+        ],
+        "tutorial": {
+            "enabled": false,
+            "steps": []
+        }
     },
     "editorMeta": {
         "allowedFoodItemIds": [
