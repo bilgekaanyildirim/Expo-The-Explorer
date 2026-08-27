@@ -320,7 +320,17 @@ namespace ExpoTheExplorer.UI
         // own raycast above checks) is still below it, outside this
         // collider — that fallback finds this tray from the item's own
         // displayed position instead and accepts the drop the same way.
-        public bool TryAcceptDrop(BoardItemDragHandler dragHandler)
+        public bool TryAcceptDrop(BoardItemDragHandler dragHandler) => TryAcceptDrop(dragHandler, 1f);
+
+        // Auto-Collect's way in (D-112). Identical to a finger's drop in every respect but
+        // the tween's LENGTH -- same acceptance, same batch check, same delivery. The
+        // multiplier is read here rather than passed in by AutoCollectRunner because this
+        // view already has the config serialized on it, so the powerup needs no reference
+        // of its own and there is nothing new to drag in the Inspector.
+        public bool TryAcceptAutoCollectDrop(BoardItemDragHandler dragHandler) =>
+            TryAcceptDrop(dragHandler, animConfig.AutoCollectTravelMultiplier);
+
+        private bool TryAcceptDrop(BoardItemDragHandler dragHandler, float travelMultiplier)
         {
             if (!isValid || dragHandler == null || dragHandler.CurrentItem == null) return false;
 
@@ -396,7 +406,7 @@ namespace ExpoTheExplorer.UI
                     deliveryInProgress = true;
                     deliveringItem = dragHandler;
                     dragHandler.PlaceInSlotAndDeliver(
-                        ResolvePlacementSlot(item.Config.Category), slotIndex, PlayDeliverySuccess);
+                        ResolvePlacementSlot(item.Config.Category), slotIndex, PlayDeliverySuccess, travelMultiplier);
                 }
                 else
                 {
@@ -405,7 +415,7 @@ namespace ExpoTheExplorer.UI
             }
             else
             {
-                dragHandler.PlaceInSlot(ResolvePlacementSlot(item.Config.Category), slotIndex);
+                dragHandler.PlaceInSlot(ResolvePlacementSlot(item.Config.Category), slotIndex, travelMultiplier);
             }
 
             lastKnownCount = newCount;
@@ -482,7 +492,12 @@ namespace ExpoTheExplorer.UI
                 // TryPlaceItem at a chosen cell: the board picks, and on a momentarily full
                 // board the item waits in the pending-spawn queue exactly like any other
                 // returned item instead of being lost.
-                boardView.BeginFlyInOverride(child.position);
+                // Slower than an ordinary appearance, for the same reason the collect side
+                // is (D-112): one press can send several items home at once and they all
+                // set off together. The multiplier rides on the same bracket as the origin,
+                // which is what keeps every other board arrival at its authored speed.
+                boardView.BeginFlyInOverride(
+                    child.position, 0f, animConfig.AutoCollectTravelMultiplier);
                 gameManager.State.Board.RequestSpawn(item);
                 boardView.EndFlyInOverride();
 

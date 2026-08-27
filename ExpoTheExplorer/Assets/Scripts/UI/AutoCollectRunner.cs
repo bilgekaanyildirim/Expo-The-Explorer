@@ -117,10 +117,20 @@ namespace ExpoTheExplorer.UI
 
                 if (!boardView.TryGetDragHandler(move.X, move.Y, out var handler)) continue;
 
-                // The same call OnDrop makes. A refusal is not an error -- the tray can
-                // legitimately say no (it is mid-delivery, or the tutorial has it locked) --
-                // so that move is simply skipped.
-                if (!tray.TryAcceptDrop(handler)) continue;
+                // The pickup half of the gesture, which no finger is here to perform
+                // (D-113). Without it the item reaches the tray with its resting scale
+                // never recorded, and the drop that COMPLETES an order sets it to that
+                // unwritten value -- scale zero, invisible for the whole delivery. It also
+                // lands any fly-in still in progress, so the board's tween and the tray's
+                // settle are never writing this transform at the same time.
+                handler.SettleForAutoCollect();
+
+                // The call OnDrop makes, differing in one thing only: the item flies in
+                // slower (D-112), because one press sends several off at once and a
+                // finger's flight time reads as all of them scattering at the same instant.
+                // A refusal is not an error -- the tray can legitimately say no (it is
+                // mid-delivery, or the tutorial has it locked) -- so that move is skipped.
+                if (!tray.TryAcceptAutoCollectDrop(handler)) continue;
 
                 movedAny = true;
             }

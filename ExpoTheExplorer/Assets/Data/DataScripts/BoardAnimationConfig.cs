@@ -17,6 +17,10 @@ namespace ExpoTheExplorer.Data
         [Tooltip("Arc height of the fly-in from BoardView's Starting Point, as a multiple of one cell size (0 = straight line, no arc).")]
         [SerializeField] private float popInJumpPower = 0.5f;
 
+        [Header("Auto-Collect")]
+        [Tooltip("How much longer an item takes to fly when AUTO-COLLECT is what moved it, as a multiple of the two ordinary travel durations above — Tray Settle Duration on the way into a tray, Pop In Duration on the way back out to the board. One press can move up to six items at once and they all set off together, so the same speed a finger gets reads as everything scattering at once. 1 = exactly as fast as a hand-dragged item. It scales ONLY the powerup's own moves: a drag, a spawn, a wrong-order scatter and a timeout are untouched.")]
+        [SerializeField] private float autoCollectTravelMultiplier = 2f;
+
         [Header("Tray")]
         [Tooltip("Duration (seconds) of the scale-down tween before a resolved tray slot's items are destroyed.")]
         [SerializeField] private float slotClearDuration = 0.15f;
@@ -90,6 +94,7 @@ namespace ExpoTheExplorer.Data
         public float TraySettleDuration => traySettleDuration;
         public float PopInDuration => popInDuration;
         public float PopInJumpPower => popInJumpPower;
+        public float AutoCollectTravelMultiplier => autoCollectTravelMultiplier;
         public float SlotClearDuration => slotClearDuration;
         public float ScatterShakeDuration => scatterShakeDuration;
         public float ScatterShakeStrength => scatterShakeStrength;

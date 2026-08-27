@@ -146,17 +146,25 @@ namespace ExpoTheExplorer.UI
         private bool flyInOverrideActive;
         private Vector3? flyInOverrideOrigin;
         private float flyInOverrideDelay;
+        private float flyInOverrideDurationScale = 1f;
 
         // delay lets a wrong-order scatter hold the newly-appeared item
         // invisible (still scale zero at its origin) for as long as
         // WorldTrayView's own pre-scatter shake takes, so the two stay in
         // sync instead of the board item popping in while the tray is still
         // visibly shaking with the (about to vanish) old items.
-        public void BeginFlyInOverride(Vector3? origin, float delay = 0f)
+        // durationScale is Auto-Collect's half of D-112 -- one press sends up to six items
+        // home at once and they all set off together, so the ordinary PopInDuration reads
+        // as everything scattering at the same instant. It multiplies the fly-in's length
+        // for the appearances inside this bracket ONLY; a spawn, a scatter and a timeout
+        // are all still 1. Passed rather than read from animConfig here because this class
+        // cannot tell which of those it is looking at -- the bracket is what knows.
+        public void BeginFlyInOverride(Vector3? origin, float delay = 0f, float durationScale = 1f)
         {
             flyInOverrideActive = true;
             flyInOverrideOrigin = origin;
             flyInOverrideDelay = delay;
+            flyInOverrideDurationScale = durationScale;
         }
 
         public void EndFlyInOverride()
@@ -164,6 +172,7 @@ namespace ExpoTheExplorer.UI
             flyInOverrideActive = false;
             flyInOverrideOrigin = null;
             flyInOverrideDelay = 0f;
+            flyInOverrideDurationScale = 1f;
         }
 
         // Inverse of CellPosition — used by BoardItemDragHandler to figure out
@@ -310,6 +319,12 @@ namespace ExpoTheExplorer.UI
                     : (startingPoint != null ? startingPoint.position : null);
                 var flyInDelay = flyInOverrideActive ? flyInOverrideDelay : 0f;
 
+                // Only the bracketed appearances are ever scaled; everything else keeps
+                // the authored duration exactly. Applied to BOTH tweens below so the arc
+                // and the grow stay one motion rather than drifting apart.
+                var flyInDuration = animConfig.PopInDuration
+                    * (flyInOverrideActive ? flyInOverrideDurationScale : 1f);
+
                 if (flyInOrigin.HasValue)
                 {
                     // The destination is recomputed from the cell, never read
@@ -336,8 +351,8 @@ namespace ExpoTheExplorer.UI
                     // for a wrong-order scatter) keeps the container
                     // invisible at its origin until WorldTrayView's own
                     // pre-scatter shake finishes, so the two stay in sync.
-                    container.DOJump(destinationWorldPos, animConfig.PopInJumpPower * cellSize, 1, animConfig.PopInDuration).SetEase(Ease.OutQuad).SetDelay(flyInDelay);
-                    container.DOScale(Vector3.one, animConfig.PopInDuration).SetEase(Ease.OutBack).SetDelay(flyInDelay);
+                    container.DOJump(destinationWorldPos, animConfig.PopInJumpPower * cellSize, 1, flyInDuration).SetEase(Ease.OutQuad).SetDelay(flyInDelay);
+                    container.DOScale(Vector3.one, flyInDuration).SetEase(Ease.OutBack).SetDelay(flyInDelay);
 
                     // For the length of a delayed fly-in (only ever a
                     // wrong-order scatter) this container is active, at
@@ -361,7 +376,12 @@ namespace ExpoTheExplorer.UI
                 else
                 {
                     container.localScale = Vector3.zero;
-                    container.DOScale(Vector3.one, animConfig.PopInDuration).SetEase(Ease.OutBack);
+
+                    // The no-fly-in branch (a relocation, or a board with no Starting
+                    // Point) takes the same scaled duration rather than the raw one, so a
+                    // bracket that asks for a slower appearance gets one either way --
+                    // outside a bracket the two are identical anyway.
+                    container.DOScale(Vector3.one, flyInDuration).SetEase(Ease.OutBack);
                 }
             }
 

@@ -16,6 +16,7 @@ MonoBehaviour:
   traySettleDuration: 0.2
   popInDuration: 0.2
   popInJumpPower: 0.5
+  autoCollectTravelMultiplier: 2
   slotClearDuration: 0.15
   scatterShakeDuration: 0.5
   scatterShakeStrength: 0.3

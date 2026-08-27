@@ -75,7 +75,13 @@ namespace ExpoTheExplorer.UI
         private bool pickupRefused;
 
         private Vector3 homePosition;
-        private Vector3 homeScale;
+
+        // Initialised to ONE rather than left at the default zero, because zero is not a
+        // truthful statement about anything: every board container rests at scale one by
+        // construction (BoardView.RefreshCell tweens both its fly-in and its plain pop-in
+        // to exactly that, and nothing else ever writes a container's scale). The default
+        // mattered -- see SettleForAutoCollect below for what reading it unset cost.
+        private Vector3 homeScale = Vector3.one;
         private float lastFingerX;
         private float lastFingerY;
         private WorldTrayView hoveredTray;
@@ -506,12 +512,46 @@ namespace ExpoTheExplorer.UI
             board.RemoveItem(cellX, cellY);
         }
 
+        // What a POINTERLESS pickup has to do before this item may be handed to a tray --
+        // Auto-Collect's entry point, called once per move by AutoCollectRunner. It is
+        // ApplyPickupVisuals' first three lines and nothing else: the grow, the hover
+        // offset and the sorting boost all belong to a finger and are deliberately absent.
+        //
+        // IT EXISTS BECAUSE homeScale WAS NEVER WRITTEN ON THIS PATH (D-113). That field is
+        // assigned in exactly one place, ApplyPickupVisuals, reached only from
+        // OnPointerDown -- and Auto-Collect raises no pointer event at all. So the item
+        // that COMPLETED an order reached PlaceInSlotAndDeliver's `localScale = homeScale`
+        // holding an unwritten field, was set to scale ZERO, and spent the entire delivery
+        // animation invisible before being destroyed. Only that one item: PlaceInSlot, the
+        // ordinary non-completing drop, never touches the scale, which is exactly the
+        // asymmetry the user reported -- the rest of the tray looked right.
+        //
+        // THE DOKill(true) IS THE OTHER HALF, and COMPLETING rather than killing is the
+        // same reasoning ApplyPickupVisuals sets out above: a board item can still be in
+        // its fly-in when the powerup takes it, and completing that tween leaves it at its
+        // own cell at full scale -- which is both a trustworthy snapshot and precisely
+        // where a finger would have grabbed it from. Killed instead, it would be seated
+        // from wherever it happened to be mid-flight; left running, BoardView's DOJump and
+        // the tray's settle tween would write the same transform at once. D-112 doubled
+        // the powerup's flights, which doubled that window too.
+        public void SettleForAutoCollect()
+        {
+            transform.DOKill(true);
+
+            homePosition = transform.position;
+            homeScale = transform.localScale;
+        }
+
         // Called by WorldTrayView.OnDrop once TrayManager has accepted this
         // item and the tray still needs it displayed (batch not yet
         // resolved). DetachFromBoard above already released this cell's
         // pooled container (if it came from the board) before TryAddItem's
         // batch check ran, so there's nothing left to release here.
-        public void PlaceInSlot(Transform slotTransform, int slotIndex)
+        //
+        // travelMultiplier stretches the settle tween for an item AUTO-COLLECT moved
+        // (D-112). Defaulted to 1, so every finger drop is unchanged and the number only
+        // exists on the path that asks for it.
+        public void PlaceInSlot(Transform slotTransform, int slotIndex, float travelMultiplier = 1f)
         {
             if (slotTransform == null) return;
 
@@ -522,7 +562,7 @@ namespace ExpoTheExplorer.UI
             // the same frame anyway.
             haptics?.Request(HapticMoment.ItemDroppedInTray);
 
-            SeatInSlot(slotTransform, slotIndex);
+            SeatInSlot(slotTransform, slotIndex, travelMultiplier);
         }
 
         // Called by WorldTrayView.TryAcceptDrop for the drop that just COMPLETED an
@@ -543,7 +583,8 @@ namespace ExpoTheExplorer.UI
         // grabbable during the wait -- on a tray TrayManager has already emptied and
         // handed to the next ticket, so picking it back up would drag an item the model
         // no longer knows about.
-        public void PlaceInSlotAndDeliver(Transform slotTransform, int slotIndex, Action onSettled)
+        public void PlaceInSlotAndDeliver(
+            Transform slotTransform, int slotIndex, Action onSettled, float travelMultiplier = 1f)
         {
             deliverySuccessInProgress = true;
             if (ownCollider != null) ownCollider.enabled = false;
@@ -563,21 +604,23 @@ namespace ExpoTheExplorer.UI
                 return;
             }
 
-            SeatInSlot(slotTransform, slotIndex).OnComplete(() => onSettled?.Invoke());
+            SeatInSlot(slotTransform, slotIndex, travelMultiplier).OnComplete(() => onSettled?.Invoke());
         }
 
         // Reparent without letting the item jump to the slot's local zero
         // instantly — restoring its world position right after SetParent keeps
         // it exactly where it visually was, so the settle tween has an actual
         // distance to travel instead of the item just appearing already-seated.
-        private Tween SeatInSlot(Transform slotTransform, int slotIndex)
+        private Tween SeatInSlot(Transform slotTransform, int slotIndex, float travelMultiplier)
         {
             currentTraySlotIndex = slotIndex;
 
             var worldPos = transform.position;
             transform.SetParent(slotTransform, false);
             transform.position = worldPos;
-            positionTween = transform.DOLocalMove(Vector3.zero, animConfig.TraySettleDuration).SetEase(Ease.OutBack);
+            positionTween = transform
+                .DOLocalMove(Vector3.zero, animConfig.TraySettleDuration * travelMultiplier)
+                .SetEase(Ease.OutBack);
             return positionTween;
         }
 
