@@ -349,6 +349,22 @@
      went unseen because the checker could not find Assets/ at all in this nested repo
      layout until D-092 fixed the map generators' project-root resolution. -->
 - NoKeysPopup — KeySystem — variant-of: - — authoring (placed in MainScreen by hand, wired into MainScreenView's optional popup slot)
+- PowerupShop — PowerupSystem — variant-of: - — authoring (placed in BOTH scenes by hand)
+<!-- Added 2026-08-27, after the user turned the built shop into a prefab so one asset
+     could serve both screens (D-105 put a shop in the day scene as well). The two scenes
+     differ only by per-instance edits, which is the point of it being a prefab: the day
+     scene REMOVES PowerupShopButton (an empty powerup is the opener there) and overrides
+     sessionHost to GameManager; the menu keeps the button and points sessionHost at
+     MainScreenRoot. sessionHost is empty in the asset and always will be -- a prefab
+     cannot store a scene reference, the same constraint HUDCanvas records above, so a
+     forgotten override is a shop that logs an error and refuses to open rather than one
+     that silently misbehaves. -->
+<!-- The powerup BAR is deliberately NOT here: it lives inside HUDCanvas, whose MainScreen
+     instance removes it along with HeartPanel. Both are DAY-scene things kept off the menu
+     by instance removal, which is the same trick D-064 used for the hearts and carries the
+     same hazard -- an Apply that pushed them into the asset would put a dead powerup bar
+     on the main screen. -->
+
 <!-- Added 2026-08-26 during D-092's map repair: the prefab shipped with the out-of-keys
      popup (D-069) and never got an inventory line, which the same blind checker hid. -->
 

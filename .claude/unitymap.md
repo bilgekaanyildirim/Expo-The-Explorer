@@ -1,4 +1,4 @@
-<!-- stamp: 2026-08-26T15:16Z source-sig:fff5c3f7b15c scenes:5 prefabs:5 generator:python-fallback status: DEGRADED 338 missing-script -->
+<!-- stamp: 2026-08-27T12:23Z source-sig:fcb5a15cbbf4 scenes:3 prefabs:6 generator:python-fallback status: DEGRADED 340 missing-script -->
 # unitymap — scene and prefab structure
 
 Read this instead of opening a `.unity`/`.prefab` file. Tree indentation is
@@ -11,16 +11,41 @@ Staleness: `source-sig` is derived from scene/prefab mtimes. Regenerate with
 Unity menu item Tools > unity-dev > Export unitymap.
 
 ## Findings
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab | AUTO COLLECT
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab | Add
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab | AutoCollectButton
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab | Backdrop
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab | Background
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab | Buy
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab | CloseButton
 - MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab | CoinImage
 - MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab | CoinText
 - MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab | CoinUI
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab | Count
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab | FilledHeart
 - MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab | GemImage
 - MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab | GemText
 - MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab | GemUI
 - MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab | HUDCanvas
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab | Heart1
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab | Heart2
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab | Heart3
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab | HeartPanel
 - MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab | KeysImage
 - MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab | KeysText
 - MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab | KeysUI
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab | Label
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab | LeakCleanerButton
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab | NOISE CLEAR
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab | Name
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab | Owned
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab | Panel
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab | PowerUpPanel
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab | Price
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab | Rows
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab | TIME RESET
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab | TimerResetButton
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab | Title
 - MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/NoKeysPopup.prefab | Button
 - MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/NoKeysPopup.prefab | ClipboardImage
 - MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/NoKeysPopup.prefab | Cost
@@ -30,50 +55,25 @@ Unity menu item Tools > unity-dev > Export unitymap.
 - MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/NoKeysPopup.prefab | Star
 - MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/NoKeysPopup.prefab | Text
 - MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/NoKeysPopup.prefab | label
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/Tickets/TicketCard.prefab | Addition/Removal
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/Tickets/TicketCard.prefab | Clock
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/Tickets/TicketCard.prefab | CustomerName
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/Tickets/TicketCard.prefab | CustomerPhotoFrame
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/Tickets/TicketCard.prefab | DangerImage
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/Tickets/TicketCard.prefab | Dish
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/Tickets/TicketCard.prefab | DividerTemplate
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/Tickets/TicketCard.prefab | Drink
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/Tickets/TicketCard.prefab | Fill
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/Tickets/TicketCard.prefab | Ingridient
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/Tickets/TicketCard.prefab | Modification
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/Tickets/TicketCard.prefab | Modification (1)
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/Tickets/TicketCard.prefab | Modification (2)
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/Tickets/TicketCard.prefab | Modification (3)
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/Tickets/TicketCard.prefab | Modifications
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/Tickets/TicketCard.prefab | Side
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/Tickets/TicketCard.prefab | TicketCard
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/Tickets/TicketCard.prefab | TicketTimerBar
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/Tickets/TicketCard.prefab | TrayFillCounterText
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Scenes/MainScreen.unity | AUTO COLLECT
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Scenes/MainScreen.unity | Background
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Scenes/MainScreen.unity | Box
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Scenes/MainScreen.unity | Buy
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Scenes/MainScreen.unity | Cancel
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Scenes/MainScreen.unity | Canvas
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Scenes/MainScreen.unity | CloseButton
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Scenes/MainScreen.unity | Coin
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Scenes/MainScreen.unity | Content
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Scenes/MainScreen.unity | EventSystem
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Scenes/MainScreen.unity | Icon
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Scenes/MainScreen.unity | Label
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Scenes/MainScreen.unity | ListViewport
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Scenes/MainScreen.unity | Main Camera
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Scenes/MainScreen.unity | MarketButton
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Scenes/MainScreen.unity | MetaGrounds
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Scenes/MainScreen.unity | NOISE CLEAR
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Scenes/MainScreen.unity | Name
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Scenes/MainScreen.unity | Owned
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Scenes/MainScreen.unity | Panel
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Scenes/MainScreen.unity | PlayButton
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Scenes/MainScreen.unity | PlayButtonLabel
-- ... 193 more
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/PowerupShop.prefab | AUTO COLLECT
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/PowerupShop.prefab | Buy
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/PowerupShop.prefab | BuySpacer
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/PowerupShop.prefab | COUNT
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/PowerupShop.prefab | CloseButton
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/PowerupShop.prefab | Header
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/PowerupShop.prefab | Icon
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/PowerupShop.prefab | Image
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/PowerupShop.prefab | Label
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/PowerupShop.prefab | NAME
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/PowerupShop.prefab | NOISE CLEAR
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/PowerupShop.prefab | Name
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/PowerupShop.prefab | Owned
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/PowerupShop.prefab | PRICE
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/PowerupShop.prefab | Panel
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/PowerupShop.prefab | PowerupShopButton
+- ... 173 more
 
-## PREFAB ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab   (12 object(s))
+## PREFAB ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab   (58 object(s))
 - HUDCanvas  [RectTransform, Canvas, MISSING SCRIPT (guid:0cd44c10), MISSING SCRIPT (guid:dc42784c), HudWalletSource]  refs: sessionHost=NULL
   - UpperPanel  [RectTransform, CanvasRenderer]
     - HUDPanel  [RectTransform]
@@ -86,6 +86,52 @@ Unity menu item Tools > unity-dev > Export unitymap.
       - GemUI  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1), GemsView]  refs: gemsText=set, walletSource=set
         - GemText  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
         - GemImage  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
+  - LowerPanel  [RectTransform, CanvasRenderer]
+    - HeartPanel  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:30649d3a), LivesView]  refs: filledHearts=set, gameManager=NULL
+      - Heart1  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
+        - FilledHeart  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
+      - Heart2  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
+        - FilledHeart  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
+      - Heart3  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
+        - FilledHeart  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
+    - PowerUpPanel  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:30649d3a), PowerupBarView, AutoCollectRunner]  refs: autoCollect=set, gameManager=NULL, noiseClear=set, shop=set, timeReset=set, boardView=NULL, gameManager=NULL, trays=NULL
+      - AutoCollectButton  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1), MISSING SCRIPT (guid:4e29b1a8), HapticButton]  refs: haptics=NULL
+        - Background  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
+        - Count  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
+        - Add [inactive]  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
+      - LeakCleanerButton  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1), MISSING SCRIPT (guid:4e29b1a8), HapticButton]  refs: haptics=NULL
+        - Background  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
+        - Count  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
+        - Add [inactive]  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
+      - TimerResetButton  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1), MISSING SCRIPT (guid:4e29b1a8), HapticButton]  refs: haptics=NULL
+        - Background  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
+        - Count  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
+        - Add [inactive]  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
+  - PowerupShop  [RectTransform, PowerupShopView]  refs: autoCollect=set, closeButton=set, noiseClear=set, openButton=NULL, panel=set, sessionHost=NULL, timeReset=set
+    - Backdrop [inactive]  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
+      - Panel  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
+        - Title  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
+        - CloseButton  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1), MISSING SCRIPT (guid:4e29b1a8)]
+          - Label  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
+        - Rows  [RectTransform, MISSING SCRIPT (guid:59f81469)]
+          - AUTO COLLECT  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1), MISSING SCRIPT (guid:306cc8c2), MISSING SCRIPT (guid:30649d3a)]
+            - Name  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb), MISSING SCRIPT (guid:306cc8c2)]  refs: parentLinkedComponent=NULL
+            - Owned  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb), MISSING SCRIPT (guid:306cc8c2)]  refs: parentLinkedComponent=NULL
+            - Price  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb), MISSING SCRIPT (guid:306cc8c2)]  refs: parentLinkedComponent=NULL
+            - Buy  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1), MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:306cc8c2)]
+              - Label  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
+          - TIME RESET  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1), MISSING SCRIPT (guid:306cc8c2), MISSING SCRIPT (guid:30649d3a)]
+            - Name  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb), MISSING SCRIPT (guid:306cc8c2)]  refs: parentLinkedComponent=NULL
+            - Owned  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb), MISSING SCRIPT (guid:306cc8c2)]  refs: parentLinkedComponent=NULL
+            - Price  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb), MISSING SCRIPT (guid:306cc8c2)]  refs: parentLinkedComponent=NULL
+            - Buy  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1), MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:306cc8c2)]
+              - Label  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
+          - NOISE CLEAR  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1), MISSING SCRIPT (guid:306cc8c2), MISSING SCRIPT (guid:30649d3a)]
+            - Name  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb), MISSING SCRIPT (guid:306cc8c2)]  refs: parentLinkedComponent=NULL
+            - Owned  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb), MISSING SCRIPT (guid:306cc8c2)]  refs: parentLinkedComponent=NULL
+            - Price  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb), MISSING SCRIPT (guid:306cc8c2)]  refs: parentLinkedComponent=NULL
+            - Buy  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1), MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:306cc8c2)]
+              - Label  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
 
 ## PREFAB ExpoTheExplorer/Assets/Prefabs/UI/NoKeysPopup.prefab   (11 object(s))
 - NoKeysPopup [inactive]  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
@@ -99,6 +145,45 @@ Unity menu item Tools > unity-dev > Export unitymap.
     - Star  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
   - GoBack  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1), MISSING SCRIPT (guid:4e29b1a8), HapticButton]  refs: haptics=NULL
     - Text  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
+
+## PREFAB ExpoTheExplorer/Assets/Prefabs/UI/PowerupShop.prefab   (37 object(s))
+- PowerupShop  [RectTransform, PowerupShopView]  refs: autoCollect=set, backdropButton=set, closeButton=set, noiseClear=set, openButton=set, panel=set, sessionHost=NULL, timeReset=set
+  - Image  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1), MISSING SCRIPT (guid:4e29b1a8)]
+    - Panel  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
+      - Title  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
+      - CloseButton  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1), MISSING SCRIPT (guid:4e29b1a8)]
+        - Label  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
+      - Rows  [RectTransform, MISSING SCRIPT (guid:59f81469)]
+        - Header  [RectTransform, MISSING SCRIPT (guid:306cc8c2), MISSING SCRIPT (guid:30649d3a)]
+          - NAME  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb), MISSING SCRIPT (guid:306cc8c2)]  refs: parentLinkedComponent=NULL
+          - COUNT  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb), MISSING SCRIPT (guid:306cc8c2)]  refs: parentLinkedComponent=NULL
+          - PRICE  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb), MISSING SCRIPT (guid:306cc8c2)]  refs: parentLinkedComponent=NULL
+          - BuySpacer  [RectTransform, MISSING SCRIPT (guid:306cc8c2)]
+        - AUTO COLLECT  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1), MISSING SCRIPT (guid:306cc8c2), MISSING SCRIPT (guid:30649d3a)]
+          - Icon  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1), MISSING SCRIPT (guid:306cc8c2)]
+          - Name  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb), MISSING SCRIPT (guid:306cc8c2)]  refs: parentLinkedComponent=NULL
+          - Owned  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb), MISSING SCRIPT (guid:306cc8c2)]  refs: parentLinkedComponent=NULL
+          - Price  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb), MISSING SCRIPT (guid:306cc8c2)]  refs: parentLinkedComponent=NULL
+          - Star  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1), MISSING SCRIPT (guid:306cc8c2)]
+          - Buy  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1), MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:306cc8c2)]
+            - Label  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
+        - TIME RESET  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1), MISSING SCRIPT (guid:306cc8c2), MISSING SCRIPT (guid:30649d3a)]
+          - Icon  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1), MISSING SCRIPT (guid:306cc8c2)]
+          - Name  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb), MISSING SCRIPT (guid:306cc8c2)]  refs: parentLinkedComponent=NULL
+          - Owned  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb), MISSING SCRIPT (guid:306cc8c2)]  refs: parentLinkedComponent=NULL
+          - Price  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb), MISSING SCRIPT (guid:306cc8c2)]  refs: parentLinkedComponent=NULL
+          - Star  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1), MISSING SCRIPT (guid:306cc8c2)]
+          - Buy  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1), MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:306cc8c2)]
+            - Label  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
+        - NOISE CLEAR  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1), MISSING SCRIPT (guid:306cc8c2), MISSING SCRIPT (guid:30649d3a)]
+          - Icon  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1), MISSING SCRIPT (guid:306cc8c2)]
+          - Name  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb), MISSING SCRIPT (guid:306cc8c2)]  refs: parentLinkedComponent=NULL
+          - Owned  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb), MISSING SCRIPT (guid:306cc8c2)]  refs: parentLinkedComponent=NULL
+          - Price  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb), MISSING SCRIPT (guid:306cc8c2)]  refs: parentLinkedComponent=NULL
+          - Star  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1), MISSING SCRIPT (guid:306cc8c2)]
+          - Buy  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1), MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:306cc8c2)]
+            - Label  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
+  - PowerupShopButton  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1), MISSING SCRIPT (guid:4e29b1a8)]
 
 ## PREFAB ExpoTheExplorer/Assets/Prefabs/UI/Tickets/TicketCard Into.prefab   variant-of: ExpoTheExplorer/Assets/Prefabs/UI/Tickets/TicketCard.prefab   (1 object(s))
 - * TicketCard Into  (prefab instance of ExpoTheExplorer/Assets/Prefabs/UI/Tickets/TicketCard.prefab)
@@ -134,7 +219,7 @@ Unity menu item Tools > unity-dev > Export unitymap.
   - Clock  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
   - DangerImage  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
 
-## SCENE ExpoTheExplorer/Assets/Scenes/MainScreen.unity   (58 object(s))
+## SCENE ExpoTheExplorer/Assets/Scenes/MainScreen.unity   (42 object(s))
 - EventSystem  [MISSING SCRIPT (guid:01614664), MISSING SCRIPT (guid:76c392e4), Transform]
 - Canvas  [MainScreenView, MISSING SCRIPT (guid:dc42784c), MISSING SCRIPT (guid:0cd44c10), Canvas, RectTransform, NoKeysPopupView]  refs: noKeysPopup=set, playButton=set, playLabel=set, sessionHost=set, tutorial=set, closeButton=set, countdownText=set, gemButton=set, gemCostLabel=set, haptics=set, notEnoughGemsLabel=set, popupRoot=set, sessionHost=set
   - MetaGrounds  [RectTransform, MISSING SCRIPT (guid:1aa08ab6), MetaGroundsView]  refs: background=set, catalog=set, haptics=set, locationLabel=NULL, lockedHintLabel=NULL, nextButton=NULL, previousButton=NULL, scroll=set, sessionHost=set
@@ -142,17 +227,25 @@ Unity menu item Tools > unity-dev > Export unitymap.
       - Background  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
   - PlayButton  [MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, RectTransform, HapticButton]  refs: haptics=set
     - PlayButtonLabel  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
-  - MetaShop  [RectTransform, MetaShopView]  refs: confirmBox=set, confirmBuyButton=set, confirmCancelButton=set, confirmNameLabel=set, confirmPopup=set, confirmPriceLabel=set, grounds=set, haptics=set, marketButton=set, panel=set, rowTemplate=set, rowsParent=set, sessionHost=set
-    - Panel  [RectTransform, MISSING SCRIPT (guid:1aa08ab6), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
-      - ListViewport  [RectTransform, MISSING SCRIPT (guid:3312d773)]
-        - Content  [RectTransform, MISSING SCRIPT (guid:3245ec92), MISSING SCRIPT (guid:59f81469)]
-          - RowTemplate [inactive]  [RectTransform, MetaShopRowView, CanvasGroup, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, MISSING SCRIPT (guid:306cc8c2)]  refs: buyButton=set, group=set, iconImage=set, nameLabel=set, priceLabel=set
-            - Icon  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
-            - Name  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
-            - Price  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
-            - Buy  [RectTransform, MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, HapticButton]  refs: haptics=set
-              - Label  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
-    - ConfirmPopup  [RectTransform]
+  - MetaShop  [RectTransform, MetaShopView]  refs: backdropButton=set, closeButton=set, confirmBox=set, confirmBuyButton=set, confirmCancelButton=set, confirmNameLabel=set, confirmPopup=set, confirmPriceLabel=set, grounds=set, haptics=set, marketButton=set, panel=set, rowTemplate=set, rowsParent=set, sessionHost=set
+    - Backdrop  [RectTransform, MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
+      - Panel  [RectTransform, MISSING SCRIPT (guid:1aa08ab6), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
+        - ListViewport  [RectTransform, MISSING SCRIPT (guid:3312d773)]
+          - Content  [RectTransform, MISSING SCRIPT (guid:3245ec92), MISSING SCRIPT (guid:59f81469)]
+            - RowTemplate  [RectTransform, MetaShopRowView, CanvasGroup, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, MISSING SCRIPT (guid:306cc8c2)]  refs: buyButton=set, group=set, iconImage=set, nameLabel=set, priceLabel=set
+              - Icon  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
+              - Name  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
+              - Price  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
+              - Star  [RectTransform, MISSING SCRIPT (guid:306cc8c2), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
+              - Buy  [RectTransform, MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, HapticButton]  refs: haptics=set
+                - Label  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
+        - Title  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
+        - Header  [RectTransform]
+          - NAME  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
+          - PRICE  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
+        - CloseButton  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, MISSING SCRIPT (guid:4e29b1a8)]
+          - Label  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
+    - ConfirmPopup [inactive]  [RectTransform]
       - Box  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
         - Name  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
         - Price  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
@@ -162,38 +255,14 @@ Unity menu item Tools > unity-dev > Export unitymap.
           - Label  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
         - Coin  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
     - MarketButton  [RectTransform, MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, HapticButton]  refs: haptics=set
-  - PowerupShop  [RectTransform, PowerupShopView]  refs: autoCollect=set, closeButton=set, noiseClear=set, openButton=set, panel=set, sessionHost=set, timeReset=set
-    - PowerupShopButton  [RectTransform, MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
-    - Panel [inactive]  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
-      - Title  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
-      - CloseButton  [RectTransform, MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
-        - Label  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
-      - Rows  [RectTransform, MISSING SCRIPT (guid:59f81469)]
-        - AUTO COLLECT  [RectTransform, MISSING SCRIPT (guid:30649d3a), MISSING SCRIPT (guid:306cc8c2), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
-          - Name  [RectTransform, MISSING SCRIPT (guid:306cc8c2), MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
-          - Owned  [RectTransform, MISSING SCRIPT (guid:306cc8c2), MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
-          - Price  [RectTransform, MISSING SCRIPT (guid:306cc8c2), MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
-          - Buy  [RectTransform, MISSING SCRIPT (guid:306cc8c2), MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
-            - Label  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
-        - TIME RESET  [RectTransform, MISSING SCRIPT (guid:30649d3a), MISSING SCRIPT (guid:306cc8c2), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
-          - Name  [RectTransform, MISSING SCRIPT (guid:306cc8c2), MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
-          - Owned  [RectTransform, MISSING SCRIPT (guid:306cc8c2), MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
-          - Price  [RectTransform, MISSING SCRIPT (guid:306cc8c2), MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
-          - Buy  [RectTransform, MISSING SCRIPT (guid:306cc8c2), MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
-            - Label  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
-        - NOISE CLEAR  [RectTransform, MISSING SCRIPT (guid:30649d3a), MISSING SCRIPT (guid:306cc8c2), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
-          - Name  [RectTransform, MISSING SCRIPT (guid:306cc8c2), MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
-          - Owned  [RectTransform, MISSING SCRIPT (guid:306cc8c2), MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
-          - Price  [RectTransform, MISSING SCRIPT (guid:306cc8c2), MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
-          - Buy  [RectTransform, MISSING SCRIPT (guid:306cc8c2), MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
-            - Label  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
   - MainScreenTutorial  [RectTransform, MainScreenTutorialView]  refs: sessionHost=set, shop=set, texts=set
 - Session  [MainScreenRoot, Transform, HapticsBinder, MISSING SCRIPT (guid:ceb29a83), DebugMenuBinder]  refs: foodCatalog=set, gameConfig=set, keyConfig=set, livesConfig=set, powerupConfig=set, config=set, gameManager=NULL, sessionHost=set, host=set, metaCatalog=set
 - Main Camera  [Camera, Transform, MISSING SCRIPT (guid:a79441f3)]
 - * HUDCanvas  (prefab instance of ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab)
 - * NoKeysPopup  (prefab instance of ExpoTheExplorer/Assets/Prefabs/UI/NoKeysPopup.prefab)
+- * PowerupShop  (prefab instance of ExpoTheExplorer/Assets/Prefabs/UI/PowerupShop.prefab)
 
-## SCENE ExpoTheExplorer/Assets/Scenes/SampleScene.unity   (134 object(s))
+## SCENE ExpoTheExplorer/Assets/Scenes/SampleScene.unity   (122 object(s))
 - TrayArea  [WorldTrayView, BoxCollider2D, SpriteRenderer, Transform]  refs: animConfig=set, boardView=set, drinkSlot=set, gameManager=set, highlightVisual=set, mainDishSlot=set, sideSlot=set, ticketCardsView=set, wrongVisual=set
   - MainDishSlot  [Transform]
   - SideSlot  [Transform]
@@ -202,7 +271,7 @@ Unity menu item Tools > unity-dev > Export unitymap.
   - WrongVisual [inactive]  [SpriteRenderer, Transform]
 - LifeLostHeart  [LifeLostHeartView, Transform]  refs: animConfig=set, slotHearts=set
 - Main Camera  [AudioListener, MISSING SCRIPT (guid:a79441f3), Camera, Transform]
-- Popup Canvas  [GameOverPopupView, MISSING SCRIPT (guid:dc42784c), MISSING SCRIPT (guid:0cd44c10), Canvas, RectTransform, NoKeysPopupView]  refs: gameManager=set, gemButton=set, haptics=set, livesRefillText=set, mainMenuButton=set, noKeysPopup=set, popupRoot=set, retryButton=set, closeButton=set, countdownText=set, gemButton=set, gemCostLabel=set, haptics=set, notEnoughGemsLabel=set, popupRoot=set, sessionHost=set
+- Popup Canvas  [GameOverPopupView, MISSING SCRIPT (guid:dc42784c), MISSING SCRIPT (guid:0cd44c10), Canvas, RectTransform, NoKeysPopupView]  refs: animConfig=set, gameManager=set, gemButton=set, haptics=set, livesRefillText=set, mainMenuButton=set, noKeysPopup=set, popupRoot=set, retryButton=set, closeButton=set, countdownText=set, gemButton=set, gemCostLabel=set, haptics=set, notEnoughGemsLabel=set, popupRoot=set, sessionHost=set
   - GameOverPopup [inactive]  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
     - ClipboardImage  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
       - TitleTextImage  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
@@ -211,7 +280,7 @@ Unity menu item Tools > unity-dev > Export unitymap.
       - GemButton  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, MISSING SCRIPT (guid:4e29b1a8), HapticButton]  refs: haptics=set
       - MainMenuButton  [MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, RectTransform, HapticButton]  refs: haptics=set
       - RetryButton  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, MISSING SCRIPT (guid:4e29b1a8), HapticButton]  refs: haptics=set
-  - DayCompletePopup  [RectTransform, DayCompletePopupView, DayRewardFlightView]  refs: gameManager=set, goBackButton=set, nextDayButton=set, ordersDeliveredCountText=set, ordersDeliveredValueText=set, popupRoot=set, retryButton=set, rewardFlight=set, star1Filled=set, star2Filled=set, star3Filled=set, starScoreBar=set, tipsValueText=set, totalText=set, coinFlightTarget=set, coinSprite=set, flightRoot=set, gameManager=set, gemFlightTarget=set, gemSprite=set, haptics=set, scoreBar=set
+  - DayCompletePopup  [RectTransform, DayCompletePopupView, DayRewardFlightView]  refs: animConfig=set, gameManager=set, goBackButton=set, nextDayButton=set, ordersDeliveredCountText=set, ordersDeliveredValueText=set, popupRoot=set, retryButton=set, rewardFlight=set, star1Filled=set, star2Filled=set, star3Filled=set, starScoreBar=set, tipsValueText=set, totalText=set, coinFlightTarget=set, coinSprite=set, flightRoot=set, gameManager=set, gemFlightTarget=set, gemSprite=set, haptics=set, scoreBar=set
     - PopupRoot [inactive]  [RectTransform]
       - Background  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
       - Title  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
@@ -220,14 +289,17 @@ Unity menu item Tools > unity-dev > Export unitymap.
           - Label ("Orders delivered x")  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
           - CountText  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
           - ValueText  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
+          - Coin  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
         - TipsRow  [RectTransform]
           - Label ("Tips")  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
           - ValueText  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
+          - Coin  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
         - OrdersFailedRow  [RectTransform]
         - Divider  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
         - TotalRow  [RectTransform]
           - Label ("Total")  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
           - ValueText  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
+          - Coin  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
       - ButtonsRow  [RectTransform]
         - NextDayButton [inactive]  [RectTransform, MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, HapticButton]  refs: haptics=set
         - RetryButton  [RectTransform, MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, HapticButton]  refs: haptics=set
@@ -300,145 +372,26 @@ Unity menu item Tools > unity-dev > Export unitymap.
   - DrinkSlot  [Transform]
   - HighlightVisual [inactive]  [SpriteRenderer, Transform]
   - WrongVisual [inactive]  [SpriteRenderer, Transform]
+- ShopCanvas  [MISSING SCRIPT (guid:dc42784c), MISSING SCRIPT (guid:0cd44c10), Canvas, RectTransform]
 - InGameCanvas  [MISSING SCRIPT (guid:dc42784c), MISSING SCRIPT (guid:0cd44c10), Canvas, RectTransform]
   - UpperPanel  [RectTransform, CanvasRenderer]
     - TicketsPanel  [RectTransform, MISSING SCRIPT (guid:30649d3a), CanvasRenderer]
   - BrokenHeart [inactive]  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
   - BrokenHeart (1) [inactive]  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
   - BrokenHeart (2) [inactive]  [MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, RectTransform]
+- * PowerupShop  (prefab instance of ExpoTheExplorer/Assets/Prefabs/UI/PowerupShop.prefab)
 - * TicketCard UpDown  (prefab instance of ExpoTheExplorer/Assets/Prefabs/UI/Tickets/TicketCard UpDown.prefab)
 - * HUDCanvas  (prefab instance of ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab)
 - * NoKeysPopup  (prefab instance of ExpoTheExplorer/Assets/Prefabs/UI/NoKeysPopup.prefab)
+- ... 2 more object(s) not listed; regenerate with the Editor exporter for the full tree
 
 ## SCENE ExpoTheExplorer/Assets/Settings/Scenes/URP2DSceneTemplate.unity   (2 object(s))
 - Main Camera  [AudioListener, MISSING SCRIPT (guid:a79441f3), Camera, Transform]
 - Global Light 2D  [MISSING SCRIPT (guid:073797af), Transform]
 
-## SCENE ExpoTheExplorer/Assets/_Recovery/0 (1).unity   (31 object(s))
-- EventSystem  [MISSING SCRIPT (guid:01614664), MISSING SCRIPT (guid:76c392e4), Transform]
-- Canvas  [MainScreenView, MISSING SCRIPT (guid:dc42784c), MISSING SCRIPT (guid:0cd44c10), Canvas, RectTransform]  refs: playButton=set, playLabel=set, resetButton=set, resetLabel=set
-  - MetaGrounds  [RectTransform, MISSING SCRIPT (guid:1aa08ab6), MetaGroundsView]  refs: background=set, catalog=set, locationLabel=NULL, lockedHintLabel=NULL, nextButton=NULL, previousButton=NULL, scroll=set, sessionHost=set
-    - Viewport  [RectTransform, MISSING SCRIPT (guid:3312d773)]
-      - Background  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
-  - PlayButton  [MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, RectTransform]
-    - PlayButtonLabel  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
-  - ResetButton  [MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, RectTransform]
-    - ResetButtonLabel  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
-  - MetaShop  [RectTransform, MetaShopView]  refs: confirmBox=set, confirmBuyButton=set, confirmCancelButton=set, confirmNameLabel=set, confirmPopup=set, confirmPriceLabel=set, grounds=set, marketButton=set, panel=set, rowTemplate=set, rowsParent=set, sessionHost=set
-    - Panel  [RectTransform, MISSING SCRIPT (guid:1aa08ab6), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
-      - ListViewport  [RectTransform, MISSING SCRIPT (guid:3312d773)]
-        - Content  [RectTransform, MISSING SCRIPT (guid:3245ec92), MISSING SCRIPT (guid:59f81469)]
-          - RowTemplate [inactive]  [RectTransform, MetaShopRowView, CanvasGroup, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, MISSING SCRIPT (guid:306cc8c2)]  refs: buyButton=set, group=set, iconImage=set, nameLabel=set, priceLabel=set
-            - Icon  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
-            - Name  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
-            - Price  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
-            - Buy  [RectTransform, MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
-              - Label  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
-    - ConfirmPopup  [RectTransform]
-      - Box  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
-        - Name  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
-        - Price  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
-        - Buy  [RectTransform, MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
-          - Label  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
-        - Cancel  [RectTransform, MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
-          - Label  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
-    - MarketButton  [RectTransform, MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
-- Session  [MainScreenRoot, Transform]  refs: foodCatalog=set, gameConfig=set, livesConfig=set
-- Main Camera  [Camera, Transform, MISSING SCRIPT (guid:a79441f3)]
-- * HUDCanvas  (prefab instance of ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab)
-
-## SCENE ExpoTheExplorer/Assets/_Recovery/0.unity   (88 object(s))
-- TrayArea  [WorldTrayView, BoxCollider2D, SpriteRenderer, Transform]  refs: animConfig=set, boardView=set, drinkSlot=set, gameManager=set, highlightVisual=set, mainDishSlot=set, sideSlot=set, ticketCardsView=set, wrongVisual=set
-  - MainDishSlot  [Transform]
-  - SideSlot  [Transform]
-  - DrinkSlot  [Transform]
-  - HighlightVisual [inactive]  [SpriteRenderer, Transform]
-  - WrongVisual [inactive]  [SpriteRenderer, Transform]
-- Main Camera  [AudioListener, MISSING SCRIPT (guid:a79441f3), Camera, Transform]
-- Popup Canvas  [GameOverPopupView, MISSING SCRIPT (guid:dc42784c), MISSING SCRIPT (guid:0cd44c10), Canvas, RectTransform]  refs: gameManager=set, gemButton=set, livesRefillText=set, mainMenuButton=set, popupRoot=set, retryButton=set, softMoneyButton=set
-  - GameOverPopup [inactive]  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
-    - ClipboardImage  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
-      - TitleTextImage  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
-      - HeartIcon  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
-        - LivesRefillText  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
-      - SoftMoneyButton  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, MISSING SCRIPT (guid:4e29b1a8)]
-      - GemButton  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, MISSING SCRIPT (guid:4e29b1a8)]
-      - MainMenuButton  [MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, RectTransform]
-      - RetryButton  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, MISSING SCRIPT (guid:4e29b1a8)]
-  - DayCompletePopup  [RectTransform, DayCompletePopupView]  refs: gameManager=set, goBackButton=set, nextDayButton=set, ordersDeliveredCountText=set, ordersDeliveredValueText=set, ordersFailedCountText=set, ordersFailedValueText=set, popupRoot=set, retryButton=set, star1Filled=set, star2Filled=set, star3Filled=set, tipsValueText=set, totalText=set
-    - PopupRoot [inactive]  [RectTransform]
-      - Background  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
-      - Title  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
-      - StarRow  [RectTransform]
-        - Star1  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
-          - Star1Filled  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
-        - Star2  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
-          - Star2Filled  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
-        - Star3  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
-          - Star3Filled  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
-      - ReceiptBody  [RectTransform]
-        - OrdersDeliveredRow  [RectTransform]
-          - Label ("Orders delivered x")  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
-          - CountText  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
-          - ValueText  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
-        - TipsRow  [RectTransform]
-          - Label ("Tips")  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
-          - ValueText  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
-        - OrdersFailedRow  [RectTransform]
-          - Label ("Orders Failed x")  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
-          - CountText  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
-          - ValueText  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
-        - Divider  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
-        - TotalRow  [RectTransform]
-          - Label ("Total")  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
-          - ValueText  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
-      - ButtonsRow  [RectTransform]
-        - NextDayButton  [RectTransform, MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
-        - RetryButton  [RectTransform, MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
-        - GoBackButton  [RectTransform, MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
-- Global Light 2D  [MISSING SCRIPT (guid:073797af), Transform]
-- GameManager  [GameManager, Transform, MISSING SCRIPT (guid:8b34a210)]  refs: economyConfig=set, foodCatalog=set, gameConfig=set, levelProgressionConfig=set, livesConfig=set, ticketGenerationConfig=set, gameManager=set
-- TrayArea (1)  [WorldTrayView, BoxCollider2D, SpriteRenderer, Transform]  refs: animConfig=set, boardView=set, drinkSlot=set, gameManager=set, highlightVisual=set, mainDishSlot=set, sideSlot=set, ticketCardsView=set, wrongVisual=set
-  - MainDishSlot  [Transform]
-  - SideSlot  [Transform]
-  - DrinkSlot  [Transform]
-  - HighlightVisual [inactive]  [SpriteRenderer, Transform]
-  - WrongVisual [inactive]  [SpriteRenderer, Transform]
-- TicketCardsView  [TicketCardsView, Transform]  refs: animConfig=set, cardPrefab=set, cardsParent=set, gameManager=set, visualsConfig=set
-- EventSystem  [MISSING SCRIPT (guid:01614664), MISSING SCRIPT (guid:76c392e4), Transform]
-- StartingPoint  [Transform]
-- BoardView  [BoardView, Transform]  refs: animConfig=set, dragFeelConfig=set, gameManager=set, startingPoint=set, targetCamera=NULL, visualsConfig=set
-- Backgroundcanvas  [MISSING SCRIPT (guid:dc42784c), MISSING SCRIPT (guid:0cd44c10), Canvas, RectTransform]
-  - Background  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
-- TrayArea (2)  [WorldTrayView, BoxCollider2D, SpriteRenderer, Transform]  refs: animConfig=set, boardView=set, drinkSlot=set, gameManager=set, highlightVisual=set, mainDishSlot=set, sideSlot=set, ticketCardsView=set, wrongVisual=set
-  - MainDishSlot  [Transform]
-  - SideSlot  [Transform]
-  - DrinkSlot  [Transform]
-  - HighlightVisual [inactive]  [SpriteRenderer, Transform]
-  - WrongVisual [inactive]  [SpriteRenderer, Transform]
-- InGameCanvas  [MISSING SCRIPT (guid:dc42784c), MISSING SCRIPT (guid:0cd44c10), Canvas, RectTransform]
-  - UpperPanel  [RectTransform, CanvasRenderer]
-    - TicketsPanel  [RectTransform, MISSING SCRIPT (guid:30649d3a), CanvasRenderer]
-    - HUDPanel  [RectTransform]
-      - CoinUI  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, SoftMoneyView]  refs: gameManager=set, softMoneyText=set
-        - CoinText  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
-        - CoinImage  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
-      - HealthUI  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, LivesView]  refs: gameManager=set, livesText=set
-        - HealthText  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
-        - HeartImage  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
-      - GemUI  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, GemsView]  refs: gameManager=set, gemsText=set
-        - GemText  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
-        - GemImage  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
-      - LevelUI  [RectTransform, MISSING SCRIPT (guid:6827747e), MISSING SCRIPT (guid:33e4694a), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]  refs: fillImage=set, gameManager=set, gameManager=set, levelText=set
-        - LevelCountText  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
-        - XPBar  [RectTransform]
-          - XPBarBG  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
-          - XPBar  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
-          - XPBarFrame  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
-- * TicketCard UpDown  (prefab instance of ExpoTheExplorer/Assets/Prefabs/UI/Tickets/TicketCard UpDown.prefab)
-
 ## Script index — component name -> codemap path
 
+- AutoCollectRunner | ExpoTheExplorer/Assets/Scripts/UI/AutoCollectRunner.cs
 - BoardView | ExpoTheExplorer/Assets/Scripts/UI/BoardView.cs
 - DayCompletePopupView | ExpoTheExplorer/Assets/Scripts/UI/DayCompletePopupView.cs
 - DayRewardFlightView | ExpoTheExplorer/Assets/Scripts/UI/DayRewardFlightView.cs
@@ -461,6 +414,7 @@ Unity menu item Tools > unity-dev > Export unitymap.
 - MetaShopView | ExpoTheExplorer/Assets/Scripts/UI/MetaShopView.cs
 - ModificationSlotView | ExpoTheExplorer/Assets/Scripts/UI/ModificationSlotView.cs
 - NoKeysPopupView | ExpoTheExplorer/Assets/Scripts/UI/NoKeysPopupView.cs
+- PowerupBarView | ExpoTheExplorer/Assets/Scripts/UI/PowerupBarView.cs
 - PowerupShopView | ExpoTheExplorer/Assets/Scripts/UI/PowerupShopView.cs
 - SettingsPopupView | ExpoTheExplorer/Assets/Scripts/UI/SettingsPopupView.cs
 - SoftMoneyView | ExpoTheExplorer/Assets/Scripts/UI/SoftMoneyView.cs

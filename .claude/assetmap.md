@@ -1,4 +1,4 @@
-<!-- stamp: 2026-08-26T15:16Z source-sig:ff2a581d56ed assets:53 prefabs:5 scenes:5 asmdefs:18 -->
+<!-- stamp: 2026-08-27T12:23Z source-sig:0eb2c3243fb5 assets:53 prefabs:6 scenes:3 asmdefs:18 -->
 # assetmap — asset inventory (data, prefabs, load surface, assemblies)
 
 Regenerate with `python3 .claude/hooks/build_assetmap.py`. `data-source.md`
@@ -84,8 +84,9 @@ the cost model reads the load-surface section before pricing a load.
 
 ## Prefabs
 
-- ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab | variant-of: - | scripts: KeysView, SoftMoneyView, GemsView, HudWalletSource
+- ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab | variant-of: - | scripts: PowerupShopView, HapticButton, KeysView, SoftMoneyView, GemsView, PowerupBarView, AutoCollectRunner, HudWalletSource
 - ExpoTheExplorer/Assets/Prefabs/UI/NoKeysPopup.prefab | variant-of: - | scripts: HapticButton
+- ExpoTheExplorer/Assets/Prefabs/UI/PowerupShop.prefab | variant-of: - | scripts: PowerupShopView
 - ExpoTheExplorer/Assets/Prefabs/UI/Tickets/TicketCard Into.prefab | variant-of: ExpoTheExplorer/Assets/Prefabs/UI/Tickets/TicketCard.prefab | scripts: -
 - ExpoTheExplorer/Assets/Prefabs/UI/Tickets/TicketCard UpDown.prefab | variant-of: ExpoTheExplorer/Assets/Prefabs/UI/Tickets/TicketCard.prefab | scripts: -
 - ExpoTheExplorer/Assets/Prefabs/UI/Tickets/TicketCard.prefab | variant-of: - | scripts: ModificationSlotView, TicketCardView, TrayFillCounterView
@@ -95,8 +96,6 @@ the cost model reads the load-surface section before pricing a load.
 - ExpoTheExplorer/Assets/Scenes/MainScreen.unity
 - ExpoTheExplorer/Assets/Scenes/SampleScene.unity
 - ExpoTheExplorer/Assets/Settings/Scenes/URP2DSceneTemplate.unity
-- ExpoTheExplorer/Assets/_Recovery/0 (1).unity
-- ExpoTheExplorer/Assets/_Recovery/0.unity
 
 ## Runtime load surface
 
