@@ -2,13 +2,19 @@ using System.Collections.Generic;
 using ExpoTheExplorer.Bootstrap;
 using ExpoTheExplorer.Core;
 using ExpoTheExplorer.Systems.PowerupSystem;
+using ExpoTheExplorer.Systems.TraySystem;
 using UnityEngine;
 
 namespace ExpoTheExplorer.UI
 {
     // The DOING half of GDD 5.2 #1 -- Auto-Collect. What to pick is decided in
-    // PowerupEffects.TryFindAutoCollectItem (pure, and therefore testable); this class only
-    // carries out the moves.
+    // PowerupEffects.PlanAutoCollect and PowerupEffects.UnwantedTrayItems (pure, and
+    // therefore testable); this class only carries the plan out.
+    //
+    // THE WHOLE PRESS IS DECIDED BEFORE THE FIRST MOVE (D-110). This used to ask for one
+    // next-move at a time against the live board, which let the later slots collect items
+    // that the earlier slots' own deliveries had just spawned. Everything here now walks a
+    // closed list and re-verifies each step against the board rather than re-deciding it.
     //
     // IT MOVES ITEMS THE WAY A FINGER DOES, through WorldTrayView.TryAcceptDrop with the
     // board item's own BoardItemDragHandler. That is not a stylistic choice: a tray's
@@ -27,13 +33,6 @@ namespace ExpoTheExplorer.UI
     // EditMode test. Everything with a rule in it was moved where a test can reach it.
     public class AutoCollectRunner : MonoBehaviour
     {
-        // A ticket's required list maxes out at three items today, so any slot finishes in
-        // three moves. Eight is slack rather than a design number: it exists so that a bug
-        // in the search -- one that kept returning a cell the tray then refused -- cannot
-        // hang the editor in an infinite loop. If this limit is ever REACHED, something is
-        // wrong upstream, which is why it says so in the console.
-        private const int MaxMovesPerSlot = 8;
-
         [SerializeField] private GameManager gameManager;
 
         [Tooltip("Needed so a board cell can hand over the same drag handler a finger would have grabbed.")]
@@ -49,9 +48,11 @@ namespace ExpoTheExplorer.UI
             isValid = ValidateReferences();
         }
 
-        // Returns whether anything was actually moved. That bool is GDD 5.2's "no wasted
+        // Returns whether anything actually happened. That bool is GDD 5.2's "no wasted
         // press" rule reaching PowerupManager: a board with none of the items the active
-        // tickets still need costs the player nothing.
+        // tickets still need, and no stray tray item to send home, costs the player nothing.
+        // A press that ONLY sent items home does count -- the board visibly changes and a
+        // tray that was guaranteed to cost a life is un-jammed (D-110, the user's call).
         public bool Run()
         {
             if (!isValid) return false;
@@ -60,64 +61,94 @@ namespace ExpoTheExplorer.UI
             var trayManager = gameManager.TrayManager;
             if (state == null || trayManager == null) return false;
 
-            // THE TICKETS IN HAND, captured by INSTANCE before anything moves. This is what
-            // keeps one press from becoming a whole day: filling a tray delivers it, which
-            // synchronously assigns a NEW ticket into the same slot, whose required items
-            // then spawn onto the board -- and a loop that kept going would collect those
-            // too, deliver again, and chain until the Day's sequence ran out. GDD 5.2 says
-            // this powerup places the items the ACTIVE tickets need, not "until the queue
-            // is empty". Reference equality is the check, not slot emptiness, because the
-            // replacement ticket occupies the very same slot.
+            // 1 -- SEND HOME WHAT THE TICKET NEVER ASKED FOR. A tray holding a mis-drop can
+            // never resolve to a delivery: the junk occupies space the order needs, so the
+            // batch check is guaranteed to fire on a wrong tray and cost a life. Returning
+            // it first is what makes such a slot completable again, and the item rejoins the
+            // board so another ticket can have it. Runs BEFORE the snapshot below, which is
+            // why a returned item is part of this press's budget rather than a phantom.
+            var returnedAny = ReturnUnwantedTrayItems(state, trayManager);
+
+            // 2 -- THE TICKETS IN HAND, captured by INSTANCE before anything moves. This is
+            // what keeps one press from becoming a whole day: filling a tray delivers it,
+            // which synchronously assigns a NEW ticket into the same slot, whose required
+            // items then spawn onto the board. GDD 5.2 says this powerup places the items
+            // the ACTIVE tickets need, not "until the queue is empty". Reference equality is
+            // the check, not slot emptiness, because the replacement ticket occupies the
+            // very same slot.
             var captured = new Ticket[GameState.TicketSlotCount];
             for (var i = 0; i < GameState.TicketSlotCount; i++)
             {
                 captured[i] = state.TicketSlots[i];
             }
 
+            // 3 -- THE PLAN, closed before the first move. Everything the press will do is
+            // decided here, against the board and trays as they stand right now: completable
+            // tickets first, then partial fills on what is left (PowerupEffects
+            // .PlanAutoCollect). Items that spawn during the run cannot enter it, and
+            // neither can tickets that arrive during it.
+            var trayContents = new IReadOnlyList<BoardItem>[GameState.TicketSlotCount];
+            for (var i = 0; i < GameState.TicketSlotCount; i++)
+            {
+                trayContents[i] = trayManager.GetContents(i);
+            }
+
+            var plan = PowerupEffects.PlanAutoCollect(state, trayContents);
             var movedAny = false;
 
-            for (var slot = 0; slot < GameState.TicketSlotCount; slot++)
+            // 4 -- EXECUTE, in plan order, verifying every step against the live board.
+            foreach (var move in plan)
             {
-                if (captured[slot] == null) continue;
+                var slot = move.SlotIndex;
+
+                // The slot's ticket resolved mid-run (its own last move delivered it, or a
+                // cascade cancelled it). Its remaining moves belong to a ticket that is no
+                // longer there, so they are dropped rather than aimed at the new one.
+                if (!ReferenceEquals(state.TicketSlots[slot], captured[slot])) continue;
+
+                // The cell no longer holds the item the plan reserved. A delivery backfills
+                // the cells it empties, so this is a real possibility rather than paranoia --
+                // and taking whatever landed there instead is exactly the bug this rewrite
+                // exists to remove.
+                if (!ReferenceEquals(state.Board.ItemAt(move.X, move.Y), move.Item)) continue;
 
                 var tray = TrayFor(slot);
                 if (tray == null) continue;
 
-                for (var move = 0; move < MaxMovesPerSlot; move++)
-                {
-                    // Re-asked every iteration rather than walked from a list built once.
-                    // A single accepted drop can deliver the ticket, assign the next one and
-                    // respawn the board inside this very call, so a frozen plan would be
-                    // describing a board that no longer exists.
-                    if (!ReferenceEquals(state.TicketSlots[slot], captured[slot])) break;
+                if (!boardView.TryGetDragHandler(move.X, move.Y, out var handler)) continue;
 
-                    if (!PowerupEffects.TryFindAutoCollectItem(
-                            state, slot, trayManager.GetContents(slot), out var x, out var y))
-                    {
-                        break;
-                    }
+                // The same call OnDrop makes. A refusal is not an error -- the tray can
+                // legitimately say no (it is mid-delivery, or the tutorial has it locked) --
+                // so that move is simply skipped.
+                if (!tray.TryAcceptDrop(handler)) continue;
 
-                    if (!boardView.TryGetDragHandler(x, y, out var handler)) break;
-
-                    // The same call OnDrop makes. A refusal here is not an error -- the tray
-                    // can legitimately say no (its ticket resolved mid-cascade) -- so the
-                    // slot simply stops.
-                    if (!tray.TryAcceptDrop(handler)) break;
-
-                    movedAny = true;
-
-                    if (move == MaxMovesPerSlot - 1)
-                    {
-                        Debug.LogWarning(
-                            $"{nameof(AutoCollectRunner)}: slot {slot} hit the {MaxMovesPerSlot}-move safety limit. " +
-                            "A ticket needs at most three items, so this means the search kept offering an item the " +
-                            "tray would not resolve — worth looking at.",
-                            this);
-                    }
-                }
+                movedAny = true;
             }
 
-            return movedAny;
+            return movedAny || returnedAny;
+        }
+
+        // Every tray's unwanted leftovers, back onto the board. The DECIDING is
+        // PowerupEffects.UnwantedTrayItems (pure, and therefore testable); this only asks
+        // each tray to carry it out, because the tray is the only object that can -- a tray
+        // item's GameObject is a child of one of its slots, and nothing else can take it
+        // out of there without leaving the model and the view disagreeing.
+        private bool ReturnUnwantedTrayItems(GameState state, TrayManager trayManager)
+        {
+            var returnedAny = false;
+
+            for (var slot = 0; slot < GameState.TicketSlotCount; slot++)
+            {
+                var tray = TrayFor(slot);
+                if (tray == null) continue;
+
+                var unwanted = PowerupEffects.UnwantedTrayItems(state, slot, trayManager.GetContents(slot));
+                if (unwanted.Count == 0) continue;
+
+                if (tray.ReturnItemsToBoard(unwanted) > 0) returnedAny = true;
+            }
+
+            return returnedAny;
         }
 
         // Index IS the slot index. Guarded rather than trusted because the array is dragged

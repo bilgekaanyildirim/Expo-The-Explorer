@@ -49,6 +49,25 @@ namespace ExpoTheExplorer.UI
         private TicketCardView ticketCardView;
         private bool inDropCall;
 
+        // True from the moment a drop delivers until that delivery's animation has
+        // emptied the slots — the item's settle flight plus the tray's grow/lift/fade.
+        // TryAcceptDrop refuses everything for that window because the MODEL is already
+        // a ticket ahead: TrayManager emptied this tray and handed the slot to the next
+        // order the instant the batch resolved, so an item accepted now would be seated
+        // into slots DestroySlotChildrenImmediate is about to wipe — counted by
+        // TrayManager and invisible to the player. Auto-Collect never trips this; it
+        // already stops on the slot it delivered (AutoCollectRunner's ReferenceEquals
+        // check).
+        private bool deliveryInProgress;
+
+        // The item whose settle flight the delivery is waiting on, held for exactly one
+        // reason: that flight's OnComplete is what starts the delivery, and DOTween KILLS
+        // a tween whose target GameObject is destroyed rather than completing it. A day
+        // reset landing in that gap would leave deliveryInProgress stuck true and this
+        // tray refusing every drop for the rest of the session — Update below watches for
+        // it. Nothing is ever called on this reference; only its liveness is read.
+        private BoardItemDragHandler deliveringItem;
+
         // The spotlight THIS tray raised, while it is the tutorial's target. Held so it can
         // be dismissed synchronously at the step boundary rather than left to Unity's
         // end-of-frame Destroy -- see DismissTutorialSpotlight.
@@ -305,6 +324,11 @@ namespace ExpoTheExplorer.UI
         {
             if (!isValid || dragHandler == null || dragHandler.CurrentItem == null) return false;
 
+            // A tray in the middle of delivering takes nothing — see deliveryInProgress.
+            // A false return is this method's ordinary "not accepted" answer, so the item
+            // simply snaps back to the board and can be dropped again a moment later.
+            if (deliveryInProgress) return false;
+
             // The tutorial's second gate. Refusing HERE rather than inside TrayManager is
             // deliberate: a false return is already this method's "not accepted" answer, so
             // the item snaps back exactly as it does for any other rejected drop, and
@@ -347,8 +371,10 @@ namespace ExpoTheExplorer.UI
                 // This drop just completed the tray and TrayManager already ran
                 // the batch check (delivered or scattered) — every item that
                 // was sitting in our slots (from earlier drops on this same
-                // ticket) is stale now, and this drop's own item was never
-                // placed into a slot, so it needs cleanup here instead.
+                // ticket) is stale now, and so is this drop's own. The two
+                // branches part company over that last one: a delivery seats it
+                // with the others and takes the whole tray out together, a wrong
+                // order shakes it where it landed and destroys it on its own.
                 if (justDelivered)
                 {
                     // Must happen in this exact frame, before PlayDeliverySuccess
@@ -356,9 +382,21 @@ namespace ExpoTheExplorer.UI
                     // the tray's lift phase) — otherwise TicketCardView.Update's
                     // poll catches the already-reassigned ticket on the very
                     // next frame and rebuilds instantly, well before the exit
-                    // animation would even start.
+                    // animation would even start. It is also what lets the wait
+                    // below exist at all: the card holds the delivered ticket
+                    // open until PlayDeliveryTransition, however long that takes.
                     ticketCardView.SuppressPollUntilDeliveryTransition();
-                    PlayDeliverySuccess(dragHandler);
+
+                    // The item that completed the order flies into its slot first
+                    // and the delivery starts when it LANDS (D-100). It used to
+                    // start here, in this frame, which meant the one item the
+                    // player had just dropped never travelled — it grew and lifted
+                    // from wherever the finger let go while the tray left without
+                    // it.
+                    deliveryInProgress = true;
+                    deliveringItem = dragHandler;
+                    dragHandler.PlaceInSlotAndDeliver(
+                        ResolvePlacementSlot(item.Config.Category), slotIndex, PlayDeliverySuccess);
                 }
                 else
                 {
@@ -374,17 +412,111 @@ namespace ExpoTheExplorer.UI
             return true;
         }
 
+        // Auto-Collect's RETURN path (D-110): items this tray's ticket never asked for go
+        // back onto the board. WHICH items is decided in PowerupEffects.UnwantedTrayItems
+        // (pure, and therefore testable) and handed here by instance -- this method only
+        // carries it out, because this tray is the only object that can: a tray item's
+        // GameObject is a child of one of these three slots, and anything that removed it
+        // from TrayManager without also taking the object out would leave the item drawn in
+        // a tray that no longer holds it.
+        //
+        // The move itself is the one BoardItemDragHandler.OnEndDrag already performs for a
+        // tray pickup the player dropped somewhere invalid -- remove from the tray, spawn
+        // back onto the board under a fly-in override so it travels FROM this tray rather
+        // than from Starting Point, destroy the tray-side object. Reused rather than
+        // reinvented so an item sent home by the powerup lands exactly like one sent home
+        // by hand.
+        //
+        // Returns how many actually went back, which is not always what was asked for: an
+        // item the player is holding mid-drag is left alone (see below).
+        public int ReturnItemsToBoard(IReadOnlyList<BoardItem> items)
+        {
+            if (!isValid || items == null || items.Count == 0) return 0;
+
+            // A tray mid-delivery has already been emptied in the MODEL and handed to the
+            // next ticket; what is still drawn in it belongs to the delivery animation, not
+            // to the player. Same window TryAcceptDrop refuses for.
+            if (deliveryInProgress) return 0;
+
+            var unwanted = new HashSet<BoardItem>(items);
+            var returned = 0;
+
+            returned += ReturnFromSlot(mainDishSlot, unwanted);
+            returned += ReturnFromSlot(sideSlot, unwanted);
+            returned += ReturnFromSlot(drinkSlot, unwanted);
+
+            // Resynced rather than left to Update's poll. That poll reads a drop to exactly
+            // zero as "the whole tray was cleared externally" and runs ClearAllSlotVisuals
+            // on it -- correct for a timeout scatter, wrong here, where the objects are
+            // already gone and the tray is simply emptier than it was.
+            if (returned > 0) lastKnownCount = gameManager.TrayManager.GetContents(slotIndex).Count;
+
+            return returned;
+        }
+
+        private int ReturnFromSlot(Transform slot, HashSet<BoardItem> unwanted)
+        {
+            if (slot == null) return 0;
+
+            var returned = 0;
+
+            // Backwards, because the children are destroyed as they are visited.
+            for (var i = slot.childCount - 1; i >= 0; i--)
+            {
+                var child = slot.GetChild(i);
+                var dragHandler = child.GetComponent<BoardItemDragHandler>();
+                if (dragHandler == null || dragHandler.CurrentItem == null) continue;
+
+                // Held by the player right now (a powerup pressed with a second finger).
+                // OnBeginDrag already took this item out of TrayManager's count and that
+                // handler is the single writer of its transform -- taking it away mid-drag
+                // is the same mistake ClearSlot's own IsDragging check exists to avoid.
+                if (dragHandler.IsDragging) continue;
+
+                if (!unwanted.Contains(dragHandler.CurrentItem)) continue;
+
+                var item = dragHandler.CurrentItem;
+                gameManager.TrayManager.RemoveItem(slotIndex, item);
+
+                // Flies in from where it was sitting in this tray. RequestSpawn rather than
+                // TryPlaceItem at a chosen cell: the board picks, and on a momentarily full
+                // board the item waits in the pending-spawn queue exactly like any other
+                // returned item instead of being lost.
+                boardView.BeginFlyInOverride(child.position);
+                gameManager.State.Board.RequestSpawn(item);
+                boardView.EndFlyInOverride();
+
+                Destroy(child.gameObject);
+                returned++;
+            }
+
+            return returned;
+        }
+
         // Successful delivery only (a wrong-order scatter still uses the
         // plain ClearAllSlotVisuals shrink-and-destroy above) — grows the
         // whole tray (background + every slot's contents, since they're all
         // descendants of this transform) as if lifting toward the camera,
         // then moves it up while every SpriteRenderer underneath fades out
         // together, before resetting back to normal for the next ticket.
-        // The just-delivered item itself was never parented under a slot,
-        // so it gets the identical treatment on its own transform in
-        // parallel (BoardItemDragHandler.PlayDeliverySuccessAndDestroy).
-        private void PlayDeliverySuccess(BoardItemDragHandler finalItem)
+        //
+        // Runs one settle tween AFTER the drop that delivered, handed here as
+        // that tween's completion callback (D-100). The item that completed
+        // the order is by then an ordinary child of a slot like every other
+        // item in the tray, which is why nothing here treats it specially any
+        // more: GetComponentsInChildren picks it up for the fade, the tray's
+        // own scale/move carries it, and DestroySlotChildrenImmediate below
+        // takes it with the rest. It used to animate in parallel on its own
+        // transform, and doing that to a now-parented item would double both
+        // the grow and the lift.
+        private void PlayDeliverySuccess()
         {
+            // A retry, a scene teardown or an abandoned day can land in the gap
+            // between the drop and this callback. Destroying the item kills its
+            // settle tween without completing it, so this is the belt to that
+            // brace rather than the only guard.
+            if (this == null || !isValid) return;
+
             var renderers = GetComponentsInChildren<SpriteRenderer>(true);
 
             ticketCardView.SetTrayAnimating(true);
@@ -406,6 +538,13 @@ namespace ExpoTheExplorer.UI
                 DestroySlotChildrenImmediate(mainDishSlot);
                 DestroySlotChildrenImmediate(sideSlot);
                 DestroySlotChildrenImmediate(drinkSlot);
+
+                // Reopened the instant the slots are empty rather than when the
+                // re-entrance finishes: from here on a newly accepted item can be
+                // seated safely, and the tray fading back in is a good enough
+                // place to land on.
+                deliveryInProgress = false;
+                deliveringItem = null;
 
                 // "New tray" re-entrance: grows and fades in right at rest
                 // position (no movement) instead of sliding up from below or
@@ -432,8 +571,6 @@ namespace ExpoTheExplorer.UI
                     renderer.DOFade(1f, animConfig.DeliveryReentryDuration);
                 }
             });
-
-            finalItem.PlayDeliverySuccessAndDestroy(animConfig);
         }
 
         // Wrong order: the tray (and everything sitting in it, since
@@ -576,6 +713,14 @@ namespace ExpoTheExplorer.UI
         private void Update()
         {
             if (!isValid) return;
+
+            // The delivery's start signal rides on the delivering item's settle tween,
+            // and that tween is killed rather than completed if the item is destroyed
+            // first (a retry, an abandoned day). Releasing the guard here is what keeps
+            // that from silently turning this tray into one that never accepts again.
+            // A plain bool read on every other frame — the Unity liveness check behind
+            // it only runs while a delivery is actually in flight.
+            if (deliveryInProgress && deliveringItem == null) deliveryInProgress = false;
 
             // Catches the one case OnDrop doesn't cover: a timeout scattering a
             // partially-filled tray back to the board (TrayManager.OnTicketAssigned),

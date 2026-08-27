@@ -126,78 +126,305 @@ namespace ExpoTheExplorer.Systems.PowerupSystem
             return removedAny;
         }
 
-        // GDD 5.2 #1's DECISION half -- which board cell this slot should take next. The
-        // moving is somewhere else entirely (AutoCollectRunner, in the UI assembly), and
-        // the split is not tidiness: a tray's contents are drawn by reparenting the dragged
-        // object, so the collect has to go through the ordinary drop path, which lives in a
-        // MonoBehaviour that no EditMode test can reach. Keeping the CHOOSING here is what
-        // makes the powerup's actual rules testable at all.
+        // GDD 5.2 #1's DECISION half -- the WHOLE press, decided before anything moves.
+        // The moving is somewhere else entirely (AutoCollectRunner, in the UI assembly),
+        // and the split is not tidiness: a tray's contents are drawn by reparenting the
+        // dragged object, so the collect has to go through the ordinary drop path, which
+        // lives in a MonoBehaviour that no EditMode test can reach. Keeping the CHOOSING
+        // here is what makes the powerup's actual rules testable at all.
         //
-        // "Outstanding" is the ticket's required multiset MINUS what its tray already
-        // holds, so a slot that is halfway filled by hand asks only for the rest. Counts
-        // matter here, unlike in ClearUnneededItems: a ticket wanting two colas with one
-        // already in the tray still wants exactly one more.
+        // A PLAN RATHER THAN A NEXT-MOVE, and that is the fix for both bugs the player
+        // reported (D-110). The previous shape answered "what should this slot take next"
+        // and was re-asked after every single move, against the LIVE board:
         //
-        // Returns the FIRST match in scan order rather than a nearest or prettiest one.
-        // The caller re-asks after every move, so the order only decides which of several
-        // identical items is taken -- and they are identical by construction, since the
-        // match is on the (food + modification) key.
+        //   * It collected items that were never on the board when the button was pressed.
+        //     BoardGrid.RemoveItem BACKFILLS the cell it empties from the pending-spawn
+        //     queue, and a delivery cascades synchronously into the NEXT ticket's required
+        //     items spawning. Re-scanning after every move meant slots 1 and 2 helped
+        //     themselves to whatever slot 0's own delivery had just produced.
+        //   * It left finishable tickets unfinished. Walking slot 0, then 1, then 2 and
+        //     grabbing whatever each one happened to want is greedy and blind: with one
+        //     burger on the board, slot 0 (burger + a cola that does not exist) took it and
+        //     stranded it in a tray that could never resolve, while slot 1 -- which wanted
+        //     only that burger -- got nothing.
         //
-        // It cannot produce a wrong order: only items the ticket is still SHORT of are ever
-        // offered, so the tray's batch check always resolves to a delivery rather than a
-        // life lost. That is a property of this method, which is why it is pinned by a test
-        // rather than trusted.
-        public static bool TryFindAutoCollectItem(
-            GameState state, int slotIndex, IReadOnlyList<BoardItem> trayContents, out int x, out int y)
+        // So the board is read ONCE, into a budget of (key -> cells), and every ticket is
+        // paid out of that fixed budget:
+        //
+        //   Pass 1, slots in order: a ticket whose outstanding requirement can be paid IN
+        //   FULL is reserved and completed. One that cannot is skipped with its items left
+        //   in the pot for a later slot -- that is the whole of the second fix.
+        //   Pass 2, slots in order, only the tickets pass 1 did not complete: whatever the
+        //   remaining budget can still put in them.
+        //
+        // Greedy in slot order rather than an optimal assignment, which is the rule the
+        // user asked for ("tickets in order") and can never complete FEWER tickets than the
+        // old code did.
+        //
+        // IT CANNOT COST A LIFE, and that property is now structural rather than incidental.
+        // The tray's batch check fires the moment the tray is FULL, so the plan either
+        // fills a slot exactly (a correct order -> delivery) or deliberately leaves at
+        // least one space free. See MaxMovesFor below.
+        //
+        // Coordinates stay valid for the whole run even though the board is mutated between
+        // moves: removing an item only ever backfills the cell it emptied, never moves
+        // another one. The caller re-checks the exact BoardItem instance at each cell
+        // anyway, so a board that changed under the plan skips the move instead of taking
+        // the wrong item.
+        public static List<AutoCollectMove> PlanAutoCollect(
+            GameState state, IReadOnlyList<IReadOnlyList<BoardItem>> trayContents)
         {
-            x = -1;
-            y = -1;
+            var moves = new List<AutoCollectMove>();
+            if (state?.Board == null) return moves;
 
-            if (state?.Board == null) return false;
-            if (slotIndex < 0 || slotIndex >= GameState.TicketSlotCount) return false;
+            var budget = BuildBudget(state.Board);
+            var outstanding = new Dictionary<RequiredItemKey, int>[GameState.TicketSlotCount];
+            var maxMoves = new int[GameState.TicketSlotCount];
+            var completed = new bool[GameState.TicketSlotCount];
 
-            var ticket = state.TicketSlots[slotIndex];
-            if (ticket == null || ticket.State != TicketState.Active) return false;
-
-            var outstanding = TicketRequirements.RequiredCounts(ticket);
-
-            if (trayContents != null)
+            for (var slot = 0; slot < GameState.TicketSlotCount; slot++)
             {
-                foreach (var item in trayContents)
-                {
-                    var key = new RequiredItemKey(item.Config, item.Modifications);
-
-                    // Only decrements a key the ticket actually wants. An item already in
-                    // the tray that the ticket does NOT want (a mis-drop the player has not
-                    // resolved yet) must not reduce a requirement -- it is going to cost a
-                    // life when the tray fills, and quietly treating it as progress would
-                    // make this powerup finish that mistake for them.
-                    if (outstanding.TryGetValue(key, out var count) && count > 0)
-                    {
-                        outstanding[key] = count - 1;
-                    }
-                }
+                var tray = TrayFor(trayContents, slot);
+                outstanding[slot] = OutstandingFor(state, slot, tray);
+                maxMoves[slot] = MaxMovesFor(state, slot, tray);
             }
 
-            var board = state.Board;
-
-            for (var scanY = 0; scanY < board.Height; scanY++)
+            // Pass 1 -- complete what can be completed, out of the shared budget.
+            for (var slot = 0; slot < GameState.TicketSlotCount; slot++)
             {
-                for (var scanX = 0; scanX < board.Width; scanX++)
+                var owed = outstanding[slot];
+                if (owed == null || TotalCount(owed) == 0) continue;
+
+                // A tray still holding something its ticket does not want cannot be
+                // completed at all: the junk occupies space the order needs, so filling the
+                // rest would only reach the batch check with a wrong item in it. Such a
+                // slot falls through to pass 2, which leaves a space free.
+                if (TotalCount(owed) != maxMoves[slot]) continue;
+
+                if (!CanPayInFull(owed, budget)) continue;
+
+                Take(owed, budget, slot, TotalCount(owed), moves);
+                completed[slot] = true;
+            }
+
+            // Pass 2 -- partial fills, on the tickets pass 1 could not finish, out of
+            // whatever the budget still holds. Tickets that arrive DURING the run are
+            // unreachable from here: this list is closed before the caller's first move.
+            for (var slot = 0; slot < GameState.TicketSlotCount; slot++)
+            {
+                if (completed[slot]) continue;
+
+                var owed = outstanding[slot];
+                if (owed == null || TotalCount(owed) == 0) continue;
+
+                // One space is deliberately left free. A pass-2 slot is by definition one
+                // the budget cannot finish, so this only ever binds on a junk tray -- and
+                // there it is the difference between helping and triggering the player's
+                // own wrong-order life loss.
+                var limit = maxMoves[slot] - 1;
+                if (limit <= 0) continue;
+
+                Take(owed, budget, slot, limit, moves);
+            }
+
+            return moves;
+        }
+
+        // Everything in this slot's tray that its own ticket does NOT want -- a mis-drop
+        // the player has not resolved, or a surplus copy beyond the required count. The
+        // caller sends these back to the board before the plan is built, which is what
+        // makes such a tray completable again and puts the item back in play for whichever
+        // ticket does want it (D-110).
+        //
+        // Returned as the item INSTANCES rather than as counts, because the caller has to
+        // find each one's GameObject in the tray to send it home.
+        //
+        // A slot with no active ticket is left alone rather than emptied: TrayManager
+        // .OnTicketAssigned already scatters an orphaned tray the instant its ticket
+        // changes, and a second path doing the same job is how two writers start
+        // disagreeing.
+        public static List<BoardItem> UnwantedTrayItems(
+            GameState state, int slotIndex, IReadOnlyList<BoardItem> trayContents)
+        {
+            var unwanted = new List<BoardItem>();
+
+            if (state == null || trayContents == null || trayContents.Count == 0) return unwanted;
+            if (slotIndex < 0 || slotIndex >= GameState.TicketSlotCount) return unwanted;
+
+            var ticket = state.TicketSlots[slotIndex];
+            if (ticket == null || ticket.State != TicketState.Active) return unwanted;
+
+            var allowance = TicketRequirements.RequiredCounts(ticket);
+
+            foreach (var item in trayContents)
+            {
+                var key = new RequiredItemKey(item.Config, item.Modifications);
+
+                // Counts, not just identity: a ticket wanting one cola with two in the tray
+                // wants the second one gone as much as it wants a wrong food gone.
+                if (allowance.TryGetValue(key, out var remaining) && remaining > 0)
                 {
-                    var item = board.ItemAt(scanX, scanY);
+                    allowance[key] = remaining - 1;
+                    continue;
+                }
+
+                unwanted.Add(item);
+            }
+
+            return unwanted;
+        }
+
+        // The board as (key -> cells in scan order). Scan order decides only WHICH of
+        // several identical items is taken, and they are identical by construction -- the
+        // key is the (food + modification) combo that the tray's batch check compares on.
+        private static Dictionary<RequiredItemKey, List<AutoCollectMove>> BuildBudget(BoardGrid board)
+        {
+            var budget = new Dictionary<RequiredItemKey, List<AutoCollectMove>>();
+
+            for (var y = 0; y < board.Height; y++)
+            {
+                for (var x = 0; x < board.Width; x++)
+                {
+                    var item = board.ItemAt(x, y);
                     if (item == null) continue;
 
                     var key = new RequiredItemKey(item.Config, item.Modifications);
-                    if (!outstanding.TryGetValue(key, out var stillNeeded) || stillNeeded <= 0) continue;
+                    if (!budget.TryGetValue(key, out var cells))
+                    {
+                        cells = new List<AutoCollectMove>();
+                        budget[key] = cells;
+                    }
 
-                    x = scanX;
-                    y = scanY;
-                    return true;
+                    // Slot is filled in when the move is actually handed to a ticket; here
+                    // this is just "an item of this key, at this cell".
+                    cells.Add(new AutoCollectMove(-1, x, y, item));
                 }
             }
 
-            return false;
+            return budget;
+        }
+
+        // The ticket's required multiset MINUS what its tray already holds, so a slot that
+        // is halfway filled by hand asks only for the rest. Counts matter here, unlike in
+        // ClearUnneededItems: a ticket wanting two colas with one already in the tray still
+        // wants exactly one more.
+        //
+        // Null (not empty) for a slot with no active ticket -- the two are different
+        // answers and the caller treats them the same only by accident otherwise.
+        private static Dictionary<RequiredItemKey, int> OutstandingFor(
+            GameState state, int slotIndex, IReadOnlyList<BoardItem> trayContents)
+        {
+            var ticket = state.TicketSlots[slotIndex];
+            if (ticket == null || ticket.State != TicketState.Active) return null;
+
+            var outstanding = TicketRequirements.RequiredCounts(ticket);
+            if (trayContents == null) return outstanding;
+
+            foreach (var item in trayContents)
+            {
+                var key = new RequiredItemKey(item.Config, item.Modifications);
+
+                // Only decrements a key the ticket actually wants. An item in the tray that
+                // the ticket does NOT want must not reduce a requirement -- it is going to
+                // cost a life when the tray fills, and quietly treating it as progress
+                // would make this powerup finish that mistake for them. The caller normally
+                // removes those first (UnwantedTrayItems), so this is the case where one
+                // could not be sent home -- the player is holding it mid-drag.
+                if (outstanding.TryGetValue(key, out var count) && count > 0)
+                {
+                    outstanding[key] = count - 1;
+                }
+            }
+
+            return outstanding;
+        }
+
+        // How many items may be added to this tray at all: TraySlot.IsFull compares the
+        // tray's COUNT against the ticket's required count, so this is the free space, and
+        // reaching it is what runs the batch check. On a clean tray it equals the
+        // outstanding total; on a tray with junk in it, it is smaller -- which is exactly
+        // how PlanAutoCollect recognises one.
+        private static int MaxMovesFor(GameState state, int slotIndex, IReadOnlyList<BoardItem> trayContents)
+        {
+            var ticket = state.TicketSlots[slotIndex];
+            if (ticket == null || ticket.State != TicketState.Active) return 0;
+
+            var occupied = trayContents?.Count ?? 0;
+            return ticket.RequiredItems.Count - occupied;
+        }
+
+        private static int TotalCount(Dictionary<RequiredItemKey, int> counts)
+        {
+            var total = 0;
+            foreach (var count in counts.Values) total += count;
+            return total;
+        }
+
+        private static bool CanPayInFull(
+            Dictionary<RequiredItemKey, int> owed, Dictionary<RequiredItemKey, List<AutoCollectMove>> budget)
+        {
+            foreach (var entry in owed)
+            {
+                if (entry.Value <= 0) continue;
+                if (!budget.TryGetValue(entry.Key, out var cells) || cells.Count < entry.Value) return false;
+            }
+
+            return true;
+        }
+
+        // Moves up to `limit` items from the budget into the plan for this slot, and
+        // decrements both sides as it goes -- an item handed to one ticket is gone from the
+        // pot for every later one, which is the entire point of planning over a budget.
+        private static void Take(
+            Dictionary<RequiredItemKey, int> owed,
+            Dictionary<RequiredItemKey, List<AutoCollectMove>> budget,
+            int slotIndex,
+            int limit,
+            List<AutoCollectMove> moves)
+        {
+            foreach (var key in new List<RequiredItemKey>(owed.Keys))
+            {
+                var wanted = owed[key];
+                if (wanted <= 0) continue;
+                if (!budget.TryGetValue(key, out var cells)) continue;
+
+                while (wanted > 0 && cells.Count > 0 && limit > 0)
+                {
+                    var cell = cells[0];
+                    cells.RemoveAt(0);
+                    moves.Add(new AutoCollectMove(slotIndex, cell.X, cell.Y, cell.Item));
+                    wanted--;
+                    limit--;
+                }
+
+                owed[key] = wanted;
+                if (limit <= 0) return;
+            }
+        }
+
+        private static IReadOnlyList<BoardItem> TrayFor(
+            IReadOnlyList<IReadOnlyList<BoardItem>> trayContents, int slotIndex) =>
+            trayContents != null && slotIndex < trayContents.Count ? trayContents[slotIndex] : null;
+    }
+
+    // One step of an Auto-Collect plan: take THIS item, from THIS cell, into THIS slot's
+    // tray. The item is carried alongside the coordinate rather than looked up again at
+    // execution time, so the runner can tell "the cell I planned" from "whatever is sitting
+    // in that cell now" -- a delivery mid-run backfills cells behind it, and a move whose
+    // item has changed is skipped rather than taken blind.
+    public readonly struct AutoCollectMove
+    {
+        public int SlotIndex { get; }
+        public int X { get; }
+        public int Y { get; }
+        public BoardItem Item { get; }
+
+        public AutoCollectMove(int slotIndex, int x, int y, BoardItem item)
+        {
+            SlotIndex = slotIndex;
+            X = x;
+            Y = y;
+            Item = item;
         }
     }
 }

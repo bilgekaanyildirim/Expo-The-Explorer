@@ -351,28 +351,136 @@ namespace ExpoTheExplorer.Tests.EditMode
         }
 
         // =================================================================================
-        // TryFindAutoCollectItem — GDD 5.2 #1's decision half
+        // PlanAutoCollect — GDD 5.2 #1's decision half, and D-110's rewrite of it
         // =================================================================================
 
         [Test]
-        public void TryFindAutoCollectItem_FindsAnItemTheTicketStillNeeds()
+        public void PlanAutoCollect_CompletesATicketItCanPayInFull()
         {
             var burger = Food(FoodCategory.Main, "burger");
             var cola = Food(FoodCategory.Drink, "cola");
             var state = BoardState(width: 4, height: 1);
-            state.TicketSlots[0] = TicketFor(burger);
+            state.TicketSlots[0] = TicketFor(burger, cola);
 
             Place(state, cola, 0);
             Place(state, burger, 1);
 
-            Assert.IsTrue(PowerupEffects.TryFindAutoCollectItem(state, 0, NoTray, out var x, out var y));
-            Assert.AreEqual(burger, state.Board.ItemAt(x, y).Config);
+            var plan = PowerupEffects.PlanAutoCollect(state, NoTrays);
+
+            Assert.AreEqual(2, plan.Count);
+            CollectionAssert.AreEquivalent(
+                new[] { burger, cola }, plan.ConvertAll(move => move.Item.Config));
+            Assert.IsTrue(plan.TrueForAll(move => move.SlotIndex == 0));
+        }
+
+        // Every move names the item it reserved, not just a coordinate — that is what lets
+        // the runner tell "the cell I planned" from "whatever the board backfilled into it".
+        [Test]
+        public void PlanAutoCollect_NamesTheItemSittingInTheCellItChose()
+        {
+            var burger = Food(FoodCategory.Main, "burger");
+            var state = BoardState(width: 3, height: 1);
+            state.TicketSlots[0] = TicketFor(burger);
+
+            Place(state, Food(FoodCategory.Drink, "cola"), 0);
+            var planted = PlaceItem(state, burger, 1);
+
+            var plan = PowerupEffects.PlanAutoCollect(state, NoTrays);
+
+            Assert.AreEqual(1, plan.Count);
+            Assert.AreSame(planted, plan[0].Item);
+            Assert.AreSame(planted, state.Board.ItemAt(plan[0].X, plan[0].Y));
+        }
+
+        // THE SECOND BUG THE USER REPORTED, pinned. One burger, and two tickets that both
+        // want it: slot 0 also needs a cola that does not exist anywhere, slot 1 needs
+        // nothing else. The old per-slot greedy search gave the burger to slot 0, stranding
+        // it in a tray that could never resolve, and slot 1 — which was completable — got
+        // nothing. Pass 1 asks "can this ticket be FINISHED" before spending anything.
+        [Test]
+        public void PlanAutoCollect_DoesNotStrandAnItemOnATicketItCannotFinish()
+        {
+            var burger = Food(FoodCategory.Main, "burger");
+            var cola = Food(FoodCategory.Drink, "cola");
+            var state = BoardState(width: 4, height: 1);
+            state.TicketSlots[0] = TicketFor(burger, cola);
+            state.TicketSlots[1] = TicketFor(burger);
+
+            Place(state, burger, 0);
+
+            var plan = PowerupEffects.PlanAutoCollect(state, NoTrays);
+
+            Assert.AreEqual(1, plan.Count, "the one burger is spent once");
+            Assert.AreEqual(1, plan[0].SlotIndex,
+                "it goes to the ticket that can actually be completed with it");
+        }
+
+        // The budget is spent, not merely read: an item promised to one ticket is gone for
+        // every later one. Two identical tickets and one burger means exactly one move.
+        [Test]
+        public void PlanAutoCollect_SpendsEachBoardItemOnce()
+        {
+            var burger = Food(FoodCategory.Main, "burger");
+            var state = BoardState(width: 4, height: 1);
+            state.TicketSlots[0] = TicketFor(burger);
+            state.TicketSlots[1] = TicketFor(burger);
+
+            Place(state, burger, 0);
+
+            var plan = PowerupEffects.PlanAutoCollect(state, NoTrays);
+
+            Assert.AreEqual(1, plan.Count);
+            Assert.AreEqual(0, plan[0].SlotIndex, "slots are served in order");
+        }
+
+        // Pass 2: a ticket nothing can finish still gets what the leftovers can give it.
+        [Test]
+        public void PlanAutoCollect_PartiallyFillsATicketPassOneCouldNotComplete()
+        {
+            var burger = Food(FoodCategory.Main, "burger");
+            var cola = Food(FoodCategory.Drink, "cola");
+            var fries = Food(FoodCategory.Side, "fries");
+            var state = BoardState(width: 4, height: 1);
+            state.TicketSlots[0] = TicketFor(burger, cola, fries);
+
+            Place(state, burger, 0);
+
+            var plan = PowerupEffects.PlanAutoCollect(state, NoTrays);
+
+            Assert.AreEqual(1, plan.Count);
+            Assert.AreEqual(burger, plan[0].Item.Config);
+        }
+
+        // THE PROPERTY THAT MAKES THIS POWERUP INCAPABLE OF COSTING A LIFE, and after D-110
+        // it is structural rather than incidental. The tray's batch check fires the moment
+        // the tray is FULL, so a plan that cannot complete an order must leave a space free.
+        // Here the tray already holds a mis-dropped cola the runner could not send home (the
+        // player is holding it mid-drag), so the ticket can never be satisfied — and filling
+        // its one remaining space would resolve the batch on a wrong tray.
+        [Test]
+        public void PlanAutoCollect_NeverFillsATrayThatCannotResolve()
+        {
+            var burger = Food(FoodCategory.Main, "burger");
+            var fries = Food(FoodCategory.Side, "fries");
+            var cola = Food(FoodCategory.Drink, "cola");
+            var state = BoardState(width: 4, height: 1);
+            state.TicketSlots[0] = TicketFor(burger, fries);
+
+            Place(state, burger, 0);
+            Place(state, fries, 1);
+
+            var trayWithJunk = TraysWith(0, new BoardItem(cola, Array.Empty<Modification>()));
+
+            var plan = PowerupEffects.PlanAutoCollect(state, trayWithJunk);
+
+            Assert.AreEqual(0, plan.Count,
+                "one free space and two items owed — anything placed here resolves the batch on a wrong tray");
         }
 
         // The tray is subtracted, and COUNTS matter here unlike in the clear: a ticket
         // wanting two colas with one already collected still wants exactly one more.
         [Test]
-        public void TryFindAutoCollectItem_SubtractsWhatTheTrayAlreadyHolds()
+        public void PlanAutoCollect_SubtractsWhatTheTrayAlreadyHolds()
         {
             var cola = Food(FoodCategory.Drink, "cola");
             var state = BoardState(width: 4, height: 1);
@@ -381,44 +489,20 @@ namespace ExpoTheExplorer.Tests.EditMode
             Place(state, cola, 0);
             Place(state, cola, 1);
 
-            var trayWithOne = new List<BoardItem> { new(cola, Array.Empty<Modification>()) };
-            Assert.IsTrue(PowerupEffects.TryFindAutoCollectItem(state, 0, trayWithOne, out _, out _),
+            var trayWithOne = TraysWith(0, new BoardItem(cola, Array.Empty<Modification>()));
+            Assert.AreEqual(1, PowerupEffects.PlanAutoCollect(state, trayWithOne).Count,
                 "one of the two colas is still owed");
 
-            var trayWithBoth = new List<BoardItem>
-            {
-                new(cola, Array.Empty<Modification>()),
-                new(cola, Array.Empty<Modification>()),
-            };
-            Assert.IsFalse(PowerupEffects.TryFindAutoCollectItem(state, 0, trayWithBoth, out _, out _),
+            var trayWithBoth = TraysWith(
+                0,
+                new BoardItem(cola, Array.Empty<Modification>()),
+                new BoardItem(cola, Array.Empty<Modification>()));
+            Assert.AreEqual(0, PowerupEffects.PlanAutoCollect(state, trayWithBoth).Count,
                 "the order is complete, so there is nothing left to fetch");
         }
 
-        // A mis-drop the player has not resolved yet must NOT count as progress. That tray
-        // is going to cost a life when it fills, and treating the wrong item as satisfying
-        // a requirement would have the powerup finish the mistake for them.
         [Test]
-        public void TryFindAutoCollectItem_DoesNotLetAnUnwantedTrayItemSatisfyARequirement()
-        {
-            var burger = Food(FoodCategory.Main, "burger");
-            var cola = Food(FoodCategory.Drink, "cola");
-            var state = BoardState(width: 4, height: 1);
-            state.TicketSlots[0] = TicketFor(burger);
-
-            Place(state, burger, 0);
-
-            var trayWithWrongItem = new List<BoardItem> { new(cola, Array.Empty<Modification>()) };
-
-            Assert.IsTrue(
-                PowerupEffects.TryFindAutoCollectItem(state, 0, trayWithWrongItem, out _, out _),
-                "the burger is still owed — the stray cola satisfies nothing");
-        }
-
-        // The property that makes this powerup incapable of costing a life: it only ever
-        // offers an item the ticket is SHORT of, so the tray's batch check always lands on
-        // the delivery branch.
-        [Test]
-        public void TryFindAutoCollectItem_NeverOffersAnItemTheTicketDoesNotWant()
+        public void PlanAutoCollect_NeverOffersAnItemTheTicketDoesNotWant()
         {
             var burger = Food(FoodCategory.Main, "burger");
             var cola = Food(FoodCategory.Drink, "cola");
@@ -428,14 +512,14 @@ namespace ExpoTheExplorer.Tests.EditMode
             Place(state, cola, 0);
             Place(state, cola, 1);
 
-            Assert.IsFalse(PowerupEffects.TryFindAutoCollectItem(state, 0, NoTray, out _, out _));
+            Assert.AreEqual(0, PowerupEffects.PlanAutoCollect(state, NoTrays).Count);
         }
 
         // Modification combos are a different item here too, for the same reason as in the
         // clear: fetching a plain burger for a no-pickles order would fill the tray with a
         // wrong item and cost a life.
         [Test]
-        public void TryFindAutoCollectItem_DoesNotOfferAPlainItemForAModifiedOrder()
+        public void PlanAutoCollect_DoesNotOfferAPlainItemForAModifiedOrder()
         {
             var burger = Food(FoodCategory.Main, "burger");
             var pickles = Mod("pickles");
@@ -444,22 +528,21 @@ namespace ExpoTheExplorer.Tests.EditMode
 
             Place(state, burger, 0);
 
-            Assert.IsFalse(
-                PowerupEffects.TryFindAutoCollectItem(state, 0, NoTray, out _, out _),
+            Assert.AreEqual(0, PowerupEffects.PlanAutoCollect(state, NoTrays).Count,
                 "a plain burger is not the no-pickles burger this ticket ordered");
         }
 
         [Test]
-        public void TryFindAutoCollectItem_OnAnEmptySlot_FindsNothing()
+        public void PlanAutoCollect_OnAnEmptySlot_PlansNothing()
         {
             var state = BoardState(width: 2, height: 1);
             Place(state, Food(FoodCategory.Main, "burger"), 0);
 
-            Assert.IsFalse(PowerupEffects.TryFindAutoCollectItem(state, 0, NoTray, out _, out _));
+            Assert.AreEqual(0, PowerupEffects.PlanAutoCollect(state, NoTrays).Count);
         }
 
         [Test]
-        public void TryFindAutoCollectItem_OnAResolvedTicket_FindsNothing()
+        public void PlanAutoCollect_OnAResolvedTicket_PlansNothing()
         {
             var burger = Food(FoodCategory.Main, "burger");
             var state = BoardState(width: 2, height: 1);
@@ -467,19 +550,116 @@ namespace ExpoTheExplorer.Tests.EditMode
 
             Place(state, burger, 0);
 
-            Assert.IsFalse(PowerupEffects.TryFindAutoCollectItem(state, 0, NoTray, out _, out _));
+            Assert.AreEqual(0, PowerupEffects.PlanAutoCollect(state, NoTrays).Count);
         }
 
         [Test]
-        public void TryFindAutoCollectItem_WithAnOutOfRangeSlot_FindsNothingInsteadOfThrowing()
+        public void PlanAutoCollect_WithNoTrayListAtAll_PlansTheWholeOrderInsteadOfThrowing()
         {
+            var burger = Food(FoodCategory.Main, "burger");
             var state = BoardState(width: 2, height: 1);
+            state.TicketSlots[0] = TicketFor(burger);
 
-            Assert.IsFalse(PowerupEffects.TryFindAutoCollectItem(state, -1, NoTray, out _, out _));
-            Assert.IsFalse(PowerupEffects.TryFindAutoCollectItem(state, 99, NoTray, out _, out _));
+            Place(state, burger, 0);
+
+            Assert.AreEqual(1, PowerupEffects.PlanAutoCollect(state, null).Count);
         }
 
-        private static readonly List<BoardItem> NoTray = new();
+        // =================================================================================
+        // UnwantedTrayItems — D-110's return path
+        // =================================================================================
+
+        // A mis-drop is named so the runner can send it home. That tray could never have
+        // resolved: the junk occupies space the order needs, so the batch check was
+        // guaranteed to fire on a wrong tray and cost a life.
+        [Test]
+        public void UnwantedTrayItems_NamesAMisDrop()
+        {
+            var burger = Food(FoodCategory.Main, "burger");
+            var cola = Food(FoodCategory.Drink, "cola");
+            var state = BoardState(width: 2, height: 1);
+            state.TicketSlots[0] = TicketFor(burger);
+
+            var stray = new BoardItem(cola, Array.Empty<Modification>());
+
+            var unwanted = PowerupEffects.UnwantedTrayItems(state, 0, new List<BoardItem> { stray });
+
+            Assert.AreEqual(1, unwanted.Count);
+            Assert.AreSame(stray, unwanted[0]);
+        }
+
+        // Counts, not just identity: the ticket wants ONE cola, so the second one is as
+        // unwanted as a wrong food would be.
+        [Test]
+        public void UnwantedTrayItems_NamesASurplusCopy()
+        {
+            var cola = Food(FoodCategory.Drink, "cola");
+            var state = BoardState(width: 2, height: 1);
+            state.TicketSlots[0] = TicketFor(cola);
+
+            var first = new BoardItem(cola, Array.Empty<Modification>());
+            var second = new BoardItem(cola, Array.Empty<Modification>());
+
+            var unwanted = PowerupEffects.UnwantedTrayItems(state, 0, new List<BoardItem> { first, second });
+
+            Assert.AreEqual(1, unwanted.Count);
+            Assert.AreSame(second, unwanted[0], "the first one is the one the ticket asked for");
+        }
+
+        [Test]
+        public void UnwantedTrayItems_LeavesACorrectTrayAlone()
+        {
+            var burger = Food(FoodCategory.Main, "burger");
+            var cola = Food(FoodCategory.Drink, "cola");
+            var state = BoardState(width: 2, height: 1);
+            state.TicketSlots[0] = TicketFor(burger, cola);
+
+            var tray = new List<BoardItem>
+            {
+                new(burger, Array.Empty<Modification>()),
+                new(cola, Array.Empty<Modification>()),
+            };
+
+            Assert.AreEqual(0, PowerupEffects.UnwantedTrayItems(state, 0, tray).Count);
+        }
+
+        // A slot whose ticket is gone is left to TrayManager.OnTicketAssigned, which already
+        // scatters an orphaned tray. Two paths doing the same job is how two writers start
+        // disagreeing.
+        [Test]
+        public void UnwantedTrayItems_OnASlotWithNoActiveTicket_NamesNothing()
+        {
+            var burger = Food(FoodCategory.Main, "burger");
+            var state = BoardState(width: 2, height: 1);
+            var tray = new List<BoardItem> { new(burger, Array.Empty<Modification>()) };
+
+            Assert.AreEqual(0, PowerupEffects.UnwantedTrayItems(state, 0, tray).Count, "no ticket at all");
+
+            state.TicketSlots[0] = TicketFor(burger, TicketState.Delivered);
+            Assert.AreEqual(0, PowerupEffects.UnwantedTrayItems(state, 0, tray).Count, "already resolved");
+        }
+
+        [Test]
+        public void UnwantedTrayItems_WithAnOutOfRangeSlot_NamesNothingInsteadOfThrowing()
+        {
+            var burger = Food(FoodCategory.Main, "burger");
+            var state = BoardState(width: 2, height: 1);
+            var tray = new List<BoardItem> { new(burger, Array.Empty<Modification>()) };
+
+            Assert.AreEqual(0, PowerupEffects.UnwantedTrayItems(state, -1, tray).Count);
+            Assert.AreEqual(0, PowerupEffects.UnwantedTrayItems(state, 99, tray).Count);
+        }
+
+        // Every slot empty — the ordinary case for a press with nothing collected by hand yet.
+        private static readonly IReadOnlyList<BoardItem>[] NoTrays =
+            new IReadOnlyList<BoardItem>[GameState.TicketSlotCount];
+
+        private static IReadOnlyList<BoardItem>[] TraysWith(int slotIndex, params BoardItem[] items)
+        {
+            var trays = new IReadOnlyList<BoardItem>[GameState.TicketSlotCount];
+            trays[slotIndex] = new List<BoardItem>(items);
+            return trays;
+        }
 
         // --- fixtures for the board cases ------------------------------------------------
 
@@ -547,8 +727,16 @@ namespace ExpoTheExplorer.Tests.EditMode
             };
         }
 
-        private static void Place(GameState state, FoodItemConfig food, int x) =>
-            state.Board.TryPlaceItem(new BoardItem(food, Array.Empty<Modification>()), x, 0);
+        private static void Place(GameState state, FoodItemConfig food, int x) => PlaceItem(state, food, x);
+
+        // Same placement, handing back the INSTANCE — a plan names the item it reserved,
+        // not just a cell, so a test that checks which item was chosen needs the object.
+        private static BoardItem PlaceItem(GameState state, FoodItemConfig food, int x)
+        {
+            var item = new BoardItem(food, Array.Empty<Modification>());
+            state.Board.TryPlaceItem(item, x, 0);
+            return item;
+        }
 
         private static int ItemsOnBoard(GameState state) => state.Board.OccupiedCellCount;
 
