@@ -51,6 +51,16 @@ namespace ExpoTheExplorer.Editor
         private string daysFolderPath;
         private List<DayEditorModel> loadedDays;
 
+        // The Day whose editor was on screen last pass. The unsaved-changes prompt hangs off
+        // this rather than off OdinMenuTreeSelection.SelectionChanged: that event fires from
+        // inside Odin's own selection bookkeeping, and "Keep Editing" has to re-select the Day
+        // being left -- i.e. mutate the list Odin is in the middle of iterating.
+        private DayEditorModel shownDay;
+
+        // True from the moment the prompt is queued until it has been answered. Without it,
+        // every OnImGUI pass while the dialog is up would queue another one.
+        private bool unsavedPromptQueued;
+
         protected override OdinMenuTree BuildMenuTree()
         {
             daysFolderPath = Path.Combine(Application.dataPath, "Resources", "Days");
@@ -70,6 +80,18 @@ namespace ExpoTheExplorer.Editor
 
             ConfigureAllDays();
 
+            // These Days came straight off disk, so what they hold right now IS their file:
+            // that is the baseline every later "has this changed?" is measured against. After
+            // Configure, because the baseline has to be the state the inspector will draw.
+            foreach (var day in loadedDays)
+            {
+                day.MarkSaved();
+            }
+
+            // Every model in the old tree was just replaced by a freshly loaded one, so the
+            // Day the leave-guard thinks is on screen no longer exists.
+            shownDay = null;
+
             var tree = new OdinMenuTree();
             foreach (var day in loadedDays)
             {
@@ -77,6 +99,205 @@ namespace ExpoTheExplorer.Editor
             }
 
             return tree;
+        }
+
+        protected override void OnImGUI()
+        {
+            GuardDayChange();
+            RefreshSaveStateLabels();
+            base.OnImGUI();
+        }
+
+        // A window close cannot be cancelled, so this one is Save-or-lose rather than the
+        // three-way prompt switching Days gets.
+        protected override void OnDestroy()
+        {
+            PromptForUnsavedDays("Closing the Day Editor");
+            base.OnDestroy();
+        }
+
+        private void GuardDayChange()
+        {
+            if (MenuTree == null || unsavedPromptQueued)
+            {
+                return;
+            }
+
+            var selected = MenuTree.Selection?.SelectedValue as DayEditorModel;
+            if (ReferenceEquals(selected, shownDay))
+            {
+                return;
+            }
+
+            var leaving = shownDay;
+            shownDay = selected;
+
+            // A Day that was deleted, or one belonging to a menu tree that has since been
+            // rebuilt, is not being "left" -- it is gone, and there is nothing to save it to.
+            if (leaving == null || loadedDays == null || !loadedDays.Contains(leaving))
+            {
+                return;
+            }
+
+            leaving.RefreshUnsavedState(force: true);
+            if (!leaving.HasUnsavedChanges)
+            {
+                return;
+            }
+
+            // Asked on the next editor tick, not here. A modal dialog opened in the middle of
+            // OnGUI leaves this pass's layout half-built, and re-selecting the previous Day
+            // (what "Keep Editing" does) would run against a menu tree that is mid-draw.
+            unsavedPromptQueued = true;
+            EditorApplication.delayCall += () => AskAboutLeavingDay(leaving);
+        }
+
+        private void AskAboutLeavingDay(DayEditorModel leaving)
+        {
+            unsavedPromptQueued = false;
+
+            // Between queueing and now, the Day may have been saved, reverted or deleted.
+            if (loadedDays == null || !loadedDays.Contains(leaving) || !leaving.HasUnsavedChanges)
+            {
+                return;
+            }
+
+            // A Day that has never been written has nothing to fall back to, so "Discard"
+            // would mean deleting it outright. That is the Delete button's job, and it asks
+            // first; here the second option simply leaves the Day alone, unsaved.
+            if (!leaving.HasSavedState)
+            {
+                if (EditorUtility.DisplayDialog(
+                        "Unsaved Day",
+                        $"Day {leaving.DayIndex} has never been saved. Save it now?",
+                        "Save", "Later"))
+                {
+                    SaveOrExplain(leaving);
+                }
+
+                Repaint();
+                return;
+            }
+
+            var choice = EditorUtility.DisplayDialogComplex(
+                "Unsaved Changes",
+                $"Day {leaving.DayIndex} has changes that were never saved.",
+                "Save", "Keep Editing", "Discard");
+
+            switch (choice)
+            {
+                case 0:
+                    SaveOrExplain(leaving);
+                    break;
+                case 1:
+                    // Put the guard's own idea of the current Day back first, so re-selecting
+                    // does not read as another Day change on the next pass.
+                    shownDay = leaving;
+                    TrySelectMenuItemWithObject(leaving);
+                    break;
+                default:
+                    leaving.RevertToSaved();
+                    break;
+            }
+
+            Repaint();
+        }
+
+        // The Save BUTTON is disabled while a Day has validation errors (EnableIf on
+        // DayEditorModel.Save). These prompts must not become a way around that -- an invalid
+        // Day written to disk is a file the runtime parser then chokes on.
+        private void SaveOrExplain(DayEditorModel day)
+        {
+            if (!day.IsSaveable)
+            {
+                EditorUtility.DisplayDialog(
+                    "Cannot Save",
+                    $"Day {day.DayIndex} still has validation errors, so it was left unsaved:\n\n{day.ValidationSummary}",
+                    "OK");
+                return;
+            }
+
+            OnSaveRequested(day);
+        }
+
+        // Used by the two paths that throw away in-memory Days wholesale: closing the window,
+        // and deleting a Day (which rebuilds the menu tree from disk).
+        private void PromptForUnsavedDays(string reason, DayEditorModel except = null)
+        {
+            if (loadedDays == null)
+            {
+                return;
+            }
+
+            foreach (var day in loadedDays)
+            {
+                day.RefreshUnsavedState(force: true);
+            }
+
+            var unsaved = loadedDays.Where(d => d != except && d.HasUnsavedChanges).ToList();
+            if (unsaved.Count == 0)
+            {
+                return;
+            }
+
+            var list = string.Join(", ", unsaved.Select(d => $"Day {d.DayIndex}"));
+            if (!EditorUtility.DisplayDialog(
+                    "Unsaved Changes",
+                    $"{reason} would discard unsaved changes on: {list}.",
+                    "Save All", "Discard"))
+            {
+                return;
+            }
+
+            // Collected rather than reported one dialog at a time: "Save All" is one decision,
+            // so its failures are one message.
+            var failed = unsaved.Where(day => !day.IsSaveable).ToList();
+            foreach (var day in unsaved.Except(failed))
+            {
+                OnSaveRequested(day);
+            }
+
+            if (failed.Count > 0)
+            {
+                EditorUtility.DisplayDialog(
+                    "Some Days Were Not Saved",
+                    $"These Days still have validation errors and were left as they are: {string.Join(", ", failed.Select(d => $"Day {d.DayIndex}"))}.",
+                    "OK");
+            }
+        }
+
+        // The Day list is the only place a Day that is NOT on screen can report itself, and
+        // the asterisk there is what makes "I edited Day 12 and wandered off" visible at all.
+        // Cheap enough for every pass: HasUnsavedChanges reads a cached bool, and only the Day
+        // being drawn ever recomputes it.
+        private void RefreshSaveStateLabels()
+        {
+            if (MenuTree == null || loadedDays == null)
+            {
+                return;
+            }
+
+            foreach (var item in MenuTree.MenuItems)
+            {
+                if (item.Value is not DayEditorModel day)
+                {
+                    continue;
+                }
+
+                // The number comes from the model rather than from what the item was added
+                // with, so an edited Day Index shows up in the list instead of going stale.
+                var wanted = day.HasUnsavedChanges ? $"Day {day.DayIndex} *" : $"Day {day.DayIndex}";
+                if (item.Name != wanted)
+                {
+                    item.Name = wanted;
+                }
+            }
+
+            var wantedTitle = loadedDays.Any(d => d.HasUnsavedChanges) ? "Day Editor*" : "Day Editor";
+            if (titleContent.text != wantedTitle)
+            {
+                titleContent.text = wantedTitle;
+            }
         }
 
         private void ConfigureAllDays()
@@ -205,6 +426,10 @@ namespace ExpoTheExplorer.Editor
 
             DayFileIO.Save(daysFolderPath, day.ToDayJson());
             day.LastSavedDayIndex = day.DayIndex;
+
+            // What is on disk is now what the model holds: this becomes the state every later
+            // "has this changed?" is measured against.
+            day.MarkSaved();
             AssetDatabase.Refresh();
         }
 
@@ -226,6 +451,11 @@ namespace ExpoTheExplorer.Editor
             {
                 return;
             }
+
+            // ForceMenuTreeRebuild below re-runs BuildMenuTree, which re-reads every Day from
+            // disk -- so unsaved edits on any OTHER Day go with it. That has always been true
+            // of this path; it just used to happen without a word.
+            PromptForUnsavedDays("Deleting a Day reloads every Day from disk, which", day);
 
             // Delete whatever file this Day actually landed on last (its DayIndex may have been
             // edited since the last save without saving again).

@@ -954,6 +954,137 @@ namespace ExpoTheExplorer.Editor
         [UnityEngine.HideInInspector]
         public int? LastSavedDayIndex;
 
+        // ------------------------------------------------------------------------------
+        // Unsaved-changes tracking (D-114).
+        //
+        // "Dirty" is a COMPARISON, not a flag: savedSnapshot holds this Day exactly as it
+        // was last written to disk (or loaded from it), serialized through the same
+        // ToDayJson call Save uses, and the Day is dirty when it no longer serializes to
+        // that. The obvious alternative -- an isDirty flag set by every writer -- cannot
+        // work in this inspector: the food tile grid, the Start Board cell picker, the
+        // ticket strip's drag-reorder and the All/None buttons are hand-drawn IMGUI that no
+        // [OnValueChanged] ever sees, so one of them would be forgotten, and a dirty flag
+        // that misses a change is worse than no flag at all. The comparison has exactly one
+        // thing to stay in step with -- ToDayJson, already the single serializer here.
+        //
+        // Null for a Day that has never been written: a new or duplicated Day is unsaved by
+        // definition, and there is no earlier state for Revert to go back to.
+        private string savedSnapshot;
+        private bool cachedDirty = true;
+        private double lastDirtyCheck;
+
+        // Recomputing on every repaint would be correct and pointless -- nothing can change
+        // between two repaints of an idle frame, and the snapshot is a few KB of string. A
+        // tenth of a second is under the threshold where the banner would look like it lags.
+        private const double DirtyCheckInterval = 0.1;
+
+        // Amber for "you have work that is not on disk", green for "you don't". Not red:
+        // unsaved is a state, not an error, and this window already spends red on Delete.
+        private static readonly UnityEngine.Color UnsavedBarColor = new(1f, 0.75f, 0.3f, 1f);
+        private static readonly UnityEngine.Color SavedBarColor = new(0.55f, 0.85f, 0.55f, 1f);
+
+        public bool HasUnsavedChanges => cachedDirty;
+
+        // Whether there is a file-backed state to fall back to at all, which is a different
+        // question from whether Revert is currently useful (CanRevert answers that).
+        public bool HasSavedState => savedSnapshot != null;
+
+        public bool CanRevert => HasSavedState && cachedDirty;
+
+        // What the Save BUTTON's EnableIf already gates on, exposed so the Window's prompts
+        // cannot become a way around it -- saving an invalid Day would write a file the
+        // runtime parser then chokes on.
+        public bool IsSaveable => IsValid;
+        public string ValidationSummary => ValidationMessage;
+
+        // This Day is now on disk exactly as it stands: this state becomes the baseline.
+        public void MarkSaved()
+        {
+            savedSnapshot = SerializeState();
+            cachedDirty = false;
+            lastDirtyCheck = EditorApplication.timeSinceStartup;
+        }
+
+        // `force` is for the moments a DECISION hangs on the answer -- leaving the Day,
+        // closing the window, deleting a Day -- where a value up to DirtyCheckInterval old
+        // is the difference between asking and silently discarding someone's work.
+        public void RefreshUnsavedState(bool force = false)
+        {
+            var now = EditorApplication.timeSinceStartup;
+            if (!force && now - lastDirtyCheck < DirtyCheckInterval)
+            {
+                return;
+            }
+
+            lastDirtyCheck = now;
+            cachedDirty = savedSnapshot == null || savedSnapshot != SerializeState();
+        }
+
+        public void RevertToSaved()
+        {
+            if (savedSnapshot == null)
+            {
+                return;
+            }
+
+            // A focused number or text field writes its editing buffer back on the next
+            // event; without dropping focus first that write lands on top of the restored
+            // value and re-dirties the Day the instant it was cleaned.
+            UnityEngine.GUI.FocusControl(null);
+
+            RestoreFrom(UnityEngine.JsonUtility.FromJson<DayJson>(savedSnapshot));
+            cachedDirty = false;
+            lastDirtyCheck = EditorApplication.timeSinceStartup;
+        }
+
+        private string SerializeState() => UnityEngine.JsonUtility.ToJson(ToDayJson(), false);
+
+        // At the very top of the Day, above Food Selection (-5) and the Day box (-4): "have
+        // I saved this?" has to be answerable without scrolling, and Save sits at the bottom
+        // of an inspector several screens tall.
+        [OnInspectorGUI, PropertyOrder(-100)]
+        private void DrawSaveStateBar()
+        {
+            RefreshUnsavedState();
+
+            var previousBackground = UnityEngine.GUI.backgroundColor;
+            UnityEngine.GUI.backgroundColor = cachedDirty ? UnsavedBarColor : SavedBarColor;
+            EditorGUILayout.BeginHorizontal(UnityEditor.EditorStyles.helpBox);
+            UnityEngine.GUI.backgroundColor = previousBackground;
+
+            EditorGUILayout.LabelField(SaveStateLabel, UnityEditor.EditorStyles.boldLabel);
+
+            bool revertClicked;
+            using (new EditorGUI.DisabledScope(!CanRevert))
+            {
+                revertClicked = UnityEngine.GUILayout.Button("Revert Changes", UnityEngine.GUILayout.Width(120));
+            }
+
+            EditorGUILayout.EndHorizontal();
+
+            // Acted on after the layout group is closed rather than inside it: the revert
+            // replaces every collection on this model, and the confirmation is modal.
+            if (revertClicked)
+            {
+                RevertChanges();
+            }
+        }
+
+        private string SaveStateLabel
+        {
+            get
+            {
+                if (!cachedDirty)
+                {
+                    return "Saved -- this Day matches its file.";
+                }
+
+                return savedSnapshot == null
+                    ? "Never saved -- this Day has no file yet."
+                    : "UNSAVED CHANGES -- Save writes them to the Day file.";
+            }
+        }
+
         [Button("Generate"), PropertyOrder(-2)]
         public void Generate()
         {
@@ -1016,6 +1147,23 @@ namespace ExpoTheExplorer.Editor
 
         [Button("Save"), EnableIf(nameof(IsValid)), GUIColor(0.4f, 0.85f, 0.4f, 1f)]
         public void Save() => onSaveRequested?.Invoke(this);
+
+        // Next to Save as well as in the banner at the top: this is where a designer looks
+        // once they have decided about the edits they just made, and the banner is several
+        // screens away by then. Asks first -- it destroys work, which is the whole point.
+        [Button("Revert Changes"), EnableIf(nameof(CanRevert)), GUIColor(0.95f, 0.8f, 0.4f, 1f)]
+        private void RevertChanges()
+        {
+            if (!EditorUtility.DisplayDialog(
+                    "Revert Changes",
+                    $"Discard every change made to Day {DayIndex} since it was last saved?",
+                    "Revert", "Cancel"))
+            {
+                return;
+            }
+
+            RevertToSaved();
+        }
 
         [Button("Duplicate")]
         private void Duplicate() => onDuplicateRequested?.Invoke(this);
@@ -1111,6 +1259,31 @@ namespace ExpoTheExplorer.Editor
         // Round-trips through the same JSON conversion used for Save/Load rather than a second,
         // hand-written deep-copy -- the two paths can't drift out of sync with each other.
         public DayEditorModel Clone(FoodCatalog catalog) => FromDayJson(ToDayJson(), catalog);
+
+        // Restores this Day IN PLACE rather than handing back a fresh model: DayEditorWindow's
+        // menu tree holds this exact reference, so a replacement would have to be swapped into
+        // the tree and re-selected. The fields assigned here are the whole authored state of a
+        // Day -- the same set ToDayJson writes and FromDayJson reads, which is what makes
+        // Clone a trustworthy deep copy -- so the values come from FromDayJson rather than
+        // from a second, hand-written deserializer that could drift away from it.
+        private void RestoreFrom(DayJson json)
+        {
+            var restored = FromDayJson(json, sharedCatalog);
+
+            DayIndex = restored.DayIndex;
+            TicketsRequiredForDay = restored.TicketsRequiredForDay;
+            BoardDistribution = restored.BoardDistribution;
+            TicketRuntime = restored.TicketRuntime;
+            TicketSequence = restored.TicketSequence;
+            BoardTimeline = restored.BoardTimeline;
+            Tutorial = restored.Tutorial;
+            EditorMeta = restored.EditorMeta;
+
+            // Both selections are indices into lists that were just replaced wholesale.
+            selectedTicketIndex = -1;
+            selectedStartBoardX = -1;
+            selectedStartBoardY = -1;
+        }
 
         // Copies the three balancing blocks and nothing else, for seeding a brand-new Day
         // from the previous one (decisions.md D-007). Goes through JSON for the same reason
