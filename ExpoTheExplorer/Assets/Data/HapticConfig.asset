@@ -85,3 +85,7 @@ MonoBehaviour:
     preset: 2
     priority: 72
     enabled: 1
+  - moment: 18
+    preset: 8
+    priority: 16
+    enabled: 1

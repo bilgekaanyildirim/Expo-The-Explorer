@@ -39,20 +39,6 @@
             },
             {
                 "mainItemId": "hotdog",
-                "sideItemId": "",
-                "drinkItemId": "",
-                "modifications": [
-                    {
-                        "modificationId": "extraketchup",
-                        "isAddition": true
-                    }
-                ],
-                "patienceType": "Impatient",
-                "customerNameOverride": "",
-                "timeLimitSecondsOverride": 0.0
-            },
-            {
-                "mainItemId": "hotdog",
                 "sideItemId": "fries",
                 "drinkItemId": "sprite",
                 "modifications": [
@@ -141,6 +127,20 @@
                     }
                 ],
                 "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "",
+                "drinkItemId": "",
+                "modifications": [
+                    {
+                        "modificationId": "extraketchup",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Impatient",
                 "customerNameOverride": "",
                 "timeLimitSecondsOverride": 0.0
             }

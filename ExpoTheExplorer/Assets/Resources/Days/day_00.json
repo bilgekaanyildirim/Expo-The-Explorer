@@ -43,7 +43,7 @@
                 "drinkItemId": "",
                 "modifications": [
                     {
-                        "modificationId": "extramayonnaise",
+                        "modificationId": "extramustard",
                         "isAddition": true
                     }
                 ],
@@ -57,7 +57,7 @@
                 "drinkItemId": "",
                 "modifications": [
                     {
-                        "modificationId": "extramayonnaise",
+                        "modificationId": "extramustard",
                         "isAddition": true
                     }
                 ],
@@ -97,7 +97,7 @@
                 "itemId": "hotdog",
                 "modifications": [
                     {
-                        "modificationId": "extramayonnaise",
+                        "modificationId": "extramustard",
                         "isAddition": true
                     }
                 ],

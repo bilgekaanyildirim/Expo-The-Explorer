@@ -1,4 +1,4 @@
-<!-- stamp: 2026-08-27T12:23Z source-sig:0eb2c3243fb5 assets:53 prefabs:6 scenes:3 asmdefs:18 -->
+<!-- stamp: 2026-08-27T18:02Z source-sig:87a69c15af8a assets:53 prefabs:6 scenes:3 asmdefs:18 -->
 # assetmap — asset inventory (data, prefabs, load surface, assemblies)
 
 Regenerate with `python3 .claude/hooks/build_assetmap.py`. `data-source.md`
@@ -99,7 +99,7 @@ the cost model reads the load-surface section before pricing a load.
 
 ## Runtime load surface
 
-- ExpoTheExplorer/Assets/Resources | 87 file(s) | loaded by string at runtime; ships in every build
+- ExpoTheExplorer/Assets/Resources | 91 file(s) | loaded by string at runtime; ships in every build
 - ExpoTheExplorer/Assets/StompyRobot/SRDebugger/Resources | 41 file(s) | loaded by string at runtime; ships in every build
 - ExpoTheExplorer/Assets/StompyRobot/SRDebugger/usr/Resources | 3 file(s) | loaded by string at runtime; ships in every build
 - ExpoTheExplorer/Assets/TextMesh Pro/Resources | 21 file(s) | loaded by string at runtime; ships in every build

@@ -217,7 +217,7 @@ MonoBehaviour:
       shopIcon: {fileID: 0}
       unlock: 1
       price: 0
-      unlockAtDayIndex: 2
+      unlockAtDayIndex: 3
       normalizedPosition: {x: 0.66571146, y: 0.64541924}
       pivot: {x: 0.5, y: 0}
       sortOrder: 14
@@ -229,7 +229,7 @@ MonoBehaviour:
       shopIcon: {fileID: 0}
       unlock: 1
       price: 0
-      unlockAtDayIndex: 4
+      unlockAtDayIndex: 6
       normalizedPosition: {x: 0.37850678, y: 0.7231951}
       pivot: {x: 0.5, y: 0}
       sortOrder: 0

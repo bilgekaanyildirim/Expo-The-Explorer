@@ -9,10 +9,10 @@ maps and never invents a name.
 | system | shard(s) | entry files | scenes | prefabs | data | status |
 |---|---|---|---|---|---|---|
 | BoardDistribution | core | ExpoTheExplorer/Assets/Data/DataScripts/BoardDistributionSettings.cs, ExpoTheExplorer/Assets/Scripts/Core/RequiredItemKey.cs (+3) | - | - | - | OK |
-| BoardUI | core, ui | ExpoTheExplorer/Assets/Data/DataScripts/GameConfig.cs, ExpoTheExplorer/Assets/Scripts/Core/BoardGrid.cs (+4) | - | - | ExpoTheExplorer/Assets/Data | OK |
+| BoardUI | core | ExpoTheExplorer/Assets/Data/DataScripts/GameConfig.cs, ExpoTheExplorer/Assets/Scripts/Core/BoardGrid.cs (+2) | - | - | ExpoTheExplorer/Assets/Data | OK |
 | Bootstrap | core, editor, ui | ExpoTheExplorer/Assets/Scripts/Bootstrap/GameManager.cs, ExpoTheExplorer/Assets/Scripts/Core/GameState.cs (+8) | - | - | - | OK |
 | DataTooling | editor | ExpoTheExplorer/Assets/Editor/DataConfigReserializer.cs | - | - | - | OK |
-| DayEditor | editor | ExpoTheExplorer/Assets/Editor/DayEditorDayStartPreview.cs, ExpoTheExplorer/Assets/Editor/DayEditorModel.cs (+4) | - | - | - | OK |
+| DayEditor | editor | ExpoTheExplorer/Assets/Editor/DayEditorDayStartPreview.cs, ExpoTheExplorer/Assets/Editor/DayEditorSpriteGUI.cs (+2) | - | - | - | OK |
 | DayLifecycle | core, ui | ExpoTheExplorer/Assets/Data/DataScripts/StarScoreConfig.cs, ExpoTheExplorer/Assets/Scripts/Systems/DayLifecycle/DayLifecycleManager.cs (+4) | - | - | ExpoTheExplorer/Assets/Data | OK |
 | DaySystem | core | ExpoTheExplorer/Assets/Scripts/Systems/DaySystem/DayBoardTimelinePlayer.cs, ExpoTheExplorer/Assets/Scripts/Systems/DaySystem/DayCatalogParser.cs (+9) | - | - | - | OK |
 | DebugMenu | core | ExpoTheExplorer/Assets/Scripts/Debug/DebugMenuBinder.cs, ExpoTheExplorer/Assets/Scripts/Debug/SROptions.Expo.cs | - | - | - | OK |
@@ -32,4 +32,4 @@ maps and never invents a name.
 
 ## Gaps
 - `sys: ?` on 24 codemap line(s) — first: ExpoTheExplorer/Assets/Data/ExpoTheExplorer.Data.asmdef, ExpoTheExplorer/Assets/Data/DataScripts/DragFeelConfig.cs, ExpoTheExplorer/Assets/Data/DataScripts/FoodCatalog.cs
-- 31 flagged codemap line(s) excluded from this table (STALE)
+- 35 flagged codemap line(s) excluded from this table (STALE)

@@ -145,7 +145,7 @@
                         "isAddition": true
                     }
                 ],
-                "patienceType": "Patient",
+                "patienceType": "Normal",
                 "customerNameOverride": "",
                 "timeLimitSecondsOverride": 0.0
             },
@@ -168,7 +168,7 @@
                 "sideItemId": "fries",
                 "drinkItemId": "fanta",
                 "modifications": [],
-                "patienceType": "Patient",
+                "patienceType": "Impatient",
                 "customerNameOverride": "",
                 "timeLimitSecondsOverride": 0.0
             },
@@ -182,7 +182,7 @@
                         "isAddition": true
                     }
                 ],
-                "patienceType": "Patient",
+                "patienceType": "Normal",
                 "customerNameOverride": "",
                 "timeLimitSecondsOverride": 0.0
             },
@@ -210,7 +210,70 @@
                 "timeLimitSecondsOverride": 0.0
             }
         ],
-        "boardTimeline": []
+        "boardTimeline": [
+            {
+                "triggerStepIndex": -1,
+                "itemId": "hotdog",
+                "modifications": [
+                    {
+                        "modificationId": "extramustard",
+                        "isAddition": true
+                    }
+                ],
+                "useExactCell": true,
+                "x": 0,
+                "y": 3
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "fries",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 4,
+                "y": 0
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "fanta",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 1,
+                "y": 0
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "fries",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 3,
+                "y": 2
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "cola",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 0,
+                "y": 1
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "hotdog",
+                "modifications": [
+                    {
+                        "modificationId": "extramustard",
+                        "isAddition": true
+                    }
+                ],
+                "useExactCell": true,
+                "x": 2,
+                "y": 2
+            }
+        ],
+        "tutorial": {
+            "enabled": false,
+            "steps": []
+        }
     },
     "editorMeta": {
         "allowedFoodItemIds": [
