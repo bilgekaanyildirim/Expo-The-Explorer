@@ -139,12 +139,18 @@ namespace ExpoTheExplorer.Tests.EditMode
             Assert.AreSame(wrongMain, SingleItemOnBoard(state.Board).Config);
         }
 
-        // D-099. Flinging a tray's worth of food across the board is the most visible thing
-        // that can happen behind a Game Over popup, and the player is looking at the popup.
-        // The life is still spent; only the scatter waits -- and the items stay in the tray
-        // meanwhile, so the resume starts from the picture that was on screen.
+        // D-102, replacing D-099's opposite assertion. The last life is NOT a special case:
+        // it scatters like the three before it. D-099 held it back to keep the board from
+        // moving behind a Game Over popup; D-101 gave that popup a delay, so the scatter now
+        // plays in front of it -- and holding it back had become the reason the final wrong
+        // order showed no tray animation at all, since an un-cleared tray is what puts
+        // WorldTrayView on its "not full yet" branch instead of the shake.
+        //
+        // This still asserts from the last-life side rather than being deleted with the
+        // deferral: the regression it guards is a wrong order that resolves DIFFERENTLY
+        // because the life happened to be the last one.
         [Test]
-        public void TryAddItem_WhenTheWrongOrderTakesTheLastLife_HoldsTheScatterAndKeepsTheTray()
+        public void TryAddItem_WhenTheWrongOrderTakesTheLastLife_ScattersAndClearsLikeAnyOther()
         {
             var state = new GameState(gameConfig);
             var main = CreateFoodItem();
@@ -163,39 +169,18 @@ namespace ExpoTheExplorer.Tests.EditMode
 
             Assert.IsTrue(accepted, "The item was still taken -- the batch check is what failed.");
             Assert.IsTrue(state.IsAwaitingContinue);
-            Assert.AreEqual(0, state.Board.OccupiedCellCount, "Nothing may land on the board behind the popup.");
-            Assert.AreEqual(1, manager.GetContents(0).Count, "The items stay where the player put them.");
-        }
-
-        [Test]
-        public void ResolveDeferredScatters_OnceTheDayResumes_ScattersAndClearsTheTray()
-        {
-            var state = new GameState(gameConfig);
-            var main = CreateFoodItem();
-            var wrongMain = CreateFoodItem();
-            var ticket = CreateTicket(new List<FoodItemConfig> { main });
-            state.TicketSlots[0] = ticket;
-            state.Lives = 1;
-
-            var manager = new TrayManager(state, _ => { }, _ =>
-            {
-                state.Lives--;
-                if (state.Lives <= 0) state.IsAwaitingContinue = true;
-            });
-            manager.TryAddItem(0, new BoardItem(wrongMain, ticket.Modifications));
-
-            state.IsAwaitingContinue = false;
-            state.Lives = state.MaxLives;
-
-            manager.ResolveDeferredScatters();
-
-            Assert.AreEqual(1, state.Board.OccupiedCellCount);
+            Assert.AreEqual(1, state.Board.OccupiedCellCount, "The last life scatters like every other one.");
             Assert.AreSame(wrongMain, SingleItemOnBoard(state.Board).Config);
-            Assert.AreEqual(0, manager.GetContents(0).Count, "The tray empties exactly as an undeferred scatter would.");
+            Assert.AreEqual(0, manager.GetContents(0).Count, "And it empties the tray, which is what lets the view play the shake.");
         }
 
+        // DiscardAllForNewDay does not scatter, and that is the point of it: the board is
+        // being wiped in the same reset (GameManager.RetryDay), so returning the old day's
+        // tray to it would drop items onto what is supposed to end up empty. This used to be
+        // written as "a deferred scatter dies with the items it was owed on" (D-099); the
+        // deferral is gone (D-102) but the property it was really checking was always this one.
         [Test]
-        public void ResolveDeferredScatters_WithNothingDeferred_DoesNothing()
+        public void DiscardAllForNewDay_EmptiesTheTrayWithoutScatteringItOntoTheBoard()
         {
             var state = new GameState(gameConfig);
             var main = CreateFoodItem();
@@ -204,40 +189,10 @@ namespace ExpoTheExplorer.Tests.EditMode
             var manager = new TrayManager(state, _ => { }, _ => state.Lives--);
             manager.TryAddItem(0, new BoardItem(main, ticket.Modifications));
 
-            manager.ResolveDeferredScatters();
-
-            Assert.AreEqual(1, manager.GetContents(0).Count, "It runs on every live frame -- it must be inert.");
-            Assert.AreEqual(0, state.Board.OccupiedCellCount);
-        }
-
-        // The deferral dies with the items it was owed on: this method exists precisely
-        // because the board is being wiped in the same reset, so a scatter surviving into the
-        // new day would drop the old day's items onto it.
-        [Test]
-        public void DiscardAllForNewDay_ClearsADeferredScatter_SoTheNewDayOpensOnAnEmptyBoard()
-        {
-            var state = new GameState(gameConfig);
-            var main = CreateFoodItem();
-            var wrongMain = CreateFoodItem();
-            var ticket = CreateTicket(new List<FoodItemConfig> { main });
-            state.TicketSlots[0] = ticket;
-            state.Lives = 1;
-
-            var manager = new TrayManager(state, _ => { }, _ =>
-            {
-                state.Lives--;
-                if (state.Lives <= 0) state.IsAwaitingContinue = true;
-            });
-            manager.TryAddItem(0, new BoardItem(wrongMain, ticket.Modifications));
-
             manager.DiscardAllForNewDay();
-            state.IsAwaitingContinue = false;
-            state.Lives = state.MaxLives;
 
-            manager.ResolveDeferredScatters();
-
-            Assert.AreEqual(0, state.Board.OccupiedCellCount, "The old day's items must not reach the new board.");
             Assert.AreEqual(0, manager.GetContents(0).Count);
+            Assert.AreEqual(0, state.Board.OccupiedCellCount, "The old day's items must not reach the new board.");
         }
 
         // Fails loudly rather than returning null if the board does not hold exactly one

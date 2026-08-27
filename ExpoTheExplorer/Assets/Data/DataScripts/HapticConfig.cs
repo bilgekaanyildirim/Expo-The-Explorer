@@ -40,6 +40,10 @@ namespace ExpoTheExplorer.Data
         KeysRefilled,
         ContinuePurchased,
         PropUnlocked,
+
+        // Added in the fourth pass (decisions.md D-109), correcting D-071: the drop
+        // that SUCCEEDS was the only half of the drag gesture with no answer.
+        ItemPlacedOnBoard,
     }
 
     // A mirror of Nice Vibrations' HapticPatterns.PresetType, and it exists so that
@@ -176,6 +180,7 @@ namespace ExpoTheExplorer.Data
             new Entry { moment = HapticMoment.ItemPickup,        preset = HapticPreset.LightImpact,  priority = 10 },
             new Entry { moment = HapticMoment.CoinLanded,        preset = HapticPreset.Selection,    priority = 12 },
             new Entry { moment = HapticMoment.GemLanded,         preset = HapticPreset.LightImpact,  priority = 15 },
+            new Entry { moment = HapticMoment.ItemPlacedOnBoard, preset = HapticPreset.RigidImpact,  priority = 16 },
             new Entry { moment = HapticMoment.DropRejected,      preset = HapticPreset.SoftImpact,   priority = 18 },
             new Entry { moment = HapticMoment.ItemDroppedInTray, preset = HapticPreset.MediumImpact, priority = 20 },
             new Entry { moment = HapticMoment.KeySpent,          preset = HapticPreset.LightImpact,  priority = 25 },

@@ -98,10 +98,27 @@ namespace ExpoTheExplorer.Systems.LivesSystem
         // life count the day began with (GameState.DefaultStartingLives, and
         // nothing else mutates it), so Continue reads as a full bar without
         // needing its own separate "refill amount" knob.
+        //
+        // THE FLAG IS CLEARED FIRST, AND THAT ORDER IS THE WHOLE POINT (D-103).
+        // GameState.Lives publishes LivesChanged from its setter, synchronously -- the
+        // subscriber runs inside the assignment below, before the next line of this
+        // method exists. So with the two lines the other way round, every LivesChanged
+        // subscriber saw a day that had a full bar of lives and was STILL awaiting
+        // Continue: a state that is true for no frame the player can observe, and that
+        // no subscriber should ever have to reason about.
+        //
+        // It cost a real bug. SettingsPopupView refreshes its open button on
+        // LivesChanged and reads IsAwaitingContinue to decide; on Retry it read the
+        // stale true and switched the button off again on the very frame the retry was
+        // meant to bring it back -- then nothing published until the player lost the
+        // NEXT life, so the pause menu was unreachable for most of the fresh attempt.
+        //
+        // Anything added here later goes ABOVE the Lives write for the same reason: the
+        // resume is finished first, and the event that announces it goes out last.
         private void RefillLivesAndResume()
         {
-            state.Lives = state.MaxLives;
             state.IsAwaitingContinue = false;
+            state.Lives = state.MaxLives;
         }
     }
 }

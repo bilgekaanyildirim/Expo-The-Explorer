@@ -212,5 +212,80 @@ namespace ExpoTheExplorer.Tests.EditMode
             Assert.AreEqual(0, state.Lives);
             Assert.IsTrue(state.IsAwaitingContinue);
         }
+
+        // THE ORDER INSIDE RefillLivesAndResume, pinned from the only place it can be
+        // observed: a LivesChanged subscriber (decisions.md D-103). GameState.Lives
+        // publishes from its setter, synchronously, so this handler runs INSIDE the
+        // assignment -- it sees exactly what SettingsPopupView, LivesView and
+        // HapticsBinder see on a resume.
+        //
+        // The end state was already asserted by the two tests above and stayed green
+        // through the bug, which is the point of writing this one differently: what
+        // broke was never the final values, it was the state the event carried on its
+        // way there. A day cannot both have a full bar of lives and be awaiting
+        // Continue, and no subscriber should ever be handed that pair.
+        [Test]
+        public void RefillForNewDay_ClearsIsAwaitingContinue_BeforeLivesChangedIsPublished()
+        {
+            var state = new GameState(gameConfig);
+            state.Lives = 0;
+            state.IsAwaitingContinue = true;
+
+            var published = 0;
+            var awaitingContinueSeenByHandler = true;
+            void OnLivesChanged(int _)
+            {
+                published++;
+                awaitingContinueSeenByHandler = state.IsAwaitingContinue;
+            }
+
+            state.LivesChanged.Subscribe(OnLivesChanged);
+            try
+            {
+                new LivesManager(state, livesConfig, new Wallet(state)).RefillForNewDay();
+            }
+            finally
+            {
+                state.LivesChanged.Unsubscribe(OnLivesChanged);
+            }
+
+            Assert.AreEqual(1, published, "The refill should publish LivesChanged exactly once.");
+            Assert.IsFalse(
+                awaitingContinueSeenByHandler,
+                "A LivesChanged subscriber must see the day already resumed. With the flag cleared "
+                + "after the Lives write, SettingsPopupView disabled its open button on the very "
+                + "frame Retry was meant to re-enable it, and nothing published again until the "
+                + "next life was lost.");
+        }
+
+        // The paid Continue reaches the same private body, and it is the route with a
+        // wallet spend in front of it -- worth its own case so a future affordability
+        // change cannot quietly move the flag back behind the publish on one path only.
+        [Test]
+        public void TryContinueWithGems_ClearsIsAwaitingContinue_BeforeLivesChangedIsPublished()
+        {
+            SetLivesConfig(continueGemCost: 5, continueSoftMoneyCost: 250);
+            var state = new GameState(gameConfig);
+            state.Lives = 0;
+            state.IsAwaitingContinue = true;
+            state.Gems = 10;
+
+            var awaitingContinueSeenByHandler = true;
+            void OnLivesChanged(int _) => awaitingContinueSeenByHandler = state.IsAwaitingContinue;
+
+            state.LivesChanged.Subscribe(OnLivesChanged);
+            bool result;
+            try
+            {
+                result = new LivesManager(state, livesConfig, new Wallet(state)).TryContinueWithGems();
+            }
+            finally
+            {
+                state.LivesChanged.Unsubscribe(OnLivesChanged);
+            }
+
+            Assert.IsTrue(result);
+            Assert.IsFalse(awaitingContinueSeenByHandler);
+        }
     }
 }

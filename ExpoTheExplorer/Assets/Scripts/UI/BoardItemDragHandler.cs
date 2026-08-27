@@ -1,3 +1,4 @@
+using System;
 using DG.Tweening;
 using ExpoTheExplorer.Bootstrap;
 using ExpoTheExplorer.Core;
@@ -349,10 +350,10 @@ namespace ExpoTheExplorer.UI
             // direct-hit tray-drop case, OnDrop (and the PlaceInSlot fly-in
             // tween it starts) already ran just before UGUI calls OnEndDrag,
             // and a blanket kill here would cancel that tween before it
-            // even got to play. Skipped entirely when a delivery-success
-            // grow/lift/fade is already underway (started by OnDrop too) —
-            // this would otherwise instantly snap the scale back to
-            // homeScale mid-animation.
+            // even got to play. Skipped entirely when this drop was the one
+            // that delivered (started by OnDrop too) — PlaceInSlotAndDeliver
+            // has already done exactly this, and the item is on a one-way
+            // trip from here: settle into the slot, then out with the tray.
             if (!deliverySuccessInProgress)
             {
                 scaleTween?.Kill();
@@ -376,9 +377,11 @@ namespace ExpoTheExplorer.UI
                 hoveredTray = null;
             }
 
-            // Also skipped during a delivery-success animation — the item
-            // is on its way out (lifting/fading), it shouldn't become
-            // draggable again for however long that takes.
+            // Also skipped when this drop delivered — the item is on its way
+            // out (settling into its slot, then lifting and fading with the
+            // tray) and must not become draggable again for any of it: the
+            // model already emptied that tray and gave the slot to the next
+            // ticket, so a re-pickup here would be an item nothing owns.
             if (!deliverySuccessInProgress && ownCollider != null) ownCollider.enabled = true;
 
             if (layerRenderers != null)
@@ -432,6 +435,22 @@ namespace ExpoTheExplorer.UI
                 boardView.BeginFlyInOverride(null);
                 board.TryPlaceItem(CurrentItem, newX, newY);
                 boardView.EndFlyInOverride();
+
+                // The item is down where the player aimed it. D-071 left this branch
+                // SILENT on the reasoning that a relocation is the drop working rather
+                // than failing -- a correct observation with the wrong conclusion, since
+                // dropping into a tray is also the drop working and that has always
+                // buzzed. What the silence actually produced was half a gesture: the
+                // pickup answered and the release did not.
+                //
+                // Fired for BOTH origins this branch covers, board-to-board and
+                // tray-back-to-board, because ItemPickup does not care where the item
+                // came from either. Splitting them would make the same gesture feel
+                // finished or unfinished for a reason the player cannot see -- and if
+                // board shuffling turns out to be noisy on a device, `wasOnBoard` is
+                // already computed right above and narrowing it is one line.
+                haptics?.Request(HapticMoment.ItemPlacedOnBoard);
+
                 Destroy(gameObject);
             }
             else if (!wasOnBoard)
@@ -496,65 +515,86 @@ namespace ExpoTheExplorer.UI
         {
             if (slotTransform == null) return;
 
-            currentTraySlotIndex = slotIndex;
-
-            // Only the drops that leave the item SITTING there buzz, because this method
-            // is not called for the drop that resolves the batch -- that one goes to
-            // ReleaseAndDestroy instead. The gap is exactly right rather than a hole to
-            // patch: the resolving drop is the one that publishes OrderDelivered or costs
-            // a life, and both of those outrank this tick in the same frame anyway.
+            // Only the drops that leave the item SITTING there buzz. The drop that
+            // RESOLVES the batch goes to ReleaseAndDestroy or PlaceInSlotAndDeliver
+            // below instead, and neither buzzes: that drop is the one that publishes
+            // OrderDelivered or costs a life, and both of those outrank this tick in
+            // the same frame anyway.
             haptics?.Request(HapticMoment.ItemDroppedInTray);
 
-            // Reparent without letting the item jump to the slot's local
-            // zero instantly — restoring its world position right after
-            // SetParent keeps it exactly where it visually was, so the
-            // settle tween below has an actual distance to travel instead
-            // of the item just appearing already-seated.
-            var worldPos = transform.position;
-            transform.SetParent(slotTransform, false);
-            transform.position = worldPos;
-            positionTween = transform.DOLocalMove(Vector3.zero, animConfig.TraySettleDuration).SetEase(Ease.OutBack);
+            SeatInSlot(slotTransform, slotIndex);
         }
 
-        // Called by WorldTrayView.OnDrop when this exact drop just resolved
-        // the tray's batch check (delivered, or scattered along with the rest
-        // of the tray) — DetachFromBoard already released this cell's pooled
-        // container (if it came from the board) before that batch check ran,
-        // so this is just cleanup of the GameObject itself.
-        public void ReleaseAndDestroy()
-        {
-            Destroy(gameObject);
-        }
-
-        // Called by WorldTrayView.TryAcceptDrop instead of ReleaseAndDestroy
-        // when this exact drop was the one that completed a successful
-        // delivery — this item was never placed into a slot, so it's still
-        // sitting wherever the drag left it (DetachFromBoard already
-        // released its board-side pooled container, before TryAddItem's
-        // batch check ran). Grows then lifts-and-fades in sync with the
-        // tray's own delivery animation (WorldTrayView.PlayDeliverySuccess)
-        // instead of just vanishing. OnEndDrag's own scale reset / collider
-        // re-enable check deliverySuccessInProgress and stay hands-off for
-        // the rest of this object's short remaining lifetime.
-        public void PlayDeliverySuccessAndDestroy(BoardAnimationConfig config)
+        // Called by WorldTrayView.TryAcceptDrop for the drop that just COMPLETED an
+        // order. This item flies into its slot exactly like any other accepted drop,
+        // and onSettled -- the tray's delivery animation -- runs when that tween
+        // lands, not before. Until this existed the delivery started the instant the
+        // batch resolved and this item was never seated at all: it grew and lifted
+        // from wherever the finger let it go, while the tray flew away underneath it
+        // (decisions.md D-100).
+        //
+        // The wait is the TWEEN's own completion rather than a DelayedCall on
+        // TraySettleDuration, so the animation and the hand-off cannot disagree about
+        // how long the item actually takes to arrive.
+        //
+        // deliverySuccessInProgress is set here for the reason
+        // PlayDeliverySuccessAndDestroy used to set it, plus one more: OnEndDrag runs
+        // right after this and would otherwise re-enable the collider, leaving the item
+        // grabbable during the wait -- on a tray TrayManager has already emptied and
+        // handed to the next ticket, so picking it back up would drag an item the model
+        // no longer knows about.
+        public void PlaceInSlotAndDeliver(Transform slotTransform, int slotIndex, Action onSettled)
         {
             deliverySuccessInProgress = true;
             if (ownCollider != null) ownCollider.enabled = false;
 
-            transform.DOKill();
-            var sequence = DOTween.Sequence();
-            sequence.Append(transform.DOScale(homeScale * config.DeliveryGrowScale, config.DeliveryGrowDuration).SetEase(Ease.OutQuad));
-            sequence.Append(transform.DOMoveY(transform.position.y + config.DeliveryLiftDistance, config.DeliveryFadeDuration).SetEase(Ease.InQuad));
+            // OnEndDrag's own scale reset is skipped while deliverySuccessInProgress is
+            // set, so the pickup grow is undone here instead -- a seated item sits at
+            // its home scale like every other item in the tray.
+            scaleTween?.Kill();
+            transform.localScale = homeScale;
 
-            if (layerRenderers != null)
+            if (slotTransform == null)
             {
-                foreach (var layerRenderer in layerRenderers)
-                {
-                    if (layerRenderer != null) sequence.Join(layerRenderer.DOFade(0f, config.DeliveryFadeDuration));
-                }
+                // No slot to fly to (every slot occupied is impossible for a resolving
+                // drop, but a missing Inspector reference is not) -- the delivery still
+                // has to happen, it just gets nothing to wait for.
+                onSettled?.Invoke();
+                return;
             }
 
-            sequence.OnComplete(() => Destroy(gameObject));
+            SeatInSlot(slotTransform, slotIndex).OnComplete(() => onSettled?.Invoke());
+        }
+
+        // Reparent without letting the item jump to the slot's local zero
+        // instantly — restoring its world position right after SetParent keeps
+        // it exactly where it visually was, so the settle tween has an actual
+        // distance to travel instead of the item just appearing already-seated.
+        private Tween SeatInSlot(Transform slotTransform, int slotIndex)
+        {
+            currentTraySlotIndex = slotIndex;
+
+            var worldPos = transform.position;
+            transform.SetParent(slotTransform, false);
+            transform.position = worldPos;
+            positionTween = transform.DOLocalMove(Vector3.zero, animConfig.TraySettleDuration).SetEase(Ease.OutBack);
+            return positionTween;
+        }
+
+        // Called by WorldTrayView when this exact drop resolved the tray's batch
+        // check the WRONG way — it shakes in place with the rest of the tray and
+        // then goes, its contents already scattered back onto the board by the
+        // model. DetachFromBoard released this cell's pooled container (if it came
+        // from the board) before that batch check ran, so this is just cleanup of
+        // the GameObject itself.
+        //
+        // The successful delivery does NOT come here: that item is seated into a
+        // slot by PlaceInSlotAndDeliver above, which makes it a child of the tray,
+        // and the tray's own delivery sequence lifts, fades and destroys it along
+        // with everything else it is carrying.
+        public void ReleaseAndDestroy()
+        {
+            Destroy(gameObject);
         }
     }
 }

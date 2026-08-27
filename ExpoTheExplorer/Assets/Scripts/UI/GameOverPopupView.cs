@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using DG.Tweening;
 using ExpoTheExplorer.Bootstrap;
 using ExpoTheExplorer.Core;
 using ExpoTheExplorer.Data;
@@ -44,6 +45,17 @@ namespace ExpoTheExplorer.UI
         [Tooltip("Shown when Retry is pressed with no keys left. Leave empty and Retry is never gated.")]
         [SerializeField] private NoKeysPopupView noKeysPopup;
 
+        // OPTIONAL, and deliberately outside ValidateReferences, because the direction of
+        // this failure matters more than the feature: a forgotten drag costs the pause
+        // before the popup, which is a small wrong. A missing reference that stopped the
+        // popup from appearing at all would leave a lost day with no way out, and this
+        // project has been bitten by exactly that before (an empty rewardFlight slot used
+        // to fail DayCompletePopupView's validation and suppress the whole popup).
+        // Unwired, the popup appears the instant the last life goes, exactly as it did
+        // before D-101.
+        [Tooltip("Optional. Read for the delay this popup waits before appearing, so the broken heart rising off the tray is seen first. Leave it empty and the popup appears instantly.")]
+        [SerializeField] private BoardAnimationConfig animConfig;
+
         private GameState state;
 
         private void Start()
@@ -69,7 +81,34 @@ namespace ExpoTheExplorer.UI
             mainMenuButton.onClick.RemoveListener(OnMainMenuClicked);
         }
 
+        // THE POPUP IS DELAYED, THE FAILURE IS NOT (D-101). LivesManager sets
+        // IsAwaitingContinue before it publishes this, so the day is already held for the
+        // whole wait: the clock is stopped, the board refuses every pickup, and D-099's
+        // deferred scatter is still sitting in the tray waiting for Continue. The only
+        // thing moving behind this is the broken heart rising off the tray that cost the
+        // last life (D-078) — which is the entire reason to wait, since the popup used to
+        // land on top of it.
+        //
+        // Delaying the EVENT instead would have been the wrong half: the hold and the
+        // popup would drift apart and the day would keep playing behind the animation.
+        //
+        // SetLink to this GameObject so a day abandoned mid-wait cannot raise a popup on
+        // a scene that is being torn down.
         private void Show(int _)
+        {
+            if (animConfig == null || animConfig.GameOverPopupDelay <= 0f)
+            {
+                ShowNow();
+                return;
+            }
+
+            DOVirtual.DelayedCall(animConfig.GameOverPopupDelay, ShowNow).SetLink(gameObject);
+        }
+
+        // Every figure here is read when the popup actually appears rather than when the
+        // life was lost. Nothing can change them during the wait — the day is held — but
+        // reading them late is the honest order and costs nothing.
+        private void ShowNow()
         {
             var config = gameManager.LivesManager.Config;
 

@@ -61,6 +61,12 @@ namespace ExpoTheExplorer.Data
         [Tooltip("Duration (seconds) of that rise-and-fade. Floored in code at a tenth of a second, so a 0 here is a very quick heart rather than an invisible one.")]
         [SerializeField, Min(0f)] private float lifeLostHeartDuration = 1f;
 
+        [Header("Result Popups")]
+        [Tooltip("Seconds the Day Complete popup waits after the day's last delivery before it appears. It exists so the delivery that FINISHED the day is watched instead of covered: the item settling into its slot, the tray growing, lifting and fading, the ticket card sliding away. Add those up (TraySettleDuration + DeliveryGrowDuration + DeliveryFadeDuration + DeliveryReentryDuration) and keep this comfortably above the total. 0 brings the popup up instantly, the way it used to.")]
+        [SerializeField, Min(0f)] private float dayCompletePopupDelay = 2.5f;
+        [Tooltip("Seconds the Game Over popup waits after the last life is lost before it appears, so the failure is seen rather than covered: the broken heart rising off the tray, and — when the last life went to a wrong order — that tray's shake and its contents scattering back to the board. Keep this above LifeLostHeartDuration AND above ScatterShakeDuration plus the board fly-in. The day is already held for the whole wait (the clock is stopped and the board refuses every pickup), so nothing is playable behind it. 0 brings the popup up instantly, which puts the scatter back underneath it.")]
+        [SerializeField, Min(0f)] private float gameOverPopupDelay = 2.5f;
+
         [Header("Tutorial Spotlight")]
         [Tooltip("How dark the scene goes behind the tutorial's one lit hotdog and one lit tray. 0 = no dimming at all, 1 = solid black. The lit pair and the target tray's ticket card are unaffected -- this is the opacity of the black sheet everything ELSE sits behind.")]
         [SerializeField, Range(0f, 1f)] private float tutorialDimOpacity = 0.72f;
@@ -101,6 +107,8 @@ namespace ExpoTheExplorer.Data
         public float TicketDangerBlinkPeriod => ticketDangerBlinkPeriod;
         public float LifeLostHeartRiseDistance => lifeLostHeartRiseDistance;
         public float LifeLostHeartDuration => lifeLostHeartDuration;
+        public float DayCompletePopupDelay => dayCompletePopupDelay;
+        public float GameOverPopupDelay => gameOverPopupDelay;
         public float TutorialDimOpacity => tutorialDimOpacity;
         public float TutorialGhostOpacity => tutorialGhostOpacity;
         public float TutorialGhostTravelDuration => tutorialGhostTravelDuration;

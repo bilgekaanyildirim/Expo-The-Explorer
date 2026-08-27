@@ -1,6 +1,8 @@
 using System.Collections.Generic;
+using DG.Tweening;
 using ExpoTheExplorer.Bootstrap;
 using ExpoTheExplorer.Core;
+using ExpoTheExplorer.Data;
 using ExpoTheExplorer.Systems.DayLifecycle;
 using TMPro;
 using UnityEngine;
@@ -62,6 +64,13 @@ namespace ExpoTheExplorer.UI
         [Tooltip("Performs the payout: seats the stars, then flies gems and coins to the HUD counters. It is what actually credits the wallet (D-057), so this popup no longer just reports the day's earnings — it hands them over.")]
         [SerializeField] private DayRewardFlightView rewardFlight;
 
+        // OPTIONAL, and deliberately outside ValidateReferences, for the reason spelled
+        // out at rewardFlight below: a slot left empty must never be able to suppress
+        // this popup, because the popup is the only way out of a finished day. Unwired,
+        // it appears the instant the day completes, exactly as it did before D-101.
+        [Tooltip("Optional. Read for the delay this popup waits before appearing, so the last delivery's own lift and fade is seen first. Leave it empty and the popup appears instantly.")]
+        [SerializeField] private BoardAnimationConfig animConfig;
+
         private GameState state;
 
         private void Start()
@@ -87,7 +96,34 @@ namespace ExpoTheExplorer.UI
             goBackButton.onClick.RemoveListener(OnGoBackClicked);
         }
 
+        // THE POPUP IS DELAYED, THE DAY IS NOT (D-101). TicketSlotManager sets
+        // IsDayComplete before it publishes this, so for the whole wait no ticket is
+        // assigned, the clock counts nothing down, and every slot is empty — which means
+        // TrayManager refuses every drop too. What IS still running is the delivery that
+        // just finished the day: the item settling into its slot (D-100), the tray
+        // growing, lifting and fading, the ticket card sliding away, the tray growing
+        // back in. This popup used to land on top of all of it.
+        //
+        // The payout starts when the popup does, one wait later than before. That moves
+        // nothing that matters: the money was never credited during the day and every
+        // exit commits the purse regardless (D-057).
+        //
+        // SetLink to this GameObject so a scene torn down mid-wait cannot raise it.
         private void Show(int _)
+        {
+            if (animConfig == null || animConfig.DayCompletePopupDelay <= 0f)
+            {
+                ShowNow();
+                return;
+            }
+
+            DOVirtual.DelayedCall(animConfig.DayCompletePopupDelay, ShowNow).SetLink(gameObject);
+        }
+
+        // The receipt is read when the popup appears rather than when the day completed.
+        // Nothing can change those figures during the wait — the day is over and the
+        // clock is stopped — but reading them late is the honest order and costs nothing.
+        private void ShowNow()
         {
             var summary = gameManager.DayLifecycleManager;
 
