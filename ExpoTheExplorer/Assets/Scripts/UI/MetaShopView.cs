@@ -16,6 +16,11 @@ namespace ExpoTheExplorer.UI
     // popup's BUY spends (Ş4), and a purchase ends the whole flow: the shop goes back to
     // KAPALI so the screen ends on the prop rather than on the list (D-047).
     //
+    // THREE WAYS OUT since D-108, and all three are the same transition: the market button
+    // again, an X in the sheet's corner, and a tap on the full-screen backdrop the sheet now
+    // sits inside. They differ only in where the finger lands -- every one calls SetOpen,
+    // never SetActive, for the reason the next paragraph gives.
+    //
     // THE STATE MACHINE LIVES HERE, all of it, on purpose. Two fields hold it: `isOpen`
     // (KAPALI/AÇIK) and `pendingItem` (ÖNİZLEME when non-null). Every transition goes
     // through `ApplyVisibility`, and every exit from a preview goes through `ClosePreview`
@@ -53,8 +58,25 @@ namespace ExpoTheExplorer.UI
         [Tooltip("Opens and closes the panel. Drawn ON TOP of the panel on purpose, so it can still be tapped to close a panel that covers it.")]
         [SerializeField] private Button marketButton;
 
-        [Tooltip("Everything the shop shows. Toggled with SetActive, so a closed shop costs nothing per frame.")]
+        [Tooltip("Everything the shop shows. Toggled with SetActive, so a closed shop costs nothing per frame. Since D-108 this is the full-screen BACKDROP, with the sheet as its child, so the block and the sheet come and go together.")]
         [SerializeField] private GameObject panel;
+
+        // Both OPTIONAL, and both go through SetOpen rather than touching `panel` (D-108).
+        // That is the rule this class was built around: visibility has exactly one owner,
+        // because the first shop's ghost leaked precisely when it had more than one
+        // (D-024/D-027). A button calling SetActive would skip ClosePreview and
+        // CancelPendingReopen and reintroduce the same class of bug.
+        [Tooltip("Optional. An X in the sheet's top-right corner. Closes the shop.")]
+        [SerializeField] private Button closeButton;
+
+        // NOT the same thing D-038 removed. That was a backdrop on the CONFIRM POPUP, taken
+        // out at the user's request so CANCEL is the only way out of a preview; the preview
+        // is untouched here. This one sits behind the LIST, and it needs no inside/outside
+        // hit-test: the sheet is a child of the backdrop and carries its own raycast-target
+        // Image, so UGUI gives a tap on the sheet to the sheet and only an outside tap
+        // reaches this button.
+        [Tooltip("Optional. A Button on the full-screen backdrop — tapping outside the sheet closes the shop. Set its Transition to None so the dim layer does not flash.")]
+        [SerializeField] private Button backdropButton;
 
         [Header("List")]
         [Tooltip("Who the player is: the wallet, the day they are on, and which props they already own. Read only — nothing here writes to it.")]
@@ -159,6 +181,8 @@ namespace ExpoTheExplorer.UI
             SetOpen(false);
 
             marketButton.onClick.AddListener(OnMarketClicked);
+            if (closeButton != null) closeButton.onClick.AddListener(OnCloseClicked);
+            if (backdropButton != null) backdropButton.onClick.AddListener(OnCloseClicked);
             confirmBuyButton.onClick.AddListener(OnConfirmBuyClicked);
             confirmCancelButton.onClick.AddListener(ClosePreview);
         }
@@ -166,11 +190,20 @@ namespace ExpoTheExplorer.UI
         private void OnDestroy()
         {
             if (marketButton != null) marketButton.onClick.RemoveListener(OnMarketClicked);
+            if (closeButton != null) closeButton.onClick.RemoveListener(OnCloseClicked);
+            if (backdropButton != null) backdropButton.onClick.RemoveListener(OnCloseClicked);
             if (confirmBuyButton != null) confirmBuyButton.onClick.RemoveListener(OnConfirmBuyClicked);
             if (confirmCancelButton != null) confirmCancelButton.onClick.RemoveListener(ClosePreview);
         }
 
         private void OnMarketClicked() => SetOpen(!isOpen);
+
+        // Both new exits share one handler and one method name, so the listener that goes on
+        // in Start is the listener that comes off in OnDestroy. Unconditionally CLOSE rather
+        // than toggle, unlike the market button: the X and the backdrop are only reachable
+        // while the shop is up, so a toggle there could only ever mean close, and spelling it
+        // as a toggle would invite a future caller to press it shut and open again.
+        private void OnCloseClicked() => SetOpen(false);
 
         // The one place the panel's visibility changes, even now that there are only two
         // states. Every later transition -- a row's BUY opening the preview, the confirm

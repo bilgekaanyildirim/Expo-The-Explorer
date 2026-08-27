@@ -185,6 +185,40 @@ namespace ExpoTheExplorer.Bootstrap
         // other two, so a day with no tutorial relocates items exactly as it always has.
         public bool IsBoardRelocationAllowed() => Tutorial == null || Tutorial.IsBoardRelocationAllowed();
 
+        // Whoever is currently holding the day still. GameState.IsPaused is a single bool,
+        // and until D-105 a single panel wrote it; now TWO can be up over a running day (the
+        // settings menu, and the powerup shop an empty powerup opens). Two views each
+        // assigning that bool is exactly the dual-authority the root invariant forbids, and
+        // the bug it produces is concrete: close the shop while the settings menu is still
+        // open and the day starts running underneath it.
+        //
+        // A SET of holders rather than a counter, because the failure mode a counter has is
+        // silent -- one panel releasing twice takes the pause off someone else's hold, and
+        // nothing in the numbers says so. Adding the same holder twice is a no-op here, and
+        // releasing one that never held is too. Holders are Objects (the views themselves),
+        // so the set also survives a view being destroyed mid-hold: OnDestroy releases, and
+        // a leaked entry would keep the day frozen forever, which is why every caller
+        // releases from OnDestroy as well as from its close path.
+        private readonly HashSet<object> pauseHolders = new();
+
+        // The single writer of GameState.IsPaused since D-105. Everything that freezes a
+        // running day goes through this pair; nothing assigns the flag directly.
+        public void HoldPause(object holder)
+        {
+            if (holder == null || State == null) return;
+
+            pauseHolders.Add(holder);
+            State.IsPaused = pauseHolders.Count > 0;
+        }
+
+        public void ReleasePause(object holder)
+        {
+            if (holder == null || State == null) return;
+
+            pauseHolders.Remove(holder);
+            State.IsPaused = pauseHolders.Count > 0;
+        }
+
         public TicketSlotManager TicketSlotManager { get; private set; }
         public TrayManager TrayManager { get; private set; }
         public DayLifecycleManager DayLifecycleManager { get; private set; }
@@ -367,7 +401,14 @@ namespace ExpoTheExplorer.Bootstrap
         // board or the tickets. Auto-Collect in particular would sweep the very item the
         // player is being told to drag, leaving a ghost pointing at an empty cell and a step
         // that can no longer be completed.
-        private bool CanUsePowerups() => !State.IsAwaitingContinue && !TicketSlotManager.IsDayComplete
+        //
+        // PUBLIC since D-105 so the powerup bar can ask the same question before opening the
+        // shop an empty powerup leads to. The three reasons above all apply unchanged to
+        // buying: a store opened under the Game Over popup, over the day-complete receipt, or
+        // in the middle of a forced first move is the same mistake as spending a charge there
+        // -- and the shop additionally FREEZES the day, which those three states are already
+        // doing for their own reasons.
+        public bool CanUsePowerups() => !State.IsAwaitingContinue && !TicketSlotManager.IsDayComplete
             && (Tutorial == null || !Tutorial.IsActive);
 
         private void OnDestroy()
@@ -420,10 +461,12 @@ namespace ExpoTheExplorer.Bootstrap
             // day, with the day then unable to complete. There is no flag to forget here,
             // because it is the same one that gates the return above.
             //
-            // Tray before tickets: that is the order the two failures happened in, and a
-            // deferred cancellation assigns a new ticket whose required items are spawned
-            // from the board -- the scattered items should be back on it before that asks.
-            TrayManager.ResolveDeferredScatters();
+            // Only the TICKET half is still deferred (D-102). A wrong order's scatter used to
+            // wait here too, and no longer does: it returns the tray's own items to the board
+            // and assigns nothing, so it is safe to play in front of a popup that now waits
+            // (D-101) -- and holding it back was what left the final wrong order with no tray
+            // animation at all. A deferred CANCELLATION is a different animal: it replaces the
+            // ticket and spawns a whole board round, which must not happen on a day that ended.
             TicketSlotManager.ResolveDeferredTimeouts();
 
             TicketSlotManager.Tick(Time.deltaTime);

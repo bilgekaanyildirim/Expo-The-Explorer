@@ -19,6 +19,12 @@ namespace ExpoTheExplorer.UI
     // the tween that flies a delivered order, the reward flight and the UI all keep
     // running, which is what a menu over a frozen day should look like.
     //
+    // IT NO LONGER WRITES THAT FLAG ITSELF (D-105). It asks GameManager to hold the pause
+    // on its behalf and to release it again, because this stopped being the only panel that
+    // freezes a day: the powerup shop an empty powerup opens does it too. Two views each
+    // assigning one bool is dual authority, and its bug is concrete -- whichever closes
+    // first would start the day running under the one still open.
+    //
     // NOTHING HERE DECIDES WHAT AN EXIT COSTS. Retry and Main Menu call the two
     // GameManager methods the Game Over popup already calls, and those methods hold the
     // money and key rules -- notably that leaving a day that has NOT been lost spends no
@@ -105,25 +111,37 @@ namespace ExpoTheExplorer.UI
             mainMenuConfirmNoButton.onClick.AddListener(CancelMainMenu);
             hapticsToggleButton.onClick.AddListener(ToggleHaptics);
 
-            // THE OPEN BUTTON GOES AWAY WHENEVER THE DAY IS OVER -- lost or won -- rather
-            // than standing there and refusing (see Open). A control that is visible,
+            // THE OPEN BUTTON STAYS ON SCREEN FOR THE WHOLE DAY and is switched on here
+            // once, so a scene saved while the old code had hidden it still opens right.
+            // After this line nothing ever touches its ACTIVE state again -- what moves is
+            // interactable (RefreshOpenButton).
+            openButton.gameObject.SetActive(true);
+
+            // THE OPEN BUTTON GOES GREY WHENEVER THE DAY IS OVER -- lost or won -- rather
+            // than standing there fully lit and refusing (see Open). A control that looks
             // pressable and silently does nothing is worse than no control: the player
-            // reads it as the game hanging. And on a WON day it would be worse than
-            // useless, because this menu's Retry is RetryDay, the lost-day path; the
-            // completed day has its own Retry with its own money rules on the Day Complete
-            // popup, and two buttons answering that question differently is a bug waiting
-            // for a player to find it.
+            // reads it as the game hanging. It used to disappear outright for that reason;
+            // greying it is the same answer without the HUD rearranging itself twice in a
+            // few seconds, which is what the player actually saw. And the WON day needs
+            // the refusal just as much as the lost one, because this menu's Retry is
+            // RetryDay, the lost-day path; the completed day has its own Retry with its
+            // own money rules on the Day Complete popup, and two buttons answering that
+            // question differently is a bug waiting for a player to find it.
             //
             // Four subscriptions, each covering one edge, and no per-frame check:
             //   LivesDepleted  -- the Game Over popup goes up.
             //   LivesChanged   -- the ways back from it, all of which move lives off 0:
-            //                     the paid Continue's refill and RetryDay's.
+            //                     the paid Continue's refill and RetryDay's. This edge
+            //                     LEANS ON LivesManager clearing IsAwaitingContinue before
+            //                     it writes Lives (D-103); the publish is synchronous, so
+            //                     the other order hands this handler a stale flag and the
+            //                     button never comes back. That order is pinned by a test.
             //   DayCompleted   -- the Day Complete popup goes up.
             //   TicketAssigned -- a new day has started IN THIS SCENE (Next Day, or a
             //                     completed-day retry). Deliberately not LivesChanged for
             //                     this one: a day finished with all three hearts refills
             //                     3 -> 3, which publishes nothing, and the button would
-            //                     stay gone for the rest of the session.
+            //                     stay grey for the rest of the session.
             state.LivesDepleted.Subscribe(OnLivesDepleted);
             state.LivesChanged.Subscribe(OnLivesChanged);
             state.DayCompleted.Subscribe(OnDayCompleted);
@@ -132,6 +150,12 @@ namespace ExpoTheExplorer.UI
 
         private void OnDestroy()
         {
+            // A hold this view is still carrying dies with it. Harmless on a scene load,
+            // which takes the GameState with it -- but this object is also legal to destroy
+            // on its own, and a leaked holder would freeze the day with no menu on screen
+            // to lift it. Releasing one that was never held is a no-op by design.
+            if (gameManager != null) gameManager.ReleasePause(this);
+
             if (state != null)
             {
                 state.LivesDepleted.Unsubscribe(OnLivesDepleted);
@@ -152,8 +176,8 @@ namespace ExpoTheExplorer.UI
         }
 
         // REFUSED ON A DAY THAT IS ALREADY OVER, won or lost -- the same condition that
-        // hides the button, checked again here so the rule survives a stray click landing
-        // in the frame the button disappears. Both cases are the same mistake: the popup
+        // greys the button, checked again here so the rule survives a stray click landing
+        // in the frame the button goes dim. Both cases are the same mistake: the popup
         // that is up already offers these exits under the rules that fit it (Game Over's
         // Retry spends a key because that day WAS lost; Day Complete's reverts a wallet
         // that has already banked), and a second menu would answer the same question
@@ -164,7 +188,7 @@ namespace ExpoTheExplorer.UI
             if (state == null || state.IsAwaitingContinue || dayIsOver) return;
             if (popupRoot.activeSelf) return;
 
-            state.IsPaused = true;
+            gameManager.HoldPause(this);
 
             // Read once, here, rather than subscribed: the day is frozen behind this
             // panel, so neither the day number nor the star count can move while it is
@@ -176,12 +200,14 @@ namespace ExpoTheExplorer.UI
             popupRoot.SetActive(true);
         }
 
-        // The single place the pause is lifted, so there is exactly one way back into a
-        // running day however the menu was left. The confirmation panels are reset too:
-        // reopening the menu should never land on a half-answered question.
+        // The single place THIS view lets go of the pause, so there is exactly one way back
+        // into a running day however the menu was left. Since D-105 that is a release rather
+        // than an assignment: if the powerup shop is also up, the day correctly stays frozen
+        // until it lets go too. The confirmation panels are reset here as well -- reopening
+        // the menu should never land on a half-answered question.
         private void Close()
         {
-            state.IsPaused = false;
+            gameManager.ReleasePause(this);
 
             retryConfirmRoot.SetActive(false);
             mainMenuConfirmRoot.SetActive(false);
@@ -206,14 +232,21 @@ namespace ExpoTheExplorer.UI
             RefreshOpenButton();
         }
 
-        // The one place the button's visibility is decided, from the two conditions rather
+        // The one place the button's state is decided, from the two conditions rather
         // than from whichever event happened to fire -- so the order they arrive in cannot
         // matter. IsAwaitingContinue is read live because the flag is cleared by
         // LivesManager without an event of its own; dayIsOver is tracked here because
         // "the day has been completed" is not a question GameState answers.
+        //
+        // interactable, NOT SetActive (D-103). The button keeps its place on the HUD for
+        // the whole day and only greys out, which is the user's call and the better one:
+        // a control that vanishes and comes back reads as the HUD glitching, whereas a
+        // greyed one reads as "not now" -- and the day-over states this covers last a few
+        // seconds at most. The disabled LOOK is the Button's own Disabled transition,
+        // authored in the scene; no colour is written here.
         private void RefreshOpenButton()
         {
-            openButton.gameObject.SetActive(!state.IsAwaitingContinue && !dayIsOver);
+            openButton.interactable = !state.IsAwaitingContinue && !dayIsOver;
         }
 
         private void ShowRetryConfirmation() => retryConfirmRoot.SetActive(true);

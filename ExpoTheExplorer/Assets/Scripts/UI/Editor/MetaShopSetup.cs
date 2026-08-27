@@ -29,6 +29,26 @@ namespace ExpoTheExplorer.UI.EditorTools
         private const string PanelName = "Panel";
         private const string ButtonName = "MarketButton";
 
+        // D-108's four additions. Same rule as every name above: used only when CREATING,
+        // never to find anything.
+        private const string BackdropName = "Backdrop";
+        private const string TitleName = "Title";
+        private const string HeaderName = "Header";
+        private const string CloseButtonName = "CloseButton";
+
+        // Labels, not content: the shop's fixed identity and the two column headings, written
+        // once into scene objects the author is free to retype. Nothing reads them back, and
+        // none of them varies per save, per Day or per location.
+        private const string TitleText = "MARKET";
+        private const string NameHeaderLabel = "NAME";
+        private const string PriceHeaderLabel = "PRICE";
+
+        private const float TitleHeight = 64f;
+        private const float TitleFontSize = 40f;
+        private const float HeaderHeight = 44f;
+        private const float HeaderFontSize = 22f;
+        private const float CloseSize = 64f;
+
         // The panel is a bottom sheet rather than a full-screen page: the grounds stay
         // visible above it, which is the whole reason a decoration shop sits on this screen
         // at all -- you buy a prop while looking at where it will go.
@@ -97,7 +117,25 @@ namespace ExpoTheExplorer.UI.EditorTools
             var existing = Object.FindAnyObjectByType<MetaShopView>();
             if (existing != null && !TryReplaceIncomplete(existing))
             {
+                // The ONE thing this step will do to a shop it did not build (D-108). It is
+                // additive apart from a single reparent, it is guarded, and it is undoable --
+                // whereas rebuilding the panel to obtain a backdrop and three labels would
+                // throw away every bit of styling done by hand.
+                var upgraded = UpgradeExisting(existing);
+
                 ReportExisting(existing);
+
+                if (upgraded.Count > 0)
+                {
+                    Debug.Log(
+                        $"Added to the existing shop on '{existing.name}': {string.Join(", ", upgraded)}. " +
+                        "The sheet now sits inside the backdrop, so the block and the list appear and vanish " +
+                        "together, and a tap outside the sheet closes the shop. Nothing moved on screen — the " +
+                        "backdrop has the same rect the shop root already had. " +
+                        "Ctrl+Z takes the whole upgrade back out. Scene is dirty — save it yourself.",
+                        existing);
+                }
+
                 EditorSceneManager.MarkSceneDirty(scene);
                 Selection.activeObject = existing;
                 return;
@@ -105,14 +143,248 @@ namespace ExpoTheExplorer.UI.EditorTools
 
             var view = BuildFresh(canvas);
 
+            // The SAME method that upgrades an old shop, rather than a second copy of the
+            // four builders inside BuildFresh: one code path means a fresh shop and an
+            // upgraded one cannot drift into looking different.
+            UpgradeExisting(view);
+
             EditorSceneManager.MarkSceneDirty(scene);
             Selection.activeObject = view;
 
             Debug.Log(
                 $"Meta shop built under '{canvas.name}' as its LAST child, so the panel draws over the grounds. " +
                 "The HUD stays on top of both — its Canvas carries a sorting order of its own. " +
+                "The list sits inside a full-screen backdrop that closes it on an outside tap, under a title and a " +
+                "NAME / PRICE heading row, with an X in the sheet's corner. " +
                 "Scene is dirty — save it yourself.",
                 view);
+        }
+
+        // D-108: the four things a shop built before it lacks — a full-screen backdrop that
+        // closes on an outside tap, a title, a NAME / PRICE heading row, and an X. This is
+        // the first setup step in this project that RESTRUCTURES an existing hierarchy
+        // rather than only appending to one (it reparents the sheet under the backdrop), so
+        // every branch below is guarded and everything goes through Undo: one Ctrl+Z takes
+        // the whole upgrade back out.
+        //
+        // Whether the upgrade already ran is decided STRUCTURALLY, never by name (D-028):
+        // the sheet is a DIRECT child of the shop root until it is wrapped, and a grandchild
+        // afterwards. Consequence worth knowing: delete the Title or the Header later and
+        // re-running will NOT bring them back, because the wrap is what this asks about.
+        // Only the X is tested on its own, since it has a serialized field to be empty.
+        private static List<string> UpgradeExisting(MetaShopView view)
+        {
+            var added = new List<string>();
+            var serialized = new SerializedObject(view);
+
+            var sheet = (serialized.FindProperty("panel")?.objectReferenceValue as GameObject)?.transform as RectTransform;
+            var content = serialized.FindProperty("rowsParent")?.objectReferenceValue as Transform;
+            var rowTemplate = serialized.FindProperty("rowTemplate")?.objectReferenceValue as MetaShopRowView;
+            var viewport = content != null ? content.parent as RectTransform : null;
+
+            if (sheet == null || viewport == null || rowTemplate == null)
+            {
+                Debug.LogWarning(
+                    $"The meta shop on '{view.name}' is not in the shape this step knows (a panel, a rows parent " +
+                    "inside a viewport, and a row template). Nothing was upgraded — wire those first, or delete the " +
+                    "shop and run this step for a fresh one.",
+                    view);
+                return added;
+            }
+
+            if (sheet.parent == view.transform)
+            {
+                var backdrop = BuildBackdrop(view, sheet, serialized);
+                added.Add(BackdropName);
+
+                BuildTitle(sheet);
+                added.Add(TitleName);
+
+                BuildHeader(sheet, viewport, rowTemplate);
+                added.Add(HeaderName);
+
+                // Last, so the two objects above have already claimed their strip and this
+                // only has to move the list down past both of them.
+                Undo.RecordObject(viewport, "Build Meta Shop");
+                viewport.offsetMax = new Vector2(
+                    viewport.offsetMax.x, viewport.offsetMax.y - (TitleHeight + HeaderHeight));
+            }
+
+            if (serialized.FindProperty("closeButton")?.objectReferenceValue == null)
+            {
+                var close = BuildCloseButton(sheet);
+                serialized.FindProperty("closeButton").objectReferenceValue = close;
+                added.Add(CloseButtonName);
+            }
+
+            serialized.ApplyModifiedProperties();
+            return added;
+        }
+
+        // The sheet moves INSIDE it, which is what makes the block and the list appear and
+        // vanish as one modal -- MetaShopView toggles `panel`, and `panel` becomes this.
+        // Nothing moves on screen: the shop root is already full-screen, so the backdrop has
+        // an identical rect and the sheet's own anchors resolve exactly where they did.
+        private static RectTransform BuildBackdrop(MetaShopView view, RectTransform sheet, SerializedObject serialized)
+        {
+            var root = (RectTransform)view.transform;
+            var index = sheet.GetSiblingIndex();
+
+            var backdrop = CreateRect(BackdropName, root);
+            Stretch(backdrop);
+            Undo.RegisterCreatedObjectUndo(backdrop.gameObject, "Build Meta Shop");
+
+            // The sheet's old place in the sibling order, so the market button still draws
+            // ON TOP of it -- MetaShopView's own comment depends on that: the button has to
+            // stay tappable to close a panel that covers it.
+            backdrop.SetSiblingIndex(index);
+
+            var image = backdrop.gameObject.AddComponent<Image>();
+
+            // Dark and mostly transparent: the grounds behind stay readable, which is the
+            // whole reason a decoration shop lives on this screen -- you buy a prop while
+            // looking at where it will go.
+            image.color = new Color(0f, 0f, 0f, 0.55f);
+
+            // The line that does the actual work. Default-true on a new Image, said out loud
+            // so a later restyle that swaps the sprite cannot quietly turn the block off.
+            image.raycastTarget = true;
+
+            var button = backdrop.gameObject.AddComponent<Button>();
+            button.targetGraphic = image;
+
+            // None, and it matters more here than on an ordinary button: ColorTint would
+            // flash the whole dim layer on every press, so a tap near the sheet's edge would
+            // look like the screen blinking.
+            button.transition = Selectable.Transition.None;
+
+            Undo.SetTransformParent(sheet, backdrop, "Build Meta Shop");
+            sheet.SetAsLastSibling();
+
+            serialized.FindProperty("panel").objectReferenceValue = backdrop.gameObject;
+            serialized.FindProperty("backdropButton").objectReferenceValue = button;
+
+            // Switched off here as well as at run time. MetaShopView closes the shop in
+            // Start whatever the scene was saved as, but a panel left open in the SCENE is
+            // what the author sees every time they open the file.
+            backdrop.gameObject.SetActive(false);
+            return backdrop;
+        }
+
+        private static void BuildTitle(RectTransform sheet)
+        {
+            var title = CreateText(TitleName, sheet, TitleFontSize);
+            title.rectTransform.anchorMin = new Vector2(0f, 1f);
+            title.rectTransform.anchorMax = new Vector2(1f, 1f);
+            title.rectTransform.pivot = new Vector2(0.5f, 1f);
+            title.rectTransform.sizeDelta = new Vector2(-2f * ListPadding, TitleHeight);
+            title.rectTransform.anchoredPosition = new Vector2(0f, -ListPadding);
+            title.text = TitleText;
+            Undo.RegisterCreatedObjectUndo(title.gameObject, "Build Meta Shop");
+        }
+
+        // The legend the rows are read against. Unlike the powerup shop's, it CANNOT be laid
+        // out by a layout group and then trusted to line up: a meta row is hand-anchored
+        // (icon left, name stretched, price and BUY right), so the only thing that keeps a
+        // heading over its column is copying that column's own horizontal placement off the
+        // row template. Read through SerializedObject because those fields are private --
+        // which is right; a heading is not a reason to open a row's internals to everyone.
+        //
+        // It sits in the SHEET, not in the scrolling Content, because a heading that scrolls
+        // away with the list is worse than no heading at all.
+        private static void BuildHeader(RectTransform sheet, RectTransform viewport, MetaShopRowView rowTemplate)
+        {
+            var header = CreateRect(HeaderName, sheet);
+            Undo.RegisterCreatedObjectUndo(header.gameObject, "Build Meta Shop");
+
+            // The strip spans exactly what a row spans: the viewport's horizontal insets plus
+            // whatever padding the content's layout group adds. Read rather than assumed, so
+            // a restyled list keeps its headings aligned.
+            var layout = rowTemplate.transform.parent != null
+                ? rowTemplate.transform.parent.GetComponent<VerticalLayoutGroup>()
+                : null;
+            var left = viewport.offsetMin.x + (layout != null ? layout.padding.left : 0);
+            var right = viewport.offsetMax.x - (layout != null ? layout.padding.right : 0);
+
+            header.anchorMin = new Vector2(0f, 1f);
+            header.anchorMax = new Vector2(1f, 1f);
+            header.pivot = new Vector2(0.5f, 1f);
+            header.offsetMin = new Vector2(left, 0f);
+            header.offsetMax = new Vector2(right, 0f);
+            header.sizeDelta = new Vector2(header.sizeDelta.x, HeaderHeight);
+            header.anchoredPosition = new Vector2(header.anchoredPosition.x, -(ListPadding + TitleHeight));
+
+            var row = new SerializedObject(rowTemplate);
+            AddHeading(header, NameHeaderLabel, row, "nameLabel", TextAlignmentOptions.MidlineLeft);
+            AddHeading(header, PriceHeaderLabel, row, "priceLabel", TextAlignmentOptions.Center);
+        }
+
+        private static void AddHeading(
+            RectTransform header, string label, SerializedObject row, string field, TextAlignmentOptions alignment)
+        {
+            var column = (row.FindProperty(field)?.objectReferenceValue as Component)?.transform as RectTransform;
+            if (column == null)
+            {
+                Debug.LogWarning(
+                    $"The row template has no '{field}', so the '{label}' heading was skipped rather than guessed " +
+                    "into place. Wire that label on the template and run this step again.");
+                return;
+            }
+
+            var text = CreateText(label, header, HeaderFontSize, alignment);
+            text.text = label;
+
+            // Dimmer and smaller than a row's own text, which is the whole visual difference
+            // between a legend and data.
+            text.color = new Color(1f, 1f, 1f, 0.55f);
+            CopyColumnX(column, text.rectTransform);
+            Undo.RegisterCreatedObjectUndo(text.gameObject, "Build Meta Shop");
+        }
+
+        // Copies a column's HORIZONTAL placement and fills the strip vertically. Written as
+        // four assignments rather than a special case per anchor style because the same four
+        // cover both: a stretched column carries its insets in sizeDelta.x/anchoredPosition.x,
+        // and a right-anchored one carries its width and offset in the very same two fields.
+        private static void CopyColumnX(RectTransform source, RectTransform target)
+        {
+            target.anchorMin = new Vector2(source.anchorMin.x, 0f);
+            target.anchorMax = new Vector2(source.anchorMax.x, 1f);
+            target.pivot = new Vector2(source.pivot.x, 0.5f);
+            target.sizeDelta = new Vector2(source.sizeDelta.x, 0f);
+            target.anchoredPosition = new Vector2(source.anchoredPosition.x, 0f);
+        }
+
+        private static Button BuildCloseButton(RectTransform sheet)
+        {
+            var rect = CreateRect(CloseButtonName, sheet);
+            rect.anchorMin = new Vector2(1f, 1f);
+            rect.anchorMax = new Vector2(1f, 1f);
+            rect.pivot = new Vector2(1f, 1f);
+            rect.sizeDelta = new Vector2(CloseSize, CloseSize);
+            rect.anchoredPosition = new Vector2(-ListPadding, -ListPadding);
+            Undo.RegisterCreatedObjectUndo(rect.gameObject, "Build Meta Shop");
+
+            var background = rect.gameObject.AddComponent<Image>();
+
+            // The project's "you are about to lose something" red, the same one the powerup
+            // shop's X uses, so the game does not end up with two different reds.
+            background.color = new Color(0.45f, 0.18f, 0.18f);
+
+            var builtin = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
+            if (builtin != null)
+            {
+                background.sprite = builtin;
+                background.type = Image.Type.Sliced;
+            }
+
+            var button = rect.gameObject.AddComponent<Button>();
+            button.targetGraphic = background;
+
+            var label = CreateText("Label", rect, 34f);
+            Stretch(label.rectTransform);
+            label.text = "X";
+
+            return button;
         }
 
         // Every reference MetaShopView refuses to run without. Deliberately the same list as

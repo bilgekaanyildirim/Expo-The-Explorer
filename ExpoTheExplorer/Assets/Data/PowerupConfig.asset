@@ -16,13 +16,13 @@ MonoBehaviour:
     displayName: Auto-Collect
     description: Fills your trays with what the current orders still need.
     startingCharges: 2
-    gemCost: 5
+    gemCost: 30
     chargesPerDayCompleted: 0
   timeReset:
     displayName: Time Reset
     description: Gives every waiting customer their full time back.
     startingCharges: 1
-    gemCost: 5
+    gemCost: 15
     chargesPerDayCompleted: 0
   noiseClear:
     displayName: Noise Clear

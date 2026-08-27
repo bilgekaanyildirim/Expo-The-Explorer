@@ -15,10 +15,17 @@ namespace ExpoTheExplorer.UI
     // Gems, and a BUY. This is the step that closes the economy loop -- earning (finishing
     // a day), buying (here) and spending (the day scene's panel) are finally connected.
     //
-    // BUYING LIVES ON THE MENU, NOT IN THE DAY, and that is a design rule rather than a
-    // layout convenience (the user's decision, 2026-08-25): opening a store mid-service
-    // suspends the very time pressure a powerup exists to relieve. The day scene's
-    // PowerupBarView has no price, no Gem icon and no purchase path for the same reason.
+    // IT NOW SELLS IN THE DAY SCENE TOO (D-105, the user's decision on 2026-08-27), which
+    // reverses "buying lives on the menu, not in the day". The old rule's reason was that
+    // opening a store mid-service suspends the very time pressure a powerup exists to
+    // relieve -- and the reversal answers it head-on rather than ignoring it: the day is
+    // FROZEN while this panel is up, so the pressure is not suspended, it is paused. What
+    // is unchanged is that this view still knows nothing about that; the caller that opens
+    // it holds the pause (PowerupBarView), which is what lets the same component serve a
+    // screen with no day behind it at all.
+    //
+    // The day scene's PowerupBarView still has no price and no Gem icon of its own. It has
+    // one thing: an empty powerup is a live button that opens THIS.
     //
     // IT DOES NOT LIVE INSIDE MetaShopView, and the alternative was considered. That file
     // owns props bought with SoftMoney and belongs to MetaSystem; adding a tab to it would
@@ -30,6 +37,13 @@ namespace ExpoTheExplorer.UI
     // powerups exist, and is why this step adds no new arrow to blueprint.md.
     public class PowerupShopView : MonoBehaviour
     {
+        // Fired when the panel goes away, by whichever route. The day scene listens so it
+        // can let the day run again; the main screen never subscribes and nothing there
+        // notices. An event rather than the opener polling activeSelf, because the close
+        // button is inside THIS view and a poll would be a second opinion about a fact this
+        // object already knows exactly.
+        public event Action Closed;
+
         // The scene's session provider (MainScreenRoot). Serialized and dragged, never
         // searched for. SessionHost rather than MainScreenRoot so this class does not care
         // which screen it is on -- the same seam MetaShopView and HudWalletSource take.
@@ -38,7 +52,25 @@ namespace ExpoTheExplorer.UI
         [Tooltip("The shop panel itself. Switched off at Start whatever the scene was saved as.")]
         [SerializeField] private GameObject panel;
 
-        [Tooltip("Opens the shop. This view owns it, which is what keeps MainScreenView unaware powerups exist.")]
+        // CLOSES ON A TAP OUTSIDE THE SHEET (D-107, the user's decision on 2026-08-27), which
+        // reverses D-105's "deliberately NOT a close-on-tap scrim". That reasoning -- a
+        // mis-aimed tap dismissing a shop the player is mid-purchase in -- is real but small
+        // beside what it cost: a full-screen block with only a corner X is the shape players
+        // read as being trapped, and every other modal they use closes this way.
+        //
+        // It needs NO "was the click inside the panel" test, and that is the whole reason it
+        // is one wired Button rather than a pointer handler doing hit-tests: the sheet is a
+        // CHILD of this backdrop and carries its own raycast-target Image, so UGUI gives a
+        // tap on the sheet to the sheet and only an outside tap ever reaches here. Wire this
+        // to the same object `panel` points at, and the geometry does the filtering.
+        [Tooltip("Optional. A Button on the full-screen backdrop — tapping outside the shop closes it. Set its Transition to None so it does not tint.")]
+        [SerializeField] private Button backdropButton;
+
+        // OPTIONAL since D-105. On the main screen this view owns its own opener, which is
+        // what keeps MainScreenView unaware powerups exist. In the day scene there is no
+        // such button by design -- an empty powerup in the bar IS the opener -- and a shop
+        // that refused to work without one would force a dead button onto the day HUD.
+        [Tooltip("Optional. The shop's own open button. Leave empty in the day scene, where an empty powerup opens it instead.")]
         [SerializeField] private Button openButton;
 
         [SerializeField] private Button closeButton;
@@ -91,13 +123,15 @@ namespace ExpoTheExplorer.UI
                 // panel still opens -- hiding someone's authored UI is a worse surprise
                 // than an inert one -- but every row reads zero and refuses to sell.
                 Debug.Log(
-                    $"{nameof(PowerupShopView)} on '{name}': this session has no powerup stock " +
-                    "(no PowerupConfig wired on MainScreenRoot), so the shop stays inert.",
+                    $"{nameof(PowerupShopView)} on '{name}': this session has no powerup stock (no PowerupConfig " +
+                    $"wired on this scene's {nameof(SessionHost)} — MainScreenRoot on the menu, GameManager in the " +
+                    "day scene), so the shop stays inert.",
                     this);
             }
 
-            openButton.onClick.AddListener(OnOpenClicked);
-            closeButton.onClick.AddListener(OnCloseClicked);
+            if (openButton != null) openButton.onClick.AddListener(OnOpenClicked);
+            if (backdropButton != null) backdropButton.onClick.AddListener(Close);
+            closeButton.onClick.AddListener(Close);
 
             foreach (var (type, ui) in rows)
             {
@@ -125,7 +159,15 @@ namespace ExpoTheExplorer.UI
             if (session?.State != null) session.State.GemsChanged.Unsubscribe(OnGemsChanged);
 
             if (openButton != null) openButton.onClick.RemoveListener(OnOpenClicked);
-            if (closeButton != null) closeButton.onClick.RemoveListener(OnCloseClicked);
+            if (backdropButton != null) backdropButton.onClick.RemoveListener(Close);
+            if (closeButton != null) closeButton.onClick.RemoveListener(Close);
+
+            // Told, not left hanging. A shop destroyed while open (a scene load landing
+            // mid-purchase) would otherwise never fire Closed, and the day-scene caller
+            // holding the pause on its behalf would have nothing to release against. It
+            // releases from its own OnDestroy too; this is the half that also covers a
+            // shop destroyed while its opener lives on.
+            if (panel != null && panel.activeSelf) Closed?.Invoke();
 
             // Removed rather than left, because this view is legal to disable and
             // re-enable: a second Start would otherwise stack a second listener and a
@@ -137,18 +179,37 @@ namespace ExpoTheExplorer.UI
             rows.Clear();
         }
 
+        // The open button's listener, separate from Open() only because UnityAction takes
+        // no return value and a named method is what RemoveListener can match -- a lambda
+        // could be added but never taken off again.
+        private void OnOpenClicked() => Open();
+
         // Both handlers refresh rather than only toggling, so a shop opened after a day
-        // was completed shows the charges that day granted. Nothing else on this screen
+        // was completed shows the charges that day granted. Nothing else on the screen
         // would have redrawn them: the panel was inactive while the events fired.
-        private void OnOpenClicked()
+        //
+        // PUBLIC since D-105, so the day scene's powerup bar can open the same shop its own
+        // open button does. It reports whether the panel actually came up: a shop with no
+        // panel wired cannot open, and the caller needs to know that before it freezes a day
+        // it would then have no way to unfreeze -- the panel that would carry the close
+        // button is the missing thing.
+        public bool Open()
         {
+            if (panel == null) return false;
+
             RefreshAll();
-            if (panel != null) panel.SetActive(true);
+            panel.SetActive(true);
+            return true;
         }
 
-        private void OnCloseClicked()
+        // Idempotent on purpose: Closed fires only when something actually closed, so a
+        // caller releasing a pause against it cannot be woken twice by one panel.
+        public void Close()
         {
-            if (panel != null) panel.SetActive(false);
+            if (panel == null || !panel.activeSelf) return;
+
+            panel.SetActive(false);
+            Closed?.Invoke();
         }
 
         // Deliberately no confirmation step, unlike MetaShopView's. A prop there is
@@ -253,9 +314,11 @@ namespace ExpoTheExplorer.UI
         private bool ValidateReferences()
         {
             var missing = new List<string>();
+            // openButton is NOT on this list since D-105 -- see its field note. panel and
+            // closeButton stay required for both screens: a shop with no close button is a
+            // trap in the day scene, where it is also holding the day still.
             if (sessionHost == null) missing.Add(nameof(sessionHost));
             if (panel == null) missing.Add(nameof(panel));
-            if (openButton == null) missing.Add(nameof(openButton));
             if (closeButton == null) missing.Add(nameof(closeButton));
 
             if (missing.Count == 0) return true;

@@ -31,7 +31,13 @@ namespace ExpoTheExplorer.UI.EditorTools
     // a predefined one at all.
     internal static class PowerupShopSetup
     {
-        private const string SceneName = "MainScreen";
+        private const string MenuSceneName = "MainScreen";
+
+        // The DAY scene gets one too since D-105, where an empty powerup opens it. The two
+        // builds differ in exactly two ways -- no open button (the empty powerup is the
+        // opener) and the bar's Shop field gets filled -- so they share this whole file
+        // rather than growing a second near-identical setup step to drift out of sync.
+        private const string DaySceneName = "SampleScene";
 
         // Only ever used when CREATING these objects. Nothing is looked up by name --
         // project rule since D-028, and MetaGroundsSetup is the cautionary tale: after the
@@ -41,6 +47,7 @@ namespace ExpoTheExplorer.UI.EditorTools
         private const string PanelName = "Panel";
         private const string OpenButtonName = "PowerupShopButton";
         private const string CloseButtonName = "CloseButton";
+        private const string BackdropName = "Backdrop";
         private const string RowsName = "Rows";
 
         // A bottom sheet, like the meta shop's, so the grounds stay visible above it. The
@@ -80,25 +87,121 @@ namespace ExpoTheExplorer.UI.EditorTools
         private const string TimeResetLabel = "TIME RESET";
         private const string NoiseClearLabel = "NOISE CLEAR";
 
+        // The column headings, same posture as the three above: fixed identities of the
+        // columns, written once into scene objects the author can then retype. Nothing reads
+        // them back, and there is nothing per-save or per-Day about what a column contains.
+        private const string HeaderRowName = "Header";
+        private const string NameHeaderLabel = "NAME";
+        private const string CountHeaderLabel = "COUNT";
+        private const string PriceHeaderLabel = "PRICE";
+
+        // Shorter than a row and smaller-typed, so the headings read as a legend rather than
+        // as a fourth powerup the player cannot buy.
+        private const float HeaderHeight = 48f;
+        private const float HeaderFontSize = 22f;
+
         [MenuItem("ExpoTheExplorer/Meta/Build Powerup Shop")]
         private static void Build()
         {
             var scene = EditorSceneManager.GetActiveScene();
-            if (scene.name != SceneName)
+            var isDayScene = scene.name == DaySceneName;
+
+            if (scene.name != MenuSceneName && !isDayScene)
             {
                 EditorUtility.DisplayDialog(
                     "Wrong scene",
-                    $"Open the '{SceneName}' scene first — this step only touches the scene that is already open, " +
-                    "so that saving stays your decision.",
+                    $"Open '{MenuSceneName}' or '{DaySceneName}' first — this step only touches the scene that is " +
+                    "already open, so that saving stays your decision.",
                     "OK");
                 return;
             }
 
-            // The screen's own Canvas, found through MainScreenView rather than by taking
-            // the first Canvas in the scene: the HUD is a Canvas of its own, and building
-            // the shop inside it would put the panel on the wrong sorting layer -- and make
-            // the Gem counter a child of the thing you spend Gems in. Same reasoning
-            // MetaShopSetup writes down.
+            // The DAY scene's powerup bar, and it is the anchor for everything below: it
+            // names the Canvas the shop belongs on, and it is the thing that will open it.
+            // Found by COMPONENT, never by name (D-028).
+            var bar = isDayScene ? Object.FindAnyObjectByType<PowerupBarView>() : null;
+            if (isDayScene && bar == null)
+            {
+                EditorUtility.DisplayDialog(
+                    "No PowerupBarView",
+                    $"Could not find a {nameof(PowerupBarView)} in '{DaySceneName}'. In the day scene the shop has no " +
+                    "open button of its own — an empty powerup opens it — so without the bar there would be no way " +
+                    "into what this step builds.",
+                    "OK");
+                return;
+            }
+
+            var canvas = isDayScene ? ResolveDayCanvas(bar) : ResolveMenuCanvas();
+            if (canvas == null) return;
+
+            // Found by COMPONENT, never by name. Two powerup shops in one scene is already
+            // a bug, so the first one is the one there is.
+            var existing = Object.FindAnyObjectByType<PowerupShopView>();
+            if (existing != null)
+            {
+                ReportExisting(existing, isDayScene);
+
+                // Still offered, because the shop existing and the BAR pointing at it are
+                // two separate facts: a scene built before D-105 has the first without the
+                // second. FillIfEmpty never overwrites, so re-running is safe.
+                if (isDayScene) WireBarToShop(bar, existing);
+
+                // The one thing this step will ADD to a shop it did not just build, and it is
+                // additive only -- it inserts a first child and touches nothing else, so hand
+                // styling still survives. A shop built before D-106 has rows with no legend
+                // over them, and rebuilding the panel to get three labels would be the
+                // destructive way round.
+                if (TryAddHeaderRow(existing, out var headerProblem))
+                {
+                    EditorSceneManager.MarkSceneDirty(scene);
+                    Debug.Log(
+                        $"Added the NAME / COUNT / PRICE heading row to the existing shop on '{existing.name}'. " +
+                        "It uses the same column widths as the rows, so it follows them at any panel width. " +
+                        "Scene is dirty — save it yourself.",
+                        existing);
+                }
+                else if (headerProblem != null)
+                {
+                    Debug.Log(
+                        $"No heading row was added to the shop on '{existing.name}': {headerProblem}. Nothing was " +
+                        "changed.",
+                        existing);
+                }
+
+                Selection.activeObject = existing;
+                return;
+            }
+
+            var view = BuildFresh(canvas, withOpenButton: !isDayScene);
+            if (isDayScene) WireBarToShop(bar, view);
+
+            EditorSceneManager.MarkSceneDirty(scene);
+            Selection.activeObject = view;
+
+            Debug.Log(
+                $"Powerup shop built under '{canvas.name}' as its LAST child, so the panel draws over what is behind " +
+                "it. " +
+                (isDayScene
+                    ? "No open button was built — in the day scene a powerup at 0 charges is the opener, and " +
+                      $"{nameof(PowerupBarView)}'s Shop field now points here. Drag each powerup's inactive 'Add' " +
+                      "child into the matching block's Empty Badge slot to finish. "
+                    : "Its open button sits above the meta shop's market button; the two steps share no constants, " +
+                      "so check they do not overlap and nudge the RectTransform if they do. ") +
+                "A NAME / COUNT / PRICE heading row sits above the three rows, laid out with the same column " +
+                "widths so it follows them at any panel width. " +
+                "The price and owned labels are left EMPTY on purpose — PowerupShopView fills them from " +
+                "PowerupConfig at run time, so a number typed here would be a second authority. " +
+                "Scene is dirty — save it yourself.",
+                view);
+        }
+
+        // The screen's own Canvas, found through MainScreenView rather than by taking the
+        // first Canvas in the scene: the HUD is a Canvas of its own, and building the shop
+        // inside it would put the panel on the wrong sorting layer -- and make the Gem
+        // counter a child of the thing you spend Gems in. Same reasoning MetaShopSetup
+        // writes down.
+        private static Canvas ResolveMenuCanvas()
+        {
             var screen = Object.FindAnyObjectByType<MainScreenView>();
             if (screen == null)
             {
@@ -107,39 +210,40 @@ namespace ExpoTheExplorer.UI.EditorTools
                     "Could not find MainScreenView, so there is no way to tell which Canvas is the screen's own " +
                     "(the HUD has a Canvas of its own). Open the built MainScreen scene.",
                     "OK");
-                return;
+                return null;
             }
 
             var canvas = screen.GetComponentInParent<Canvas>();
+            if (canvas == null) EditorUtility.DisplayDialog("No Canvas", "MainScreenView is not under a Canvas.", "OK");
+
+            return canvas;
+        }
+
+        // The BAR's Canvas, for the same reason the menu uses MainScreenView's: the day
+        // scene carries several (the HUD, the backdrop, the popups), and the one the shop
+        // belongs on is the one already carrying the control that opens it.
+        private static Canvas ResolveDayCanvas(PowerupBarView bar)
+        {
+            var canvas = bar.GetComponentInParent<Canvas>();
             if (canvas == null)
             {
-                EditorUtility.DisplayDialog("No Canvas", "MainScreenView is not under a Canvas.", "OK");
-                return;
+                EditorUtility.DisplayDialog(
+                    "No Canvas",
+                    $"The scene's {nameof(PowerupBarView)} is not under a Canvas, so there is nowhere to build the " +
+                    "shop panel.",
+                    "OK");
             }
 
-            // Found by COMPONENT, never by name. Two powerup shops in one scene is already
-            // a bug, so the first one is the one there is.
-            var existing = Object.FindAnyObjectByType<PowerupShopView>();
-            if (existing != null)
-            {
-                ReportExisting(existing);
-                Selection.activeObject = existing;
-                return;
-            }
+            return canvas;
+        }
 
-            var view = BuildFresh(canvas);
-
-            EditorSceneManager.MarkSceneDirty(scene);
-            Selection.activeObject = view;
-
-            Debug.Log(
-                $"Powerup shop built under '{canvas.name}' as its LAST child, so the panel draws over the grounds. " +
-                $"Its open button sits above the meta shop's market button; the two steps share no constants, so " +
-                "check they do not overlap and nudge the RectTransform if they do. " +
-                "The price and owned labels are left EMPTY on purpose — PowerupShopView fills them from " +
-                "PowerupConfig at run time, so a number typed here would be a second authority. " +
-                "Scene is dirty — save it yourself.",
-                view);
+        // Fills the bar's Shop field only when it is empty, like every other reference this
+        // file writes: an author who has already pointed it somewhere meant to.
+        private static void WireBarToShop(PowerupBarView bar, PowerupShopView view)
+        {
+            var serialized = new SerializedObject(bar);
+            FillIfEmpty(serialized, "shop", view);
+            serialized.ApplyModifiedPropertiesWithoutUndo();
         }
 
         // Every reference PowerupShopView refuses to open without, spelled the same way that
@@ -148,17 +252,29 @@ namespace ExpoTheExplorer.UI.EditorTools
         // shop fine that the screen then rejected at Start.
         private static readonly string[] RequiredFields =
         {
-            "sessionHost", "panel", "openButton", "closeButton",
+            "sessionHost", "panel", "closeButton",
             "autoCollect.buyButton", "timeReset.buyButton", "noiseClear.buyButton",
         };
+
+        // Checked only on the MENU, because the day scene's shop deliberately has none --
+        // it left the shared list above for that reason, and reporting it missing there
+        // would be this step inventing a fault it created on purpose.
+        private const string OpenButtonField = "openButton";
 
         // Reports rather than repairs, and rather than rebuilding. A half-wired shop is
         // usually a shop the author is midway through styling; blowing it away to produce a
         // correct one is the more destructive of the two mistakes this step can make.
-        private static void ReportExisting(PowerupShopView view)
+        private static void ReportExisting(PowerupShopView view, bool isDayScene)
         {
             var serialized = new SerializedObject(view);
             var missing = new List<string>();
+
+            if (!isDayScene)
+            {
+                var opener = serialized.FindProperty(OpenButtonField);
+                if (opener == null || opener.objectReferenceValue == null) missing.Add(OpenButtonField);
+            }
+
             foreach (var field in RequiredFields)
             {
                 var property = serialized.FindProperty(field);
@@ -181,7 +297,7 @@ namespace ExpoTheExplorer.UI.EditorTools
                 view);
         }
 
-        private static PowerupShopView BuildFresh(Canvas canvas)
+        private static PowerupShopView BuildFresh(Canvas canvas, bool withOpenButton)
         {
             var root = CreateRect(RootName, canvas.transform);
             Stretch(root);
@@ -194,10 +310,28 @@ namespace ExpoTheExplorer.UI.EditorTools
             // whole hierarchy back out rather than leaving an empty root behind.
             Undo.RegisterCreatedObjectUndo(root.gameObject, "Build Powerup Shop");
 
-            var openButton = BuildOpenButton(root);
-            var panel = BuildPanel(root);
-            var closeButton = BuildCloseButton(panel);
-            var rows = BuildRowsContainer(panel);
+            var openButton = withOpenButton ? BuildOpenButton(root) : null;
+
+            // THE DAY SCENE GETS A BACKDROP AND THE MENU DOES NOT, and the difference is
+            // what is behind each one. Freezing the day stops the ticket CLOCK; it does not
+            // stop a finger, and the board sits in the 54% of the screen the sheet does not
+            // cover -- so without something catching those touches the player could keep
+            // dragging items into trays while shopping, and batch-deliver an order in a day
+            // that is supposed to be held still. A stretched, raycast-catching Image is the
+            // whole mechanism. The menu has nothing behind it that a stray tap can break.
+            RectTransform backdrop = null;
+            var backdropButton = withOpenButton ? null : BuildBackdrop(root, out backdrop);
+
+            // The object PowerupShopView switches on and off. In the day scene that is the
+            // backdrop, so the block and the sheet appear and vanish together as one modal;
+            // on the menu the sheet is the whole shop.
+            var sheet = BuildPanel(backdrop != null ? backdrop : root);
+            var panel = backdrop != null ? backdrop : sheet;
+
+            var closeButton = BuildCloseButton(sheet);
+            var rows = BuildRowsContainer(sheet);
+
+            BuildHeaderRow(rows);
 
             var autoCollect = BuildRow(rows, AutoCollectLabel);
             var timeReset = BuildRow(rows, TimeResetLabel);
@@ -219,14 +353,16 @@ namespace ExpoTheExplorer.UI.EditorTools
             {
                 Debug.LogWarning(
                     "No SessionHost was found in the scene, so the shop's Session Host field is empty and it will " +
-                    "refuse to open. Run ExpoTheExplorer > Meta > Wire MainScreen Session first, then drag the " +
-                    "'--Session--' object into the field.",
+                    "refuse to open. On the main screen that is MainScreenRoot (run ExpoTheExplorer > Meta > Wire " +
+                    "MainScreen Session first, then drag the '--Session--' object in); in the day scene it is the " +
+                    "GameManager object.",
                     view);
             }
 
             FillIfEmpty(serialized, "sessionHost", host);
             FillIfEmpty(serialized, "panel", panel.gameObject);
-            FillIfEmpty(serialized, "openButton", openButton);
+            if (openButton != null) FillIfEmpty(serialized, "openButton", openButton);
+            if (backdropButton != null) FillIfEmpty(serialized, "backdropButton", backdropButton);
             FillIfEmpty(serialized, "closeButton", closeButton);
 
             WireRow(serialized, "autoCollect", autoCollect);
@@ -299,6 +435,39 @@ namespace ExpoTheExplorer.UI.EditorTools
             title.text = "POWERUPS";
 
             return panel;
+        }
+
+        // It swallows the touch AND dismisses on one (D-107, reversing D-105's refusal to let
+        // it close). The dismissal needs no hit-test: the sheet is built as this object's
+        // CHILD and carries its own raycast-target Image, so UGUI hands a tap on the sheet to
+        // the sheet and only an outside tap reaches the Button here.
+        private static Button BuildBackdrop(RectTransform root, out RectTransform rectOut)
+        {
+            var rect = CreateRect(BackdropName, root);
+            Stretch(rect);
+
+            var image = rect.gameObject.AddComponent<Image>();
+
+            // Dark and mostly transparent: the board behind must stay READABLE -- a player
+            // buying Auto-Collect is looking at the mess they are about to clear. The alpha
+            // is the number most likely to want nudging; nudge it in the Inspector.
+            image.color = new Color(0f, 0f, 0f, 0.55f);
+
+            // The line that does the actual work. An Image blocks raycasts by default, but
+            // saying so here means a later restyle that swaps the sprite cannot quietly
+            // turn the block off.
+            image.raycastTarget = true;
+
+            var button = rect.gameObject.AddComponent<Button>();
+            button.targetGraphic = image;
+
+            // No transition, which matters here more than on an ordinary button: the default
+            // ColorTint would flash the whole dim layer lighter on every press, so a tap on
+            // the sheet's edge would look like the screen blinking.
+            button.transition = Selectable.Transition.None;
+
+            rectOut = rect;
+            return button;
         }
 
         private static Button BuildOpenButton(RectTransform root)
@@ -384,6 +553,115 @@ namespace ExpoTheExplorer.UI.EditorTools
             layout.childAlignment = TextAnchor.UpperCenter;
 
             return rows;
+        }
+
+        // The legend the three rows are read against. It is a ROW, laid out by the same
+        // HorizontalLayoutGroup with the same column widths, because that is the only way the
+        // headings stay over their columns: the panel's width is a fraction of the screen and
+        // unknown here, so any hand-placed heading would drift the moment the shop is opened
+        // on a different aspect ratio.
+        private static RectTransform BuildHeaderRow(RectTransform parent)
+        {
+            var row = CreateRect(HeaderRowName, parent);
+
+            // No background Image at all, unlike a powerup row. The rows carry a faint tint
+            // to separate them from each other; a heading that also had one would read as a
+            // fourth, unbuyable powerup -- which is exactly the mistake a legend must not
+            // make. Nothing to raycast either, so a drag across it reaches the panel.
+            var height = row.gameObject.AddComponent<LayoutElement>();
+            height.preferredHeight = HeaderHeight;
+            height.flexibleHeight = 0f;
+
+            var layout = row.gameObject.AddComponent<HorizontalLayoutGroup>();
+            layout.spacing = RowInnerPadding;
+            layout.padding = new RectOffset((int)RowInnerPadding, (int)RowInnerPadding, 0, 0);
+            layout.childControlWidth = true;
+            layout.childControlHeight = true;
+            layout.childForceExpandWidth = false;
+            layout.childForceExpandHeight = true;
+            layout.childAlignment = TextAnchor.MiddleLeft;
+
+            // Each heading is built with the SAME width rule as the column under it --
+            // flexible for the name, Fixed(OwnedWidth) and Fixed(PriceWidth) for the two
+            // numbers. Duplicating the three constants here rather than reading a row back is
+            // what keeps this method runnable on a shop whose rows do not exist yet.
+            var name = CreateHeaderText(NameHeaderLabel, row, TextAlignmentOptions.MidlineLeft);
+            Flexible(name.gameObject);
+
+            var count = CreateHeaderText(CountHeaderLabel, row);
+            Fixed(count.gameObject, OwnedWidth);
+
+            var price = CreateHeaderText(PriceHeaderLabel, row);
+            Fixed(price.gameObject, PriceWidth);
+
+            // An empty rect over the BUY column, and it is load-bearing rather than tidiness:
+            // without it the layout group hands the three headings the BUY column's width to
+            // share, and every heading slides right of what it labels. It is deliberately
+            // unlabelled -- a heading over a column of buttons has nothing to say.
+            var buySpacer = CreateRect("BuySpacer", row);
+            Fixed(buySpacer.gameObject, BuyWidth);
+
+            return row;
+        }
+
+        // Dimmer and smaller than a row's text, which is the whole visual difference between
+        // a legend and data. Uppercase comes from the constants, matching the panel's title
+        // and the row names.
+        private static TMP_Text CreateHeaderText(
+            string label, RectTransform parent, TextAlignmentOptions alignment = TextAlignmentOptions.Center)
+        {
+            var text = CreateText(label, parent, HeaderFontSize, alignment);
+            text.text = label;
+            text.color = new Color(1f, 1f, 1f, 0.55f);
+            return text;
+        }
+
+        // Adds the legend to a shop that was built before it existed. Non-destructive by
+        // construction: it only ever inserts a first child, and it decides whether one is
+        // already there WITHOUT looking anything up by name (D-028, and MetaGroundsSetup is
+        // the cautionary tale -- a renamed object made its name search find nothing and it
+        // would have built a second hierarchy while logging that it had not).
+        //
+        // The test is structural instead: the three wired BUY buttons name the three real
+        // rows, so if the rows container's first child is one of them there is no header yet.
+        // Rename the header, restyle it, replace it with your own -- the first child stops
+        // being a known row and this leaves it alone. Delete it and it comes back.
+        private static bool TryAddHeaderRow(PowerupShopView view, out string problem)
+        {
+            problem = null;
+
+            var serialized = new SerializedObject(view);
+            var knownRows = new List<Transform>();
+            RectTransform rowsParent = null;
+
+            foreach (var block in new[] { "autoCollect", "timeReset", "noiseClear" })
+            {
+                var buy = serialized.FindProperty($"{block}.buyButton")?.objectReferenceValue as Button;
+                var row = buy != null ? buy.transform.parent : null;
+                if (row == null) continue;
+
+                knownRows.Add(row);
+                rowsParent ??= row.parent as RectTransform;
+            }
+
+            if (rowsParent == null)
+            {
+                problem =
+                    "no BUY button on this shop is wired to a row inside a rows container, so there is no way to " +
+                    "tell where the headings would go";
+                return false;
+            }
+
+            if (rowsParent.childCount > 0 && !knownRows.Contains(rowsParent.GetChild(0)))
+            {
+                problem = "its first row is not one of the three powerup rows, so something is already sitting there";
+                return false;
+            }
+
+            var header = BuildHeaderRow(rowsParent);
+            header.SetAsFirstSibling();
+            Undo.RegisterCreatedObjectUndo(header.gameObject, "Add Powerup Shop Header");
+            return true;
         }
 
         private static Row BuildRow(RectTransform parent, string displayName)
