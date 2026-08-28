@@ -90,6 +90,16 @@ namespace ExpoTheExplorer.UI
         [Tooltip("How long the map lingers on the NEXT prop's ghost after a celebration, before zooming back out. A separate number from the hold above on purpose: that beat is \"look at what you got\", this one is \"and this is next\".")]
         [SerializeField, Min(0f)] private float celebrationNextPeekSeconds = 1.1f;
 
+        // The popup a Day-unlocked prop shows once it has opened (D-128). OPTIONAL and its
+        // absence is loud rather than silent: a prop that authors an unlock message and finds
+        // no prefab logs a warning naming the menu step, because the alternative is a written
+        // sentence the player never sees and nothing saying why.
+        //
+        // Assigned by ExpoTheExplorer > Meta > Build Meta Grounds, which already wires this
+        // view -- there is exactly one of it in the scene, so nothing has to be dragged.
+        [Tooltip("Assets/Prefabs/UI/MetaUnlockPopup.prefab — shown when a prop opens on its own, if that prop authors an unlock message. Built by ExpoTheExplorer > Meta > Build Meta Grounds.")]
+        [SerializeField] private MetaUnlockPopup unlockPopupPrefab;
+
         // A purchased prop is PLACED rather than simply present: it drops the last stretch
         // into its spot and the ground takes the hit. Every number here is feel, so it is
         // serialized next to the other feel on this component and NOT in the catalog -- D-015
@@ -868,6 +878,52 @@ namespace ExpoTheExplorer.UI
             // celebration reveals props one after another, so there IS a next one.
             Detach(silhouette);
             if (realProp != null) realProp.SetActive(true);
+
+            // LAST, and inside this method on purpose: the camera focus this prop was given
+            // above is still held, and staying inside CelebrateOne is what keeps it held until
+            // the player presses the button (the user's requirement). Returning hands off to
+            // whatever comes next on its own -- the next prop's own FocusOn, or the queue
+            // ending into PeekAtWhatIsNext and the caller's RestoreFocus.
+            yield return ShowUnlockPopup(item);
+        }
+
+        // The popup a Day-unlocked prop shows once it has finished opening: a picture of what
+        // it brought and a line saying what it is (D-128). Both are authored per prop on the
+        // catalog, and the MESSAGE is the opt-in -- a prop nobody has written for plays its
+        // reveal and moves on, exactly as every prop did before this existed.
+        //
+        // Deliberately NOT skippable by the skip catcher. That catcher exists to hurry an
+        // ANIMATION along; this is the content the animation was introducing, and a tap meant
+        // for "get on with it" should not also throw away the sentence explaining what the
+        // player just gained.
+        private IEnumerator ShowUnlockPopup(MetaItemDefinition item)
+        {
+            if (item == null || !item.HasUnlockPopup) yield break;
+
+            if (unlockPopupPrefab == null)
+            {
+                Debug.LogWarning(
+                    $"{nameof(MetaGroundsView)} on '{name}': '{item.Id}' authors an unlock message but no Unlock Popup " +
+                    "Prefab is assigned, so it cannot be shown. Run ExpoTheExplorer > Meta > Build Meta Grounds.", this);
+                yield break;
+            }
+
+            // Parentless: the prefab carries its own Screen Space - Overlay canvas, and this
+            // view lives under the screen's canvas -- a Canvas nested inside another inherits
+            // its parent's RectTransform rather than the screen's.
+            var popup = Instantiate(unlockPopupPrefab);
+            popup.Bind(item.DisplayName, item.UnlockMessage, item.UnlockImage);
+
+            // Frame by frame rather than on a callback, because this is a coroutine holding a
+            // zoomed-in map: the wait IS the feature. The null check ends it if the popup is
+            // destroyed under us (the scene unloading mid-celebration), so the map cannot be
+            // stranded by something outside this method's control.
+            while (popup != null && !popup.IsDismissed)
+            {
+                yield return null;
+            }
+
+            if (popup != null) Destroy(popup.gameObject);
         }
 
         // After the last unlock, the map slides on to the prop the player is now waiting for

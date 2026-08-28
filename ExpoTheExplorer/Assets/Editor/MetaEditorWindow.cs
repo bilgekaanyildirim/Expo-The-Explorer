@@ -504,6 +504,17 @@ namespace ExpoTheExplorer.Editor
             else
             {
                 Field(item, "unlockAtDayIndex");
+
+                // Drawn in THIS branch and not beside the shared fields, which is the whole
+                // point of where they sit: a purchased prop is one the player chose and paid
+                // for, so it has nothing to announce, and offering it an unlock popup would be
+                // a promise the game never keeps. Only a prop that opens on its own can.
+                //
+                // The message is the opt-in -- empty means the reveal plays and nothing is
+                // said -- and the image falls back to the prop's own sprite, so a line written
+                // before its artwork exists still shows something.
+                Field(item, "unlockMessage");
+                Field(item, "unlockImage");
             }
 
             EditorGUILayout.Space(2f);

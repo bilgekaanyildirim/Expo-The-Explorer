@@ -1,3 +1,4 @@
+using System.IO;
 using ExpoTheExplorer.Data;
 using ExpoTheExplorer.UI;
 using TMPro;
@@ -197,6 +198,11 @@ namespace ExpoTheExplorer.UI.EditorTools
             Set(serialized, "nextButton", bar.Next);
             Set(serialized, "lockedHintLabel", bar.LockedHint);
 
+            // The unlock popup is deliberately NOT wired here. It lives in its own step,
+            // ExpoTheExplorer > Meta > Build Unlock Popup: this one rebuilds the grounds
+            // container and rewires the whole view, so needing it to obtain one prefab would
+            // mean accepting a pile of unrelated side effects (the user's objection, and a
+            // fair one). One setup script per concern, like every other step in this folder.
             serialized.ApplyModifiedProperties();
         }
 

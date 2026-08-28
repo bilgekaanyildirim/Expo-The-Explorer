@@ -367,6 +367,7 @@ MonoBehaviour:
   celebrationRevealSeconds: 0.9
   celebrationHoldSeconds: 0.6
   celebrationNextPeekSeconds: 1.1
+  unlockPopupPrefab: {fileID: 1357536641707736395, guid: 8e06edd2d02994ef29e7cc4ee3738553, type: 3}
   haptics: {fileID: 1108831558}
   placementDropHeight: 48
   placementDropSeconds: 0.32
@@ -4945,8 +4946,8 @@ MonoBehaviour:
   sessionHost: {fileID: 1108831556}
   shop: {fileID: 1246490952}
   texts: {fileID: 11400000, guid: da2a6e75a5ed84029a2c06ca16cefe16, type: 2}
-  canvasSortingOrder: 50
-  storeHintFontScale: 0.03
+  welcomePrefab: {fileID: 8421879952580142964, guid: b93eec71dddda4f57a3576d6d64fe0a5, type: 3}
+  storeHintPrefab: {fileID: 1772722320372447797, guid: 20a79d8882dd5483d99641967a641c04, type: 3}
   storeArrowScale: 1.35
 --- !u!1001 &2045230194
 PrefabInstance:

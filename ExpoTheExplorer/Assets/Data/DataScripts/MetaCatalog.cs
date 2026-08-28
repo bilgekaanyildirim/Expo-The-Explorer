@@ -55,6 +55,22 @@ namespace ExpoTheExplorer.Data
         [Tooltip("Purchase = costs SoftMoney. Day Unlock = not for sale, appears once the player reaches Unlock At Day Index and stays from then on.")]
         [SerializeField] private MetaUnlockKind unlock = MetaUnlockKind.Purchase;
 
+        // WHAT A DAY-UNLOCKED PROP SAYS WHEN IT OPENS (D-128). Only meaningful for a Day
+        // Unlock: a purchased prop is one the player chose and paid for, so it has nothing to
+        // announce -- MetaEditorWindow draws these two in the Day-Unlock branch for that
+        // reason, which makes "purchased props never do this" structural rather than a rule
+        // someone has to remember.
+        //
+        // THE MESSAGE IS THE OPT-IN. Empty means no popup and the reveal plays exactly as it
+        // did before this existed, which is what lets this ship without touching a single
+        // authored prop: a prop nobody has written for stays silent instead of showing an
+        // empty box.
+        [Tooltip("Shown when this prop opens on its own — a line saying what the player just gained. Empty means no popup at all, only the reveal animation. Only read for a Day Unlock.")]
+        [SerializeField, TextArea(2, 4)] private string unlockMessage;
+
+        [Tooltip("Optional. The picture on that popup — what the prop BROUGHT rather than what it looks like (the drinks it stocks, the fries it makes). Empty falls back to the prop's own sprite.")]
+        [SerializeField] private Sprite unlockImage;
+
         [Tooltip("SoftMoney cost. Only read when Unlock is Purchase. Left at 0 the prop is free, which is a content bug rather than a valid default -- the same stance FoodItemConfig.basePrice takes.")]
         [SerializeField, Min(0)] private int price;
 
@@ -85,6 +101,18 @@ namespace ExpoTheExplorer.Data
         // -- the shop would then draw nothing for every prop without a custom icon, which
         // reads as missing art rather than as missing code.
         public Sprite ShopIcon => shopIcon != null ? shopIcon : sprite;
+        public string UnlockMessage => unlockMessage;
+
+        // Falls back to the prop's own art for the reason ShopIcon does, and it is the same
+        // rule spelled in the same place: "empty means use the sprite" belongs here, not in
+        // every caller that might forget it.
+        public Sprite UnlockImage => unlockImage != null ? unlockImage : sprite;
+
+        // The one question the celebration asks. Whitespace counts as empty: a message that is
+        // only spaces is an authoring slip, and showing a blank popup for it would be worse
+        // than showing none.
+        public bool HasUnlockPopup => !string.IsNullOrWhiteSpace(unlockMessage);
+
         public MetaUnlockKind Unlock => unlock;
         public int Price => price;
         public int UnlockAtDayIndex => unlockAtDayIndex;
