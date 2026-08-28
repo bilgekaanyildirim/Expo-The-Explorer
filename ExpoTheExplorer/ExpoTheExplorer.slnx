@@ -17,8 +17,8 @@
   <Project Path="Unity.Burst.csproj" />
   <Project Path="Unity.Services.Core.Environments.Editor.csproj" />
   <Project Path="Unity.VisualScripting.Flow.Editor.csproj" />
-  <Project Path="ExpoTheExplorer.Systems.MetaSystem.csproj" />
   <Project Path="Assembly-CSharp.csproj" />
+  <Project Path="ExpoTheExplorer.Systems.MetaSystem.csproj" />
   <Project Path="Unity.2D.SpriteShape.Editor.csproj" />
   <Project Path="Unity.VisualStudio.Editor.csproj" />
   <Project Path="Unity.2D.Animation.Editor.csproj" />

@@ -51,7 +51,7 @@
 
 - BoardUI — runtime board grid rendering + drag/drop (BoardView, board-visual config assets) — depends on: -
 - EconomySystem — delivery payout formula (order value from food prices + a tip stepped through three tiers keyed on remaining-time ratio) + its balancing config — depends on: -
-- ProgressionSystem — the single writer of SoftMoney/Gems (`Wallet`), the debt a completed day still owes the player (`DayRewardPurse`), the player-profile save boundary (JSON load/save + fallback on missing/corrupt file, currently unwired and carrying no fields), and the owning system of the wallet HUD (SoftMoneyView/GemsView) — depends on: -
+- ProgressionSystem — the single writer of SoftMoney/Gems (`Wallet`), the debt a completed day still owes the player (`DayRewardPurse`), the player-profile save boundary (JSON load/save + fallback on missing/corrupt file, currently unwired and carrying no fields), and the owning system of the wallet HUD (SoftMoneyView/GemsView) and, since D-130, of the HUD's day badge (DayNumberView, which reads the day through the same HudWalletSource) — depends on: -
 <!-- DayRewardPurse, added 2026-08-24 (decisions.md D-057): the payout became deferred, so
      between "the day completed" and "the player left the popup" there is an amount that is
      owed but not yet held. It is filed here rather than under DayLifecycle because it is
@@ -93,7 +93,7 @@
      deliberate departure from Lives, whose public setter leaves its single-writer
      rule resting on a comment; here the compiler holds it. The second reason is
      scope: GameState is the central state of a DAY. -->
-- PowerupSystem — the STOCK behind GDD 5.2's three powerups: how many charges of each the player holds, earning them by completing a day, buying them with Gems, and what spending one costs — depends on: ProgressionSystem
+- PowerupSystem — the STOCK behind GDD 5.2's three powerups: how many charges of each the player holds, buying them with Gems, and what spending one costs — depends on: ProgressionSystem
 <!-- PowerupSystem -> ProgressionSystem, added 2026-08-25 (decisions.md D-081; GDD 5.2
      reopened by the user; plan in .claude/powerup-plan.md): the Gem purchase is charged through Wallet, the
      single writer of Gems. Identical in shape to the LivesSystem and KeySystem arrows
@@ -123,7 +123,21 @@
      The `Func<bool>` return value is a RULE, not plumbing: false means the effect had no
      work to do, and GDD 5.2 says such a press costs no charge. All three powerups have
      reachable moments with nothing to do (an empty board, no active tickets, a finished
-     day), so this is the difference between a convenience and a resource quietly lost. -->
+     day), so this is the difference between a convenience and a resource quietly lost.
+
+     D-115 (2026-08-27) GAVE THIS SYSTEM'S CONFIG THE TUTORIAL SCHEDULE -- which Day
+     introduces each powerup, and whether its forced press follows the panel at once or waits
+     for a ticket to run down. It adds NO arrow: PowerupConfig is data, the Tutorial system
+     reads none of it, and GameManager is the one object that holds both sides. The stock
+     gained one method, EnsureAtLeast, which is a FLOOR rather than an addition because the
+     tutorial re-arms on every day-start path including both retries -- an adding grant would
+     have made replaying an introduction Day a charge farm.
+
+     D-115 also DELETED the day-completion earn path (2026-08-28, the user's decision), which is
+     why the line above no longer says "earning them by completing a day". GrantForDayCompleted
+     paid a per-type authored amount every time a day was won, and that amount had been 0 on all
+     three powerups since the asset was first tuned -- an earn path in name only. Two ways in now:
+     the starting stock and the Gem purchase. -->
 
 - DayLifecycle — per-day receipt bookkeeping (base tip / bonus tip / failed orders) feeding the Day Complete popup, and since D-057 the popup's payout HANDOVER (`DayRewardFlightView`) — depends on: EconomySystem
 <!-- The handover, added 2026-08-24 (decisions.md D-057): a day's earnings are no longer
@@ -140,7 +154,31 @@
      and this view only asks it to release what the purse already owes. -->
 
 - TraySystem — per-slot tray contents, batched order validation, scatter-back-to-board — depends on: -
-- Tutorial — teaching the game: the day scene's forced opening (a Day's authored sequence of steps, each either a move the player must make or a panel they must read) AND the main screen's first-run welcome and store hint — depends on: -
+- Tutorial — teaching the game: the day scene's forced opening (a Day's authored moves, plus a per-powerup introduction and forced press scheduled on PowerupConfig) AND the main screen's first-run welcome and store hint — depends on: -
+<!-- D-115 (2026-08-27) split the step list's AUTHORING in two, and the split is what keeps
+     this system's arrow list empty on both sides. The Day JSON owns the forced MOVES,
+     because they describe THIS Day's board. PowerupConfig owns which Day introduces which
+     powerup, because that is a property of the POWERUP. Neither can name the other's
+     business -- the Day file's PowerupIntro kind was REMOVED in the same pass -- so the two
+     cannot disagree, and GameManager concatenating them in ArmTutorial is the whole
+     integration. That is the same trade D-082 made when it rejected a TutorialConfig asset:
+     the objection was a SECOND authority over one Day, not an asset as such, and a schedule
+     no Day file can contradict is not one.
+
+     THE STRUCTURAL CHANGE IS A THIRD STATE, not the new step kinds. IsActive used to mean
+     both "a step is running" and "freeze everything" (D-097 hung the clock on it). Time
+     Reset cannot be taught that way: its forced press waits for a ticket to run DOWN, and a
+     step that stops the clock while waiting for the clock is a deadlock. So a step can be
+     CURRENT but not ARMED -- every gate open, the day running -- and only its trigger closes
+     them. IsArmed is now the freeze/gate answer everywhere IsActive used to be, which
+     changed nothing for the kinds that arm immediately.
+
+     THE TRIGGER ARRIVES AS A PLAIN FLOAT, which is the only reason the arrow list below is
+     still `-`. NotifyTicketPatienceRatio takes a fraction; it does not take a Ticket, and
+     this system still does not know what one is. GameManager computes the lowest remaining
+     fraction over the three slots and hands the number over, exactly as it hands over cell
+     coordinates without this system knowing what a BoardItem is. -->
+
 <!-- Became a step LIST in D-083 (2026-08-26), one turn after it shipped as a single step.
      That is the note D-082 wrote in advance: one authored step meant one step, and the
      second authored moment is what earned the generalisation. It is STILL not a framework
@@ -350,6 +388,79 @@
      layout until D-092 fixed the map generators' project-root resolution. -->
 - NoKeysPopup — KeySystem — variant-of: - — authoring (placed in MainScreen by hand, wired into MainScreenView's optional popup slot)
 - PowerupShop — PowerupSystem — variant-of: - — authoring (placed in BOTH scenes by hand)
+- TutorialPowerupIntro — Tutorial — variant-of: - — spawned by PowerupBarView
+- TutorialPowerupSpotlight — Tutorial — variant-of: - — spawned by PowerupBarView
+- TutorialStepHints — Tutorial — variant-of: - — spawned by TutorialSpotlightView
+- MetaUnlockPopup — MetaSystem — variant-of: - — spawned by MetaGroundsView
+<!-- Added 2026-08-28 (decisions.md D-128). What a DAY-UNLOCKED prop says when it opens: a
+     picture of what it brought and a line naming it, both authored per prop on MetaCatalog.
+     A purchased prop never shows one -- the fields are drawn only in MetaEditorWindow's
+     Day-Unlock branch, which makes that structural rather than a rule to remember.
+
+     IT HOLDS THE CELEBRATION OPEN. MetaGroundsView.CelebrateOne waits on its IsDismissed
+     before returning, so the camera stays zoomed on the prop until the player presses the
+     button, and dismissing hands off to the next prop's own FocusOn or to the queue ending.
+     That is why its dismiss button is the one part that is not optional: a popup with no way
+     out would strand the map zoomed in behind a full-screen skip catcher.
+
+     Its ROOT is its Canvas, for the reason every popup prefab here now is (D-126). -->
+<!-- Renamed from TutorialStepMessage 2026-08-28 (decisions.md D-126) when it stopped being
+     only a message: it now carries the step's sentence AND its two modification arrows, so
+     an author can style all three. The step still decides which appear -- highlightModification
+     and a non-empty message are INDEPENDENT flags, and burying the arrows in a message-only
+     prefab would have tied them together silently.
+
+     ITS ROOT IS A PLAIN TRANSFORM, not a canvas, and that is what lets the world arrow live
+     in it: a SpriteRenderer under a Screen Space - Overlay canvas sits at screen coordinates
+     and looks broken in the prefab stage. The canvas is a CHILD holding the message, and it
+     keeps Overlay for the D-086 reason every tutorial canvas does.
+
+     BOTH ARROWS ARE UI IMAGES ON ITS CANVAS. The item one was a world SpriteRenderer and
+     the card one an Image parented outside any Canvas -- which never renders -- so the
+     prefab stage showed an empty frame with nothing to click. They still move differently:
+     the card arrow is reparented into the ticket card's row and rides it, while the item
+     arrow stays on this canvas and is only POSITIONED over the board item, because
+     parented to that item it rode along when the player picked the food up.
+
+     ITS ROOT IS THE CANVAS, which is what makes it editable: Unity drives an Overlay
+     canvas's rect from the screen and gives a ROOT canvas that treatment in the prefab
+     stage, while a NESTED one sits at 0x0 and collapses every child into it. Authoring a
+     size does not help -- the Canvas overwrites it. -->
+- MainScreenTutorialWelcome — Tutorial — variant-of: - — spawned by MainScreenTutorialView
+- MainScreenTutorialStoreHint — Tutorial — variant-of: - — spawned by MainScreenTutorialView
+<!-- The main screen's two, added 2026-08-28 (decisions.md D-123). Filed under Tutorial with
+     the day scene's three even though D-088 keeps the two FLOWS sharing no code: the system
+     line covers both halves, and these are its assets.
+
+     BOTH ROOTS CARRY THEIR OWN OVERLAY CANVAS and are instantiated PARENTLESS, which is not
+     tidiness -- a Canvas nested inside another Canvas inherits its parent's RectTransform
+     rather than the screen's, and MainScreenTutorialView's own rect is zero-sized. That once
+     crushed the store hint to one character per line down a sliver of the screen.
+
+     The store hint's ARROW is authored here but does not stay here: the view reparents it
+     onto the store button and sizes it from that button, because only the running layout
+     knows where the button ended up. It therefore outlives the hint object and the view
+     destroys it explicitly -- the same trap TutorialPowerupSpotlight's frame has. -->
+<!-- Both added 2026-08-28 (decisions.md D-116). They are the FIRST tutorial assets in the
+     project: every tutorial visual before them was built at runtime and authored nowhere,
+     which the files argued for at length. The argument held only while nobody needed to
+     restyle them -- a panel assembled from constants in C# cannot be restyled at all, and
+     the user asked to own their look. Seeded once by the menu step TutorialPopupSetup
+     (Assets/Scripts/UI/Editor), which REFUSES to overwrite an existing asset, so the
+     prefabs belong to the author from the first edit onward.
+
+     THE INTRO PREFAB'S ROOT CARRIES A SCREEN SPACE - OVERLAY CANVAS and must keep it
+     (D-086). This scene's InGameCanvas is Screen Space - CAMERA at sortingOrder -1, so a
+     panel reparented under it is drawn beneath the world sprites and simply disappears,
+     with nothing reporting it. The spotlight prefab deliberately has NO canvas on its
+     root: its frame is reparented onto the live powerup button and inherits that button's
+     canvas, which is what puts it ON the button rather than over it; only its message
+     carries an Overlay canvas of its own.
+
+     Spawned, not placed: PowerupBarView instantiates them, which is also why they are
+     prefabs rather than scene objects (scene-structure.md -- runtime-spawned admits no
+     exception). Both references are OPTIONAL on that view: an unwired one costs its
+     lesson and leaves the day fully playable, the standing rule for this tutorial. -->
 <!-- Added 2026-08-27, after the user turned the built shop into a prefab so one asset
      could serve both screens (D-105 put a shop in the day scene as well). The two scenes
      differ only by per-instance edits, which is the point of it being a prefab: the day

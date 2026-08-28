@@ -1,4 +1,4 @@
-<!-- stamp: 2026-08-27T12:23Z source-sig:fcb5a15cbbf4 scenes:3 prefabs:6 generator:python-fallback status: DEGRADED 340 missing-script -->
+<!-- stamp: 2026-08-28T15:20Z source-sig:48c60bcd2c3e scenes:3 prefabs:12 generator:python-fallback status: DEGRADED 397 missing-script -->
 # unitymap — scene and prefab structure
 
 Read this instead of opening a `.unity`/`.prefab` file. Tree indentation is
@@ -22,6 +22,8 @@ Unity menu item Tools > unity-dev > Export unitymap.
 - MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab | CoinText
 - MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab | CoinUI
 - MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab | Count
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab | DayLabel
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab | DayUI
 - MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab | FilledHeart
 - MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab | GemImage
 - MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab | GemText
@@ -46,34 +48,32 @@ Unity menu item Tools > unity-dev > Export unitymap.
 - MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab | TIME RESET
 - MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab | TimerResetButton
 - MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab | Title
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/MainScreenTutorialStoreHint.prefab | Arrow
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/MainScreenTutorialStoreHint.prefab | GotItButton
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/MainScreenTutorialStoreHint.prefab | Label
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/MainScreenTutorialStoreHint.prefab | MainScreenTutorialStoreHint
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/MainScreenTutorialStoreHint.prefab | Plate
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/MainScreenTutorialStoreHint.prefab | Text
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/MainScreenTutorialWelcome.prefab | Backdrop
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/MainScreenTutorialWelcome.prefab | Body
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/MainScreenTutorialWelcome.prefab | Label
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/MainScreenTutorialWelcome.prefab | MainScreenTutorialWelcome
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/MainScreenTutorialWelcome.prefab | Panel
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/MainScreenTutorialWelcome.prefab | StartButton
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/MainScreenTutorialWelcome.prefab | Title
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/MetaUnlockPopup.prefab | Backdrop
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/MetaUnlockPopup.prefab | Body
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/MetaUnlockPopup.prefab | GotItButton
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/MetaUnlockPopup.prefab | Image
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/MetaUnlockPopup.prefab | Label
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/MetaUnlockPopup.prefab | MetaUnlockPopup
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/MetaUnlockPopup.prefab | Panel
+- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/MetaUnlockPopup.prefab | Title
 - MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/NoKeysPopup.prefab | Button
 - MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/NoKeysPopup.prefab | ClipboardImage
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/NoKeysPopup.prefab | Cost
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/NoKeysPopup.prefab | CountdownText
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/NoKeysPopup.prefab | GoBack
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/NoKeysPopup.prefab | NoKeysPopup
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/NoKeysPopup.prefab | Star
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/NoKeysPopup.prefab | Text
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/NoKeysPopup.prefab | label
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/PowerupShop.prefab | AUTO COLLECT
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/PowerupShop.prefab | Buy
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/PowerupShop.prefab | BuySpacer
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/PowerupShop.prefab | COUNT
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/PowerupShop.prefab | CloseButton
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/PowerupShop.prefab | Header
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/PowerupShop.prefab | Icon
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/PowerupShop.prefab | Image
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/PowerupShop.prefab | Label
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/PowerupShop.prefab | NAME
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/PowerupShop.prefab | NOISE CLEAR
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/PowerupShop.prefab | Name
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/PowerupShop.prefab | Owned
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/PowerupShop.prefab | PRICE
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/PowerupShop.prefab | Panel
-- MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/PowerupShop.prefab | PowerupShopButton
-- ... 173 more
+- ... 232 more
 
-## PREFAB ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab   (58 object(s))
+## PREFAB ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab   (61 object(s))
 - HUDCanvas  [RectTransform, Canvas, MISSING SCRIPT (guid:0cd44c10), MISSING SCRIPT (guid:dc42784c), HudWalletSource]  refs: sessionHost=NULL
   - UpperPanel  [RectTransform, CanvasRenderer]
     - HUDPanel  [RectTransform]
@@ -86,6 +86,9 @@ Unity menu item Tools > unity-dev > Export unitymap.
       - GemUI  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1), GemsView]  refs: gemsText=set, walletSource=set
         - GemText  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
         - GemImage  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
+      - DayUI  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
+        - DayLabel  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
+        - Count  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
   - LowerPanel  [RectTransform, CanvasRenderer]
     - HeartPanel  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:30649d3a), LivesView]  refs: filledHearts=set, gameManager=NULL
       - Heart1  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
@@ -94,7 +97,7 @@ Unity menu item Tools > unity-dev > Export unitymap.
         - FilledHeart  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
       - Heart3  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
         - FilledHeart  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
-    - PowerUpPanel  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:30649d3a), PowerupBarView, AutoCollectRunner]  refs: autoCollect=set, gameManager=NULL, noiseClear=set, shop=set, timeReset=set, boardView=NULL, gameManager=NULL, trays=NULL
+    - PowerUpPanel  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:30649d3a), PowerupBarView, AutoCollectRunner]  refs: autoCollect=set, gameManager=NULL, introPrefab=NULL, noiseClear=set, shop=set, spotlightPrefab=NULL, timeReset=set, boardView=NULL, gameManager=NULL, trays=NULL
       - AutoCollectButton  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1), MISSING SCRIPT (guid:4e29b1a8), HapticButton]  refs: haptics=NULL
         - Background  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
         - Count  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
@@ -107,7 +110,7 @@ Unity menu item Tools > unity-dev > Export unitymap.
         - Background  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
         - Count  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
         - Add [inactive]  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
-  - PowerupShop  [RectTransform, PowerupShopView]  refs: autoCollect=set, closeButton=set, noiseClear=set, openButton=NULL, panel=set, sessionHost=NULL, timeReset=set
+  - PowerupShop  [RectTransform, PowerupShopView]  refs: autoCollect=set, backdropButton=NULL, closeButton=set, noiseClear=set, openButton=NULL, panel=set, sessionHost=NULL, timeReset=set
     - Backdrop [inactive]  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
       - Panel  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
         - Title  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
@@ -132,6 +135,33 @@ Unity menu item Tools > unity-dev > Export unitymap.
             - Price  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb), MISSING SCRIPT (guid:306cc8c2)]  refs: parentLinkedComponent=NULL
             - Buy  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1), MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:306cc8c2)]
               - Label  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
+
+## PREFAB ExpoTheExplorer/Assets/Prefabs/UI/MainScreenTutorialStoreHint.prefab   (6 object(s))
+- MainScreenTutorialStoreHint  [RectTransform, Canvas, MISSING SCRIPT (guid:0cd44c10), MISSING SCRIPT (guid:dc42784c), MainScreenStoreHintPopup]  refs: arrow=set, dismissButton=set, dismissLabel=set, text=set
+  - Arrow  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
+  - Plate  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1), MISSING SCRIPT (guid:59f81469), MISSING SCRIPT (guid:3245ec92)]
+    - Text  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
+    - GotItButton  [RectTransform, MISSING SCRIPT (guid:306cc8c2), CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1), MISSING SCRIPT (guid:4e29b1a8)]
+      - Label  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
+
+## PREFAB ExpoTheExplorer/Assets/Prefabs/UI/MainScreenTutorialWelcome.prefab   (7 object(s))
+- MainScreenTutorialWelcome  [RectTransform, Canvas, MISSING SCRIPT (guid:0cd44c10), MISSING SCRIPT (guid:dc42784c), MainScreenWelcomePopup]  refs: body=set, dismissButton=set, dismissLabel=set, title=set
+  - Backdrop  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
+  - Panel  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
+    - Title  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
+    - Body  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
+    - StartButton  [RectTransform, MISSING SCRIPT (guid:306cc8c2), CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1), MISSING SCRIPT (guid:4e29b1a8)]
+      - Label  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
+
+## PREFAB ExpoTheExplorer/Assets/Prefabs/UI/MetaUnlockPopup.prefab   (8 object(s))
+- MetaUnlockPopup  [RectTransform, Canvas, MISSING SCRIPT (guid:0cd44c10), MISSING SCRIPT (guid:dc42784c), MetaUnlockPopup]  refs: body=set, dismissButton=set, image=set, title=set
+  - Backdrop  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
+  - Panel  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
+    - Image  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
+    - Title  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
+    - Body  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
+    - GotItButton  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1), MISSING SCRIPT (guid:4e29b1a8)]
+      - Label  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
 
 ## PREFAB ExpoTheExplorer/Assets/Prefabs/UI/NoKeysPopup.prefab   (11 object(s))
 - NoKeysPopup [inactive]  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
@@ -219,10 +249,39 @@ Unity menu item Tools > unity-dev > Export unitymap.
   - Clock  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
   - DangerImage  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
 
+## PREFAB ExpoTheExplorer/Assets/Prefabs/UI/TutorialPowerupIntro.prefab   (10 object(s))
+- TutorialPowerupIntro  [RectTransform, Canvas, MISSING SCRIPT (guid:0cd44c10), MISSING SCRIPT (guid:dc42784c), CanvasGroup, TutorialPowerupIntroView]  refs: descriptionText=set, dismissButton=set, fadeGroup=set, iconImage=set, titleText=set
+  - Backdrop  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
+  - Panel  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
+    - Title  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
+    - Row  [RectTransform]
+      - Icon  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
+      - Text  [RectTransform]
+        - Description  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
+    - GotItButton  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1), MISSING SCRIPT (guid:4e29b1a8)]
+      - Label  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
+
+## PREFAB ExpoTheExplorer/Assets/Prefabs/UI/TutorialPowerupSpotlight.prefab   (8 object(s))
+- TutorialPowerupSpotlight  [RectTransform, TutorialPowerupSpotlightView]  refs: frame=set, frameGroup=set, messageCanvasRect=set, messageText=set
+  - Frame  [RectTransform, CanvasGroup]
+    - Top  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
+    - Bottom  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
+    - Left  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
+    - Right  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
+  - MessageCanvas  [RectTransform, Canvas, MISSING SCRIPT (guid:0cd44c10)]
+    - Message  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
+
+## PREFAB ExpoTheExplorer/Assets/Prefabs/UI/TutorialStepHints.prefab   (5 object(s))
+- TutorialStepHints  [RectTransform, Canvas, MISSING SCRIPT (guid:0cd44c10), TutorialStepHints]  refs: cardArrow=set, itemArrow=set, messageRoot=set, messageText=set
+  - Plate  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1), MISSING SCRIPT (guid:59f81469), MISSING SCRIPT (guid:3245ec92)]
+    - Text  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
+  - ItemArrow  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
+  - CardArrow  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
+
 ## SCENE ExpoTheExplorer/Assets/Scenes/MainScreen.unity   (42 object(s))
 - EventSystem  [MISSING SCRIPT (guid:01614664), MISSING SCRIPT (guid:76c392e4), Transform]
 - Canvas  [MainScreenView, MISSING SCRIPT (guid:dc42784c), MISSING SCRIPT (guid:0cd44c10), Canvas, RectTransform, NoKeysPopupView]  refs: noKeysPopup=set, playButton=set, playLabel=set, sessionHost=set, tutorial=set, closeButton=set, countdownText=set, gemButton=set, gemCostLabel=set, haptics=set, notEnoughGemsLabel=set, popupRoot=set, sessionHost=set
-  - MetaGrounds  [RectTransform, MISSING SCRIPT (guid:1aa08ab6), MetaGroundsView]  refs: background=set, catalog=set, haptics=set, locationLabel=NULL, lockedHintLabel=NULL, nextButton=NULL, previousButton=NULL, scroll=set, sessionHost=set
+  - MetaGrounds  [RectTransform, MISSING SCRIPT (guid:1aa08ab6), MetaGroundsView]  refs: background=set, catalog=set, haptics=set, locationLabel=NULL, lockedHintLabel=NULL, nextButton=NULL, previousButton=NULL, scroll=set, sessionHost=set, unlockPopupPrefab=set
     - Viewport  [RectTransform, MISSING SCRIPT (guid:3312d773)]
       - Background  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
   - PlayButton  [MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, RectTransform, HapticButton]  refs: haptics=set
@@ -255,14 +314,14 @@ Unity menu item Tools > unity-dev > Export unitymap.
           - Label  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
         - Coin  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
     - MarketButton  [RectTransform, MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, HapticButton]  refs: haptics=set
-  - MainScreenTutorial  [RectTransform, MainScreenTutorialView]  refs: sessionHost=set, shop=set, texts=set
+  - MainScreenTutorial  [RectTransform, MainScreenTutorialView]  refs: sessionHost=set, shop=set, storeHintPrefab=set, texts=set, welcomePrefab=set
 - Session  [MainScreenRoot, Transform, HapticsBinder, MISSING SCRIPT (guid:ceb29a83), DebugMenuBinder]  refs: foodCatalog=set, gameConfig=set, keyConfig=set, livesConfig=set, powerupConfig=set, config=set, gameManager=NULL, sessionHost=set, host=set, metaCatalog=set
 - Main Camera  [Camera, Transform, MISSING SCRIPT (guid:a79441f3)]
 - * HUDCanvas  (prefab instance of ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab)
 - * NoKeysPopup  (prefab instance of ExpoTheExplorer/Assets/Prefabs/UI/NoKeysPopup.prefab)
 - * PowerupShop  (prefab instance of ExpoTheExplorer/Assets/Prefabs/UI/PowerupShop.prefab)
 
-## SCENE ExpoTheExplorer/Assets/Scenes/SampleScene.unity   (122 object(s))
+## SCENE ExpoTheExplorer/Assets/Scenes/SampleScene.unity   (135 object(s))
 - TrayArea  [WorldTrayView, BoxCollider2D, SpriteRenderer, Transform]  refs: animConfig=set, boardView=set, drinkSlot=set, gameManager=set, highlightVisual=set, mainDishSlot=set, sideSlot=set, ticketCardsView=set, wrongVisual=set
   - MainDishSlot  [Transform]
   - SideSlot  [Transform]
@@ -281,7 +340,7 @@ Unity menu item Tools > unity-dev > Export unitymap.
       - MainMenuButton  [MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, RectTransform, HapticButton]  refs: haptics=set
       - RetryButton  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, MISSING SCRIPT (guid:4e29b1a8), HapticButton]  refs: haptics=set
   - DayCompletePopup  [RectTransform, DayCompletePopupView, DayRewardFlightView]  refs: animConfig=set, gameManager=set, goBackButton=set, nextDayButton=set, ordersDeliveredCountText=set, ordersDeliveredValueText=set, popupRoot=set, retryButton=set, rewardFlight=set, star1Filled=set, star2Filled=set, star3Filled=set, starScoreBar=set, tipsValueText=set, totalText=set, coinFlightTarget=set, coinSprite=set, flightRoot=set, gameManager=set, gemFlightTarget=set, gemSprite=set, haptics=set, scoreBar=set
-    - PopupRoot [inactive]  [RectTransform]
+    - PopupRoot  [RectTransform]
       - Background  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
       - Title  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
       - ReceiptBody  [RectTransform]
@@ -303,7 +362,7 @@ Unity menu item Tools > unity-dev > Export unitymap.
       - ButtonsRow  [RectTransform]
         - NextDayButton [inactive]  [RectTransform, MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, HapticButton]  refs: haptics=set
         - RetryButton  [RectTransform, MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, HapticButton]  refs: haptics=set
-        - GoBackButton  [RectTransform, MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, HapticButton]  refs: haptics=set
+        - ContinueButton  [RectTransform, MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, HapticButton]  refs: haptics=set
       - StarScoreBar  [RectTransform, StarScoreBarView]  refs: fill=set
         - Background  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
         - Fill  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
@@ -315,7 +374,7 @@ Unity menu item Tools > unity-dev > Export unitymap.
         - Star3  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
           - Star3Filled  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
 - Global Light 2D  [MISSING SCRIPT (guid:073797af), Transform]
-- GameManager  [GameManager, Transform, HapticsBinder, DebugMenuBinder]  refs: autoCollectRunner=set, economyConfig=set, foodCatalog=set, gameConfig=set, haptics=set, keyConfig=set, lifeLostHeartView=set, livesConfig=set, metaCatalog=set, powerupConfig=set, starScoreConfig=set, ticketGenerationConfig=set, config=set, gameManager=set, sessionHost=set, host=set, metaCatalog=set
+- GameManager  [GameManager, Transform, HapticsBinder, DebugMenuBinder]  refs: autoCollectRunner=set, economyConfig=set, foodCatalog=set, gameConfig=set, haptics=set, keyConfig=set, lifeLostHeartView=set, livesConfig=set, metaCatalog=set, noiseClearRunner=set, powerupConfig=set, starScoreConfig=set, ticketGenerationConfig=set, config=set, gameManager=set, sessionHost=set, host=set, metaCatalog=set
 - TrayArea (1)  [WorldTrayView, BoxCollider2D, SpriteRenderer, Transform]  refs: animConfig=set, boardView=set, drinkSlot=set, gameManager=set, highlightVisual=set, mainDishSlot=set, sideSlot=set, ticketCardsView=set, wrongVisual=set
   - MainDishSlot  [Transform]
   - SideSlot  [Transform]
@@ -383,7 +442,7 @@ Unity menu item Tools > unity-dev > Export unitymap.
 - * TicketCard UpDown  (prefab instance of ExpoTheExplorer/Assets/Prefabs/UI/Tickets/TicketCard UpDown.prefab)
 - * HUDCanvas  (prefab instance of ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab)
 - * NoKeysPopup  (prefab instance of ExpoTheExplorer/Assets/Prefabs/UI/NoKeysPopup.prefab)
-- ... 2 more object(s) not listed; regenerate with the Editor exporter for the full tree
+- ... 15 more object(s) not listed; regenerate with the Editor exporter for the full tree
 
 ## SCENE ExpoTheExplorer/Assets/Settings/Scenes/URP2DSceneTemplate.unity   (2 object(s))
 - Main Camera  [AudioListener, MISSING SCRIPT (guid:a79441f3), Camera, Transform]
@@ -406,12 +465,15 @@ Unity menu item Tools > unity-dev > Export unitymap.
 - LifeLostHeartView | ExpoTheExplorer/Assets/Scripts/UI/LifeLostHeartView.cs
 - LivesView | ExpoTheExplorer/Assets/Scripts/UI/LivesView.cs
 - MainScreenRoot | ExpoTheExplorer/Assets/Scripts/UI/MainScreenRoot.cs
+- MainScreenStoreHintPopup | ExpoTheExplorer/Assets/Scripts/UI/MainScreenStoreHintPopup.cs
 - MainScreenTutorialView | ExpoTheExplorer/Assets/Scripts/UI/MainScreenTutorialView.cs
 - MainScreenView | ExpoTheExplorer/Assets/Scripts/UI/MainScreenView.cs
+- MainScreenWelcomePopup | ExpoTheExplorer/Assets/Scripts/UI/MainScreenWelcomePopup.cs
 - MetaBackdropView | ExpoTheExplorer/Assets/Scripts/UI/MetaBackdropView.cs
 - MetaGroundsView | ExpoTheExplorer/Assets/Scripts/UI/MetaGroundsView.cs
 - MetaShopRowView | ExpoTheExplorer/Assets/Scripts/UI/MetaShopRowView.cs
 - MetaShopView | ExpoTheExplorer/Assets/Scripts/UI/MetaShopView.cs
+- MetaUnlockPopup | ExpoTheExplorer/Assets/Scripts/UI/MetaUnlockPopup.cs
 - ModificationSlotView | ExpoTheExplorer/Assets/Scripts/UI/ModificationSlotView.cs
 - NoKeysPopupView | ExpoTheExplorer/Assets/Scripts/UI/NoKeysPopupView.cs
 - PowerupBarView | ExpoTheExplorer/Assets/Scripts/UI/PowerupBarView.cs
@@ -422,4 +484,7 @@ Unity menu item Tools > unity-dev > Export unitymap.
 - TicketCardView | ExpoTheExplorer/Assets/Scripts/UI/TicketCardView.cs
 - TicketCardsView | ExpoTheExplorer/Assets/Scripts/UI/TicketCardsView.cs
 - TrayFillCounterView | ExpoTheExplorer/Assets/Scripts/UI/TrayFillCounterView.cs
+- TutorialPowerupIntroView | ExpoTheExplorer/Assets/Scripts/UI/TutorialPowerupIntroView.cs
+- TutorialPowerupSpotlightView | ExpoTheExplorer/Assets/Scripts/UI/TutorialPowerupSpotlightView.cs
+- TutorialStepHints | ExpoTheExplorer/Assets/Scripts/UI/TutorialStepHints.cs
 - WorldTrayView | ExpoTheExplorer/Assets/Scripts/UI/WorldTrayView.cs
