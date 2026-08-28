@@ -217,6 +217,13 @@ namespace ExpoTheExplorer.EditorTools
             // instance should inherit -- exactly what this step exists to write.
             targets.AddRange(root.GetComponentsInChildren<KeysView>(true));
 
+            // DayNumberView joins on the same ticket as KeysView (D-130): the day badge is
+            // prefab content shown on both screens, so its walletSource is prefab data
+            // every instance should inherit. The COMPONENT is added by hand -- the DayUI
+            // object was authored by hand and this tool does not create hierarchy -- but
+            // the reference it needs is exactly what this step exists to write.
+            targets.AddRange(root.GetComponentsInChildren<DayNumberView>(true));
+
             foreach (var view in targets)
             {
                 var serialized = new SerializedObject(view);

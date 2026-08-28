@@ -95,6 +95,17 @@ namespace ExpoTheExplorer.UI
         // compile error rather than a comment). This forwards KeyManager's own bus.
         public EventBus<int> KeysChanged { get; } = new();
 
+        // The day the player is on, forwarded for the same reason keys are (D-130): the
+        // day badge lives INSIDE the shared HUD prefab and shows on both screens, which is
+        // the exact case this class was built for. Lives went the other way in D-064
+        // because the heart row is a day-scene object that can hold a scene reference of
+        // its own; a prefab asset cannot, so this readout has to come through here.
+        //
+        // Re-published from GameState like the two balances rather than owned here:
+        // GameManager stays the single writer of CurrentDayIndex (day advance, the clamped
+        // load in Awake, the completed-day exit), and nothing in this file can move it.
+        public EventBus<int> CurrentDayIndexChanged { get; } = new();
+
         public int SoftMoney
         {
             get
@@ -110,6 +121,24 @@ namespace ExpoTheExplorer.UI
             {
                 Resolve();
                 return LiveState != null ? LiveState.Gems : profile.Gems;
+            }
+        }
+
+        // A CATALOG POSITION, zero-based -- not the number the player reads. The +1 is the
+        // view's job, the same split MainScreenView and SettingsPopupView already make, so
+        // this getter stays comparable with GameState.CurrentDayIndex and with the profile
+        // field it falls back to instead of being a second, off-by-one currency.
+        //
+        // The save-file branch is not a dead one even though D-022 gave both screens a
+        // session: it is what the number falls back to when a session host reference has
+        // been lost, and the profile holds the same value GameState was loaded from, so a
+        // lost reference shows a stale day rather than Day 1.
+        public int CurrentDayIndex
+        {
+            get
+            {
+                Resolve();
+                return LiveState != null ? LiveState.CurrentDayIndex : profile.CurrentDayIndex;
             }
         }
 
@@ -197,6 +226,7 @@ namespace ExpoTheExplorer.UI
 
             state.SoftMoneyChanged.Unsubscribe(SoftMoneyChanged.Publish);
             state.GemsChanged.Unsubscribe(GemsChanged.Publish);
+            state.CurrentDayIndexChanged.Unsubscribe(CurrentDayIndexChanged.Publish);
         }
 
         // Lazy, and never from Awake: GameManager assigns State in its own Awake, and
@@ -221,6 +251,11 @@ namespace ExpoTheExplorer.UI
                 var state = live;
                 state.SoftMoneyChanged.Subscribe(SoftMoneyChanged.Publish);
                 state.GemsChanged.Subscribe(GemsChanged.Publish);
+
+                // Inside the live branch, unlike keys: the day number DOES have a
+                // save-file mode (the profile field), so there is nothing to subscribe to
+                // when there is no session -- the value simply cannot change there.
+                state.CurrentDayIndexChanged.Subscribe(CurrentDayIndexChanged.Publish);
             }
 
             // Outside the live/save-file branch above, because keys hang off the SESSION
