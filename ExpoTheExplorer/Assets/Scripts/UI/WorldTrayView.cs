@@ -73,6 +73,30 @@ namespace ExpoTheExplorer.UI
         // end-of-frame Destroy -- see DismissTutorialSpotlight.
         private TutorialSpotlightView tutorialSpotlight;
 
+        // Whether this tray is currently drawn at all. A tray belongs to a TICKET, not to
+        // the scene: once the Day's sequence is exhausted this slot is handed null forever
+        // (TicketSlotManager.AssignTicket) and TicketCardView.RebuildContent(null) takes its
+        // card down to alpha 0 -- but the tray underneath used to grow straight back in and
+        // sit there full-size beneath an invisible ticket, waiting for an order that was
+        // never coming. It now leaves with the card, and comes back only when a ticket does.
+        private bool trayShown = true;
+
+        // Mirrors what this tray last told its card through SetTrayAnimating -- the same
+        // fact, kept locally so RefreshTrayPresence can wait for the tray's own
+        // grow/lift/fade or slot-clear to FINISH before taking it away. Written in exactly
+        // one place (SetTrayAnimating below) so the two cannot drift apart.
+        private bool trayAnimating;
+
+        private bool HasTicket => gameManager.State.TicketSlots[slotIndex] != null;
+
+        // Every animation boundary in this view goes through here rather than calling the
+        // card directly, so the local flag and the card's are always set as one.
+        private void SetTrayAnimating(bool animating)
+        {
+            trayAnimating = animating;
+            ticketCardView.SetTrayAnimating(animating);
+        }
+
         private void Awake()
         {
             isValid = ValidateReferences();
@@ -96,6 +120,16 @@ namespace ExpoTheExplorer.UI
             // instead, safe because Unity finishes every object's Awake()
             // before any Start() runs.
             ticketCardView = ticketCardsView.GetCard(slotIndex);
+
+            // The same Awake ordering makes this the REAL answer rather than a
+            // not-yet-started day's: GameManager.Awake ends with
+            // TicketSlotManager.FillEmptySlots, so the three slots already hold
+            // their first tickets. A slot that somehow begins empty starts hidden
+            // with no animation at all — there is nothing to animate away from,
+            // and RefreshTrayPresence would otherwise play a departure for a tray
+            // the player never saw arrive.
+            trayShown = HasTicket;
+            if (!trayShown) ApplyHiddenState();
 
             // Subscribe, then sync -- the same shape BoardView uses for CellChanged, and
             // for the same reason: the FIRST arm happens in GameManager.Awake, before any
@@ -320,17 +354,30 @@ namespace ExpoTheExplorer.UI
         // own raycast above checks) is still below it, outside this
         // collider — that fallback finds this tray from the item's own
         // displayed position instead and accepts the drop the same way.
-        public bool TryAcceptDrop(BoardItemDragHandler dragHandler) => TryAcceptDrop(dragHandler, 1f);
+        public bool TryAcceptDrop(BoardItemDragHandler dragHandler) =>
+            TryAcceptDrop(dragHandler, 1f, respectTutorialGate: true);
 
         // Auto-Collect's way in (D-112). Identical to a finger's drop in every respect but
         // the tween's LENGTH -- same acceptance, same batch check, same delivery. The
         // multiplier is read here rather than passed in by AutoCollectRunner because this
         // view already has the config serialized on it, so the powerup needs no reference
         // of its own and there is nothing new to drag in the Inspector.
+        //
+        // ...AND IT DOES NOT ASK THE TUTORIAL (D-115, found in the first play-test). The
+        // gate below exists to constrain the PLAYER'S FINGER; this path is a powerup's own
+        // machinery. While the tutorial is asking the player to press Auto-Collect, the
+        // armed step refuses every tray -- so the effect it is forcing found nothing it could
+        // do, returned false, and the lesson advanced on the press having collected nothing.
+        //
+        // Safe by construction rather than by care: GameManager.CanUsePowerup already refuses
+        // EVERY powerup during a forced move and behind a panel, so a powerup can only reach
+        // this line while a PowerupUse step names it -- the one moment it has to work. There
+        // is no reachable state where this bypass lets Auto-Collect sweep the item a ghost is
+        // pointing at.
         public bool TryAcceptAutoCollectDrop(BoardItemDragHandler dragHandler) =>
-            TryAcceptDrop(dragHandler, animConfig.AutoCollectTravelMultiplier);
+            TryAcceptDrop(dragHandler, animConfig.AutoCollectTravelMultiplier, respectTutorialGate: false);
 
-        private bool TryAcceptDrop(BoardItemDragHandler dragHandler, float travelMultiplier)
+        private bool TryAcceptDrop(BoardItemDragHandler dragHandler, float travelMultiplier, bool respectTutorialGate)
         {
             if (!isValid || dragHandler == null || dragHandler.CurrentItem == null) return false;
 
@@ -343,7 +390,10 @@ namespace ExpoTheExplorer.UI
             // deliberate: a false return is already this method's "not accepted" answer, so
             // the item snaps back exactly as it does for any other rejected drop, and
             // TraySystem never learns that tutorials exist.
-            if (!gameManager.IsTrayDropAllowed(slotIndex)) return false;
+            //
+            // Asked only of a FINGER since D-115 -- see TryAcceptAutoCollectDrop above for
+            // why a powerup's own machinery is not what this gate is for.
+            if (respectTutorialGate && !gameManager.IsTrayDropAllowed(slotIndex)) return false;
 
             var item = dragHandler.CurrentItem;
             justDelivered = false;
@@ -534,7 +584,7 @@ namespace ExpoTheExplorer.UI
 
             var renderers = GetComponentsInChildren<SpriteRenderer>(true);
 
-            ticketCardView.SetTrayAnimating(true);
+            SetTrayAnimating(true);
             transform.DOKill();
             var sequence = DOTween.Sequence();
             sequence.Append(transform.DOScale(restScale * animConfig.DeliveryGrowScale, animConfig.DeliveryGrowDuration).SetEase(Ease.OutQuad));
@@ -561,31 +611,103 @@ namespace ExpoTheExplorer.UI
                 deliveryInProgress = false;
                 deliveringItem = null;
 
-                // "New tray" re-entrance: grows and fades in right at rest
-                // position (no movement) instead of sliding up from below or
-                // just snapping back for the next ticket. Re-fetched here
-                // (rather than reusing the captured `renderers`) since those
-                // included the now-destroyed slot items — this only picks up
-                // the tray's own remaining renderers (background sprite etc.).
-                var remainingRenderers = GetComponentsInChildren<SpriteRenderer>(true);
-
-                transform.DOKill();
-                transform.position = restPosition;
-                transform.localScale = Vector3.zero;
-                foreach (var renderer in remainingRenderers)
+                // The order that just left was the Day's last one for this slot, so
+                // there is no next tray to bring in and the one that lifted off is
+                // simply the last (D-129). Hiding costs NOTHING here and cuts nothing
+                // short — the lift above has already faded every renderer to zero, so
+                // "gone" is the state the tray is standing in at this exact instant.
+                // ApplyHiddenState only puts it back at rest position and zero scale,
+                // ready for a ticket that may still arrive on a retry or a new Day.
+                if (!HasTicket)
                 {
-                    var color = renderer.color;
-                    color.a = 0f;
-                    renderer.color = color;
+                    trayShown = false;
+                    ApplyHiddenState();
+                    SetTrayAnimating(false);
+                    return;
                 }
 
-                transform.DOScale(restScale, animConfig.DeliveryReentryDuration).SetEase(Ease.OutBack)
-                    .OnComplete(() => ticketCardView.SetTrayAnimating(false));
-                foreach (var renderer in remainingRenderers)
-                {
-                    renderer.DOFade(1f, animConfig.DeliveryReentryDuration);
-                }
+                // "New tray" re-entrance for the ticket that is now in this slot.
+                PlayTrayEntrance();
             });
+        }
+
+        // A tray arriving for a ticket: grows and fades in right at rest position
+        // (no movement) rather than sliding up from below or snapping into place.
+        //
+        // ONE animation with two callers, deliberately. It is the "new tray" beat
+        // that has always followed a delivery, and it is also how a tray comes back
+        // to a slot that was empty — a retry, a new Day, or any hand-off that fills
+        // this slot again (D-129). A second entrance written for the second case
+        // would be the same tweens with its own drift.
+        //
+        // Renderers are re-fetched on every call rather than captured once: after a
+        // delivery the slot items this tray held have just been destroyed, and by
+        // the next entrance it may hold different ones.
+        private void PlayTrayEntrance()
+        {
+            var renderers = GetComponentsInChildren<SpriteRenderer>(true);
+
+            trayShown = true;
+            SetTrayAnimating(true);
+            ApplyHiddenState(renderers);
+
+            transform.DOScale(restScale, animConfig.DeliveryReentryDuration).SetEase(Ease.OutBack)
+                .OnComplete(() => SetTrayAnimating(false));
+            foreach (var renderer in renderers)
+            {
+                renderer.DOFade(1f, animConfig.DeliveryReentryDuration);
+            }
+        }
+
+        // A tray leaving a slot the Day has no more orders for, when it is still
+        // standing there in full view — the timeout/external-clear path, where
+        // nothing has faded it. The exact mirror of the entrance above (same
+        // duration, the inverse ease) so arriving and leaving read as one gesture
+        // rather than two unrelated effects.
+        //
+        // The delivery path does NOT come through here: its own lift has already
+        // faded the tray out, and playing a second departure on top of that would
+        // shrink an invisible object for no reason.
+        private void PlayTrayExit()
+        {
+            var renderers = GetComponentsInChildren<SpriteRenderer>(true);
+
+            trayShown = false;
+            SetTrayAnimating(true);
+            transform.DOKill();
+
+            transform.DOScale(Vector3.zero, animConfig.DeliveryReentryDuration).SetEase(Ease.InBack)
+                .OnComplete(() =>
+                {
+                    // Position is only put back once the shrink is over: moving it
+                    // mid-tween would slide a still-visible tray across the screen.
+                    transform.position = restPosition;
+                    SetTrayAnimating(false);
+                });
+            foreach (var renderer in renderers)
+            {
+                renderer.DOFade(0f, animConfig.DeliveryReentryDuration);
+            }
+        }
+
+        // Where a hidden tray waits: at rest position, zero scale, nothing drawn.
+        // Also the state the entrance starts FROM, which is why both callers share
+        // it — an entrance that began from a slightly different "gone" than the one
+        // hiding leaves behind is exactly the kind of pop that is invisible in code.
+        private void ApplyHiddenState(SpriteRenderer[] renderers = null)
+        {
+            renderers ??= GetComponentsInChildren<SpriteRenderer>(true);
+
+            transform.DOKill();
+            transform.position = restPosition;
+            transform.localScale = Vector3.zero;
+
+            foreach (var renderer in renderers)
+            {
+                var color = renderer.color;
+                color.a = 0f;
+                renderer.color = color;
+            }
         }
 
         // Wrong order: the tray (and everything sitting in it, since
@@ -598,7 +720,7 @@ namespace ExpoTheExplorer.UI
         // on the board until this shake finishes and hands off to it.
         private void PlayWrongOrderShakeThenScatter(BoardItemDragHandler finalItem)
         {
-            ticketCardView.SetTrayAnimating(true);
+            SetTrayAnimating(true);
             transform.DOKill();
             finalItem.transform.DOKill();
             if (wrongVisual != null) wrongVisual.SetActive(true);
@@ -671,7 +793,7 @@ namespace ExpoTheExplorer.UI
                     // slot uses the same fixed duration, so a single delayed
                     // call here covers all of them without needing to track
                     // each one's own OnComplete.
-                    DOVirtual.DelayedCall(animConfig.SlotClearDuration, () => ticketCardView.SetTrayAnimating(false));
+                    DOVirtual.DelayedCall(animConfig.SlotClearDuration, () => SetTrayAnimating(false));
                 });
         }
 
@@ -722,6 +844,13 @@ namespace ExpoTheExplorer.UI
         // should reflect what the player actually sees the item on top of.
         public void SetHighlighted(bool active)
         {
+            // A tray with no ticket is not drawn at all (D-129), and TrayManager
+            // already refuses every item dropped on it — so lighting it up would
+            // promise a drop zone that does not exist. Guarded here rather than in
+            // the drag handler because this view is the one that knows: it owns the
+            // highlight object AND the hidden state.
+            if (!trayShown) active = false;
+
             if (highlightVisual != null) highlightVisual.SetActive(active);
         }
 
@@ -737,27 +866,62 @@ namespace ExpoTheExplorer.UI
             // it only runs while a delivery is actually in flight.
             if (deliveryInProgress && deliveringItem == null) deliveryInProgress = false;
 
-            // Catches the one case OnDrop doesn't cover: a timeout scattering a
-            // partially-filled tray back to the board (TrayManager.OnTicketAssigned),
-            // which happens with no direct event this view is subscribed to —
-            // same poll+diff approach TicketCardView already uses for its timer.
-            // OnDrop keeps lastKnownCount in sync for its own changes, so this
-            // only ever fires for that external case.
-            //
-            // Only a drop to exactly zero means the WHOLE tray was cleared
-            // externally (OnTicketAssigned/TryAddItem's batch-resolve paths
-            // both always empty the slot completely) — a single manual
-            // pickup (BoardItemDragHandler.OnBeginDrag removing just one item)
-            // decrements by exactly one and must NOT wipe the other items
-            // still legitimately sitting in this tray.
+            RefreshClearedTray();
+            RefreshTrayPresence();
+        }
+
+        // Whether this tray is drawn follows one fact and one only: does its slot
+        // hold a ticket (D-129). Read here rather than driven by an event, and that
+        // is the whole design: the slot is emptied inside a SYNCHRONOUS cascade
+        // (TrayManager.TryAddItem -> deliverTicket -> TicketSlotManager.AssignTicket)
+        // that runs at the START of a delivery, so an event-driven hide would fire
+        // while the tray is still growing and lifting — exactly what must not happen.
+        // A poll can wait, and the two guards below are that wait: the tray leaves
+        // only once its own animation has finished, never in the middle of one.
+        //
+        // Cost: one array read and a bool compare per tray per frame (3 trays,
+        // arithmetic tier) — far below the threshold where the cheaper-but-blind
+        // option would be worth it.
+        private void RefreshTrayPresence()
+        {
+            if (deliveryInProgress || trayAnimating) return;
+
+            var hasTicket = HasTicket;
+            if (hasTicket == trayShown) return;
+
+            if (hasTicket) PlayTrayEntrance();
+            else PlayTrayExit();
+        }
+
+        // Catches the one case OnDrop doesn't cover: a timeout scattering a
+        // partially-filled tray back to the board (TrayManager.OnTicketAssigned),
+        // which happens with no direct event this view is subscribed to —
+        // same poll+diff approach TicketCardView already uses for its timer.
+        // OnDrop keeps lastKnownCount in sync for its own changes, so this
+        // only ever fires for that external case.
+        //
+        // Only a drop to exactly zero means the WHOLE tray was cleared
+        // externally (OnTicketAssigned/TryAddItem's batch-resolve paths
+        // both always empty the slot completely) — a single manual
+        // pickup (BoardItemDragHandler.OnBeginDrag removing just one item)
+        // decrements by exactly one and must NOT wipe the other items
+        // still legitimately sitting in this tray.
+        //
+        // Runs BEFORE RefreshTrayPresence in the frame a timeout empties the last
+        // ticket, and that order is the "after the animation" rule in action: this
+        // sets the animating flag for SlotClearDuration, so the presence check sees
+        // a busy tray and holds its departure until the items have finished
+        // clearing out of it (D-129).
+        private void RefreshClearedTray()
+        {
             var currentCount = gameManager.TrayManager.GetContents(slotIndex).Count;
             if (currentCount == lastKnownCount) return;
 
             if (currentCount == 0)
             {
-                ticketCardView.SetTrayAnimating(true);
+                SetTrayAnimating(true);
                 ClearAllSlotVisuals();
-                DOVirtual.DelayedCall(animConfig.SlotClearDuration, () => ticketCardView.SetTrayAnimating(false));
+                DOVirtual.DelayedCall(animConfig.SlotClearDuration, () => SetTrayAnimating(false));
             }
 
             lastKnownCount = currentCount;
