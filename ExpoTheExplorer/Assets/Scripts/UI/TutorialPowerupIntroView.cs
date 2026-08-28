@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using DG.Tweening;
 using ExpoTheExplorer.Data;
 using TMPro;
@@ -8,222 +7,126 @@ using UnityEngine.UI;
 
 namespace ExpoTheExplorer.UI
 {
-    // The tutorial's third step: a panel introducing the three powerups, one row each --
-    // that powerup's own button image on the left, its name and description on the right --
-    // dismissed by a button, after which the tutorial ends and the day runs normally.
+    // A panel introducing ONE powerup -- that powerup's own button image on the left, its
+    // description on the right -- dismissed by a button, after which the day is handed back
+    // to the player (or, for a powerup taught at a Day's start, straight to the forced press
+    // that follows).
     //
-    // Built entirely at runtime and authored nowhere, like the rest of the tutorial: no
-    // prefab, no scene object, no art, nothing dragged into an Inspector. It is created by
-    // PowerupBarView, which is the object that already holds what this step needs -- the
-    // three live buttons, and therefore the three icons.
+    // IT SHOWED ALL THREE AT ONCE UNTIL D-115, and the change is the user's (2026-08-27):
+    // three powerups explained in one panel is three things to remember at a moment when the
+    // player has used none of them. Each is now introduced on its own Day, scheduled on
+    // PowerupConfig, and the panel that says so has one row.
     //
-    // IT BUILDS ITS OWN SCREEN SPACE - OVERLAY CANVAS, and that is a lesson rather than a
-    // preference (decisions.md D-086): this scene's InGameCanvas is Screen Space - CAMERA
-    // at sortingOrder -1, so anything placed on it sits UNDER world sprites and was being
-    // drawn and then buried. Overlay is the only mode that composites above everything the
-    // camera renders unconditionally.
+    // IT IS AN AUTHORED PREFAB SINCE D-116, AND IT USED TO ARGUE THE OPPOSITE. Every comment
+    // in this file said "built entirely at runtime and authored nowhere: no prefab, no art,
+    // nothing dragged" -- which was right for as long as nobody needed to restyle it, and
+    // wrong the moment somebody did (the user, 2026-08-28). A panel assembled from constants
+    // in C# cannot be restyled at all; you can only ask a programmer to change a number. So
+    // this class stopped BUILDING and started BINDING: the hierarchy lives in
+    // Assets/Prefabs/UI/TutorialPowerupIntro.prefab, built once by the menu step
+    // TutorialPopupSetup, and everything here does is fill it in and take it down.
+    //
+    // THE ROOT'S CANVAS MUST STAY SCREEN SPACE - OVERLAY, and that is a lesson rather than a
+    // preference (decisions.md D-086): this scene's InGameCanvas is Screen Space - CAMERA at
+    // sortingOrder -1, so anything parented under it sits UNDER world sprites and is drawn
+    // and then buried. Overlay is the only mode that composites above everything the camera
+    // renders unconditionally. If a later tidy-up reparents this panel into the game canvas,
+    // it will simply vanish, and nothing will report it.
+    //
+    // EVERY BOUND FIELD IS OPTIONAL. The author owns this prefab now and may delete a piece
+    // of it; a missing icon costs the icon, not the lesson. The one thing that is genuinely
+    // required is the dismiss button, because without it the panel is a trap -- so its
+    // absence is reported loudly and the step is completed rather than left blocking the day.
     public class TutorialPowerupIntroView : MonoBehaviour
     {
-        // Below Popup Canvas (Overlay, order 0) on purpose: the day is frozen while this is
-        // up, but if anything ever does put a popup on screen alongside it, a tutorial panel
-        // floating over that popup would be worse than one behind it.
-        private const int CanvasSortingOrder = -1;
+        [Tooltip("The powerup's name, printed as the panel's heading.")]
+        [SerializeField] private TMP_Text titleText;
 
-        // Everything below is proportion, not pixels: the panel is described relative to the
-        // reference resolution the game's own CanvasScaler defines, so it holds its shape on
-        // every device rather than being tuned for one.
-        private const float PanelWidthFraction = 0.86f;
-        private const float RowHeightFraction = 0.13f;
-        private const float IconWidthFraction = 0.2f;
+        [Tooltip("The one sentence saying what this powerup does. Read from PowerupConfig, never authored here.")]
+        [SerializeField] private TMP_Text descriptionText;
+
+        [Tooltip("Filled with the sprite off that powerup's live HUD button, so the row shows the button the player will press.")]
+        [SerializeField] private Image iconImage;
+
+        [Tooltip("REQUIRED. The button that closes the panel and lets the tutorial move on.")]
+        [SerializeField] private Button dismissButton;
+
+        [Tooltip("Optional. Faded from 0 to 1 on appearance so the panel arrives as one piece. Left empty, it simply appears.")]
+        [SerializeField] private CanvasGroup fadeGroup;
+
+        [Tooltip("How long the panel takes to fade in.")]
+        [Min(0f)]
+        [SerializeField] private float fadeInDuration = 0.25f;
 
         private Action onDismissed;
         private Tween fadeTween;
 
-        // Created with everything already resolved -- this view looks nothing up. iconFor
-        // hands back each powerup's button sprite, which only PowerupBarView can answer.
+        // Created with everything already resolved -- this view looks nothing up. The icon is
+        // the sprite on that powerup's live HUD button, which only PowerupBarView can answer.
+        //
+        // The prefab arrives INSTANTIATED rather than as an asset reference, so this method
+        // never touches PrefabUtility and works identically on an object dropped into the
+        // scene by hand. Returning null on a broken prefab is what lets the caller skip the
+        // lesson instead of leaving a half-built panel over a frozen day.
         public static TutorialPowerupIntroView Create(
-            PowerupConfig config,
-            Canvas gameCanvas,
-            TMP_FontAsset font,
-            Func<PowerupType, Sprite> iconFor,
+            TutorialPowerupIntroView instance,
+            PowerupSettings settings,
+            Sprite icon,
             Action onDismissed)
         {
-            if (config == null || font == null || iconFor == null) return null;
+            if (instance == null || settings == null) return null;
 
-            var host = new GameObject(nameof(TutorialPowerupIntroView));
-            var view = host.AddComponent<TutorialPowerupIntroView>();
-            view.onDismissed = onDismissed;
-            view.Build(config, gameCanvas, font, iconFor);
-            return view;
+            instance.onDismissed = onDismissed;
+            instance.Bind(settings, icon);
+            return instance;
         }
 
-        private void Build(PowerupConfig config, Canvas gameCanvas, TMP_FontAsset font, Func<PowerupType, Sprite> iconFor)
+        private void Bind(PowerupSettings settings, Sprite icon)
         {
-            var canvasObject = new GameObject("Canvas");
-            canvasObject.transform.SetParent(transform, false);
+            if (titleText != null) titleText.text = settings.DisplayName;
+            if (descriptionText != null) descriptionText.text = settings.Description;
 
-            var canvas = canvasObject.AddComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = CanvasSortingOrder;
-
-            // The game's scaler is copied rather than guessed at, so every proportion below
-            // and the font size resolve the same way they do on a ticket card.
-            var reference = new Vector2(1080f, 1920f);
-            var gameScaler = gameCanvas != null ? gameCanvas.GetComponent<CanvasScaler>() : null;
-            if (gameScaler != null)
+            if (iconImage != null)
             {
-                var scaler = canvasObject.AddComponent<CanvasScaler>();
-                scaler.uiScaleMode = gameScaler.uiScaleMode;
-                scaler.referenceResolution = gameScaler.referenceResolution;
-                scaler.screenMatchMode = gameScaler.screenMatchMode;
-                scaler.matchWidthOrHeight = gameScaler.matchWidthOrHeight;
-                scaler.referencePixelsPerUnit = gameScaler.referencePixelsPerUnit;
-                if (gameScaler.referenceResolution.y > 0f) reference = gameScaler.referenceResolution;
-            }
-
-            // The panel is modal, so it needs its own raycaster and a full-screen backdrop
-            // that swallows presses -- otherwise a tap aimed at the panel could fall through
-            // to whatever is behind it. The board is gated anyway, but relying on that would
-            // make this panel's correctness depend on a rule living somewhere else.
-            canvasObject.AddComponent<GraphicRaycaster>();
-
-            var backdrop = NewRect("Backdrop", canvasObject.transform);
-            Stretch(backdrop);
-            var backdropImage = backdrop.gameObject.AddComponent<Image>();
-            backdropImage.color = new Color(0f, 0f, 0f, 0.78f);
-
-            var fontSize = reference.y * 0.022f;
-
-            var panel = NewRect("Panel", canvasObject.transform);
-            panel.anchorMin = new Vector2(0.5f, 0.5f);
-            panel.anchorMax = new Vector2(0.5f, 0.5f);
-            panel.pivot = new Vector2(0.5f, 0.5f);
-            panel.sizeDelta = new Vector2(reference.x * PanelWidthFraction, reference.y * (RowHeightFraction * 3f + 0.16f));
-            panel.anchoredPosition = Vector2.zero;
-
-            var panelImage = panel.gameObject.AddComponent<Image>();
-            panelImage.color = new Color(0.07f, 0.08f, 0.11f, 0.96f);
-
-            var title = NewText("Title", panel, font, fontSize * 1.25f, TextAlignmentOptions.Center);
-            title.rectTransform.anchorMin = new Vector2(0f, 1f);
-            title.rectTransform.anchorMax = new Vector2(1f, 1f);
-            title.rectTransform.pivot = new Vector2(0.5f, 1f);
-            title.rectTransform.sizeDelta = new Vector2(0f, fontSize * 2f);
-            title.rectTransform.anchoredPosition = new Vector2(0f, -fontSize);
-            title.text = "Your powerups";
-            title.fontStyle = FontStyles.Bold;
-
-            // One row per powerup, laid out top-down in PowerupTypes.All order -- the same
-            // order the HUD bar and the shop render, which is GDD 5.2's own listing order.
-            // Positioned by hand rather than with a VerticalLayoutGroup: three rows of known
-            // height need no layout pass, and a layout group here would fight the explicit
-            // sizes the panel is built from.
-            var rowHeight = reference.y * RowHeightFraction;
-            var top = -(fontSize * 3.2f);
-
-            for (var i = 0; i < PowerupTypes.All.Length; i++)
-            {
-                var type = PowerupTypes.All[i];
-                BuildRow(panel, type, config.For(type), iconFor(type), font, fontSize, rowHeight, top - i * rowHeight);
-            }
-
-            var button = BuildDismissButton(panel, font, fontSize, reference);
-            button.onClick.AddListener(Dismiss);
-
-            // Fades in as one unit: the CanvasGroup means the panel, its rows and its button
-            // never appear at different times, which a per-graphic fade would allow.
-            var group = canvasObject.AddComponent<CanvasGroup>();
-            group.alpha = 0f;
-            fadeTween = group.DOFade(1f, 0.25f).SetLink(gameObject).SetUpdate(true);
-        }
-
-        private void BuildRow(RectTransform panel, PowerupType type, PowerupSettings settings, Sprite icon,
-            TMP_FontAsset font, float fontSize, float rowHeight, float top)
-        {
-            var row = NewRect($"Row_{type}", panel);
-            row.anchorMin = new Vector2(0f, 1f);
-            row.anchorMax = new Vector2(1f, 1f);
-            row.pivot = new Vector2(0.5f, 1f);
-            row.sizeDelta = new Vector2(-fontSize * 2f, rowHeight);
-            row.anchoredPosition = new Vector2(0f, top);
-
-            var iconWidth = panel.sizeDelta.x * IconWidthFraction;
-
-            if (icon != null)
-            {
-                var iconRect = NewRect("Icon", row);
-                iconRect.anchorMin = new Vector2(0f, 0.5f);
-                iconRect.anchorMax = new Vector2(0f, 0.5f);
-                iconRect.pivot = new Vector2(0f, 0.5f);
-                var iconSize = Mathf.Min(iconWidth, rowHeight * 0.8f);
-                iconRect.sizeDelta = new Vector2(iconSize, iconSize);
-                iconRect.anchoredPosition = Vector2.zero;
-
-                var iconImage = iconRect.gameObject.AddComponent<Image>();
+                // Hidden rather than left showing whatever the prefab was authored with: a
+                // placeholder sprite standing in for a real powerup is worse than a row with
+                // no icon, because it looks deliberate.
                 iconImage.sprite = icon;
+                iconImage.enabled = icon != null;
 
-                // The button art is not necessarily square; keeping its aspect is what makes
-                // the row read as "that button" rather than as a stretched approximation.
-                iconImage.preserveAspect = true;
+                if (icon == null)
+                {
+                    Debug.LogWarning(
+                        $"{nameof(TutorialPowerupIntroView)}: '{settings.DisplayName}' has no sprite on its HUD button, " +
+                        "so its row is shown without an icon.", this);
+                }
             }
-            else
+
+            if (dismissButton == null)
             {
-                // A row with no icon is still a row: the description is the part that
-                // teaches, and dropping the whole powerup because its button has no sprite
-                // would hide one third of the tutorial over a missing image.
-                Debug.LogWarning($"{nameof(TutorialPowerupIntroView)}: {type} has no sprite on its HUD button, so its row is shown without an icon.", this);
+                // The one unrecoverable gap. The panel is modal and the day is frozen behind
+                // it, so a panel with no way out is a softlock -- completing the step at once
+                // is strictly better than showing something the player cannot dismiss.
+                Debug.LogError(
+                    $"{nameof(TutorialPowerupIntroView)} on '{name}' has no dismiss Button wired, so this panel could " +
+                    "never be closed. Skipping the lesson rather than freezing the day. Drag the button into the " +
+                    "prefab's Dismiss Button field.", this);
+                Dismiss();
+                return;
             }
 
-            // Text starts after the icon column whether or not an icon was drawn, so the
-            // three rows stay aligned with each other rather than each one starting wherever
-            // its own art ended.
-            var textRect = NewRect("Text", row);
-            textRect.anchorMin = new Vector2(0f, 0f);
-            textRect.anchorMax = new Vector2(1f, 1f);
-            textRect.offsetMin = new Vector2(iconWidth + fontSize * 0.6f, 0f);
-            textRect.offsetMax = Vector2.zero;
+            // RemoveAllListeners first: this instance may have been pooled or re-shown, and a
+            // second listener would advance the tutorial twice from one press.
+            dismissButton.onClick.RemoveAllListeners();
+            dismissButton.onClick.AddListener(Dismiss);
 
-            var nameText = NewText("Name", textRect, font, fontSize, TextAlignmentOptions.TopLeft);
-            Stretch(nameText.rectTransform);
-            nameText.rectTransform.offsetMin = new Vector2(0f, rowHeight * 0.45f);
-            nameText.text = FallbackName(type, settings);
-            nameText.fontStyle = FontStyles.Bold;
+            // Fades in as one unit: the CanvasGroup means the panel, its row and its button
+            // never appear at different times, which a per-graphic fade would allow.
+            // SetUpdate(true) because the day is held still while this is on screen.
+            if (fadeGroup == null || fadeInDuration <= 0f) return;
 
-            var descriptionText = NewText("Description", textRect, font, fontSize * 0.82f, TextAlignmentOptions.TopLeft);
-            Stretch(descriptionText.rectTransform);
-            descriptionText.rectTransform.offsetMax = new Vector2(0f, -rowHeight * 0.4f);
-            descriptionText.text = settings != null ? settings.Description : string.Empty;
-            descriptionText.color = new Color(0.82f, 0.85f, 0.9f);
-        }
-
-        // The enum name is a readable last resort rather than a blank row: an unauthored
-        // config should look unfinished, not broken.
-        private static string FallbackName(PowerupType type, PowerupSettings settings)
-        {
-            if (settings != null && !string.IsNullOrEmpty(settings.DisplayName)) return settings.DisplayName;
-            return type.ToString();
-        }
-
-        private Button BuildDismissButton(RectTransform panel, TMP_FontAsset font, float fontSize, Vector2 reference)
-        {
-            var buttonRect = NewRect("GotItButton", panel);
-            buttonRect.anchorMin = new Vector2(0.5f, 0f);
-            buttonRect.anchorMax = new Vector2(0.5f, 0f);
-            buttonRect.pivot = new Vector2(0.5f, 0f);
-            buttonRect.sizeDelta = new Vector2(reference.x * 0.34f, fontSize * 2.6f);
-            buttonRect.anchoredPosition = new Vector2(0f, fontSize * 0.9f);
-
-            var image = buttonRect.gameObject.AddComponent<Image>();
-            image.color = new Color(0.24f, 0.55f, 0.36f, 1f);
-
-            var label = NewText("Label", buttonRect, font, fontSize, TextAlignmentOptions.Center);
-            Stretch(label.rectTransform);
-            label.text = "Got it";
-            label.fontStyle = FontStyles.Bold;
-
-            var button = buttonRect.gameObject.AddComponent<Button>();
-            button.targetGraphic = image;
-            return button;
+            fadeGroup.alpha = 0f;
+            fadeTween = fadeGroup.DOFade(1f, fadeInDuration).SetLink(gameObject).SetUpdate(true);
         }
 
         // Dismissal runs through here whatever triggered it, so the step is advanced exactly
@@ -238,33 +141,5 @@ namespace ExpoTheExplorer.UI
         }
 
         private void OnDestroy() => fadeTween?.Kill();
-
-        private static RectTransform NewRect(string name, Transform parent)
-        {
-            var rect = (RectTransform)new GameObject(name, typeof(RectTransform)).transform;
-            rect.SetParent(parent, false);
-            return rect;
-        }
-
-        private static TextMeshProUGUI NewText(string name, Transform parent, TMP_FontAsset font, float size, TextAlignmentOptions alignment)
-        {
-            var rect = NewRect(name, parent);
-            var text = rect.gameObject.AddComponent<TextMeshProUGUI>();
-            text.font = font;
-            text.fontSize = size;
-            text.alignment = alignment;
-            text.color = Color.white;
-            text.raycastTarget = false;
-            text.textWrappingMode = TextWrappingModes.Normal;
-            return text;
-        }
-
-        private static void Stretch(RectTransform rect)
-        {
-            rect.anchorMin = Vector2.zero;
-            rect.anchorMax = Vector2.one;
-            rect.offsetMin = Vector2.zero;
-            rect.offsetMax = Vector2.zero;
-        }
     }
 }

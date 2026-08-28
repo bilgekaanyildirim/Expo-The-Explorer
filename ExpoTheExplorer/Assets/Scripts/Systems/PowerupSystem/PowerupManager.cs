@@ -6,8 +6,15 @@ using ExpoTheExplorer.Systems.ProgressionSystem;
 namespace ExpoTheExplorer.Systems.PowerupSystem
 {
     // The powerup STOCK (GDD Section 5.2, plan in .claude/powerup-plan.md): how many
-    // charges of each powerup the player holds, how they earn more (completing a day),
-    // how they buy more (Gems, on the main screen only), and what spending one costs.
+    // charges of each powerup the player holds, how they buy more (Gems, on the main
+    // screen only), and what spending one costs.
+    //
+    // THERE IS NO DAY-COMPLETION EARN PATH ANY MORE (2026-08-28, the user's decision).
+    // GrantForDayCompleted lived here and paid a per-type authored amount every time a day
+    // was won -- but that amount had been 0 on all three powerups since the asset was first
+    // tuned, so the path never actually paid anyone anything. What remains: the starting
+    // stock, the Gem purchase, and EnsureAtLeast, which is the tutorial's teaching guarantee
+    // rather than a way to earn.
     //
     // It deliberately does NOT know what any powerup DOES. The three effects are handed
     // in as delegates by whoever can actually perform them, which in this project is the
@@ -68,6 +75,22 @@ namespace ExpoTheExplorer.Systems.PowerupSystem
 
         public int GemCostOf(PowerupType type) => config.For(type).GemCost;
 
+        // LOCKED UNTIL TAUGHT, forwarded rather than decided. The rule lives on
+        // PowerupSettings beside the schedule it reads; these two exist because this class is
+        // the façade the views already hold -- PowerupShopView reads even the PRICE through
+        // GemCostOf rather than carrying its own PowerupConfig reference, and a second pointer
+        // to the same asset dragged into a scene is invisible until one of them is wrong.
+        //
+        // The DAY is a parameter and not something this class fetches: a charge outlives the
+        // day, so a stock keeper that knew which day it was would be knowing something outside
+        // its own scope. Each screen passes its own.
+        //
+        // Nothing here touches the counts. A lock is permission, not stock: a locked powerup's
+        // charges are real, untouched, and usable the day it unlocks.
+        public bool IsUnlocked(PowerupType type, int dayIndex) => config.For(type).IsUnlockedOnDay(dayIndex);
+
+        public string LockLabelFor(PowerupType type) => config.LockLabelFor(config.For(type));
+
         // The seam the day scene fills in and the main screen leaves empty. A Func<bool>
         // rather than an Action because the RETURN VALUE is a rule, not a detail: false
         // means "there was nothing to do", and GDD 5.2's common rule is that such a press
@@ -124,10 +147,11 @@ namespace ExpoTheExplorer.Systems.PowerupSystem
         // to publish a count and then publish it again a moment later, which a HUD
         // renders as a blink on every wasted press. Running first costs one re-entrancy
         // consideration instead: an effect cascades synchronously (auto-collect can fill
-        // a tray, deliver a ticket and complete the day inside this call), so a
-        // GrantForDayCompleted can land in the middle of it. That is harmless, because
-        // both operations are +/-1 on the same field and neither reads a stale copy --
-        // the grant publishes its raised count, then this publishes the spent one.
+        // a tray, deliver a ticket and complete the day inside this call), so another
+        // write to the same count -- the tutorial's EnsureAtLeast, a debug grant -- can land
+        // in the middle of it. That is harmless, because both operations are +/-1 on the same
+        // field and neither reads a stale copy: the other write publishes its count, then
+        // this publishes the spent one.
         public bool TryUse(PowerupType type)
         {
             var index = (int)type;
@@ -181,24 +205,30 @@ namespace ExpoTheExplorer.Systems.PowerupSystem
         }
 #endif
 
-        // The earn path GDD 5.2 settled on (its own "natural candidate", now that there
-        // is neither a level system nor an event system to hang rewards off).
+        // The tutorial's earn path, and the ONLY one that is a floor rather than an
+        // addition. It exists because the tutorial makes the player PRESS a powerup: a
+        // forced press against an empty stock opens the shop (D-105) instead of teaching
+        // anything, and the step could never complete.
         //
-        // Called only on a COMPLETED day, which is what keeps it honest against the
-        // "a day attempt is atomic" contract: a failed day grants nothing, and a failed
-        // day also never reaches disk, so a charge spent inside one is not banked either.
-        // Both halves fall out of where this is called from rather than from a rule here.
-        public void GrantForDayCompleted()
+        // "Top up to" rather than "grant N" is the whole design, not a detail. ArmTutorial
+        // runs on every day-start path -- first load, both retries, and the advance to the
+        // next Day -- so an ADDING grant would make replaying the introduction Day a charge
+        // farm. Raising a floor is idempotent: replay it as often as you like and the second
+        // time does nothing. It also leaves a well-stocked player alone, which an addition
+        // would not: someone holding six charges does not need two more to be taught.
+        //
+        // Returns whether anything changed, so a caller can log a grant without having to
+        // read the count before and after.
+        public bool EnsureAtLeast(PowerupType type, int minimumCharges)
         {
-            foreach (var type in PowerupTypes.All)
-            {
-                var amount = config.For(type).ChargesPerDayCompleted;
-                if (amount <= 0) continue;
+            if (minimumCharges <= 0) return false;
 
-                var index = (int)type;
-                charges[index] += amount;
-                ChargesChanged.Publish((type, charges[index]));
-            }
+            var index = (int)type;
+            if (charges[index] >= minimumCharges) return false;
+
+            charges[index] = minimumCharges;
+            ChargesChanged.Publish((type, charges[index]));
+            return true;
         }
     }
 }

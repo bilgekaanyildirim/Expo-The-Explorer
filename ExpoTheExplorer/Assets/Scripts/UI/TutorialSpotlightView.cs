@@ -15,11 +15,16 @@ namespace ExpoTheExplorer.UI
     // that modification added, a second arrow points at its box on the ticket, and a line
     // of text says what to look at.
     //
-    // Built entirely at runtime and authored nowhere: no prefab, no scene object, no art,
-    // nothing dragged into an Inspector. One of these exists per STEP, created by that
-    // step's target WorldTrayView -- the one object already holding both of the ghost's
-    // endpoints (a serialized BoardView for the source cell, its own transform for the
-    // destination).
+    // THE DIM, THE LIFTS AND THE GHOST ARE BUILT AT RUNTIME; THE MESSAGE AND THE TWO ARROWS
+    // ARE AN AUTHORED PREFAB (D-122, D-126). The line above used to say "built entirely at
+    // runtime and authored nowhere", and the split is not a compromise: the dim is a sheet
+    // sized to the camera and the lifts are sorting-order arithmetic against it, neither of
+    // which anybody would want to style, while the sentence and the arrows are exactly what
+    // an author needs to reach -- and could not, while they were literals in this file.
+    //
+    // One of these exists per STEP, created by that step's target WorldTrayView -- the one
+    // object already holding both of the ghost's endpoints (a serialized BoardView for the
+    // source cell, its own transform for the destination).
     //
     // IT NEVER WRITES A COLOUR IT DOES NOT OWN. Tinting each renderer would have been the
     // obvious way to darken the board, and it would have lost: BoardView rewrites its layer
@@ -52,20 +57,11 @@ namespace ExpoTheExplorer.UI
         // and then buried.
         private const int LitCardSortingOrder = 800;
 
-        // The message's own Overlay canvas sits BELOW Popup Canvas (Overlay, order 0) on
-        // purpose: a ticket can time out mid-step and put the Game Over popup on screen, and
-        // a tutorial line floating over that popup would be worse than one hidden behind it.
-        // Any negative order is above every camera-rendered thing regardless, because Overlay
-        // always is.
-        private const int MessageCanvasSortingOrder = -1;
-
-        // The world arrow's length, as a multiple of the layer it points at. Relative rather
-        // than absolute so it holds up across board and camera sizes.
-        private const float WorldArrowLengthFactor = 1.6f;
-
-        // The canvas arrow's length, as a multiple of the modification row's height.
-        private const float CanvasArrowLengthFactor = 1.8f;
-
+        // Three constants left with D-126: the message canvas's sorting order and the two
+        // arrow length factors. All three are the prefab's business now -- the canvas is
+        // authored in it (keep that order NEGATIVE, so a Game Over popup arriving mid-step
+        // covers the tutorial line rather than the other way round), and each arrow's size is
+        // whatever the author gave it.
         private TutorialDirector director;
         private BoardAnimationConfig animConfig;
 
@@ -150,15 +146,150 @@ namespace ExpoTheExplorer.UI
             LiftCardAboveDim(targetCard);
 
             var step = director.Current;
-            if (step != null && step.HighlightModification)
+            if (step != null) BuildStepHints(step, sourceItem, sourceBoardItem, targetCard);
+        }
+
+        // The step's sentence and its two modification arrows, all three out of ONE authored
+        // prefab (D-126). They were built here from literals and a generated arrow texture
+        // until the user asked to be able to style them, which a shape assembled in C# cannot
+        // be.
+        //
+        // ONE PREFAB, TWO INDEPENDENT FLAGS. `highlightModification` and a non-empty message
+        // are separate authored decisions -- a step may point without speaking, or speak
+        // without pointing -- so this instantiates when EITHER is set and then switches off
+        // whatever that step did not ask for. Putting the arrows inside a message-only prefab
+        // would have tied the two together silently.
+        private void BuildStepHints(
+            TutorialStep step, Transform sourceItem, BoardItem sourceBoardItem, TicketCardView targetCard)
+        {
+            var wantsMessage = !string.IsNullOrEmpty(step.Message);
+            var wantsArrows = step.HighlightModification;
+            if (!wantsMessage && !wantsArrows) return;
+
+            var prefab = animConfig.TutorialStepHintsPrefab;
+            if (prefab == null)
             {
-                BuildModificationArrows(sourceItem, sourceBoardItem, targetCard);
+                Debug.LogWarning(
+                    $"{nameof(TutorialSpotlightView)}: no Tutorial Step Hints Prefab on {nameof(BoardAnimationConfig)}, " +
+                    "so this step's message and arrows are not shown. Run ExpoTheExplorer > Tutorial > Build Powerup " +
+                    "Popups.", this);
+                return;
             }
 
-            if (step != null && !string.IsNullOrEmpty(step.Message))
+            // Parentless: the prefab carries its own Screen Space - Overlay canvas for the
+            // message, and this view's transform is a world object (D-086 -- on the ticket
+            // cards' Screen Space - Camera canvas the message was drawn and then buried).
+            var instance = Instantiate(prefab);
+            attachedObjects.Add(instance);
+
+            // The config's field is a GameObject rather than the component, because
+            // BoardAnimationConfig lives in the Data assembly and this binder does not -- Data
+            // references nothing, which is the property that keeps it loadable anywhere.
+            var hints = instance.GetComponent<TutorialStepHints>();
+            if (hints == null)
             {
-                BuildMessage(step.Message, targetCard);
+                Debug.LogWarning(
+                    $"{nameof(TutorialSpotlightView)}: the Tutorial Step Hints Prefab has no " +
+                    $"{nameof(TutorialStepHints)} on its root, so this step's message and arrows cannot be filled in.",
+                    instance);
+                return;
             }
+
+            if (wantsMessage)
+            {
+                hints.ShowMessage(step.Message);
+            }
+            else
+            {
+                hints.HideMessage();
+            }
+
+            if (!wantsArrows)
+            {
+                hints.HideArrows();
+                return;
+            }
+
+            AttachItemArrow(hints, sourceItem, sourceBoardItem);
+            AttachCardArrow(hints, targetCard);
+
+            // After both placements: the nudge is measured from where each arrow ended up,
+            // and neither resting position is known until it has been moved there.
+            hints.NudgeArrows();
+        }
+
+        // POSITIONED OVER THE ITEM, NOT PARENTED TO IT, and living on the prefab's own canvas
+        // rather than in world space (the user's two corrections, 2026-08-28). Parented to the
+        // item it rode along when the player picked the food up; as a world SpriteRenderer it
+        // was also invisible and unclickable in the prefab stage, which is why it is a UI Image
+        // now like its sibling.
+        //
+        // The board item is a WORLD object and this arrow is on a Screen Space - Overlay
+        // canvas, so the two are bridged through SCREEN space -- the only coordinate system
+        // they share. The authored anchoredPosition is kept as the offset from the ingredient,
+        // scaled by the canvas so a value tuned at the reference resolution means the same
+        // thing on every device.
+        //
+        // A happy consequence: an Overlay canvas draws above every camera-rendered thing
+        // unconditionally, so the arrow no longer needs the sorting order this class used to
+        // set against its own dim.
+        private void AttachItemArrow(TutorialStepHints hints, Transform sourceItem, BoardItem sourceBoardItem)
+        {
+            var arrow = hints.ItemArrow;
+            if (arrow == null) return;
+
+            var layer = FindModificationLayer(sourceItem, sourceBoardItem);
+            if (layer == null)
+            {
+                // A step that asks to highlight a modification on an item carrying none. The
+                // ticket-card arrow may still apply, so this hides one piece rather than
+                // abandoning the pair.
+                arrow.gameObject.SetActive(false);
+                return;
+            }
+
+            var canvas = arrow.canvas;
+            var camera = Camera.main;
+            if (canvas == null || camera == null)
+            {
+                Debug.LogWarning(
+                    $"{nameof(TutorialSpotlightView)}: the item arrow has no canvas or the scene has no main camera, " +
+                    "so it cannot be placed over the item and is hidden.", arrow);
+                arrow.gameObject.SetActive(false);
+                return;
+            }
+
+            var rect = arrow.rectTransform;
+            var authoredOffset = rect.anchoredPosition * canvas.scaleFactor;
+            var screenPoint = RectTransformUtility.WorldToScreenPoint(camera, layer.position);
+
+            // An Overlay canvas's world space IS screen pixels, so a world position assignment
+            // is the shortest correct answer here and it ignores whatever anchors the author
+            // gave the arrow -- which is the property that keeps this working after a restyle.
+            rect.position = new Vector3(screenPoint.x + authoredOffset.x, screenPoint.y + authoredOffset.y, 0f);
+
+            FadeIn(arrow);
+        }
+
+        // Reparented INTO the ticket card's own modification row, so it tracks a card of any
+        // width and rides along with everything the card does. It therefore outlives the
+        // prefab instance, which is why it is registered separately for teardown.
+        private void AttachCardArrow(TutorialStepHints hints, TicketCardView targetCard)
+        {
+            var arrow = hints.CardArrow;
+            if (arrow == null) return;
+
+            var row = targetCard != null ? targetCard.FirstModificationRow : null;
+            if (row == null)
+            {
+                arrow.gameObject.SetActive(false);
+                return;
+            }
+
+            arrow.transform.SetParent(row, worldPositionStays: false);
+            attachedObjects.Add(arrow.gameObject);
+
+            FadeIn(arrow);
         }
 
         // A single black quad scaled to the camera's whole view. Camera.main rather than a
@@ -293,26 +424,6 @@ namespace ExpoTheExplorer.UI
             ghostLoop.SetLoops(-1).SetLink(gameObject);
         }
 
-        // Two arrows for the same fact, one in each rendering world: the ingredient a
-        // modification added to the item on the board, and that modification's box on the
-        // ticket. Pointing at the ingredient is only possible because ResolvedLayer carries
-        // the modification that made it visible -- "which of these sprites IS the extra
-        // mustard" has no other answer, since a food's layers are just a stack of sprites.
-        private void BuildModificationArrows(Transform sourceItem, BoardItem sourceBoardItem, TicketCardView targetCard)
-        {
-            var layer = FindModificationLayer(sourceItem, sourceBoardItem);
-            if (layer != null)
-            {
-                var size = ApproximateWorldSize(layer);
-                BuildWorldArrow(layer, size * WorldArrowLengthFactor);
-            }
-
-            var row = targetCard != null ? targetCard.FirstModificationRow : null;
-            if (row != null)
-            {
-                BuildCanvasArrow(row);
-            }
-        }
 
         // The item container's children ARE its sprite layers, in the order BoardView built
         // them from ResolvedLayers -- so the index of the modification's layer in that list is
@@ -332,190 +443,9 @@ namespace ExpoTheExplorer.UI
             return null;
         }
 
-        private static float ApproximateWorldSize(Transform target)
-        {
-            if (target.TryGetComponent<SpriteRenderer>(out var renderer) && renderer.sprite != null)
-            {
-                var bounds = renderer.bounds.size;
-                return Mathf.Max(bounds.x, bounds.y);
-            }
 
-            return Mathf.Max(target.lossyScale.x, target.lossyScale.y);
-        }
 
-        // Sits above and to the right of what it points at, angled down-left at it. A fixed
-        // diagonal rather than anything computed: the thing it indicates is small and the
-        // screen above it is the dimmed board, so there is nothing to collide with, and a
-        // predictable angle reads better than one that moves between steps.
-        private void BuildWorldArrow(Transform target, float length)
-        {
-            var arrow = new GameObject("ModificationArrow");
-            arrow.transform.SetParent(transform, false);
 
-            var renderer = arrow.AddComponent<SpriteRenderer>();
-            renderer.sprite = CreateArrowSprite();
-            renderer.sortingOrder = DimSortingOrder + LitSortingBoost + 1;
-
-            // The sprite points RIGHT at rest, so -135 degrees aims it down-left, and the
-            // object is placed up-right of the target by the same diagonal.
-            arrow.transform.rotation = Quaternion.Euler(0f, 0f, -135f);
-            arrow.transform.localScale = Vector3.one * length;
-
-            var offset = new Vector3(length * 0.55f, length * 0.55f, 0f);
-            arrow.transform.position = target.position + offset;
-
-            FadeIn(renderer);
-            attachedObjects.Add(arrow);
-        }
-
-        // The canvas twin of the arrow above, parented to the modification row itself so it
-        // follows the card's layout instead of being positioned against a screen that the
-        // HorizontalLayoutGroup can re-flow at any time.
-        private void BuildCanvasArrow(RectTransform row)
-        {
-            var arrow = new GameObject("ModificationArrow", typeof(RectTransform));
-            var rect = (RectTransform)arrow.transform;
-            rect.SetParent(row, false);
-
-            var size = Mathf.Max(row.rect.height, 1f) * CanvasArrowLengthFactor;
-
-            // Sits to the LEFT of the row and points right, into it. Anchored to the row's
-            // left edge with the arrow's own right edge (its tip) as the pivot, so the tip
-            // lands just outside the box no matter how wide the row is and the body extends
-            // away from the card rather than across it.
-            //
-            // The right-hand side was tried first and was wrong twice over: the arrow ended
-            // up far from the ingredient icon it labels, and rotating it 180 degrees to aim
-            // back at the row turned it about that same pivot, which swung the whole body
-            // over the row and left the tip somewhere in the middle of the box. No rotation
-            // is needed here -- the generated sprite already points right.
-            rect.anchorMin = new Vector2(0f, 0.5f);
-            rect.anchorMax = new Vector2(0f, 0.5f);
-            rect.pivot = new Vector2(1f, 0.5f);
-            rect.sizeDelta = new Vector2(size, size);
-            rect.anchoredPosition = new Vector2(-size * 0.15f, 0f);
-
-            var image = arrow.AddComponent<Image>();
-            image.sprite = CreateArrowSprite();
-            image.raycastTarget = false;
-
-            FadeIn(image);
-            attachedObjects.Add(arrow);
-        }
-
-        // The step's line of text, on the same Canvas the ticket cards live on and in the
-        // same font -- borrowed off the card rather than serialized, so the message matches
-        // the game's own type without anything being wired by hand.
-        //
-        // THE PLATE IS THE PARENT AND THE TEXT ITS CHILD, and that order is the whole
-        // correctness of this method rather than a stylistic choice. UGUI draws a Graphic
-        // before its children, always, so the first version -- text on the outer object with
-        // the plate parented under it -- painted the plate straight over the glyphs and the
-        // message never appeared at all. SetAsFirstSibling did not save it: sibling index
-        // orders siblings, and a child is never behind its parent.
-        //
-        // Every path that declines to draw says why. This method fails INVISIBLY by nature
-        // (no message is also what an unauthored step looks like), so a silent return here
-        // is a bug that hides itself.
-        private void BuildMessage(string message, TicketCardView targetCard)
-        {
-            if (targetCard == null)
-            {
-                Debug.LogWarning($"{nameof(TutorialSpotlightView)}: this step authors a message but the target tray has no ticket card, so there is nothing to hang it on and no message is shown.", this);
-                return;
-            }
-
-            var gameCanvas = targetCard.GetComponentInParent<Canvas>();
-            if (gameCanvas == null)
-            {
-                Debug.LogWarning($"{nameof(TutorialSpotlightView)}: the ticket card is not under a Canvas, so the step's message has no scaler to match and is not shown.", this);
-                return;
-            }
-
-            // The font is borrowed rather than loaded so the message matches the game. A
-            // card with no TMP text at all means no font to copy -- and inventing one with
-            // TMP's default would silently look nothing like the rest of the UI.
-            var fontSource = targetCard.GetComponentInChildren<TMP_Text>(true);
-            if (fontSource == null || fontSource.font == null)
-            {
-                Debug.LogWarning($"{nameof(TutorialSpotlightView)}: no TextMeshPro font could be borrowed from the ticket card, so the step's message is not shown.", this);
-                return;
-            }
-
-            // ITS OWN OVERLAY CANVAS, not the game's. The message went on the ticket cards'
-            // canvas first and was never once visible, because that canvas is Screen Space -
-            // CAMERA at sortingOrder -1 and the dim is a sprite at 500 -- so the whole canvas,
-            // message included, was drawn and then buried. An Overlay canvas is the only thing
-            // that composites above everything the camera renders no matter what else is on
-            // screen, and building our own means depending on nothing in the scene.
-            var messageCanvasObject = new GameObject("TutorialMessageCanvas");
-            messageCanvasObject.transform.SetParent(transform, false);
-
-            var messageCanvas = messageCanvasObject.AddComponent<Canvas>();
-            messageCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            messageCanvas.sortingOrder = MessageCanvasSortingOrder;
-
-            // The game's own scaler is copied rather than guessed at, so the authored font
-            // size means the same thing here as it does on a ticket card. Without it this
-            // canvas would scale with raw pixels and the message would be a different size
-            // on every device than everything around it.
-            var gameScaler = gameCanvas.GetComponent<CanvasScaler>();
-            if (gameScaler != null)
-            {
-                var scaler = messageCanvasObject.AddComponent<CanvasScaler>();
-                scaler.uiScaleMode = gameScaler.uiScaleMode;
-                scaler.referenceResolution = gameScaler.referenceResolution;
-                scaler.screenMatchMode = gameScaler.screenMatchMode;
-                scaler.matchWidthOrHeight = gameScaler.matchWidthOrHeight;
-                scaler.referencePixelsPerUnit = gameScaler.referencePixelsPerUnit;
-            }
-
-            // The outer object carries the PLATE. Spans the width with a margin either side,
-            // at the authored height; anchoring rather than positioning keeps it correct on
-            // every aspect ratio, which matters because this is the one element with no
-            // object to hang off.
-            var plateObject = new GameObject("TutorialMessage", typeof(RectTransform));
-            var plateRect = (RectTransform)plateObject.transform;
-            plateRect.SetParent(messageCanvasObject.transform, false);
-
-            var height = Mathf.Clamp01(animConfig.TutorialMessageScreenHeight);
-            plateRect.anchorMin = new Vector2(0.06f, height);
-            plateRect.anchorMax = new Vector2(0.94f, height);
-            plateRect.pivot = new Vector2(0.5f, 0.5f);
-            plateRect.anchoredPosition = Vector2.zero;
-            plateRect.sizeDelta = new Vector2(0f, animConfig.TutorialMessageFontSize * 3f);
-            plateRect.SetAsLastSibling();
-
-            var plateImage = plateObject.AddComponent<Image>();
-            plateImage.color = new Color(0f, 0f, 0f, 0.55f);
-            plateImage.raycastTarget = false;
-
-            // The TEXT is the child, so it draws on top of the plate. Inset a little so the
-            // glyphs do not touch the plate's edges.
-            var textObject = new GameObject("Text", typeof(RectTransform));
-            var textRect = (RectTransform)textObject.transform;
-            textRect.SetParent(plateRect, false);
-            Stretch(textRect);
-            var padX = animConfig.TutorialMessageFontSize * 0.5f;
-            var padY = animConfig.TutorialMessageFontSize * 0.25f;
-            textRect.offsetMin = new Vector2(padX, padY);
-            textRect.offsetMax = new Vector2(-padX, -padY);
-
-            var text = textObject.AddComponent<TextMeshProUGUI>();
-            text.font = fontSource.font;
-            text.text = message;
-            text.fontSize = animConfig.TutorialMessageFontSize;
-            text.alignment = TextAlignmentOptions.Center;
-            text.textWrappingMode = TextWrappingModes.Normal;
-            text.raycastTarget = false;
-            text.color = Color.white;
-
-            FadeIn(plateImage, 0.55f);
-            FadeIn(text);
-
-            // Only the plate is registered: the text goes with it as its child.
-            attachedObjects.Add(plateObject);
-        }
 
         // Hints arrive a beat after the dim so the eye lands on the lit pair first rather
         // than on text. Every fade goes through here so a single config number controls them.
@@ -596,36 +526,5 @@ namespace ExpoTheExplorer.UI
             return Sprite.Create(texture, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f), 1);
         }
 
-        // A right-pointing arrow drawn in code for the same reason the ghost is a clone of a
-        // live item: this feature ships no art. A filled triangle head over the right half and
-        // a shaft along the middle of the left half, on a transparent square, so one sprite
-        // serves both the world arrow and the canvas one and both can simply be rotated.
-        private static Sprite CreateArrowSprite()
-        {
-            const int size = 64;
-            var texture = new Texture2D(size, size) { filterMode = FilterMode.Bilinear };
-            var pixels = new Color[size * size];
-
-            for (var y = 0; y < size; y++)
-            {
-                for (var x = 0; x < size; x++)
-                {
-                    // Distance from the horizontal centre line, so both halves are described
-                    // by one expression instead of two mirrored ones.
-                    var fromCentre = Mathf.Abs(y - (size - 1) / 2f);
-
-                    // The head occupies the right 45%, narrowing linearly to a point at the
-                    // right edge; the shaft is a constant-thickness bar across the left.
-                    var inHead = x >= size * 0.55f && fromCentre <= (size - x) * 0.62f;
-                    var inShaft = x < size * 0.6f && fromCentre <= size * 0.11f;
-
-                    pixels[y * size + x] = inHead || inShaft ? Color.white : Color.clear;
-                }
-            }
-
-            texture.SetPixels(pixels);
-            texture.Apply();
-            return Sprite.Create(texture, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), size);
-        }
     }
 }

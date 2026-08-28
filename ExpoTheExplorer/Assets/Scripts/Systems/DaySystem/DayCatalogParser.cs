@@ -109,6 +109,12 @@ namespace ExpoTheExplorer.Systems.DaySystem
         // "enabled means present" would be free to disagree with this one about what a Day
         // file means, and the disagreement would only show up as a Day that validates in
         // the editor and behaves differently at runtime.
+        // The only value TutorialStepJson.kind may carry, spelled once. A const string
+        // rather than nameof() on an enum member, because there is no enum on this side any
+        // more -- what the Day files say is the thing being pinned, not a C# identifier that
+        // happens to match it today.
+        private const string ForcedMoveKind = "ForcedMove";
+
         public static ResolvedTutorial ResolveTutorial(TutorialJson tutorial)
         {
             if (tutorial == null || !tutorial.enabled) return null;
@@ -118,20 +124,29 @@ namespace ExpoTheExplorer.Systems.DaySystem
             {
                 if (step == null) continue;
 
-                // An unreadable kind is NOT silently downgraded to the default: a typo in
-                // "PowerupIntro" would otherwise turn an intro panel into a forced move at
-                // cell (0,0), which is a step the player can never complete. Same stance
-                // ResolveBoardDistribution takes on its own enum string, and the same reason
-                // the field is a string in the first place.
-                var kind = TutorialStepKind.ForcedMove;
-                if (!string.IsNullOrEmpty(step.kind) && !Enum.TryParse(step.kind, out kind))
+                // An unreadable kind is NOT silently downgraded to the default: a typo would
+                // otherwise turn whatever was meant into a forced move at cell (0,0), which
+                // is a step the player can never complete. Same stance ResolveBoardDistribution
+                // takes on its own enum string, and the same reason the field is a string in
+                // the first place.
+                //
+                // Since D-115 "ForcedMove" is the only accepted value, and this is the ONE
+                // place that says so. A Day file still carrying the removed "PowerupIntro"
+                // lands here and loses its tutorial with a sentence naming the value, which
+                // is the loud failure that removing the field entirely would have thrown away
+                // -- JsonUtility ignores keys it has no field for, so the step would have
+                // survived as a forced move on cell (0,0).
+                if (!string.IsNullOrEmpty(step.kind) && step.kind != ForcedMoveKind)
                 {
-                    Debug.LogError($"Tutorial step has kind '{step.kind}', which is not a TutorialStepKind. Dropping this Day's tutorial.");
+                    Debug.LogError(
+                        $"Tutorial step has kind '{step.kind}', and a Day may only author '{ForcedMoveKind}' steps. " +
+                        "The powerup tutorial moved to PowerupConfig, where each powerup names the Day that " +
+                        "introduces it. Dropping this Day's tutorial.");
                     return null;
                 }
 
                 steps.Add(new ResolvedTutorialStep(
-                    kind, step.sourceX, step.sourceY, step.targetTraySlotIndex, step.message, step.highlightModification));
+                    step.sourceX, step.sourceY, step.targetTraySlotIndex, step.message, step.highlightModification));
             }
 
             // An enabled tutorial with no steps is treated as no tutorial rather than as an

@@ -98,10 +98,9 @@ namespace ExpoTheExplorer.Systems.DaySystem
             {
                 var step = tutorial.Steps[i];
 
-                // An intro step names no cell and no tray, so every rule below would be
-                // checking fields it does not use -- and would reject a perfectly good step
-                // for leaving them at zero.
-                if (step.Kind != TutorialStepKind.ForcedMove) continue;
+                // No kind check any more: since D-115 every step a Day may author IS a
+                // forced move, so every rule below applies to every step. The skip that used
+                // to stand here existed for the panel step, which has moved to PowerupConfig.
 
                 if (step.TargetTraySlotIndex < 0 || step.TargetTraySlotIndex >= GameState.TicketSlotCount)
                 {
@@ -141,11 +140,8 @@ namespace ExpoTheExplorer.Systems.DaySystem
             // would be too weak -- this is a guaranteed softlock, not a smell.
             for (var i = 0; i < tutorial.Steps.Count; i++)
             {
-                if (tutorial.Steps[i].Kind != TutorialStepKind.ForcedMove) continue;
-
                 for (var j = i + 1; j < tutorial.Steps.Count; j++)
                 {
-                    if (tutorial.Steps[j].Kind != TutorialStepKind.ForcedMove) continue;
                     if (tutorial.Steps[i].SourceX != tutorial.Steps[j].SourceX) continue;
                     if (tutorial.Steps[i].SourceY != tutorial.Steps[j].SourceY) continue;
 

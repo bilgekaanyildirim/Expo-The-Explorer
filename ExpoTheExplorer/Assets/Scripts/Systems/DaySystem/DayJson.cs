@@ -70,18 +70,21 @@ namespace ExpoTheExplorer.Systems.DaySystem
     [Serializable]
     public class TutorialStepJson
     {
-        // What SHAPE of step this is: "ForcedMove" (the default) or "PowerupIntro". A
-        // string rather than the enum itself, for the reason BoardDistributionJson's mode
+        // What SHAPE of step this is, and since D-115 there is exactly one shape a Day may
+        // author: "ForcedMove", or empty, which means the same thing. It is kept as a field
+        // rather than deleted precisely BECAUSE the other value is gone -- "PowerupIntro"
+        // was legal here until D-115, and a Day file still carrying one must fail loudly.
+        // Delete this field and JsonUtility would silently ignore that key, quietly turning
+        // a powerup panel into a forced move on cell (0,0) into tray 0. DayCatalogParser
+        // refuses anything but the two accepted spellings.
+        //
+        // A string rather than the enum itself, for the reason BoardDistributionJson's mode
         // already gives: JsonUtility writes an enum as a bare ordinal, which is unreadable
         // in a hand-edited Day file and degrades a typo to whatever happens to be 0.
         //
-        // EMPTY MEANS ForcedMove, which is what makes this field additive: every step
-        // authored before kinds existed keeps working untouched, and the absence marker
-        // problem that forced `enabled` onto the block above does not arise here because
-        // there is a sensible default.
-        //
-        // The fields below belong to ForcedMove and are ignored for an intro step -- which
-        // is why DayValidator skips its cell and tray checks for one.
+        // The powerup tutorial moved to PowerupConfig, where each powerup carries the Day
+        // that introduces it. A Day file names no powerup any more, which is what leaves
+        // exactly one authority for "what happens on this Day" on each side of that line.
         public string kind;
 
         // The only cell that can be picked up while this step is unfinished. It must hold

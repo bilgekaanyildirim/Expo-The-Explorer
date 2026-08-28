@@ -16,17 +16,24 @@ MonoBehaviour:
     displayName: Auto-Collect
     description: Fills your trays with what the current orders still need.
     startingCharges: 2
-    gemCost: 30
-    chargesPerDayCompleted: 0
+    gemCost: 20
+    tutorialIntroDayIndex: 5
+    tutorialUseTrigger: 0
+    tutorialCharges: 2
   timeReset:
     displayName: Time Reset
     description: Gives every waiting customer their full time back.
     startingCharges: 1
-    gemCost: 15
-    chargesPerDayCompleted: 0
+    gemCost: 10
+    tutorialIntroDayIndex: 10
+    tutorialUseTrigger: 1
+    tutorialCharges: 2
   noiseClear:
     displayName: Noise Clear
     description: Clears the board of every item no current order asks for.
     startingCharges: 2
     gemCost: 5
-    chargesPerDayCompleted: 0
+    tutorialIntroDayIndex: 8
+    tutorialUseTrigger: 0
+    tutorialCharges: 2
+  lockLabelFormat: Day {0}

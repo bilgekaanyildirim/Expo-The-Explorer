@@ -183,8 +183,13 @@ namespace ExpoTheExplorer.Tests.EditMode
         // The rule the user settled: BY IDENTITY, not by count. A ticket wanting one burger
         // protects every burger on the board, because a player looking at a third one says
         // there are too many, not that it is unwanted.
+        // THE RULE REVERSED BY D-118. This test asserted the opposite until 2026-08-28 --
+        // that three burgers all survived a ticket wanting one, because "a player looking at
+        // a third burger says there are too many, not that it is unwanted". The user's answer
+        // is that "too many" is precisely what this powerup should clear, so the surplus goes
+        // and exactly as many as are still needed stay.
         [Test]
-        public void ClearUnneededItems_KeepsEverySurplusCopyOfAWantedFood()
+        public void ClearUnneededItems_KeepsOnlyAsManyCopiesAsTheTicketsStillNeed()
         {
             var burger = Food(FoodCategory.Main, "burger");
             var state = BoardState(width: 4, height: 1);
@@ -194,10 +199,69 @@ namespace ExpoTheExplorer.Tests.EditMode
             Place(state, burger, 1);
             Place(state, burger, 2);
 
-            Assert.IsFalse(
-                PowerupEffects.ClearUnneededItems(state),
-                "every item on the board is a burger and a burger is wanted — there is nothing to clear");
-            Assert.AreEqual(3, ItemsOnBoard(state));
+            Assert.IsTrue(
+                PowerupEffects.ClearUnneededItems(state, NoTrays),
+                "one burger is wanted and three are on the board — two of them are surplus");
+            Assert.AreEqual(1, ItemsOnBoard(state));
+            Assert.AreEqual(burger, state.Board.ItemAt(0, 0).Config);
+        }
+
+        // The counts must SUM across slots, not collapse. This is the case a HashSet of keys
+        // cannot express at all, and getting it wrong would clear a board the player needs.
+        [Test]
+        public void ClearUnneededItems_AddsUpWhatEverySlotStillNeeds()
+        {
+            var burger = Food(FoodCategory.Main, "burger");
+            var state = BoardState(width: 6, height: 1);
+            state.TicketSlots[0] = TicketFor(burger);
+            state.TicketSlots[1] = TicketFor(burger);
+            state.TicketSlots[2] = TicketFor(burger);
+
+            for (var x = 0; x < 5; x++) Place(state, burger, x);
+
+            Assert.IsTrue(PowerupEffects.ClearUnneededItems(state, NoTrays));
+            Assert.AreEqual(3, ItemsOnBoard(state), "three tickets each want one, so three survive");
+        }
+
+        // The tray half of the count, which is the user's own choice (asked and answered
+        // 2026-08-28): a ticket wanting two colas with one already in its tray still wants
+        // exactly ONE more, so the board keeps one rather than two.
+        [Test]
+        public void ClearUnneededItems_CountsWhatIsAlreadyInTheTray()
+        {
+            var cola = Food(FoodCategory.Drink, "cola");
+            var state = BoardState(width: 4, height: 1);
+            state.TicketSlots[0] = TicketFor(cola, cola);
+
+            Place(state, cola, 0);
+            Place(state, cola, 1);
+            Place(state, cola, 2);
+
+            // A FRESH array, never NoTrays: that one is a shared static readonly instance, so
+            // writing a slot into it would leak this ticket's tray into every other test in
+            // the file and the failures would land somewhere else entirely.
+            var trays = new IReadOnlyList<BoardItem>[GameState.TicketSlotCount];
+            trays[0] = new[] { new BoardItem(cola, Array.Empty<Modification>()) };
+
+            Assert.IsTrue(PowerupEffects.ClearUnneededItems(state, trays));
+            Assert.AreEqual(1, ItemsOnBoard(state), "two wanted, one already in the tray, so one stays on the board");
+        }
+
+        // The same board with an EMPTY tray keeps two -- the pair that makes the tray's
+        // contribution visible rather than incidental.
+        [Test]
+        public void ClearUnneededItems_WithAnEmptyTray_KeepsTheWholeRequirement()
+        {
+            var cola = Food(FoodCategory.Drink, "cola");
+            var state = BoardState(width: 4, height: 1);
+            state.TicketSlots[0] = TicketFor(cola, cola);
+
+            Place(state, cola, 0);
+            Place(state, cola, 1);
+            Place(state, cola, 2);
+
+            Assert.IsTrue(PowerupEffects.ClearUnneededItems(state, NoTrays));
+            Assert.AreEqual(2, ItemsOnBoard(state));
         }
 
         [Test]
@@ -212,7 +276,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             Place(state, cola, 1);
             Place(state, cola, 2);
 
-            Assert.IsTrue(PowerupEffects.ClearUnneededItems(state));
+            Assert.IsTrue(PowerupEffects.ClearUnneededItems(state, NoTrays));
 
             Assert.AreEqual(1, ItemsOnBoard(state));
             Assert.AreEqual(burger, state.Board.ItemAt(0, 0).Config);
@@ -233,7 +297,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             state.Board.RequestSpawn(wanted);
             state.Board.RequestSpawn(plain);
 
-            Assert.IsTrue(PowerupEffects.ClearUnneededItems(state));
+            Assert.IsTrue(PowerupEffects.ClearUnneededItems(state, NoTrays));
 
             Assert.AreEqual(1, ItemsOnBoard(state));
             Assert.AreEqual(
@@ -248,7 +312,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             var state = BoardState(width: 3, height: 1);
             state.TicketSlots[0] = TicketFor(Food(FoodCategory.Main, "burger"));
 
-            Assert.IsFalse(PowerupEffects.ClearUnneededItems(state));
+            Assert.IsFalse(PowerupEffects.ClearUnneededItems(state, NoTrays));
         }
 
         // A resolved ticket's order stops protecting anything the moment it resolves --
@@ -263,7 +327,7 @@ namespace ExpoTheExplorer.Tests.EditMode
 
             Place(state, cola, 0);
 
-            Assert.IsTrue(PowerupEffects.ClearUnneededItems(state));
+            Assert.IsTrue(PowerupEffects.ClearUnneededItems(state, NoTrays));
             Assert.AreEqual(0, ItemsOnBoard(state));
         }
 
@@ -285,19 +349,105 @@ namespace ExpoTheExplorer.Tests.EditMode
             state.Board.RequestSpawn(new BoardItem(burger, Array.Empty<Modification>()));
             Assert.AreEqual(1, state.Board.PendingSpawnCount, "the board must actually be full for this case");
 
-            Assert.IsTrue(PowerupEffects.ClearUnneededItems(state));
+            Assert.IsTrue(PowerupEffects.ClearUnneededItems(state, NoTrays));
 
             Assert.AreEqual(1, ItemsOnBoard(state));
             Assert.AreEqual(burger, state.Board.ItemAt(0, 0).Config, "the queued burger landed and must survive");
         }
 
+        // --- the plan the animated runner walks (D-120) ------------------------------------
+
+        // The planner and the doer must agree on WHAT is cleared, or the animation would drop
+        // one set of items while the board lost another. Same board, same answer.
+        [Test]
+        public void PlanNoiseClear_NamesExactlyTheCellsTheSweepWouldClear()
+        {
+            var burger = Food(FoodCategory.Main, "burger");
+            var cola = Food(FoodCategory.Drink, "cola");
+
+            GameState Build()
+            {
+                var s = BoardState(width: 4, height: 1);
+                s.TicketSlots[0] = TicketFor(burger);
+                Place(s, burger, 0);
+                Place(s, burger, 1);
+                Place(s, cola, 2);
+                return s;
+            }
+
+            var planned = PowerupEffects.PlanNoiseClear(Build(), NoTrays);
+
+            var swept = Build();
+            var before = ItemsOnBoard(swept);
+            PowerupEffects.ClearUnneededItems(swept, NoTrays);
+
+            Assert.AreEqual(before - ItemsOnBoard(swept), planned.Count, "the plan must name as many cells as the sweep clears");
+            Assert.AreEqual(2, planned.Count, "one surplus burger and one cola");
+        }
+
+        // IT PLANS ONLY -- the board must be untouched until the runner acts. A planner that
+        // removed as it went would make the runner's re-verification meaningless.
+        [Test]
+        public void PlanNoiseClear_LeavesTheBoardAlone()
+        {
+            var burger = Food(FoodCategory.Main, "burger");
+            var state = BoardState(width: 3, height: 1);
+            state.TicketSlots[0] = TicketFor(burger);
+            Place(state, burger, 0);
+            Place(state, burger, 1);
+
+            var plan = PowerupEffects.PlanNoiseClear(state, NoTrays);
+
+            Assert.AreEqual(1, plan.Count);
+            Assert.AreEqual(2, ItemsOnBoard(state), "planning is not doing");
+        }
+
+        // The reason each entry carries its item: the runner re-verifies by REFERENCE, so the
+        // plan has to hand over the instance it saw rather than only a coordinate.
+        [Test]
+        public void PlanNoiseClear_CarriesTheItemItSawInEachCell()
+        {
+            var cola = Food(FoodCategory.Drink, "cola");
+            var state = BoardState(width: 2, height: 1);
+            state.TicketSlots[0] = TicketFor(Food(FoodCategory.Main, "burger"));
+            Place(state, cola, 0);
+
+            var plan = PowerupEffects.PlanNoiseClear(state, NoTrays);
+
+            Assert.AreEqual(1, plan.Count);
+            Assert.AreSame(state.Board.ItemAt(plan[0].X, plan[0].Y), plan[0].Item);
+        }
+
+        [Test]
+        public void PlanNoiseClear_CountsTheTrayTheSameWayTheSweepDoes()
+        {
+            var cola = Food(FoodCategory.Drink, "cola");
+            var state = BoardState(width: 4, height: 1);
+            state.TicketSlots[0] = TicketFor(cola, cola);
+            Place(state, cola, 0);
+            Place(state, cola, 1);
+            Place(state, cola, 2);
+
+            var trays = new IReadOnlyList<BoardItem>[GameState.TicketSlotCount];
+            trays[0] = new[] { new BoardItem(cola, Array.Empty<Modification>()) };
+
+            Assert.AreEqual(2, PowerupEffects.PlanNoiseClear(state, trays).Count,
+                "two wanted, one already in the tray, so one stays and two are surplus");
+        }
+
         // --- the guaranteed-ticket rule (GDD Section 4) -----------------------------------
 
-        // The user's question, answered as a test rather than as an argument. Whatever
-        // BoardDistributor spawned for an ACTIVE guaranteed ticket is exactly what an active
-        // ticket requires, so the clear cannot touch it and the ticket stays completable.
+        // The user's question, answered as a test rather than as an argument: the guarantee is
+        // "at least one ticket stays completable", and a clear that leaves exactly what the
+        // ticket still needs satisfies it exactly.
+        //
+        // ASSERTS COMPLETABILITY, NOT THE PRE-COUNT, and the difference is D-118's. Until then
+        // this compared the burger and fries counts before and after, which was the right test
+        // for a rule that kept every copy. Under a count rule the distributor's surplus is
+        // legitimately swept, so pinning the old numbers would pin the old rule -- what has to
+        // survive is one of each required key, which is what makes the ticket finishable.
         [Test]
-        public void ClearUnneededItems_LeavesEveryItemAGuaranteedActiveTicketNeeds()
+        public void ClearUnneededItems_LeavesAGuaranteedActiveTicketCompletable()
         {
             var burger = Food(FoodCategory.Main, "burger");
             var fries = Food(FoodCategory.Side, "fries");
@@ -309,16 +459,17 @@ namespace ExpoTheExplorer.Tests.EditMode
             var distributor = NewDistributor(state);
             distributor.OnOrderPlaced(new List<Ticket> { state.TicketSlots[0] }, new List<Ticket>());
 
-            var beforeBurgers = CountOf(state, burger);
-            var beforeFries = CountOf(state, fries);
-            Assert.Greater(beforeBurgers + beforeFries, 0, "the distributor must have spawned the required pool");
+            Assert.Greater(
+                CountOf(state, burger) + CountOf(state, fries),
+                0,
+                "the distributor must have spawned the required pool");
 
             Place(state, noise, 7);
 
-            PowerupEffects.ClearUnneededItems(state);
+            PowerupEffects.ClearUnneededItems(state, NoTrays);
 
-            Assert.AreEqual(beforeBurgers, CountOf(state, burger));
-            Assert.AreEqual(beforeFries, CountOf(state, fries));
+            Assert.AreEqual(1, CountOf(state, burger), "one burger is wanted, so exactly one survives");
+            Assert.AreEqual(1, CountOf(state, fries), "and one portion of fries");
             Assert.AreEqual(0, CountOf(state, noise), "the noise is what should have gone");
         }
 

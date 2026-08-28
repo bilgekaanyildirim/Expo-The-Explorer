@@ -66,6 +66,18 @@ namespace ExpoTheExplorer.UI
         [Tooltip("Optional. The day scene's PowerupShopView, opened when a powerup at 0 charges is pressed. Unwired, an empty powerup is simply dim.")]
         [SerializeField] private PowerupShopView shop;
 
+        // The two tutorial popups, as PREFABS since D-116 -- they were assembled from
+        // constants in C# until the user asked to be able to restyle them, which a panel
+        // built in code cannot be. Both are OPTIONAL and both fail the same way every other
+        // reference on this tutorial does: an unwired one costs its lesson and leaves the day
+        // fully playable. Build them with ExpoTheExplorer > Build Tutorial Powerup Popups,
+        // then drag the two assets in here.
+        [Tooltip("Optional. Assets/Prefabs/UI/TutorialPowerupIntro.prefab — the panel that introduces one powerup. Unwired, that lesson is skipped.")]
+        [SerializeField] private TutorialPowerupIntroView introPrefab;
+
+        [Tooltip("Optional. Assets/Prefabs/UI/TutorialPowerupSpotlight.prefab — the frame and sentence shown while a powerup must be pressed. Unwired, the press is still required but unmarked.")]
+        [SerializeField] private TutorialPowerupSpotlightView spotlightPrefab;
+
         // Cached rather than re-read from gameManager on every refresh, for the reason
         // LivesView caches GameState: EventBus removes by delegate equality on a specific
         // instance, so the object this unsubscribes from in OnDestroy must be the object
@@ -76,6 +88,11 @@ namespace ExpoTheExplorer.UI
         // The tutorial's powerup panel while it is up, or null. Held so a step boundary that
         // is not a dismissal (a retry, an abort) can take it down.
         private TutorialPowerupIntroView introView;
+
+        // The frame drawn around the one powerup the tutorial is asking the player to press,
+        // or null. Held for the same reason the panel is, and torn down through its own
+        // Dismiss because it puts objects on the BUTTON's hierarchy, not only on itself.
+        private TutorialPowerupSpotlightView spotlight;
 
         // Paired with the fields above once, so every loop below reads one list instead
         // of repeating the three-way spelling. Built in Start rather than being a static
@@ -128,6 +145,14 @@ namespace ExpoTheExplorer.UI
 
             manager.ChargesChanged.Subscribe(OnChargesChanged);
 
+            // A DAY CHANGING is what changes a lock, and it is deliberately NOT read off the
+            // tutorial's step event: ArmTutorial fires nothing at all on a Day that authors no
+            // lesson, which is most of them, so a bar listening only to that would keep
+            // yesterday's locks for the rest of the game. AdvanceToNextDay reuses this scene
+            // rather than reloading it, so Start does not run again either -- this event is
+            // the only honest signal.
+            if (gameManager.Session != null) gameManager.Session.State.CurrentDayIndexChanged.Subscribe(OnDayIndexChanged);
+
             // Subscribed here rather than at the moment the shop is opened, so a shop closed
             // by any route -- its close button, a second press, something else taking it
             // down -- lets the day run again. Unsubscribing in OnDestroy is what keeps a
@@ -143,53 +168,106 @@ namespace ExpoTheExplorer.UI
             OnTutorialStepChanged();
         }
 
-        // This view builds the powerup-intro step for the reason the target tray builds a
-        // move step's spotlight: it is the object that already holds what the step needs.
-        // The three icons are the sprites on the three live buttons, and nothing else in the
-        // project knows where those are.
+        // This view builds BOTH powerup steps for the reason the target tray builds a move
+        // step's spotlight: it is the object that already holds what they need. The icon is
+        // the sprite on a live button and the target of a forced press is a live button, and
+        // nothing else in the project knows where those are.
+        //
+        // Tear down first, then build, and both halves are unconditional: a step boundary can
+        // move from a panel to a press, from a press to nothing, or (on a retry or an abort)
+        // out of the middle of either. Asking "did the thing I am holding still apply" for
+        // each one separately is what makes every one of those transitions the same code.
         private void OnTutorialStepChanged()
         {
-            var holdingForReading = gameManager.Tutorial != null && gameManager.Tutorial.IsHoldingForReading;
+            var tutorial = gameManager.Tutorial;
+            var introduced = tutorial?.IntroducedPowerup;
+            var required = tutorial?.RequiredPowerup;
 
-            // The step moved on without the panel being dismissed -- a retry, an abort, the
-            // day scene going away. Take it down rather than leaving a modal over a game
-            // that is running again.
-            if (!holdingForReading)
+            if (introView != null && introduced == null)
             {
-                if (introView != null) Destroy(introView.gameObject);
+                Destroy(introView.gameObject);
                 introView = null;
-                return;
             }
 
-            if (introView != null) return;
+            if (spotlight != null && required == null)
+            {
+                spotlight.Dismiss();
+                spotlight = null;
+            }
 
-            // Borrowed off a count label rather than serialized, so the panel matches the
-            // game's own type with nothing wired by hand -- same trick the step message uses
-            // on the ticket card.
-            var font = FindFont();
-            if (font == null)
+            if (introduced != null && introView == null) BuildIntro(GameManager.ToPowerupType(introduced.Value));
+            if (required != null && spotlight == null) BuildSpotlight(GameManager.ToPowerupType(required.Value), tutorial.CurrentMessage);
+        }
+
+        // Every failure here SKIPS the step rather than leaving it blocking the day. That is
+        // the standing rule for this tutorial: an unwired reference costs a lesson, never a
+        // playable day.
+        private void BuildIntro(PowerupType type)
+        {
+            var config = gameManager.PowerupConfig;
+
+            if (config == null || introPrefab == null)
             {
                 Debug.LogWarning(
-                    $"{nameof(PowerupBarView)} on '{name}': no TextMeshPro font could be borrowed from the powerup " +
-                    "count labels, so the powerup tutorial panel cannot be drawn. Skipping that step.", this);
+                    $"{nameof(PowerupBarView)} on '{name}': the powerup tutorial panel cannot be shown (" +
+                    $"{(config == null ? $"no {nameof(PowerupConfig)} on {nameof(GameManager)}" : "no Intro Prefab wired")}" +
+                    "), so that step is skipped rather than left blocking the day.", this);
                 gameManager.Tutorial.NotifyReadingFinished();
                 return;
             }
 
+            // Instantiated with NO parent on purpose: the prefab's root carries its own
+            // Screen Space - Overlay canvas (D-086), and parenting it under this bar's
+            // Screen Space - Camera canvas is exactly how it would end up drawn beneath the
+            // world sprites.
             introView = TutorialPowerupIntroView.Create(
-                gameManager.PowerupConfig,
-                GetComponentInParent<Canvas>(),
-                font,
-                IconFor,
+                Instantiate(introPrefab),
+                config.For(type),
+                IconFor(type),
                 OnIntroDismissed);
 
             if (introView == null)
             {
                 Debug.LogWarning(
-                    $"{nameof(PowerupBarView)} on '{name}': the powerup tutorial panel could not be built (no " +
-                    $"{nameof(PowerupConfig)} wired?), so that step is skipped rather than left blocking the day.", this);
+                    $"{nameof(PowerupBarView)} on '{name}': the powerup tutorial panel could not be shown for {type}, " +
+                    "so that step is skipped rather than left blocking the day.", this);
                 gameManager.Tutorial.NotifyReadingFinished();
             }
+        }
+
+        // A forced press against a button that is not wired is the one failure that would be
+        // a genuine softlock -- the gates refuse everything else for the whole of an armed
+        // step, so there would be nothing left to do. Completing the step is the escape, and
+        // it is the same shape the panel's failures take.
+        private void BuildSpotlight(PowerupType type, string message)
+        {
+            var button = ButtonFor(type);
+            if (button == null)
+            {
+                Debug.LogWarning(
+                    $"{nameof(PowerupBarView)} on '{name}': the tutorial asks the player to press {type}, but that " +
+                    "block has no Button wired, so nothing could be pressed. Skipping that step rather than locking " +
+                    "the day. Drag its button in.", this);
+                gameManager.Tutorial.NotifyPowerupUsed(GameManager.ToTutorialPowerup(type));
+                return;
+            }
+
+            // Unwired, the lesson still RUNS -- the press is still required and still the only
+            // thing permitted. What is lost is the mark on the button, which is a worse
+            // lesson but not a broken one, so this does not skip the step the way the panel's
+            // failures do: there the missing piece was the only way to continue.
+            if (spotlightPrefab == null)
+            {
+                Debug.LogWarning(
+                    $"{nameof(PowerupBarView)} on '{name}': no Spotlight Prefab wired, so the player is asked to press " +
+                    $"{type} with nothing marking it. Drag the prefab in.", this);
+                return;
+            }
+
+            spotlight = TutorialPowerupSpotlightView.Create(
+                Instantiate(spotlightPrefab),
+                (RectTransform)button.transform,
+                message);
         }
 
         private void OnIntroDismissed()
@@ -212,23 +290,42 @@ namespace ExpoTheExplorer.UI
             return null;
         }
 
-        private TMP_FontAsset FindFont()
+        // The live button for one powerup, and it stays PRIVATE like the icon above: this is
+        // for the tutorial's own spotlight, which needs somewhere to draw a frame. A caller
+        // outside this class has no business reaching the Button itself, which is what spends
+        // a charge.
+        private Button ButtonFor(PowerupType type)
         {
-            foreach (var (_, ui) in slots)
+            foreach (var (slotType, ui) in slots)
             {
-                if (ui?.CountLabel != null && ui.CountLabel.font != null) return ui.CountLabel.font;
+                if (slotType == type) return ui?.Button;
             }
 
             return null;
         }
+
+        // FindFont lived here until D-116 and is gone with the runtime-built popups. It
+        // borrowed a TMP font off a count label so a panel assembled in code could match the
+        // game's type with nothing wired by hand. An authored prefab carries its own fonts,
+        // which is the whole point of it being authored.
 
         private void OnDestroy()
         {
             // Guarded because Start returns early on a missing GameManager, and OnDestroy
             // runs regardless of how far Start got.
             if (manager != null) manager.ChargesChanged.Unsubscribe(OnChargesChanged);
+            if (gameManager != null && gameManager.Session != null)
+            {
+                gameManager.Session.State.CurrentDayIndexChanged.Unsubscribe(OnDayIndexChanged);
+            }
             if (gameManager != null) gameManager.TutorialStepChanged -= OnTutorialStepChanged;
             if (shop != null) shop.Closed -= OnShopClosed;
+
+            // Through Dismiss rather than Destroy: this one put a frame on the BUTTON's
+            // hierarchy, which is not necessarily going away with this view -- an object that
+            // is merely disabled and re-enabled would come back to a frame from last time.
+            if (spotlight != null) spotlight.Dismiss();
+            spotlight = null;
 
             // A pause this view is still holding dies with it, the same guard the settings
             // menu carries. Usually redundant -- the scene load takes the GameState too --
@@ -254,15 +351,39 @@ namespace ExpoTheExplorer.UI
         {
             if (manager == null) return;
 
+            // FIRST, before the day-liveness gate and before the shop: a powerup nobody has
+            // been taught cannot be spent and cannot be shopped for. Render already dims the
+            // button, so this is the half that holds if anything re-enables it -- the same
+            // belt-and-braces the empty state has.
+            if (IsLocked(type)) return;
+
+            // The tutorial's third gate, asked at press time rather than by disabling the
+            // other two buttons -- the same choice D-069 made for keys and D-105 for the
+            // shop. While a forced press is being asked for, this refuses every powerup but
+            // the one named; the rest of the time it refuses nothing.
+            if (!gameManager.CanUsePowerup(type)) return;
+
+            var isForcedByTutorial = gameManager.Tutorial?.RequiredPowerup == GameManager.ToTutorialPowerup(type);
+
             if (manager.ChargesOf(type) > 0)
             {
                 // Unchanged: TryUse decides on its own whether there was work to do, and a
                 // press with nothing to collect costs no charge (GDD 5.2).
                 manager.TryUse(type);
+            }
+            else if (!isForcedByTutorial)
+            {
+                OpenShop();
                 return;
             }
 
-            OpenShop();
+            // The step completes on the PRESS, not on the effect. An effect with nothing to
+            // do refuses and costs no charge, and a step that waited for a successful one
+            // would leave the player pressing a button that will not advance with no way to
+            // find out why. The empty-charge branch above lands here for the same reason: the
+            // tutorial tops the stock up before asking, so zero here means someone authored a
+            // floor of zero -- a lesson worth losing, not a day worth locking.
+            if (isForcedByTutorial) gameManager.Tutorial.NotifyPowerupUsed(GameManager.ToTutorialPowerup(type));
         }
 
         // Freezes the day, THEN opens -- and only if the shop actually came up. The other
@@ -294,7 +415,7 @@ namespace ExpoTheExplorer.UI
         {
             foreach (var (type, ui) in slots)
             {
-                if (type == change.Type) Render(ui, change.Charges, ShopIsReachable);
+                if (type == change.Type) Render(ui, change.Charges, ShopIsReachable, IsLocked(type), LockLabelFor(type));
             }
         }
 
@@ -304,11 +425,42 @@ namespace ExpoTheExplorer.UI
         // nothing at all -- the one outcome worse than a dim button.
         private bool ShopIsReachable => shop != null && manager != null;
 
+        // LOCKED UNTIL TAUGHT. The rule itself lives on PowerupSettings; this only supplies
+        // the day, which is the half a config cannot know. The AUTHORED index rather than the
+        // catalog position, because that is what the lesson's own schedule is compared
+        // against -- two notions of "which day" is how a lock opens one day early.
+        //
+        // Fails OPEN on every uncertainty (no config, no session, no Day resolved): an
+        // unwired reference costing a powerup its whole existence is far worse than one
+        // costing a lock, and this sits on the HUD of every day in the game.
+        private bool IsLocked(PowerupType type)
+        {
+            var config = gameManager != null ? gameManager.PowerupConfig : null;
+
+            // Through Session rather than a GameManager property, because Session is the
+            // seam both scene roots share -- the same route MetaShopView takes to read the
+            // day on the main screen.
+            var day = gameManager != null && gameManager.Session != null ? gameManager.Session.CurrentDay : null;
+            if (config == null || day == null) return false;
+
+            return !config.For(type).IsUnlockedOnDay(day.DayIndex);
+        }
+
+        private string LockLabelFor(PowerupType type)
+        {
+            var config = gameManager != null ? gameManager.PowerupConfig : null;
+            return config != null ? config.LockLabelFor(config.For(type)) : string.Empty;
+        }
+
+        // The whole bar, because a new Day can unlock any of the three and the event says
+        // only that the day moved. Three buttons once per Day is nothing.
+        private void OnDayIndexChanged(int _) => RefreshAll();
+
         private void RefreshAll()
         {
             foreach (var (type, ui) in slots)
             {
-                Render(ui, manager?.ChargesOf(type) ?? 0, ShopIsReachable);
+                Render(ui, manager?.ChargesOf(type) ?? 0, ShopIsReachable, IsLocked(type), LockLabelFor(type));
             }
         }
 
@@ -333,15 +485,36 @@ namespace ExpoTheExplorer.UI
         // reachable": it says THIS POWERUP IS EMPTY, which is true either way, and a badge
         // that also encoded whether a reference was dragged would make a wiring mistake look
         // like a full stock.
-        private static void Render(PowerupButton ui, int charges, bool shopIsReachable)
+        private static void Render(PowerupButton ui, int charges, bool shopIsReachable, bool locked, string lockLabel)
         {
             if (ui == null) return;
 
-            // A plain number, not "x3": the label's formatting belongs to whoever styled
-            // the button, and a prefix authored here would fight it.
-            if (ui.CountLabel != null) ui.CountLabel.text = charges.ToString();
-            if (ui.EmptyBadge != null) ui.EmptyBadge.SetActive(charges <= 0);
-            if (ui.Button != null) ui.Button.interactable = charges > 0 || shopIsReachable;
+            if (ui.LockOverlay != null) ui.LockOverlay.SetActive(locked);
+            if (ui.LockLabel != null) ui.LockLabel.text = lockLabel;
+
+            // Off while locked, so the blocker is the only thing on the button rather than a
+            // badge sitting on top of a powerup the player cannot reach.
+            if (ui.Background != null) ui.Background.SetActive(!locked);
+
+            // A LOCKED powerup shows neither its count nor its "Add" badge, and that is the
+            // point rather than tidiness: a number on something unusable is noise, and an
+            // invitation to buy it is worse than noise. The charges are still there and still
+            // real -- they simply come back into view on the day it unlocks.
+            if (ui.CountLabel != null)
+            {
+                ui.CountLabel.gameObject.SetActive(!locked);
+
+                // A plain number, not "x3": the label's formatting belongs to whoever styled
+                // the button, and a prefix authored here would fight it.
+                ui.CountLabel.text = charges.ToString();
+            }
+
+            if (ui.EmptyBadge != null) ui.EmptyBadge.SetActive(!locked && charges <= 0);
+
+            // Dim and unpressable while locked, whatever the stock or the shop says. The press
+            // is refused in OnPressed too -- this is the half the player can see, that one is
+            // the half that holds if something re-enables the button.
+            if (ui.Button != null) ui.Button.interactable = !locked && (charges > 0 || shopIsReachable);
         }
 
         // Reports every unwired half separately rather than bailing on the first one, so
@@ -410,8 +583,37 @@ namespace ExpoTheExplorer.UI
         [Tooltip("Optional. The inactive 'Add' object inside the button, shown when this powerup hits 0 charges.")]
         [SerializeField] private GameObject emptyBadge;
 
+        // The author's inactive lock child, switched on while this powerup has not been
+        // taught yet. Exactly the shape emptyBadge above already has, and for the same
+        // reason: a GameObject so whatever is built in there -- a padlock, a tint, a whole
+        // little group -- comes and goes whole, and this class needs no opinion about how
+        // "locked" is DRAWN.
+        //
+        // OPTIONAL, and its absence costs only the marking: the lock still applies. That is
+        // the safe direction -- a locked powerup that looks pressable is a smaller wrong than
+        // an unlocked one that should not be.
+        [Tooltip("Optional. The inactive lock object inside the button, shown until the Day that introduces this powerup. The lock applies whether or not this is wired.")]
+        [SerializeField] private GameObject lockOverlay;
+
+        [Tooltip("Optional. The label inside the lock object, filled with the Day this powerup unlocks on (wording comes from PowerupConfig's Lock Label Format).")]
+        [SerializeField] private TMP_Text lockLabel;
+
+        // The button's own `Background` child, hidden while locked so the blocker is the only
+        // thing on the button. It needs a field for the dullest possible reason: Render can
+        // only switch objects it holds a reference to, and this one had never been introduced
+        // to the code, so it went on showing through every lock.
+        //
+        // The powerup ICON is deliberately NOT hidden with it. That one is the Button's own
+        // targetGraphic (IconFor reads Button.image.sprite), the blocker sits on top of it
+        // anyway, and hiding a third thing nobody asked about would be a guess.
+        [Tooltip("Optional. The button's Background child, hidden while this powerup is locked. Unwired, the background simply keeps showing.")]
+        [SerializeField] private GameObject background;
+
         public Button Button => button;
         public TMP_Text CountLabel => countLabel;
         public GameObject EmptyBadge => emptyBadge;
+        public GameObject LockOverlay => lockOverlay;
+        public TMP_Text LockLabel => lockLabel;
+        public GameObject Background => background;
     }
 }

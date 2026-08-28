@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text.RegularExpressions;
 using ExpoTheExplorer.Core;
 using ExpoTheExplorer.Data;
 using ExpoTheExplorer.Session;
@@ -10,6 +11,7 @@ using ExpoTheExplorer.Systems.ProgressionSystem;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.TestTools;
 
 namespace ExpoTheExplorer.Tests.EditMode
 {
@@ -54,9 +56,11 @@ namespace ExpoTheExplorer.Tests.EditMode
 
             gameConfig = CreateAsset<GameConfig>();
             powerupConfig = CreatePowerupConfig(
-                autoCollect: (StartAuto, CostAuto, PerDay: 1),
-                timeReset: (StartTime, CostTime, PerDay: 2),
-                noiseClear: (StartNoiseClear, CostNoiseClear, PerDay: 0));
+                autoCollect: (StartAuto, CostAuto),
+                timeReset: (StartTime, CostTime),
+                noiseClear: (StartNoiseClear, CostNoiseClear));
+
+            ScheduleAutoCollect(AutoCollectIntroDay);
 
             state = new GameState(gameConfig);
             wallet = new Wallet(state);
@@ -82,9 +86,9 @@ namespace ExpoTheExplorer.Tests.EditMode
         // KeySystemTests sets KeyConfig's -- which means the property-path strings below
         // must stay in step with the field names, including the block prefix.
         private PowerupConfig CreatePowerupConfig(
-            (int Start, int Cost, int PerDay) autoCollect,
-            (int Start, int Cost, int PerDay) timeReset,
-            (int Start, int Cost, int PerDay) noiseClear)
+            (int Start, int Cost) autoCollect,
+            (int Start, int Cost) timeReset,
+            (int Start, int Cost) noiseClear)
         {
             var config = CreateAsset<PowerupConfig>();
             var serialized = new SerializedObject(config);
@@ -96,15 +100,37 @@ namespace ExpoTheExplorer.Tests.EditMode
             serialized.ApplyModifiedPropertiesWithoutUndo();
             return config;
 
-            static void SetBlock(SerializedObject serialized, string block, (int Start, int Cost, int PerDay) values)
+            static void SetBlock(SerializedObject serialized, string block, (int Start, int Cost) values)
             {
                 serialized.FindProperty($"{block}.startingCharges").intValue = values.Start;
                 serialized.FindProperty($"{block}.gemCost").intValue = values.Cost;
-                serialized.FindProperty($"{block}.chargesPerDayCompleted").intValue = values.PerDay;
             }
         }
 
         private PowerupManager NewManager() => new(powerupConfig, wallet);
+
+        // The lock fixture: Auto-Collect is taught on catalog day 5, the other two are
+        // unscheduled. Set here rather than through CreatePowerupConfig's tuple because only
+        // the lock tests care, and widening that helper would make every other test carry a
+        // number it has no opinion about.
+        private const int AutoCollectIntroDay = 5;
+
+        private void ScheduleAutoCollect(int introDayIndex)
+        {
+            var serialized = new SerializedObject(powerupConfig);
+            serialized.FindProperty("autoCollect.tutorialIntroDayIndex").intValue = introDayIndex;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        private PowerupSettings ScheduledOn(int introDayIndex)
+        {
+            ScheduleAutoCollect(introDayIndex);
+            return powerupConfig.For(PowerupType.AutoCollect);
+        }
+
+        // NoiseClear is left at the field initializer's -1 by every fixture, which is exactly
+        // the "nobody scheduled this" case the rule has to fail open on.
+        private PowerupSettings Unscheduled() => powerupConfig.For(PowerupType.NoiseClear);
 
         private void GiveGems(int gems) => wallet.ApplyPersistedBalances(state.SoftMoney, gems);
 
@@ -302,24 +328,30 @@ namespace ExpoTheExplorer.Tests.EditMode
         }
 
         // The one re-entrancy case the ordering in TryUse has to survive. An effect cascades
-        // synchronously -- auto-collect can fill a tray, deliver a ticket and complete the
-        // day inside this very call -- so a day-completion grant can land in the middle of a
-        // press. Both operations are +/-1 on the same field, so the net has to be exact.
+        // synchronously -- auto-collect can fill a tray, deliver a ticket and complete the day
+        // inside this very call -- so another write to the same count can land in the middle
+        // of a press. Both operations move the same field, so the net has to be exact.
+        //
+        // It used to raise the count through GrantForDayCompleted, which was removed with the
+        // day-completion earn path on 2026-08-28. The RULE it pins is not about that method,
+        // so the test kept its subject and changed its instrument: EnsureAtLeast is the write
+        // that can genuinely land mid-effect today, since a cascade that completes a Day can
+        // arm the next Day's tutorial step.
         [Test]
-        public void TryUse_WhenADayCompletionGrantLandsInsideTheEffect_NetsOutExactly()
+        public void TryUse_WhenAnotherWriteLandsInsideTheEffect_NetsOutExactly()
         {
             var manager = NewManager();
+            var floor = StartAuto + 3;
             manager.RegisterEffect(PowerupType.AutoCollect, () =>
             {
-                manager.GrantForDayCompleted();
+                manager.EnsureAtLeast(PowerupType.AutoCollect, floor);
                 return true;
             });
 
             Assert.IsTrue(manager.TryUse(PowerupType.AutoCollect));
 
-            // +1 granted (autoCollect's authored per-day amount), -1 spent.
-            Assert.AreEqual(StartAuto, manager.ChargesOf(PowerupType.AutoCollect));
-            Assert.AreEqual(StartTime + 2, manager.ChargesOf(PowerupType.TimeReset), "the grant still pays the other types");
+            // Raised to the floor inside the effect, then the press's own charge comes off.
+            Assert.AreEqual(floor - 1, manager.ChargesOf(PowerupType.AutoCollect));
         }
 
         [Test]
@@ -381,32 +413,169 @@ namespace ExpoTheExplorer.Tests.EditMode
             Assert.AreEqual(StartNoiseClear + 10, manager.ChargesOf(PowerupType.NoiseClear));
         }
 
-        // --- earning ---------------------------------------------------------------------
+        // --- the tutorial's floor (D-115) --------------------------------------------------
 
+        // The tutorial makes the player PRESS a powerup, so it has to guarantee there is one
+        // to press -- a forced press against an empty stock opens the shop (D-105) instead of
+        // teaching anything, and the step could never complete.
         [Test]
-        public void GrantForDayCompleted_AddsTheAuthoredAmountPerType()
+        public void EnsureAtLeast_TopsAnEmptyStockUpToTheFloor()
         {
             var manager = NewManager();
+            manager.DebugGrant(PowerupType.AutoCollect, -StartAuto);
+            Assert.AreEqual(0, manager.ChargesOf(PowerupType.AutoCollect), "Precondition: the stock is empty.");
 
-            manager.GrantForDayCompleted();
+            var changed = manager.EnsureAtLeast(PowerupType.AutoCollect, 2);
 
-            Assert.AreEqual(StartAuto + 1, manager.ChargesOf(PowerupType.AutoCollect));
-            Assert.AreEqual(StartTime + 2, manager.ChargesOf(PowerupType.TimeReset));
+            Assert.IsTrue(changed);
+            Assert.AreEqual(2, manager.ChargesOf(PowerupType.AutoCollect));
         }
 
-        // 0 is how a designer turns this earn path off for one powerup, so it must be a
-        // real no-op rather than a publish carrying an unchanged number.
+        // THE FARM THIS SHAPE EXISTS TO CLOSE. ArmTutorial runs on every day-start path,
+        // retries included, so an ADDING grant would pay out again every time the player
+        // replayed the introduction Day. A floor is idempotent: the second call does nothing.
         [Test]
-        public void GrantForDayCompleted_WithZeroAuthored_GrantsNothingAndPublishesNothingForThatType()
+        public void EnsureAtLeast_IsIdempotent_SoReplayingTheIntroductionDayGrantsNothingTwice()
         {
             var manager = NewManager();
+            manager.DebugGrant(PowerupType.AutoCollect, -StartAuto);
+            manager.EnsureAtLeast(PowerupType.AutoCollect, 2);
+
+            var changed = manager.EnsureAtLeast(PowerupType.AutoCollect, 2);
+
+            Assert.IsFalse(changed);
+            Assert.AreEqual(2, manager.ChargesOf(PowerupType.AutoCollect), "Not 4.");
+        }
+
+        // A well-stocked player is left alone: the floor is a guarantee that a press is
+        // possible, not a gift, and taking six charges down to two would be a theft.
+        [Test]
+        public void EnsureAtLeast_NeverLowersAStockAlreadyAboveTheFloor()
+        {
+            var manager = NewManager();
+            manager.DebugGrant(PowerupType.TimeReset, 6);
+            var before = manager.ChargesOf(PowerupType.TimeReset);
             var published = new List<PowerupType>();
             manager.ChargesChanged.Subscribe(change => published.Add(change.Type));
 
-            manager.GrantForDayCompleted();
+            var changed = manager.EnsureAtLeast(PowerupType.TimeReset, 2);
 
-            Assert.AreEqual(StartNoiseClear, manager.ChargesOf(PowerupType.NoiseClear));
-            CollectionAssert.DoesNotContain(published, PowerupType.NoiseClear);
+            Assert.IsFalse(changed);
+            Assert.AreEqual(before, manager.ChargesOf(PowerupType.TimeReset));
+            CollectionAssert.IsEmpty(published, "Nothing moved, so nothing is announced.");
+        }
+
+        // An authored floor of zero turns the guarantee off rather than emptying the stock.
+        [Test]
+        public void EnsureAtLeast_WithZeroFloor_DoesNothing()
+        {
+            var manager = NewManager();
+            var before = manager.ChargesOf(PowerupType.NoiseClear);
+
+            var changed = manager.EnsureAtLeast(PowerupType.NoiseClear, 0);
+
+            Assert.IsFalse(changed);
+            Assert.AreEqual(before, manager.ChargesOf(PowerupType.NoiseClear));
+        }
+
+        // The HUD has to follow, for the reason DebugGrant publishes: a top-up that moved the
+        // number without saying so would leave the bar showing 0 under a button the tutorial
+        // is about to insist the player presses.
+        [Test]
+        public void EnsureAtLeast_PublishesTheNewCount()
+        {
+            var manager = NewManager();
+            manager.DebugGrant(PowerupType.AutoCollect, -StartAuto);
+            var published = new List<(PowerupType Type, int Charges)>();
+            manager.ChargesChanged.Subscribe(change => published.Add(change));
+
+            manager.EnsureAtLeast(PowerupType.AutoCollect, 2);
+
+            CollectionAssert.Contains(published, (PowerupType.AutoCollect, 2));
+        }
+
+        // --- locked until taught (D-117) ---------------------------------------------------
+
+        // The three cases the rule has, pinned together because the middle one is the whole
+        // point: unlocking happens ON the introduction Day, not the day after it, or the
+        // player would meet a locked powerup in the lesson that teaches it.
+        [Test]
+        public void IsUnlockedOnDay_LocksBeforeTheIntroductionDayAndOpensOnIt()
+        {
+            var settings = ScheduledOn(5);
+
+            Assert.IsFalse(settings.IsUnlockedOnDay(0), "Day 0 is before the lesson.");
+            Assert.IsFalse(settings.IsUnlockedOnDay(4), "The day before still locks.");
+            Assert.IsTrue(settings.IsUnlockedOnDay(5), "The introduction Day itself must be open.");
+            Assert.IsTrue(settings.IsUnlockedOnDay(6), "And it stays open afterwards.");
+        }
+
+        // FAIL OPEN. A negative introDayIndex means nobody scheduled a lesson, and reading
+        // that as "never unlocks" would mean clearing a schedule silently deletes a powerup
+        // from the game.
+        [Test]
+        public void IsUnlockedOnDay_AnUnscheduledPowerupIsAlwaysUnlocked()
+        {
+            var settings = Unscheduled();
+
+            Assert.IsTrue(settings.IsUnlockedOnDay(0));
+            Assert.IsTrue(settings.IsUnlockedOnDay(42));
+        }
+
+        // The player counts days from 1, the same +1 SettingsPopupView and MainScreenView
+        // apply, so a powerup taught on catalog day 5 must say 6 rather than 5.
+        [Test]
+        public void UnlocksOnDayNumber_IsTheNumberThePlayerCounts()
+        {
+            Assert.AreEqual(6, ScheduledOn(5).UnlocksOnDayNumber);
+        }
+
+        // Locking is PERMISSION, not stock: it must not touch a charge. A powerup can be
+        // locked while holding charges (its schedule moved, or it was granted before), and
+        // those charges have to survive to the day it opens.
+        [Test]
+        public void ALockedPowerup_KeepsTheChargesItHolds()
+        {
+            var manager = NewManager();
+            var before = manager.ChargesOf(PowerupType.AutoCollect);
+
+            Assert.IsFalse(manager.IsUnlocked(PowerupType.AutoCollect, 0), "Precondition: locked on day 0.");
+            Assert.AreEqual(before, manager.ChargesOf(PowerupType.AutoCollect), "A lock confiscates nothing.");
+        }
+
+        [Test]
+        public void IsUnlocked_ForwardsToTheSettingsBlockPerType()
+        {
+            var manager = NewManager();
+
+            Assert.IsFalse(manager.IsUnlocked(PowerupType.AutoCollect, 4));
+            Assert.IsTrue(manager.IsUnlocked(PowerupType.AutoCollect, 5));
+            Assert.IsTrue(manager.IsUnlocked(PowerupType.NoiseClear, 0), "Unscheduled, so never locked.");
+        }
+
+        // A broken format string must degrade to the bare number rather than throw: this
+        // runs inside a HUD render, where an exception is a far worse outcome than an ugly
+        // badge. LogAssert is what keeps the expected warning from failing the test.
+        [Test]
+        public void LockLabel_WithABrokenFormat_FallsBackToTheBareDayNumber()
+        {
+            var serialized = new SerializedObject(powerupConfig);
+            serialized.FindProperty("lockLabelFormat").stringValue = "Day {not a placeholder";
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            LogAssert.Expect(LogType.Warning, new Regex("Lock Label Format"));
+
+            Assert.AreEqual("6", NewManager().LockLabelFor(PowerupType.AutoCollect));
+        }
+
+        [Test]
+        public void LockLabel_UsesTheAuthoredWording()
+        {
+            var serialized = new SerializedObject(powerupConfig);
+            serialized.FindProperty("lockLabelFormat").stringValue = "Gun {0}";
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            Assert.AreEqual("Gun 6", NewManager().LockLabelFor(PowerupType.AutoCollect));
         }
 
         // --- the save file ---------------------------------------------------------------

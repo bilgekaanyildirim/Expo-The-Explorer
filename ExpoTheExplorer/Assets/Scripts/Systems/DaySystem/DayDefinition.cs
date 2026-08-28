@@ -105,21 +105,20 @@ namespace ExpoTheExplorer.Systems.DaySystem
         }
     }
 
-    // Two genuinely different authored shapes in one sequence -- a move the player must
-    // make, and a panel they must read. Not an extension point: a third kind is a design
-    // decision, and this enum is where it would have to be argued for.
-    public enum TutorialStepKind
-    {
-        // The default, and what every step authored before kinds existed is.
-        ForcedMove = 0,
-
-        // Explains the three powerups. Carries no cell and no tray.
-        PowerupIntro = 1,
-    }
-
+    // ONE authored shape: a move the player must make. There WAS a second, PowerupIntro,
+    // between D-083 and D-115, and its removal is worth a line rather than a silent
+    // deletion. It explained the three powerups, which meant a Day file could name a
+    // powerup -- and once each powerup carried its own introduction Day on PowerupConfig
+    // (the user's decision, 2026-08-27), the two could disagree about which Day teaches
+    // what, with nothing checking them against each other. So this side gave it up: a Day
+    // owns its board, its tickets and the moves it forces, and the powerup asset owns when
+    // its powerup is taught.
+    //
+    // The kind survives as a STRING on TutorialStepJson, where it exists to reject a Day
+    // file still carrying the old value rather than to select between shapes -- see that
+    // field's comment for why deleting it would be the silent failure.
     public class ResolvedTutorialStep
     {
-        public TutorialStepKind Kind { get; }
         public int SourceX { get; }
         public int SourceY { get; }
         public int TargetTraySlotIndex { get; }
@@ -130,9 +129,8 @@ namespace ExpoTheExplorer.Systems.DaySystem
 
         public bool HighlightModification { get; }
 
-        public ResolvedTutorialStep(TutorialStepKind kind, int sourceX, int sourceY, int targetTraySlotIndex, string message, bool highlightModification)
+        public ResolvedTutorialStep(int sourceX, int sourceY, int targetTraySlotIndex, string message, bool highlightModification)
         {
-            Kind = kind;
             SourceX = sourceX;
             SourceY = sourceY;
             TargetTraySlotIndex = targetTraySlotIndex;

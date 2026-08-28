@@ -124,14 +124,6 @@
                     "targetTraySlotIndex": 2,
                     "message": "Modifications matter. This order wants extra mustard - bring the hotdog that already has it.",
                     "highlightModification": true
-                },
-                {
-                    "kind": "PowerupIntro",
-                    "sourceX": 0,
-                    "sourceY": 0,
-                    "targetTraySlotIndex": 0,
-                    "message": "",
-                    "highlightModification": false
                 }
             ]
         }

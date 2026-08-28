@@ -220,6 +220,14 @@ namespace ExpoTheExplorer.UI
         {
             if (manager == null) return;
 
+            // A locked powerup cannot be bought, checked here as well as in Render for the
+            // reason the bar checks twice: Render decides what the player SEES, and this
+            // decides what happens if anything re-enables the button -- a stale row, a tap
+            // that lands in the same frame the day rolled over. Silent, because the lock is
+            // already on screen saying why.
+            var day = session?.CurrentDay;
+            if (day != null && !manager.IsUnlocked(type, day.DayIndex)) return;
+
             if (!manager.TryBuyWithGems(type))
             {
                 // Reachable only if the balance moved between the last refresh and this tap
@@ -253,16 +261,35 @@ namespace ExpoTheExplorer.UI
         {
             var gems = session?.State?.Gems ?? 0;
 
+            // Read once for all three rows: the day does not change between them, and asking
+            // per row would invite three different answers if it ever did.
+            var day = session?.CurrentDay;
+
             foreach (var (type, ui) in rows)
             {
                 var price = manager?.GemCostOf(type) ?? 0;
                 var owned = manager?.ChargesOf(type) ?? 0;
 
+                // Fails OPEN on every uncertainty (no manager, no Day resolved), the same
+                // direction the bar takes: a powerup nobody can buy because a reference was
+                // forgotten is a far worse outcome than one that unlocks a day early.
+                var locked = manager != null && day != null && !manager.IsUnlocked(type, day.DayIndex);
+
+                if (ui.LockOverlay != null) ui.LockOverlay.SetActive(locked);
+                if (ui.LockLabel != null && manager != null) ui.LockLabel.text = manager.LockLabelFor(type);
+
                 if (ui.OwnedLabel != null) ui.OwnedLabel.text = owned.ToString();
 
                 // Plain number, no currency word — the screen's Gem icon is the unit, the
                 // same convention MetaShopRowView's price label follows.
-                if (ui.PriceLabel != null) ui.PriceLabel.text = price.ToString();
+                //
+                // Hidden while locked: a price on something that cannot be bought reads as an
+                // invitation, and the lock's own label is what the row should be saying instead.
+                if (ui.PriceLabel != null)
+                {
+                    ui.PriceLabel.gameObject.SetActive(!locked);
+                    ui.PriceLabel.text = price.ToString();
+                }
 
                 // Non-interactable rather than dimmed-but-tappable, which is where this
                 // parts company with MetaShopRowView. That row stays tappable because its
@@ -270,7 +297,7 @@ namespace ExpoTheExplorer.UI
                 // for; this shop has no popup, so a tap that silently did nothing would be
                 // the worst of the three options. The reason is already on screen anyway:
                 // the price is in the row and the balance is in the HUD.
-                if (ui.BuyButton != null) ui.BuyButton.interactable = manager != null && gems >= price;
+                if (ui.BuyButton != null) ui.BuyButton.interactable = !locked && manager != null && gems >= price;
             }
         }
 
@@ -345,8 +372,19 @@ namespace ExpoTheExplorer.UI
         [Tooltip("Shows the Gem price of one charge, read from PowerupConfig — never typed into the scene.")]
         [SerializeField] private TMP_Text priceLabel;
 
+        // The author's inactive lock child, shown until the Day that introduces this powerup.
+        // Same shape as the bar's lockOverlay and optional for the same reason: unwired, the
+        // row still refuses to sell, it simply does not say why.
+        [Tooltip("Optional. The inactive lock object in this row, shown until the Day that introduces this powerup. The row refuses to sell whether or not this is wired.")]
+        [SerializeField] private GameObject lockOverlay;
+
+        [Tooltip("Optional. The label inside the lock object, filled with the Day this powerup unlocks on.")]
+        [SerializeField] private TMP_Text lockLabel;
+
         public Button BuyButton => buyButton;
         public TMP_Text OwnedLabel => ownedLabel;
         public TMP_Text PriceLabel => priceLabel;
+        public GameObject LockOverlay => lockOverlay;
+        public TMP_Text LockLabel => lockLabel;
     }
 }

@@ -17,24 +17,45 @@ namespace ExpoTheExplorer.Tests.EditMode
         private const int StepTwoY = 0;
         private const int StepTwoTray = 2;
 
+        // The fraction of its own limit a ticket has to fall to before the deferred lesson
+        // arms. 1/3 is what PowerupConfig ships, and it is where the timer bar turns red.
+        private const float TriggerRatio = 1f / 3f;
+
         // Mirrors day_00: a plain first move, then a modification-teaching second one.
         private static TutorialDirector CreateTwoStepDirector() => new(new List<TutorialStep>
         {
-            new(TutorialStepKind.ForcedMove, StepOneX, StepOneY, StepOneTray, string.Empty, false),
-            new(TutorialStepKind.ForcedMove, StepTwoX, StepTwoY, StepTwoTray, "Modifications matter.", true),
+            TutorialStep.ForcedMove(StepOneX, StepOneY, StepOneTray, string.Empty, false),
+            TutorialStep.ForcedMove(StepTwoX, StepTwoY, StepTwoTray, "Modifications matter.", true),
         });
 
-        // Mirrors day_00 in full: the two moves, then the powerup panel.
+        // Mirrors Day 0 as it is built at runtime: the Day file's two moves, then the powerup
+        // steps GameManager appends from PowerupConfig's schedule.
         private static TutorialDirector CreateDirectorEndingInIntro() => new(new List<TutorialStep>
         {
-            new(TutorialStepKind.ForcedMove, StepOneX, StepOneY, StepOneTray, string.Empty, false),
-            new(TutorialStepKind.ForcedMove, StepTwoX, StepTwoY, StepTwoTray, "Modifications matter.", true),
-            new(TutorialStepKind.PowerupIntro, 0, 0, 0, string.Empty, false),
+            TutorialStep.ForcedMove(StepOneX, StepOneY, StepOneTray, string.Empty, false),
+            TutorialStep.ForcedMove(StepTwoX, StepTwoY, StepTwoTray, "Modifications matter.", true),
+            TutorialStep.PowerupIntro(TutorialPowerup.AutoCollect, string.Empty),
         });
 
         private static TutorialDirector CreateIntroOnlyDirector() => new(new List<TutorialStep>
         {
-            new(TutorialStepKind.PowerupIntro, 0, 0, 0, string.Empty, false),
+            TutorialStep.PowerupIntro(TutorialPowerup.AutoCollect, string.Empty),
+        });
+
+        // The shape a powerup taught at a Day's start produces: panel, then a press asked for
+        // straight away with the day still frozen.
+        private static TutorialDirector CreateImmediatePowerupDirector() => new(new List<TutorialStep>
+        {
+            TutorialStep.PowerupIntro(TutorialPowerup.NoiseClear, string.Empty),
+            TutorialStep.PowerupUse(TutorialPowerup.NoiseClear, TutorialTrigger.Immediate, 0f, "Try it now."),
+        });
+
+        // The shape Time Reset produces: panel at the Day's start, then a press that waits for
+        // a ticket to run down.
+        private static TutorialDirector CreateDeferredPowerupDirector() => new(new List<TutorialStep>
+        {
+            TutorialStep.PowerupIntro(TutorialPowerup.TimeReset, string.Empty),
+            TutorialStep.PowerupUse(TutorialPowerup.TimeReset, TutorialTrigger.TicketPatienceBelow, TriggerRatio, "Press Time Reset."),
         });
 
         [Test]
@@ -315,6 +336,233 @@ namespace ExpoTheExplorer.Tests.EditMode
             director.Abort();
 
             Assert.AreEqual(0, changes, "There is nothing left to abort, so nothing is announced.");
+        }
+
+        // ---- D-115: armed vs merely active, and the forced press --------------------------
+
+        // The distinction the whole deferred lesson rests on. Every step written before D-115
+        // arms the instant it becomes current, so the two answers agree everywhere except on
+        // a waiting step -- which is exactly what makes this worth pinning: if a refactor ever
+        // collapses them again, it will look correct until Time Reset's Day.
+        [Test]
+        public void AStepThatArmsImmediately_IsBothActiveAndArmed()
+        {
+            var director = CreateTwoStepDirector();
+
+            Assert.IsTrue(director.IsActive);
+            Assert.IsTrue(director.IsArmed);
+            Assert.IsFalse(director.IsAwaitingTrigger);
+        }
+
+        // The deadlock this design exists to avoid: the clock gate reads IsArmed, so a step
+        // waiting for a ticket to run down must leave it false -- otherwise the day freezes
+        // while waiting for the day to advance.
+        [Test]
+        public void ADeferredUseStep_IsActiveButNotArmed_AndLeavesEveryGateOpen()
+        {
+            var director = CreateDeferredPowerupDirector();
+            director.NotifyReadingFinished();
+
+            Assert.IsTrue(director.IsActive, "The lesson is not finished -- the press is still to come.");
+            Assert.IsFalse(director.IsArmed, "But nothing is being asked for yet, so nothing is frozen.");
+            Assert.IsTrue(director.IsAwaitingTrigger);
+
+            Assert.IsTrue(director.IsPickupAllowed(4, 3), "The day runs normally while the step waits.");
+            Assert.IsTrue(director.IsTrayDropAllowed(1));
+            Assert.IsTrue(director.IsBoardRelocationAllowed());
+            Assert.IsTrue(director.IsPowerupUseAllowed(TutorialPowerup.AutoCollect), "Including the other powerups.");
+            Assert.IsNull(director.RequiredPowerup, "Nothing is being asked for, so nothing is spotlit.");
+        }
+
+        [Test]
+        public void ADeferredUseStep_ArmsWhenATicketReachesTheThreshold()
+        {
+            var director = CreateDeferredPowerupDirector();
+            director.NotifyReadingFinished();
+
+            var changes = 0;
+            director.StepChanged += () => changes++;
+
+            director.NotifyTicketPatienceRatio(0.9f);
+            director.NotifyTicketPatienceRatio(TriggerRatio + 0.01f);
+            Assert.IsFalse(director.IsArmed, "Above the threshold is not at it.");
+            Assert.AreEqual(0, changes, "A step that did not arm announces nothing.");
+
+            director.NotifyTicketPatienceRatio(TriggerRatio);
+
+            Assert.IsTrue(director.IsArmed, "At the threshold, the lesson takes over.");
+            Assert.AreEqual(1, changes, "Arming is a change of what the tutorial is asking for, so it is announced.");
+            Assert.AreEqual(TutorialPowerup.TimeReset, director.RequiredPowerup);
+        }
+
+        // Once armed, the day is held exactly as it is for every other step -- which is the
+        // half of the user's description that says the clock stops again when the ticket runs
+        // down.
+        [Test]
+        public void AnArmedUseStep_RefusesTheBoardAndEveryOtherPowerup()
+        {
+            var director = CreateDeferredPowerupDirector();
+            director.NotifyReadingFinished();
+            director.NotifyTicketPatienceRatio(0.1f);
+
+            Assert.IsFalse(director.IsPickupAllowed(4, 3));
+            Assert.IsFalse(director.IsTrayDropAllowed(1));
+            Assert.IsFalse(director.IsBoardRelocationAllowed());
+            Assert.IsTrue(director.IsPowerupUseAllowed(TutorialPowerup.TimeReset), "The one it asked for.");
+            Assert.IsFalse(director.IsPowerupUseAllowed(TutorialPowerup.AutoCollect));
+            Assert.IsFalse(director.IsPowerupUseAllowed(TutorialPowerup.NoiseClear));
+        }
+
+        [Test]
+        public void PressingTheRequiredPowerup_FinishesTheLessonAndReleasesEverything()
+        {
+            var director = CreateDeferredPowerupDirector();
+            director.NotifyReadingFinished();
+            director.NotifyTicketPatienceRatio(0f);
+
+            director.NotifyPowerupUsed(TutorialPowerup.TimeReset);
+
+            Assert.IsFalse(director.IsActive);
+            Assert.IsFalse(director.IsArmed);
+            Assert.IsNull(director.RequiredPowerup);
+            Assert.IsTrue(director.IsPickupAllowed(4, 3), "The day is handed back.");
+            Assert.IsTrue(director.IsPowerupUseAllowed(TutorialPowerup.AutoCollect));
+        }
+
+        // The guard that matches NotifyTrayAccepted's slot check: the gate above and this call
+        // sit either side of the bar's own spend, and a caller that forgets the gate must not
+        // be able to advance the lesson with the wrong button.
+        [Test]
+        public void PressingAnotherPowerup_DoesNotFinishTheLesson()
+        {
+            var director = CreateDeferredPowerupDirector();
+            director.NotifyReadingFinished();
+            director.NotifyTicketPatienceRatio(0f);
+
+            director.NotifyPowerupUsed(TutorialPowerup.AutoCollect);
+
+            Assert.IsTrue(director.IsArmed, "Still waiting for the right one.");
+            Assert.AreEqual(TutorialPowerup.TimeReset, director.RequiredPowerup);
+        }
+
+        // A powerup taught at the Day's start: the press follows the panel with no gap, so the
+        // clock never restarts between the two.
+        [Test]
+        public void AnImmediateUseStep_ArmsAsSoonAsThePanelIsDismissed()
+        {
+            var director = CreateImmediatePowerupDirector();
+
+            Assert.AreEqual(TutorialPowerup.NoiseClear, director.IntroducedPowerup);
+            Assert.IsNull(director.RequiredPowerup, "The panel is up; nothing is being pressed yet.");
+
+            director.NotifyReadingFinished();
+
+            Assert.IsTrue(director.IsArmed, "No trigger to wait for, so the day stays frozen.");
+            Assert.IsFalse(director.IsAwaitingTrigger);
+            Assert.IsNull(director.IntroducedPowerup, "The panel is gone.");
+            Assert.AreEqual(TutorialPowerup.NoiseClear, director.RequiredPowerup);
+        }
+
+        // A patience report must not arm a step that named no trigger, or every panel in the
+        // list would advance itself the first time a ticket got low.
+        [Test]
+        public void APatienceReport_DoesNothingToAStepThatNamedNoTrigger()
+        {
+            var director = CreateImmediatePowerupDirector();
+            var changes = 0;
+            director.StepChanged += () => changes++;
+
+            director.NotifyTicketPatienceRatio(0f);
+
+            Assert.AreEqual(0, changes);
+            Assert.AreEqual(TutorialPowerup.NoiseClear, director.IntroducedPowerup, "Still on the panel.");
+        }
+
+        // Arming happens once. A second report below the threshold must not re-announce a step
+        // that is already asking for its press -- the bar would tear its frame down and build
+        // an identical one every frame.
+        [Test]
+        public void FurtherPatienceReports_AfterArming_AnnounceNothing()
+        {
+            var director = CreateDeferredPowerupDirector();
+            director.NotifyReadingFinished();
+            director.NotifyTicketPatienceRatio(0.2f);
+
+            var changes = 0;
+            director.StepChanged += () => changes++;
+
+            director.NotifyTicketPatienceRatio(0.1f);
+            director.NotifyTicketPatienceRatio(0f);
+
+            Assert.AreEqual(0, changes);
+        }
+
+        // The message belongs to the step, so the spotlight prints authored words rather than
+        // assembling its own -- and a step that is not armed has nothing to say.
+        [Test]
+        public void TheCurrentMessage_IsTheArmedStepsOwn()
+        {
+            var director = CreateDeferredPowerupDirector();
+            director.NotifyReadingFinished();
+
+            Assert.AreEqual(string.Empty, director.CurrentMessage, "A waiting step is not saying anything yet.");
+
+            director.NotifyTicketPatienceRatio(0f);
+
+            Assert.AreEqual("Press Time Reset.", director.CurrentMessage);
+        }
+
+        // Aborting out of a WAITING step has to work too: the day can end with a deferred
+        // lesson still unarmed, and an abort must not leave RequiredPowerup pointing at a
+        // button nobody is being asked to press.
+        [Test]
+        public void AbortingAWaitingStep_EndsTheTutorial()
+        {
+            var director = CreateDeferredPowerupDirector();
+            director.NotifyReadingFinished();
+
+            director.Abort();
+
+            Assert.IsFalse(director.IsActive);
+            Assert.IsFalse(director.IsAwaitingTrigger);
+            Assert.IsNull(director.RequiredPowerup);
+            Assert.IsNull(director.IntroducedPowerup);
+        }
+
+        // A finished tutorial permits every powerup, the same property the board gates have --
+        // so the bar needs no "was there a tutorial" branch.
+        [Test]
+        public void AFinishedTutorial_AllowsEveryPowerup()
+        {
+            var director = CreateTwoStepDirector();
+            director.NotifyTrayAccepted(StepOneTray);
+            director.NotifyTrayAccepted(StepTwoTray);
+
+            Assert.IsTrue(director.IsPowerupUseAllowed(TutorialPowerup.AutoCollect));
+            Assert.IsTrue(director.IsPowerupUseAllowed(TutorialPowerup.TimeReset));
+            Assert.IsTrue(director.IsPowerupUseAllowed(TutorialPowerup.NoiseClear));
+        }
+
+        // A forced MOVE refuses every powerup, which is the rule that stops Auto-Collect from
+        // sweeping the very item the ghost is pointing at.
+        [Test]
+        public void AForcedMove_RefusesEveryPowerup()
+        {
+            var director = CreateTwoStepDirector();
+
+            Assert.IsFalse(director.IsPowerupUseAllowed(TutorialPowerup.AutoCollect));
+            Assert.IsFalse(director.IsPowerupUseAllowed(TutorialPowerup.TimeReset));
+        }
+
+        // The panel step's own refusal, for the same reason the board is refused behind it:
+        // spending a charge while reading is a way to waste one on nothing.
+        [Test]
+        public void AnIntroStep_RefusesEveryPowerupIncludingItsOwn()
+        {
+            var director = CreateImmediatePowerupDirector();
+
+            Assert.IsFalse(director.IsPowerupUseAllowed(TutorialPowerup.NoiseClear));
+            Assert.IsFalse(director.IsPowerupUseAllowed(TutorialPowerup.AutoCollect));
         }
     }
 }

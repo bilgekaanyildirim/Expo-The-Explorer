@@ -22,6 +22,10 @@ MonoBehaviour:
   scatterShakeStrength: 0.3
   scatterShakeFrequency: 8
   scatterShakeItemMultiplier: 1.2
+  noiseClearFallDistance: 6
+  noiseClearFallDuration: 0.55
+  noiseClearFadeDuration: 0.45
+  noiseClearStagger: 0.03
   deliveryGrowScale: 1.15
   deliveryGrowDuration: 0.2
   deliveryLiftDistance: 1.5
@@ -40,6 +44,5 @@ MonoBehaviour:
   tutorialGhostOpacity: 0.55
   tutorialGhostTravelDuration: 0.9
   tutorialGhostLoopPause: 0.45
-  tutorialMessageScreenHeight: 0.28
-  tutorialMessageFontSize: 36
+  tutorialStepHintsPrefab: {fileID: 1324349265461138487, guid: 033e6ce56a5bc44c89ea1449e3010ebe, type: 3}
   tutorialHintFadeDuration: 0.35

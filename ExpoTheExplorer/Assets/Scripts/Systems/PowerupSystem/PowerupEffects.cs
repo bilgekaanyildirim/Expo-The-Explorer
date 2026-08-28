@@ -72,16 +72,29 @@ namespace ExpoTheExplorer.Systems.PowerupSystem
         // UI half at all: BoardGrid.RemoveItem publishes CellChanged and BoardView hides the
         // cell on its own, so the whole effect lives in the data layer.
         //
-        // BY IDENTITY, NOT BY COUNT. A ticket that wants one burger protects every burger
-        // on the board, because a player looking at a third one says there are too many, not
-        // that it is unwanted. TicketRequirements.ActiveTicketKeys returns a set for exactly
-        // this reason.
+        // BY COUNT SINCE D-118 (2026-08-28, the user's decision), where it was by IDENTITY
+        // until then. The old rule kept every burger on the board if any ticket wanted one,
+        // and it argued that a player looking at a third burger says there are too many
+        // rather than that it is unwanted. The user's answer is that "too many" is exactly
+        // what this powerup should be clearing: a board holding five burgers when two are
+        // wanted IS noise, and a sweep that leaves it has not cleared the board. So the set
+        // became a BUDGET -- how many of each key the active tickets still need -- and every
+        // copy past it goes.
         //
-        // TRAY CONTENTS ARE NOT CONSULTED, and that is deliberate rather than an oversight:
-        // a burger already sitting in a tray does not stop the board's burgers from being
-        // wanted, because a wrong order scatters the whole tray straight back onto the
-        // board. Reading the tray would also drag a TraySystem reference into this assembly
-        // for a question it does not need to ask.
+        // Summed ACROSS slots, per key. Three tickets each wanting a burger keep three: the
+        // keys collapse, the counts must not, and a HashSet cannot say that at all.
+        //
+        // TRAY CONTENTS ARE NOW CONSULTED, which reverses the second half of the old note.
+        // Its argument was that a wrong order scatters the whole tray back onto the board, so
+        // a burger in a tray does not make a board burger unwanted -- true, and the reason it
+        // is safe to consult them anyway: the scatter RETURNS those items, so a board cleared
+        // to the outstanding count is restored by the very event that would need it. What the
+        // old note got right and is preserved: reading the tray must not drag a TraySystem
+        // reference into this assembly, which is why the contents arrive as plain BoardItems
+        // from the caller, exactly as PlanAutoCollect already takes them.
+        //
+        // Auto-Collect and Noise Clear now share ONE definition of what is still owed
+        // (OutstandingFor), rather than each holding its own idea of it.
         //
         // IT CANNOT BREAK THE GUARANTEED-TICKET RULE (GDD Section 4), and there are two
         // independent reasons. First, everything an active ticket requires is kept, and the
@@ -91,11 +104,21 @@ namespace ExpoTheExplorer.Systems.PowerupSystem
         // even a mistake here would close on the next ticket assignment. What this DOES
         // remove is a pre-spawn for a guaranteed ticket still sitting in the upcoming queue;
         // that one is re-created the moment it reaches a slot.
-        public static bool ClearUnneededItems(GameState state)
+        // THE DATA-ONLY PATH, still here and still the fallback. NoiseClearRunner exists to
+        // drop the cleared items off the board instead of blinking them out (D-120), and it
+        // uses PlanNoiseClear below; this stays for the scene that has no runner wired, and
+        // it is what every test drives, because the RULE is the same either way and the
+        // animation is not something a test can see.
+        public static bool ClearUnneededItems(
+            GameState state, IReadOnlyList<IReadOnlyList<BoardItem>> trayContents)
         {
             if (state?.Board == null) return false;
 
-            var wanted = TicketRequirements.ActiveTicketKeys(state);
+            // The budget is CONSUMED as the sweep walks the board, so a key with an allowance
+            // of two keeps the first two copies it meets and drops the rest. Which two is not
+            // specified: they are whichever the scan order reaches first, and inventing a
+            // "nearest the trays" rule nobody asked for would be a rule nobody can check.
+            var allowance = OutstandingAcrossSlots(state, trayContents);
             var board = state.Board;
             var removedAny = false;
 
@@ -111,7 +134,16 @@ namespace ExpoTheExplorer.Systems.PowerupSystem
                     var item = board.ItemAt(x, y);
                     if (item == null) continue;
 
-                    if (wanted.Contains(new RequiredItemKey(item.Config, item.Modifications))) continue;
+                    // Kept and CHARGED to the budget, or removed once the budget is spent.
+                    // Only a key the tickets actually want is ever in the dictionary, so an
+                    // item nobody ordered misses on the lookup and goes -- the identity rule
+                    // this replaced, still intact as the budget's zero case.
+                    var key = new RequiredItemKey(item.Config, item.Modifications);
+                    if (allowance.TryGetValue(key, out var remaining) && remaining > 0)
+                    {
+                        allowance[key] = remaining - 1;
+                        continue;
+                    }
 
                     board.RemoveItem(x, y);
                     removedAny = true;
@@ -306,8 +338,85 @@ namespace ExpoTheExplorer.Systems.PowerupSystem
 
         // The ticket's required multiset MINUS what its tray already holds, so a slot that
         // is halfway filled by hand asks only for the rest. Counts matter here, unlike in
-        // ClearUnneededItems: a ticket wanting two colas with one already in the tray still
-        // wants exactly one more.
+        // The same sweep as ClearUnneededItems, but it DECIDES instead of doing: which cells
+        // would be cleared, and which item each one held when the decision was made. Pure, so
+        // the rule stays testable without a scene, while NoiseClearRunner does the removing
+        // and the falling (D-120) -- the split PlanAutoCollect and AutoCollectRunner already
+        // made, for the same reason.
+        //
+        // IT CARRIES THE EXPECTED ITEM, and that is not bookkeeping. A plan is a CLOSED LIST
+        // computed before the first removal, and every removal BACKFILLS its cell from the
+        // pending-spawn queue -- so by the time the runner reaches the fifth entry, the
+        // second entry's cell may hold something else entirely, possibly a required item.
+        // The runner re-verifies each cell against this instance and skips it if the board
+        // moved on. ClearUnneededItems avoids the whole problem by reading each cell fresh
+        // immediately before removing it; a planner cannot, so it hands over what it saw.
+        public static List<NoiseClearRemoval> PlanNoiseClear(
+            GameState state, IReadOnlyList<IReadOnlyList<BoardItem>> trayContents)
+        {
+            var removals = new List<NoiseClearRemoval>();
+            if (state?.Board == null) return removals;
+
+            var allowance = OutstandingAcrossSlots(state, trayContents);
+            var board = state.Board;
+
+            for (var y = 0; y < board.Height; y++)
+            {
+                for (var x = 0; x < board.Width; x++)
+                {
+                    var item = board.ItemAt(x, y);
+                    if (item == null) continue;
+
+                    var key = new RequiredItemKey(item.Config, item.Modifications);
+                    if (allowance.TryGetValue(key, out var remaining) && remaining > 0)
+                    {
+                        allowance[key] = remaining - 1;
+                        continue;
+                    }
+
+                    removals.Add(new NoiseClearRemoval(x, y, item));
+                }
+            }
+
+            return removals;
+        }
+
+        // Every active slot's outstanding requirement, added up per key -- the budget
+        // ClearUnneededItems sweeps against.
+        //
+        // Summed rather than maxed, which is the whole difference from the HashSet it
+        // replaced: three tickets each wanting one burger want THREE burgers between them,
+        // and a rule that collapsed them to one would clear a board the player still needs.
+        //
+        // A slot with no active ticket contributes nothing -- OutstandingFor answers null for
+        // that, deliberately distinct from an empty dictionary, and both mean "add nothing"
+        // here. Non-positive entries are skipped so a fully-tray-satisfied requirement cannot
+        // leave a zero in the budget that reads as an allowance.
+        private static Dictionary<RequiredItemKey, int> OutstandingAcrossSlots(
+            GameState state, IReadOnlyList<IReadOnlyList<BoardItem>> trayContents)
+        {
+            var total = new Dictionary<RequiredItemKey, int>();
+
+            for (var slot = 0; slot < GameState.TicketSlotCount; slot++)
+            {
+                var owed = OutstandingFor(state, slot, TrayFor(trayContents, slot));
+                if (owed == null) continue;
+
+                foreach (var pair in owed)
+                {
+                    if (pair.Value <= 0) continue;
+
+                    total[pair.Key] = total.TryGetValue(pair.Key, out var running)
+                        ? running + pair.Value
+                        : pair.Value;
+                }
+            }
+
+            return total;
+        }
+
+        // ClearUnneededItems and PlanAutoCollect: a ticket wanting two colas with one already
+        // in the tray still wants exactly one more.
         //
         // Null (not empty) for a slot with no active ticket -- the two are different
         // answers and the caller treats them the same only by accident otherwise.
@@ -422,6 +531,25 @@ namespace ExpoTheExplorer.Systems.PowerupSystem
         public AutoCollectMove(int slotIndex, int x, int y, BoardItem item)
         {
             SlotIndex = slotIndex;
+            X = x;
+            Y = y;
+            Item = item;
+        }
+    }
+
+    // One cell a Noise Clear plan intends to empty, carrying the item it held when the plan
+    // was made -- the same shape AutoCollectMove has, and for the identical reason: every
+    // removal backfills its cell from the pending-spawn queue, so a runner walking a closed
+    // list must be able to tell "the item I planned to clear" from "whatever is in that cell
+    // now", which can be a required item that has just landed.
+    public readonly struct NoiseClearRemoval
+    {
+        public int X { get; }
+        public int Y { get; }
+        public BoardItem Item { get; }
+
+        public NoiseClearRemoval(int x, int y, BoardItem item)
+        {
             X = x;
             Y = y;
             Item = item;

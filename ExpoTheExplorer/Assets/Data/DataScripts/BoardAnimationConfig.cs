@@ -35,6 +35,21 @@ namespace ExpoTheExplorer.Data
         [Tooltip("How much more (multiplier on ScatterShakeStrength) the tray's contents shake compared to the tray itself.")]
         [SerializeField] private float scatterShakeItemMultiplier = 1.2f;
 
+        // What a cleared item does on its way out (D-120). NOT a return of the old design in
+        // which Noise Clear dimmed the board's noise for a few seconds -- the item is gone
+        // from the model the instant the powerup runs, and what falls is a corpse. These
+        // numbers buy legibility, not gameplay: nothing waits for them and the day never
+        // pauses.
+        [Header("Noise Clear")]
+        [Tooltip("How far (world units) a cleared item falls before it is destroyed. It should comfortably clear the bottom of the board.")]
+        [SerializeField] private float noiseClearFallDistance = 6f;
+        [Tooltip("Duration (seconds) of that fall.")]
+        [SerializeField] private float noiseClearFallDuration = 0.55f;
+        [Tooltip("Duration (seconds) of the fade that runs alongside the fall. Shorter than the fall leaves the item invisible before it lands.")]
+        [SerializeField] private float noiseClearFadeDuration = 0.45f;
+        [Tooltip("Extra delay (seconds) added per item, so a sweep reads as a cascade rather than one frame of everything dropping. 0 drops them all together.")]
+        [SerializeField] private float noiseClearStagger = 0.03f;
+
         [Header("Delivery Success")]
         [Tooltip("Scale multiplier the tray (and the just-delivered item) grows to on a successful delivery.")]
         [SerializeField] private float deliveryGrowScale = 1.15f;
@@ -81,11 +96,32 @@ namespace ExpoTheExplorer.Data
         [Tooltip("Seconds of stillness between one ghost arriving and the next one setting off. 0 makes it a continuous stream rather than a repeated gesture.")]
         [SerializeField, Min(0f)] private float tutorialGhostLoopPause = 0.45f;
 
-        [Tooltip("Where a tutorial step's message sits, as a fraction of screen height from the bottom (0 = bottom edge, 1 = top). Tunable rather than fixed because it has to miss the board, the trays and the ticket cards, and only the scene knows where those are.")]
-        [SerializeField, Range(0f, 1f)] private float tutorialMessageScreenHeight = 0.28f;
-
-        [Tooltip("Font size of a tutorial step's message, in the same units as the ticket card's own text (it borrows that card's font so the two match).")]
-        [SerializeField, Min(1f)] private float tutorialMessageFontSize = 36f;
+        // A PREFAB REFERENCE ON A CONFIG OF NUMBERS, and it earns its place here rather than
+        // on a scene object (D-122). TutorialSpotlightView is created by WorldTrayView, which
+        // is a SCENE component with three instances -- a prefab field there would be three
+        // drags that must never disagree. This asset is already handed to every one of them,
+        // so the reference costs zero drags, and an asset->asset reference is not the scene
+        // lookup this project bans.
+        //
+        // It also sits exactly where the two fields it REPLACED were: tutorialMessageScreenHeight
+        // and tutorialMessageFontSize, deleted 2026-08-28. The prefab carries its own anchors
+        // and its own font size, so keeping either would have been a second authority over the
+        // same look. Three literals went with them -- the plate's colour, its height (fontSize
+        // times three, which clipped the moment a message wrapped to two lines) and its
+        // paddings -- none of which an author could reach.
+        //
+        // IT CARRIES THE ARROWS TOO SINCE D-126, and the rename came with them: the two
+        // modification arrows were still being drawn from literals and a generated texture, so
+        // an author could not touch them. NO [FormerlySerializedAs] on the rename, deliberately
+        // -- carrying the old value forward would leave this pointing at the arrow-less prefab
+        // and the arrows would simply never appear, which is the silent failure a clean break
+        // avoids. The field goes empty, and the view names the menu step that fills it.
+        //
+        // Seeded and wired by ExpoTheExplorer > Tutorial > Build Powerup Popups. Unset, a step
+        // simply shows no message and no arrows and says so once in the console; the lesson
+        // loses its hints and the day stays playable.
+        [Tooltip("The prefab a tutorial step draws its message and its two modification arrows from. The message's Canvas must be Screen Space - Overlay — on the game's own canvas it is drawn and then buried (decisions.md D-086).")]
+        [SerializeField] private GameObject tutorialStepHintsPrefab;
 
         [Tooltip("Seconds the arrows and the message take to fade in when a step begins. They appear AFTER the dim so the eye lands on the lit pair first rather than on text.")]
         [SerializeField, Min(0f)] private float tutorialHintFadeDuration = 0.35f;
@@ -100,6 +136,10 @@ namespace ExpoTheExplorer.Data
         public float ScatterShakeStrength => scatterShakeStrength;
         public float ScatterShakeFrequency => scatterShakeFrequency;
         public float ScatterShakeItemMultiplier => scatterShakeItemMultiplier;
+        public float NoiseClearFallDistance => noiseClearFallDistance;
+        public float NoiseClearFallDuration => noiseClearFallDuration;
+        public float NoiseClearFadeDuration => noiseClearFadeDuration;
+        public float NoiseClearStagger => noiseClearStagger;
         public float DeliveryGrowScale => deliveryGrowScale;
         public float DeliveryGrowDuration => deliveryGrowDuration;
         public float DeliveryLiftDistance => deliveryLiftDistance;
@@ -118,8 +158,7 @@ namespace ExpoTheExplorer.Data
         public float TutorialGhostOpacity => tutorialGhostOpacity;
         public float TutorialGhostTravelDuration => tutorialGhostTravelDuration;
         public float TutorialGhostLoopPause => tutorialGhostLoopPause;
-        public float TutorialMessageScreenHeight => tutorialMessageScreenHeight;
-        public float TutorialMessageFontSize => tutorialMessageFontSize;
+        public GameObject TutorialStepHintsPrefab => tutorialStepHintsPrefab;
         public float TutorialHintFadeDuration => tutorialHintFadeDuration;
     }
 }

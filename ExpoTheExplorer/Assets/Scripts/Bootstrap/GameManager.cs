@@ -18,12 +18,11 @@ using ExpoTheExplorer.Systems.TraySystem;
 using ExpoTheExplorer.Systems.Tutorial;
 using ExpoTheExplorer.UI;
 
-// DaySystem and Tutorial each declare a TutorialStepKind -- deliberately, so the Tutorial
-// assembly can keep an empty reference list (see blueprint.md). This class is the ONE place
-// that holds both, and the translation between them; unqualified, the name means the
-// Tutorial system's, which is what every gate here reads. The DaySystem one is spelled out
-// in full at the single point it is converted.
-using TutorialStepKind = ExpoTheExplorer.Systems.Tutorial.TutorialStepKind;
+// The Tutorial assembly mirrors three of Data's and DaySystem's types -- its own step kind,
+// its own powerup enum, its own trigger enum -- deliberately, so it can keep an empty
+// reference list (see blueprint.md). This class is the ONE place that holds both sides and
+// the translation between them; the alias that used to disambiguate TutorialStepKind is gone
+// with DaySystem's copy of it (D-115), which no longer exists.
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -86,6 +85,13 @@ namespace ExpoTheExplorer.Bootstrap
         // nothing (see AutoCollectRunner), and that path lives in MonoBehaviours.
         [Tooltip("Optional. The scene's AutoCollectRunner. Without it the Auto-Collect powerup does nothing and spends nothing.")]
         [SerializeField] private AutoCollectRunner autoCollectRunner;
+
+        // The animated half of Noise Clear (D-120). OPTIONAL, and the failure is gentler than
+        // Auto-Collect's: without it the powerup still CLEARS, through the data-only
+        // PowerupEffects.ClearUnneededItems, and the items simply blink out the way they did
+        // before. A forgotten drag costs the animation, not the powerup.
+        [Tooltip("Optional. The scene's NoiseClearRunner, which drops cleared items off the board. Without it Noise Clear still works, the items just vanish instantly.")]
+        [SerializeField] private NoiseClearRunner noiseClearRunner;
 
         // The four numbers behind the day's star rating (decisions.md D-060). Required,
         // unlike metaCatalog below: without it every completed day scores 0 stars and pays
@@ -361,13 +367,39 @@ namespace ExpoTheExplorer.Bootstrap
             var powerups = PowerupManager;
             if (powerups == null) return;
 
+            // CanUsePowerup(type), NOT CanUsePowerups(). The difference is one letter and it
+            // cost two play-tests (D-115, fixed 2026-08-28): the plural is the SHOP's gate and
+            // answers false for every powerup while ANY tutorial step is armed -- so during the
+            // lesson that FORCES a press, this lambda short-circuited before the effect was
+            // ever reached. It then returned false, correctly spent no charge (GDD 5.2), and
+            // the step advanced on the press having done nothing at all, which is exactly what
+            // a player reports as "the button works but the powerup doesn't".
+            //
+            // The singular asks the same two day-liveness questions and then asks the tutorial
+            // about THIS powerup, so outside a lesson the two are identical and inside one only
+            // the powerup being taught gets through. The button already used the singular; it
+            // was the effect behind it that re-asked the wrong question.
             powerups.RegisterEffect(
                 PowerupType.TimeReset,
-                () => CanUsePowerups() && PowerupEffects.ResetActiveTicketTimers(State));
+                () => CanUsePowerup(PowerupType.TimeReset) && PowerupEffects.ResetActiveTicketTimers(State));
 
+            // Noise Clear takes the tray contents since D-118, because it now clears down to
+            // what the tickets STILL need rather than to what they need in principle -- a cola
+            // already in a tray is one the board no longer has to hold. Supplied from here for
+            // the reason Auto-Collect's are: this is the composition root that holds both the
+            // board and the trays, and the effect takes plain BoardItems so PowerupSystem
+            // still needs no TraySystem reference of its own.
+            // Two paths, one rule. The runner clears through PlanNoiseClear and drops the
+            // items off the board (D-120); without one wired this falls back to the data-only
+            // sweep, which removes exactly the same items and simply blinks them out. The
+            // fallback is the point: a forgotten drag must cost the animation, not the
+            // powerup.
             powerups.RegisterEffect(
                 PowerupType.NoiseClear,
-                () => CanUsePowerups() && PowerupEffects.ClearUnneededItems(State));
+                () => CanUsePowerup(PowerupType.NoiseClear)
+                    && (noiseClearRunner != null
+                        ? noiseClearRunner.Run()
+                        : PowerupEffects.ClearUnneededItems(State, TrayContentsSnapshot())));
 
             // The only one of the three whose effect is not a static call, because placing
             // an item has to go through the tray's ordinary drop path. Registered even when
@@ -376,7 +408,27 @@ namespace ExpoTheExplorer.Bootstrap
             // that would look identical from the outside anyway.
             powerups.RegisterEffect(
                 PowerupType.AutoCollect,
-                () => CanUsePowerups() && autoCollectRunner != null && autoCollectRunner.Run());
+                () => CanUsePowerup(PowerupType.AutoCollect) && autoCollectRunner != null && autoCollectRunner.Run());
+        }
+
+        // Read at the moment the effect runs rather than cached, because a tray's contents
+        // change constantly and a stale snapshot would make Noise Clear keep board items for
+        // a requirement the player has already satisfied. Three slots, on a button press.
+        //
+        // Null-safe on TrayManager for the same reason every other powerup path is: the main
+        // screen builds no trays, and an effect that is never registered there still has to
+        // compile against the same class.
+        private IReadOnlyList<BoardItem>[] TrayContentsSnapshot()
+        {
+            var contents = new IReadOnlyList<BoardItem>[GameState.TicketSlotCount];
+            if (TrayManager == null) return contents;
+
+            for (var slot = 0; slot < contents.Length; slot++)
+            {
+                contents[slot] = TrayManager.GetContents(slot);
+            }
+
+            return contents;
         }
 
         // The shared gate for every powerup: the day has to actually be running.
@@ -408,8 +460,29 @@ namespace ExpoTheExplorer.Bootstrap
         // in the middle of a forced first move is the same mistake as spending a charge there
         // -- and the shop additionally FREEZES the day, which those three states are already
         // doing for their own reasons.
+        //
+        // IsArmed rather than IsActive since D-115: a tutorial step that is merely WAITING
+        // for its moment leaves the day running normally, and a day the player is playing
+        // normally is one they may spend and buy in. Only an armed step refuses.
         public bool CanUsePowerups() => !State.IsAwaitingContinue && !TicketSlotManager.IsDayComplete
-            && (Tutorial == null || !Tutorial.IsActive);
+            && (Tutorial == null || !Tutorial.IsArmed);
+
+        // The same question for ONE powerup, and the difference is the whole forced-use step:
+        // while the tutorial is asking the player to press Time Reset, Time Reset is the one
+        // thing that may be pressed -- CanUsePowerups above answers false for every powerup,
+        // including that one, because it is also the question the SHOP asks and no shop opens
+        // mid-lesson.
+        //
+        // Split into two methods rather than given a parameter with a default, because the
+        // two callers want genuinely different answers: the bar asks about a specific button,
+        // and the shop asks whether buying is possible at all.
+        public bool CanUsePowerup(PowerupType type)
+        {
+            if (State.IsAwaitingContinue || TicketSlotManager.IsDayComplete) return false;
+            if (Tutorial == null || !Tutorial.IsArmed) return true;
+
+            return Tutorial.IsPowerupUseAllowed(ToTutorialPowerup(type));
+        }
 
         private void OnDestroy()
         {
@@ -446,9 +519,15 @@ namespace ExpoTheExplorer.Bootstrap
             //
             // Safe by construction against a tutorial that never ends: every way one stops —
             // the last step completing, an impossible step aborting (EnsureCurrentTutorialStep-
-            // IsPossible), Abort() — moves the same IsActive this reads, so a released
+            // IsPossible), Abort() — moves the same field this reads, so a released
             // tutorial is a released clock with nothing extra to remember.
-            if (Tutorial != null && Tutorial.IsActive) return;
+            //
+            // IsArmed rather than IsActive since D-115, and that is not a loosening of D-097:
+            // every step that used to freeze the clock still freezes it, because every one of
+            // them arms the instant it becomes current. What is new is a step that is waiting
+            // for a ticket to run down — the deferred Time Reset lesson — and freezing the
+            // clock for THAT one would be a deadlock: the trigger it waits for is the clock.
+            if (Tutorial != null && Tutorial.IsArmed) return;
 
             // The day is live again. Anything the Continue hold postponed runs HERE, before
             // the clock starts, so the board settles into the frame the player is looking at
@@ -470,6 +549,45 @@ namespace ExpoTheExplorer.Bootstrap
             TicketSlotManager.ResolveDeferredTimeouts();
 
             TicketSlotManager.Tick(Time.deltaTime);
+
+            // AFTER the tick, deliberately: the ratio a waiting step is compared against is
+            // the one the player can see at the end of this frame, and arming takes effect at
+            // the top of the next one. Feeding it before the tick would arm a step against a
+            // number a frame older than the bar the player is looking at, and would also put a
+            // state change between this method's tutorial gate and the tick it guards.
+            NotifyTutorialOfTicketPatience();
+        }
+
+        // The deferred trigger's only feed. It hands over the LOWEST remaining fraction among
+        // the active tickets, so a step arms on the first ticket to reach its threshold rather
+        // than on some particular slot -- which is what "whenever a ticket drops to a third"
+        // means, and it needs no memory of which ticket it was.
+        //
+        // Polled rather than event-driven because RemainingSeconds is mutated directly every
+        // frame and publishes nothing; TicketCardView's timer bar reads it the same way for
+        // the same reason. The cost is three divisions and three comparisons per frame, and
+        // only while a step is actually waiting -- every other frame leaves on the first line.
+        private void NotifyTutorialOfTicketPatience()
+        {
+            if (Tutorial == null || !Tutorial.IsAwaitingTrigger) return;
+
+            var lowestRatio = float.MaxValue;
+            foreach (var ticket in State.TicketSlots)
+            {
+                // A ticket with no authored limit has no fraction to compute -- dividing by it
+                // would hand the director an infinity or a NaN, and NaN compares false against
+                // every threshold, which would look like a trigger that simply never fires.
+                if (ticket == null || ticket.TimeLimitSeconds <= 0f) continue;
+
+                var ratio = ticket.RemainingSeconds / ticket.TimeLimitSeconds;
+                if (ratio < lowestRatio) lowestRatio = ratio;
+            }
+
+            // No active ticket with a clock: nothing to say, and saying float.MaxValue would
+            // be a lie the director would (correctly) ignore anyway.
+            if (lowestRatio == float.MaxValue) return;
+
+            Tutorial.NotifyTicketPatienceRatio(lowestRatio);
         }
 
         // Production is order-triggered (GDD Section 4), not a continuous poll --
@@ -575,18 +693,6 @@ namespace ExpoTheExplorer.Bootstrap
             pendingReward = new DayRewardPurse(
                 DayLifecycleManager.Total,
                 DayLifecycleManager.StarCount * gameConfig.GemsPerStar);
-
-            // The powerup earn path GDD 5.2 settled on, and it belongs HERE rather than in
-            // the purse beside it for one reason: the purse is a DEBT the reward flight
-            // hands over icon by icon, while charges are not shown flying anywhere and are
-            // simply owned the moment the day is won. Granting them through the purse would
-            // mean a player who force-quits on the popup loses them, which is a rule money
-            // has for its own reasons (D-057) and powerups have no reason to copy.
-            //
-            // Before SaveProfile below, so the same write that banks the day banks the
-            // grant. A FAILED day never reaches this method at all, which is what keeps
-            // this consistent with "a day attempt is atomic" without a rule of its own.
-            PowerupManager?.GrantForDayCompleted();
 
             // Still saves, and still saves NOTHING of the reward. What this write banks
             // is everything the day changed that is not money: lives lost, and the day
@@ -1049,29 +1155,8 @@ namespace ExpoTheExplorer.Bootstrap
             if (Tutorial != null) Tutorial.StepChanged -= OnTutorialStepChanged;
             Tutorial = null;
 
-            var authored = CurrentDay.Tutorial;
-            if (authored == null) return;
-
-            // Translated into the Tutorial system's own step type at this boundary rather
-            // than handing it DaySystem's -- that is what keeps the Tutorial assembly's
-            // reference list empty, which is what keeps its rules testable with no Day
-            // catalog. The same trade PowerupManager already makes with its Func effects.
-            var steps = new List<TutorialStep>(authored.Steps.Count);
-            foreach (var step in authored.Steps)
-            {
-                // Written out rather than cast, so a kind added to DaySystem without teaching
-                // the Tutorial system about it stops the build instead of quietly becoming
-                // whatever number happens to line up. Same stance HapticConfig takes on its
-                // mirror of the vendor's preset enum.
-                var kind = step.Kind switch
-                {
-                    ExpoTheExplorer.Systems.DaySystem.TutorialStepKind.PowerupIntro => TutorialStepKind.PowerupIntro,
-                    _ => TutorialStepKind.ForcedMove,
-                };
-
-                steps.Add(new TutorialStep(
-                    kind, step.SourceX, step.SourceY, step.TargetTraySlotIndex, step.Message, step.HighlightModification));
-            }
+            var steps = BuildTutorialSteps();
+            if (steps.Count == 0) return;
 
             Tutorial = new TutorialDirector(steps);
             Tutorial.StepChanged += OnTutorialStepChanged;
@@ -1080,8 +1165,160 @@ namespace ExpoTheExplorer.Bootstrap
             // first step gets no special treatment and no second copy of the rule.
             if (!EnsureCurrentTutorialStepIsPossible()) return;
 
+            // Before the announcement, so the bar has the charges in hand by the time it is
+            // asked to draw a panel for a powerup the player is about to be told to press.
+            GrantChargesForCurrentTutorialStep();
+
             TutorialStepChanged?.Invoke();
         }
+
+        // THE TWO AUTHORING SIDES MEET HERE AND NOWHERE ELSE (D-115). The Day file owns the
+        // forced MOVES -- they describe this Day's board, which the Day file is already the
+        // single authority for -- and PowerupConfig owns which Day introduces which powerup,
+        // because that is a property of the powerup. Neither can name the other's business,
+        // so the two lists cannot disagree; concatenating them is the whole integration.
+        //
+        // Moves first, powerups after: the moves teach the board, and a powerup that acts on
+        // the board would sweep the very item a later move points at.
+        private List<TutorialStep> BuildTutorialSteps()
+        {
+            var steps = new List<TutorialStep>();
+
+            // Translated into the Tutorial system's own step type at this boundary rather
+            // than handing it DaySystem's -- that is what keeps the Tutorial assembly's
+            // reference list empty, which is what keeps its rules testable with no Day
+            // catalog. The same trade PowerupManager already makes with its Func effects.
+            var authored = CurrentDay?.Tutorial;
+            if (authored != null)
+            {
+                foreach (var step in authored.Steps)
+                {
+                    steps.Add(TutorialStep.ForcedMove(
+                        step.SourceX, step.SourceY, step.TargetTraySlotIndex, step.Message, step.HighlightModification));
+                }
+            }
+
+            AppendPowerupTutorialSteps(steps);
+            return steps;
+        }
+
+        // Two steps per powerup introduced today: the panel, then the forced press. Two
+        // rather than one because they are two moments, and for a deferred trigger they are
+        // minutes apart -- one step carrying both states would be the state machine this
+        // system has refused to become three times now.
+        //
+        // PowerupTypes.All order, which is the order the bar and the shop already render, so
+        // a Day that introduced two powerups would teach them in the order they are shown.
+        private void AppendPowerupTutorialSteps(List<TutorialStep> steps)
+        {
+            if (powerupConfig == null || CurrentDay == null) return;
+
+            foreach (var type in PowerupTypes.All)
+            {
+                var schedule = powerupConfig.For(type);
+                if (!schedule.IntroducedOnDay(CurrentDay.DayIndex)) continue;
+
+                var powerup = ToTutorialPowerup(type);
+
+                // The panel carries no message of its own: it prints the powerup's NAME and
+                // DESCRIPTION, which live on the same asset beside this schedule and are read
+                // by the view. The instruction sentence belongs to the press, not the panel.
+                steps.Add(TutorialStep.PowerupIntro(powerup, string.Empty));
+
+                // The threshold is the ECONOMY's critical ratio, not a number of the
+                // tutorial's own: that is the single authority for where a ticket's bar turns
+                // red and its tip tier drops (CLAUDE.md, Tip Tiers), so the lesson fires at
+                // exactly the moment the player can SEE a ticket go critical. A second copy on
+                // PowerupConfig was free to drift from it and was removed. A missing
+                // EconomyConfig leaves 0, which simply means the step waits for a ticket at
+                // zero rather than throwing -- and it is already an error this day reports for
+                // its own reasons, since nothing could be paid out without it.
+                //
+                // NO SENTENCE ON THE PRESS, deliberately, and empty rather than removed so a
+                // step that wants its own line is one argument away (D-121).
+                //
+                // It carried the powerup's Description until 2026-08-28, which meant the panel
+                // said it and then the spotlight said the very same thing again seconds later.
+                // That was a duplicate this project had already deleted once: D-117 removed the
+                // authored `tutorialUseInstruction` because it was a reworded copy of
+                // Description, and pointing the spotlight at Description simply re-created the
+                // repetition in the FLOW instead of the DATA. The panel and the frame are not
+                // two explanations -- one says what the powerup does, the other says which
+                // button to press, and a pointer does not need a paragraph.
+                steps.Add(TutorialStep.PowerupUse(
+                    powerup,
+                    ToTutorialTrigger(schedule.TutorialUseTrigger),
+                    economyConfig != null ? economyConfig.CriticalRatio : 0f,
+                    string.Empty));
+            }
+        }
+
+        // The tutorial's charge floor, applied whenever a powerup step ARMS -- both when the
+        // panel appears and again when a deferred press finally comes due, which is the only
+        // way a player can have spent the panel's charges before being asked to use one.
+        //
+        // A floor rather than a grant (PowerupManager.EnsureAtLeast): this runs on every
+        // day-start path including both retries, so an adding grant would make replaying an
+        // introduction Day a charge farm.
+        // Not a balance number and deliberately not on the asset: a forced press against an
+        // empty stock opens the shop (D-105) and the step could never be completed, so one
+        // charge is the mechanic's own floor rather than a dial anyone would tune.
+        private const int ChargesNeededForAForcedPress = 1;
+
+        private void GrantChargesForCurrentTutorialStep()
+        {
+            if (PowerupManager == null || powerupConfig == null) return;
+            if (Tutorial == null || !Tutorial.IsArmed) return;
+
+            var step = Tutorial.Current;
+            if (step.Kind != TutorialStepKind.PowerupIntro && step.Kind != TutorialStepKind.PowerupUse) return;
+
+            var type = ToPowerupType(step.Powerup);
+
+            // Two different questions, and only one of them is a balance dial. The PANEL hands
+            // over the authored number -- how generous the lesson is. The PRESS only has to be
+            // POSSIBLE, and "at least one charge or the step cannot be completed" is a rule of
+            // the mechanic rather than something to tune, so it is a constant here instead of a
+            // second field on the asset. It fires only for a deferred trigger, where the
+            // panel's charges can have been spent in the minutes before the moment arrived.
+            var minimum = step.Kind == TutorialStepKind.PowerupIntro
+                ? powerupConfig.For(type).TutorialCharges
+                : ChargesNeededForAForcedPress;
+
+            PowerupManager.EnsureAtLeast(type, minimum);
+        }
+
+        // The three translations across the Tutorial assembly's boundary. Written out rather
+        // than cast, so a value added on either side without teaching the other about it
+        // stops the build instead of quietly becoming whatever number happens to line up --
+        // the same stance HapticConfig takes on its mirror of the vendor's preset enum.
+        //
+        // The two powerup ones are PUBLIC because the powerup bar needs the same translation
+        // to turn "which powerup is the tutorial asking for" into a button, and this class is
+        // the designated place that holds both sides. A second copy in the view would be a
+        // second mapping free to disagree with this one.
+        public static TutorialPowerup ToTutorialPowerup(PowerupType type) => type switch
+        {
+            PowerupType.AutoCollect => TutorialPowerup.AutoCollect,
+            PowerupType.TimeReset => TutorialPowerup.TimeReset,
+            PowerupType.NoiseClear => TutorialPowerup.NoiseClear,
+            _ => throw new ArgumentOutOfRangeException(nameof(type), type, "No TutorialPowerup mirrors this PowerupType."),
+        };
+
+        public static PowerupType ToPowerupType(TutorialPowerup powerup) => powerup switch
+        {
+            TutorialPowerup.AutoCollect => PowerupType.AutoCollect,
+            TutorialPowerup.TimeReset => PowerupType.TimeReset,
+            TutorialPowerup.NoiseClear => PowerupType.NoiseClear,
+            _ => throw new ArgumentOutOfRangeException(nameof(powerup), powerup, "No PowerupType mirrors this TutorialPowerup."),
+        };
+
+        private static TutorialTrigger ToTutorialTrigger(PowerupTutorialTrigger trigger) => trigger switch
+        {
+            PowerupTutorialTrigger.AtDayStart => TutorialTrigger.Immediate,
+            PowerupTutorialTrigger.TicketPatienceBelow => TutorialTrigger.TicketPatienceBelow,
+            _ => throw new ArgumentOutOfRangeException(nameof(trigger), trigger, "No TutorialTrigger mirrors this PowerupTutorialTrigger."),
+        };
 
         // The softlock guard, and the reason it exists at runtime as well as in DayValidator:
         // a hand-edited Day file never passes through the editor's Save gate at all, and --
@@ -1099,6 +1336,7 @@ namespace ExpoTheExplorer.Bootstrap
             // A step that is not a forced move names no cell, so there is nothing on the
             // board that could make it impossible. Without this it would be checked against
             // its unused (0,0) and abort the whole tutorial the moment that cell is empty.
+            // That now covers both powerup kinds as well as the panel it was written for.
             if (step.Kind != TutorialStepKind.ForcedMove) return true;
 
             if (State.Board.ItemAt(step.SourceX, step.SourceY) != null) return true;
@@ -1118,6 +1356,12 @@ namespace ExpoTheExplorer.Bootstrap
         private void OnTutorialStepChanged()
         {
             if (Tutorial != null && Tutorial.IsActive && !EnsureCurrentTutorialStepIsPossible()) return;
+
+            // Ahead of the announcement for the reason ArmTutorial does it in that order: the
+            // bar is about to draw a panel or a spotlight for a powerup, and it should find
+            // the charges already there rather than a zero that turns the forced press into a
+            // trip to the shop. Harmless on every other step -- it returns on the kind check.
+            GrantChargesForCurrentTutorialStep();
 
             TutorialStepChanged?.Invoke();
         }
