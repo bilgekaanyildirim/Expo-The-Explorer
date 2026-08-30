@@ -33,7 +33,11 @@ These are fixed design decisions — don't second-guess them during implementati
 ### Ticket System
 - Exactly **3 active ticket slots** at all times (fixed, not a free queue). When a ticket is delivered/cancelled, a new ticket fills the same slot.
 - Slots have **no ordinal badge** (an earlier version had one — it was removed; don't re-add it).
-- Ticket card info hierarchy, top to bottom: customer + remaining time -> base dish image -> modification list (+/- icons) -> side + drink -> time bar -> border color (patience type, stays fixed for the ticket's lifetime).
+- Ticket card info hierarchy, top to bottom: customer (photo + name) + remaining time -> base dish image -> modification list (+/- icons) -> side + drink -> time bar -> border color (patience type, stays fixed for the ticket's lifetime).
+- **A customer is a name AND a face, and both are drawn once per ticket** (`decisions.md` D-139). The photo is picked from `TicketGenerationConfig.customerPortraits` (the sprites in `Assets/Art/Characters`) at the moment the ticket is built, beside the name, and is fixed for that ticket's lifetime exactly as the name is — it lives on `Ticket`, never in the view, because `TicketCardView` rebuilds its content on every ticket change and a face chosen there could change under the same customer.
+- **Names and faces are unpaired, on purpose.** `names.json` holds hundreds of `{id, name, gender}` entries and the portrait list holds a couple of dozen sprites; there is no id joining them, so each is its own uniform draw and two cards may show the same face. **Gender is not matched** — the portraits carry no metadata. If gender-matched faces are ever wanted, that is per-photo authoring that does not exist yet, not a tweak to the draw.
+- **The photo goes INSIDE `CustomerPhotoFrame`, it does not replace it.** `TicketCardView` writes only `.sprite` and `.enabled` and never touches colour, so the frame keeps its authored tint and the portrait's transparency lets it show through. Wire the field to a **white child Image** inside the frame; pointing it at the frame's own Image works but swaps the frame out for the photo and tints the face.
+- **No Day may author a ticket's face.** `customerNameOverride` exists in Day JSON and has deliberately no portrait counterpart — an override nobody sets is a second authority waiting to drift from the draw.
 
 ### Tray / Validation Mechanic
 - **Validation is batched, not instant:** the tray is checked all at once when it reaches the required item count. No feedback is given at the moment an item is placed.

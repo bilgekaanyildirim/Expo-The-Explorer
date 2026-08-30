@@ -13,4 +13,3 @@ MonoBehaviour:
   m_Name: LivesConfig
   m_EditorClassIdentifier: 
   continueGemCost: 10
-  continueSoftMoneyCost: 250
