@@ -25,9 +25,11 @@ namespace ExpoTheExplorer.UI
     // which does not write a value either -- it asks the store to throw the whole
     // file away and reloads the scene, so no number is ever authored from here.
     //
-    // Same hand-wired, never-instantiates-UI pattern as the two popups. The
-    // scene itself is built once by MainScreenSceneBuilder (Tools > Expo), which
-    // also wires the four references below.
+    // Same hand-wired, never-instantiates-UI pattern as the two popups. The scene itself
+    // WAS built once by a MainScreenSceneBuilder menu step, which also wired the four
+    // references below; that builder was deleted with the other one-shot builders on
+    // 2026-08-30, so MainScreen.unity on disk is now the only copy and the four
+    // references are maintained by hand in the Inspector.
     public class MainScreenView : MonoBehaviour
     {
         // The screen's one REQUIRED button (Start Over below is optional). The day readout

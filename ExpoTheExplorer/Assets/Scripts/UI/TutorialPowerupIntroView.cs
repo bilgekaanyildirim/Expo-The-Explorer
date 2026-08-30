@@ -23,8 +23,10 @@ namespace ExpoTheExplorer.UI
     // wrong the moment somebody did (the user, 2026-08-28). A panel assembled from constants
     // in C# cannot be restyled at all; you can only ask a programmer to change a number. So
     // this class stopped BUILDING and started BINDING: the hierarchy lives in
-    // Assets/Prefabs/UI/TutorialPowerupIntro.prefab, built once by the menu step
-    // TutorialPopupSetup, and everything here does is fill it in and take it down.
+    // Assets/Prefabs/UI/TutorialPowerupIntro.prefab -- seeded once by a TutorialPopupSetup
+    // menu step, which was deleted with the other one-shot builders on 2026-08-30, so the
+    // prefab on disk is the only copy -- and everything here does is fill it in and take
+    // it down.
     //
     // THE ROOT'S CANVAS MUST STAY SCREEN SPACE - OVERLAY, and that is a lesson rather than a
     // preference (decisions.md D-086): this scene's InGameCanvas is Screen Space - CAMERA at

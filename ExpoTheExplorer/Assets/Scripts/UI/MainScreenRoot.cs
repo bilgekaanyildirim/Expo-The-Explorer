@@ -18,10 +18,12 @@ namespace ExpoTheExplorer.UI
     // session provider" without knowing which of the two it is.
     public class MainScreenRoot : SessionHost
     {
-        // The same three assets GameManager takes. Wired by the menu step in
-        // MainScreenSessionSetup rather than by hand, since "find the one asset of this
-        // type" is a search an author should not have to repeat -- but they stay
-        // serialized fields, so a project with two of something can be corrected here.
+        // The same three assets GameManager takes. A MainScreenSessionSetup menu step used
+        // to fill them, on the reasoning that "find the one asset of this type" is a search
+        // an author should not have to repeat; it was deleted with the other one-shot
+        // builders on 2026-08-30, so they are dragged in by hand now. They were always
+        // serialized fields rather than a lookup -- which is what makes the manual route
+        // work at all, and what let a project with two of something be corrected here.
         [SerializeField] private GameConfig gameConfig;
         [SerializeField] private LivesConfig livesConfig;
 

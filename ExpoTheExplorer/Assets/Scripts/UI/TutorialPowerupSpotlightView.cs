@@ -20,8 +20,10 @@ namespace ExpoTheExplorer.UI
     //
     // IT IS AN AUTHORED PREFAB SINCE D-116 (the user's ask, 2026-08-28), where it used to
     // build every bar and every label from constants in C#. The hierarchy lives in
-    // Assets/Prefabs/UI/TutorialPowerupSpotlight.prefab, built once by the menu step
-    // TutorialPopupSetup; this class now positions it and animates it and nothing else.
+    // Assets/Prefabs/UI/TutorialPowerupSpotlight.prefab -- seeded once by a
+    // TutorialPopupSetup menu step, which was deleted with the other one-shot builders on
+    // 2026-08-30, so the prefab on disk is the only copy; this class now positions it and
+    // animates it and nothing else.
     //
     // TWO PARTS, ONE PREFAB, because they are one lesson. The FRAME is reparented onto the
     // live HUD button at runtime -- it has to be, since it is drawn around a specific button

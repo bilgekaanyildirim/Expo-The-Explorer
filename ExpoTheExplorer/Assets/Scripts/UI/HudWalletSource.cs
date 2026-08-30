@@ -30,9 +30,12 @@ namespace ExpoTheExplorer.UI
     {
         // Wired per scene, on the prefab INSTANCE, because a prefab asset cannot
         // store a scene reference -- so this is necessarily a prefab override in the
-        // day scene and empty in the prefab itself. HudCanvasPrefabSetup step 2 sets
-        // it for whichever scene you run it on, rather than leaving it to a manual
-        // drag that is easy to forget.
+        // day scene and empty in the prefab itself. A menu step (HudCanvasPrefabSetup)
+        // used to set it per scene; the 2026-08-30 audit deleted the one-shot builders,
+        // so it IS the manual drag now: select the HUD Canvas instance in the day scene
+        // and drop GameManager in here. Forgetting it is not an error and will not log as
+        // one -- an empty field is exactly how the main screen works -- which is why the
+        // ResolvedFrom line below is the whole early-warning system.
         //
         // KNOWN FAILURE MODE, and the reason ResolvedFrom is logged below: hitting
         // "Apply All" on the prefab from the day scene can drop this override, since
