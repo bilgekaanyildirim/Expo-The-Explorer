@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using ExpoTheExplorer.Data;
 using Sirenix.OdinInspector.Editor;
+using Sirenix.Utilities;
 using Sirenix.Utilities.Editor;
 using UnityEditor;
 using UnityEngine;
@@ -61,6 +62,22 @@ namespace ExpoTheExplorer.Editor
         // every OnImGUI pass while the dialog is up would queue another one.
         private bool unsavedPromptQueued;
 
+        // Reordering the Day list by dragging a row. The key is what tells a drag STARTED HERE
+        // apart from anything else the editor may be dragging over this window.
+        private const string DayDragKey = "ExpoTheExplorer.DayEditor.Day";
+        private const float DragThreshold = 4f;
+        private const float InsertionLineHeight = 2f;
+        private static readonly Color InsertionLineColor = new Color(0.3f, 0.6f, 1f);
+
+        // The Day the mouse went down on, and where it went down. A drag only begins once the
+        // pointer has travelled past DragThreshold, so a plain click still selects the row.
+        private DayEditorModel pressedDay;
+        private Vector2 pressedAt;
+
+        // Where a dragged Day would land, as a slot in loadedDays as drawn; -1 when nothing is
+        // being dragged over the list.
+        private int dropPosition = -1;
+
         protected override OdinMenuTree BuildMenuTree()
         {
             daysFolderPath = Path.Combine(Application.dataPath, "Resources", "Days");
@@ -95,10 +112,207 @@ namespace ExpoTheExplorer.Editor
             var tree = new OdinMenuTree();
             foreach (var day in loadedDays)
             {
-                tree.Add($"Day {day.DayIndex}", day);
+                AddDayRow(tree, day);
             }
 
             return tree;
+        }
+
+        // Every row in the Day list carries its own delete button. The Day's inspector has had a
+        // Delete button all along, but it sits at the bottom of a page several screens tall, and
+        // the list is where a designer is standing when they decide a Day should go. Both call the
+        // same OnDeleteRequested -- one delete path, not two that can drift apart.
+        private void AddDayRow(OdinMenuTree tree, DayEditorModel day)
+        {
+            foreach (var item in tree.Add($"Day {day.DayIndex}", day))
+            {
+                item.OnDrawItem += drawn =>
+                {
+                    // Delete first: it is a GUI.Button, so a click that lands on the X is already
+                    // used up by the time the drag handler looks at the event.
+                    DrawRowDeleteButton(drawn, day);
+                    HandleRowDrag(drawn, day);
+                };
+            }
+        }
+
+        // OnDrawItem is Odin's own per-row hook: it runs after the row has drawn and BEFORE the
+        // row handles its own mouse input, which is what makes the button swallow the click
+        // instead of the row also reading it as "select this Day".
+        private void DrawRowDeleteButton(OdinMenuItem item, DayEditorModel day)
+        {
+            var rect = item.Rect.AlignRight(16f).AlignCenterY(16f);
+            rect.x -= 4f;
+
+            if (!SirenixEditorGUI.IconButton(rect, EditorIcons.X, $"Delete Day {day.DayIndex}"))
+            {
+                return;
+            }
+
+            // Queued, not run here. OnDeleteRequested opens a modal dialog and rebuilds the menu
+            // tree, and this runs from inside Odin's pass over the menu items -- rebuilding the
+            // list being iterated is the same hazard GuardDayChange defers for (D-114).
+            EditorApplication.delayCall += () => OnDeleteRequested(day);
+        }
+
+        // Dragging a row to a new place in the list. Unity's own DragAndDrop carries the drag --
+        // it owns the cursor feedback and the state machine, so what is left here is deciding
+        // where a drop lands and drawing the line that says so.
+        private void HandleRowDrag(OdinMenuItem item, DayEditorModel day)
+        {
+            var e = Event.current;
+            var rect = item.Rect;
+            var position = loadedDays?.IndexOf(day) ?? -1;
+            if (position < 0)
+            {
+                return;
+            }
+
+            switch (e.type)
+            {
+                // Not consumed: Odin still needs this to select the row. A plain click has to keep
+                // working, so the press is only remembered here and the drag starts once the
+                // pointer has actually travelled.
+                case EventType.MouseDown when e.button == 0 && rect.Contains(e.mousePosition):
+                    pressedDay = day;
+                    pressedAt = e.mousePosition;
+                    break;
+
+                // Deliberately NOT gated on this row's rect: by the time the pointer has moved far
+                // enough it is often over a different row, and the drag still belongs to the row it
+                // started on. Whichever row's handler sees the event first starts it; Use() means
+                // the rest of the pass sees an event of type Used and does nothing.
+                case EventType.MouseDrag when pressedDay != null && Vector2.Distance(e.mousePosition, pressedAt) > DragThreshold:
+                    var dragging = pressedDay;
+                    pressedDay = null;
+                    DragAndDrop.PrepareStartDrag();
+                    DragAndDrop.objectReferences = new UnityEngine.Object[0];
+                    DragAndDrop.SetGenericData(DayDragKey, dragging);
+                    DragAndDrop.StartDrag($"Day {dragging.DayIndex}");
+                    e.Use();
+                    break;
+
+                case EventType.MouseUp:
+                    pressedDay = null;
+                    break;
+
+                case EventType.DragUpdated when rect.Contains(e.mousePosition) && DragAndDrop.GetGenericData(DayDragKey) is DayEditorModel:
+                    DragAndDrop.visualMode = DragAndDropVisualMode.Move;
+                    dropPosition = DropPositionOver(rect, position);
+                    Repaint();
+                    e.Use();
+                    break;
+
+                case EventType.DragPerform when rect.Contains(e.mousePosition) && DragAndDrop.GetGenericData(DayDragKey) is DayEditorModel dropped:
+                    DragAndDrop.AcceptDrag();
+                    var target = DropPositionOver(rect, position);
+                    dropPosition = -1;
+
+                    // Queued for the same reason the delete button's click is (D-114): MoveDay
+                    // opens a dialog and rebuilds the menu tree, and this is inside Odin's own
+                    // pass over the menu items.
+                    EditorApplication.delayCall += () => MoveDay(dropped, target);
+                    e.Use();
+                    break;
+
+                case EventType.DragExited:
+                    dropPosition = -1;
+                    pressedDay = null;
+                    break;
+
+                // The line is drawn from stored state rather than while handling DragUpdated,
+                // because DragUpdated is not a repaint event -- drawing there draws nothing.
+                case EventType.Repaint when dropPosition == position:
+                    DrawInsertionLine(rect, rect.yMin);
+                    break;
+
+                // Only the last row has a below-it gap of its own; every other "after row n" is
+                // the same line as "before row n + 1", drawn by that row.
+                case EventType.Repaint when dropPosition == position + 1 && position == loadedDays.Count - 1:
+                    DrawInsertionLine(rect, rect.yMax - InsertionLineHeight);
+                    break;
+            }
+        }
+
+        // Above or below the row's midline, as a slot in the list AS DRAWN -- the dragged Day is
+        // still counted, which is what MoveDay's adjustment then takes back out.
+        private static int DropPositionOver(Rect rect, int position) =>
+            Event.current.mousePosition.y > rect.center.y ? position + 1 : position;
+
+        private static void DrawInsertionLine(Rect row, float y) =>
+            EditorGUI.DrawRect(new Rect(row.x, y, row.width, InsertionLineHeight), InsertionLineColor);
+
+        private void MoveDay(DayEditorModel day, int targetPosition)
+        {
+            // The drop was queued, so the Day may already be gone -- and loadedDays may be a
+            // different list than the one the drop was measured against.
+            if (loadedDays == null || !loadedDays.Contains(day))
+            {
+                return;
+            }
+
+            var from = loadedDays.IndexOf(day);
+
+            // targetPosition counts the gaps in the list with the Day still sitting in it. Once it
+            // is lifted out, every slot below its old place is one lower.
+            var to = Mathf.Clamp(targetPosition > from ? targetPosition - 1 : targetPosition, 0, loadedDays.Count - 1);
+            if (to == from)
+            {
+                return;
+            }
+
+            var problem = ReorderProblem();
+            if (problem != null)
+            {
+                EditorUtility.DisplayDialog("Cannot Reorder Days", problem, "OK");
+                return;
+            }
+
+            if (!EditorUtility.DisplayDialog("Move Day", MoveQuestionFor(day, to), "Move", "Cancel"))
+            {
+                return;
+            }
+
+            PromptForUnsavedDays("Reordering the Days rewrites every Day file and reloads them, which");
+
+            DayFileIO.Move(daysFolderPath, day.LastSavedDayIndex.Value, to);
+            AssetDatabase.Refresh();
+            ForceMenuTreeRebuild();
+        }
+
+        // A drop is measured against the rows as they are DRAWN, and then the files are rewritten
+        // in that order -- so the two orderings have to be the same one. They are, as long as every
+        // Day's number is settled on disk: a Day that was never saved has no file to move at all,
+        // and a Day whose Day Index was typed over without saving sorts by one number in the list
+        // and by another on disk. Rather than guess which one the user pointed at, name the Day
+        // that is in the way and let them settle it.
+        private string ReorderProblem()
+        {
+            foreach (var day in loadedDays)
+            {
+                if (!day.LastSavedDayIndex.HasValue)
+                {
+                    return $"Day {day.DayIndex} has never been saved, so it has no file to move.\n\nSave it (or delete it) first, then reorder.";
+                }
+
+                if (day.LastSavedDayIndex.Value != day.DayIndex)
+                {
+                    return $"Day {day.LastSavedDayIndex.Value} has had its Day Index changed to {day.DayIndex} without being saved, so the list and the files disagree about where it belongs.\n\nSave that change (or revert it) first, then reorder.";
+                }
+            }
+
+            return null;
+        }
+
+        // Says "position", not "Day", for the place it is going: the Days are not necessarily
+        // numbered 0..n-1 before the move (a hand-deleted file leaves a hole), and they always are
+        // after it, so the destination is only a Day number once the rewrite has happened.
+        private string MoveQuestionFor(DayEditorModel day, int to)
+        {
+            return $"Move Day {day.DayIndex} to position {to} in the list?\n\n" +
+                   $"The Days are renumbered 0-{loadedDays.Count - 1} in the new order, so this one becomes Day {to} and the Days it passed each shift by one.\n\n" +
+                   "Anything that names a Day by NUMBER somewhere else -- a location's or a prop's unlock Day in the Meta Catalog, a powerup's tutorial Day -- is not touched, so it will point at a different Day afterwards.\n\n" +
+                   "This cannot be undone.";
         }
 
         protected override void OnImGUI()
@@ -405,7 +619,7 @@ namespace ExpoTheExplorer.Editor
             }
 
             loadedDays.Add(day);
-            MenuTree.Add($"Day {day.DayIndex}", day);
+            AddDayRow(MenuTree, day);
             TrySelectMenuItemWithObject(day);
         }
 
@@ -441,13 +655,22 @@ namespace ExpoTheExplorer.Editor
             duplicate.Configure(catalog, gameConfig, ticketConfig, ticketCardVisuals, boardVisuals, OnSaveRequested, OnDuplicateRequested, OnDeleteRequested);
 
             loadedDays.Add(duplicate);
-            MenuTree.Add($"Day {duplicate.DayIndex}", duplicate);
+            AddDayRow(MenuTree, duplicate);
             TrySelectMenuItemWithObject(duplicate);
         }
 
         private void OnDeleteRequested(DayEditorModel day)
         {
-            if (!EditorUtility.DisplayDialog("Delete Day", $"Delete Day {day.DayIndex}? This cannot be undone.", "Delete", "Cancel"))
+            // The row button queues this rather than running it, so between the click and here the
+            // Day may already be gone -- and acting on a gone Day would be worse than doing
+            // nothing: after the renumber its LastSavedDayIndex names a file that now belongs to
+            // somebody else. Same check AskAboutLeavingDay makes, for the same reason.
+            if (loadedDays == null || !loadedDays.Contains(day))
+            {
+                return;
+            }
+
+            if (!EditorUtility.DisplayDialog("Delete Day", DeleteQuestionFor(day), "Delete", "Cancel"))
             {
                 return;
             }
@@ -457,12 +680,66 @@ namespace ExpoTheExplorer.Editor
             // of this path; it just used to happen without a word.
             PromptForUnsavedDays("Deleting a Day reloads every Day from disk, which", day);
 
-            // Delete whatever file this Day actually landed on last (its DayIndex may have been
-            // edited since the last save without saving again).
-            DayFileIO.Delete(daysFolderPath, day.LastSavedDayIndex ?? day.DayIndex);
+            // LastSavedDayIndex is the ONLY thing that names a file here. It is set for every Day
+            // that came off disk (BuildMenuTree) and after every save, so a Day without one has no
+            // file -- and falling back to the live DayIndex would delete somebody else's file, the
+            // moment a never-saved Day had its Day Index typed over an existing Day's number.
+            if (day.LastSavedDayIndex.HasValue)
+            {
+                DayFileIO.Delete(daysFolderPath, day.LastSavedDayIndex.Value);
+
+                // Close the hole: the Days after the deleted one slide down, file name and the
+                // dayIndex inside it together, so the list stays 0,1,2,... A Day that never had a
+                // file left no hole, so it renumbers nothing -- moving everyone else's number
+                // because a scratch Day was thrown away would be a surprise, not a service.
+                DayFileIO.Renumber(daysFolderPath);
+            }
+
             AssetDatabase.Refresh();
             loadedDays.Remove(day);
             ForceMenuTreeRebuild();
+        }
+
+        // Said before anything is written, because the renumber reaches past the Day being
+        // deleted. The count is worked out the way Renumber works it out -- the Days that have a
+        // file, in dayIndex order, compared against their position -- so what the dialog promises
+        // is what happens.
+        private string DeleteQuestionFor(DayEditorModel day)
+        {
+            var question = $"Delete Day {day.DayIndex}? This cannot be undone.";
+            if (!day.LastSavedDayIndex.HasValue)
+            {
+                return question;
+            }
+
+            var remaining = loadedDays
+                .Where(d => d != day && d.LastSavedDayIndex.HasValue)
+                .Select(d => d.LastSavedDayIndex.Value)
+                .OrderBy(index => index)
+                .ToList();
+
+            var firstMoved = -1;
+            var movedCount = 0;
+            for (var position = 0; position < remaining.Count; position++)
+            {
+                if (remaining[position] == position)
+                {
+                    continue;
+                }
+
+                firstMoved = firstMoved < 0 ? position : firstMoved;
+                movedCount++;
+            }
+
+            if (movedCount == 0)
+            {
+                return question;
+            }
+
+            return $"{question}\n\n" +
+                   $"{movedCount} other Day(s) are then renumbered so the list has no gap: " +
+                   $"Day {remaining[firstMoved]} becomes Day {firstMoved}, and so on down to Day {remaining.Count - 1}.\n\n" +
+                   "Anything that names a Day by NUMBER somewhere else -- a location's or a prop's unlock Day in the Meta Catalog, a powerup's tutorial Day -- is not touched, so it will point at a different Day afterwards.";
         }
     }
 }
