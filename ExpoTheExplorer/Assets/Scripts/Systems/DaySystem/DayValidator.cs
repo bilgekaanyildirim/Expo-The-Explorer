@@ -72,9 +72,101 @@ namespace ExpoTheExplorer.Systems.DaySystem
 
             ValidateTicketRuntime(day.TicketRuntime, errors, warnings);
             ValidateBoardDistribution(day.BoardDistribution, day.TicketRuntime, warnings);
+            ValidateDayStartBoard(day, errors);
             ValidateTutorial(day, errors);
 
             return new DayValidationResult(errors, warnings);
+        }
+
+        // THE OPENING BOARD IS THE WHOLE OPENING. A Day that authors items at Day Start
+        // opens with exactly those items and nothing else: GameManager suppresses
+        // BoardDistributor for the opening ticket fill (see ApplyDayStartBoardPreSeed), so
+        // there is no spawner behind this board to cover an authoring mistake. That is the
+        // only reason this check can exist at all -- while the distributor still ran at
+        // open, "is this Day completable" was guaranteed BY CONSTRUCTION and pre-validating
+        // it was meaningless (see the class comment, and decisions.md D-001 Phase 4, which
+        // removed the old solvability checker for exactly that reason). Suppressing the
+        // opening round hands that guarantee back to the author, and this is where it is
+        // collected.
+        //
+        // The rule is deliberately "at least ONE of the tickets on screen", not "all three"
+        // -- the same bar BoardDistributor holds itself to every round (GDD Section 4: the
+        // player must always have the ingredients for at least one ticket). One completable
+        // ticket is a move; a move frees a slot; a freed slot brings the next ticket, and
+        // the distribution the opening skipped resumes from there. Zero completable tickets
+        // is a player staring at a board with nothing to do until a ticket times out.
+        //
+        // An ERROR rather than a warning, unlike most of this file: this gate is entitled to
+        // refuse a Day that cannot be played (the same call ValidateTutorial makes), and a
+        // warning here would be read as a style note about the exact thing that makes the
+        // Day unplayable.
+        private static void ValidateDayStartBoard(DayDefinition day, List<string> errors)
+        {
+            // No authored opening board means the distributor opens the Day as it always
+            // has, so there is nothing for this rule to protect.
+            if (!DayBoardTimelinePlayer.HasEntriesForStep(day.BoardTimeline, -1)) return;
+            if (day.TicketSequence == null || day.TicketSequence.Count == 0) return;
+
+            var boardCounts = CountDayStartBoardItems(day);
+            var ticketsOnScreenAtOpen = Math.Min(GameState.TicketSlotCount, day.TicketSequence.Count);
+
+            for (var i = 0; i < ticketsOnScreenAtOpen; i++)
+            {
+                if (IsCompletableFrom(day.TicketSequence[i], boardCounts)) return;
+            }
+
+            errors.Add(
+                $"Day Start board: none of the first {ticketsOnScreenAtOpen} ticket(s) can be completed from it. " +
+                "A Day that places items on the Day Start board opens with exactly those items -- nothing is spawned on top -- " +
+                "so at least one of the tickets on screen must be servable from the board as authored.");
+        }
+
+        // The board as the multiset the player actually gets to pick from. Counted the same
+        // way a tray is counted (RequiredItemKey: food + modification combo, order-
+        // independent), so an item carrying a modification nobody ordered is a DIFFERENT
+        // key rather than a loose match -- which is exactly how the delivery check will
+        // read it when the player hands it in.
+        private static Dictionary<RequiredItemKey, int> CountDayStartBoardItems(DayDefinition day)
+        {
+            var counts = new Dictionary<RequiredItemKey, int>();
+
+            foreach (var spawn in day.BoardTimeline ?? Array.Empty<ResolvedBoardSpawnEntry>())
+            {
+                if (spawn == null || spawn.TriggerStepIndex != -1 || spawn.Item == null) continue;
+
+                // Every entry counts, useExactCell or not. An entry without it lands
+                // wherever the board has room rather than at the authored cell -- which
+                // matters to the tutorial rule above, because that one names a CELL. This
+                // rule only asks whether the item is on the board at all, and it is.
+                var key = new RequiredItemKey(spawn.Item, spawn.Modifications ?? Array.Empty<Modification>());
+                counts.TryGetValue(key, out var count);
+                counts[key] = count + 1;
+            }
+
+            return counts;
+        }
+
+        // Judged through TicketRequirements, the same rule TraySlot.Matches judges a real
+        // delivery by -- modifications count for the Main dish and for nothing else. A
+        // second copy of that rule here would be an authoring gate that passes Days the
+        // player cannot complete (or refuses Days that play fine), which is worse than no
+        // gate at all.
+        private static bool IsCompletableFrom(ResolvedTicketEntry ticket, Dictionary<RequiredItemKey, int> boardCounts)
+        {
+            // An entry with no main dish is not a completable ticket, it is an unfinished
+            // one. Reported by nothing here on purpose -- the editor already shows the empty
+            // slot, and the Day is judged on the tickets that ARE authored.
+            if (ticket?.MainItem == null) return false;
+
+            foreach (var (key, requiredCount) in TicketRequirements.RequiredCounts(ticket.RequiredItems, ticket.Modifications))
+            {
+                if (!boardCounts.TryGetValue(key, out var availableCount) || availableCount < requiredCount)
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         // The one rule here is a PAIRING between two halves of the same file, which is

@@ -100,6 +100,17 @@ kapı bırakmaz.
       *El adımı:* `HealthUI` → `KeysUI` olarak yeniden adlandır, sprite'ı
       anahtara çevir, `KeysView` ekle.
 
+> **2026-08-29 — D-135 bu adımın kuralını genişletti.** Adım 4 anahtarı
+> `IsAwaitingContinue`'ya bakarak harcıyordu, yani yalnızca KAYBEDİLMİŞ günden
+> çıkarken. Ayarlar menüsü ise sadece gün devam ederken açıldığı için oradaki
+> Retry ve Ana Menü bedavaydı — kaybetmek üzere olan oyuncu duraklat menüsünden
+> ücretsiz kaçabiliyordu. Kural artık "**günü bırakmak**": çağıran taraf
+> `givingUpOnAttempt` ile beyan ediyor, `IsAwaitingContinue` okuması kalktı.
+> `RetryCompletedDay` hâlâ bedava ve bu bir kural (kullanıcı 2026-08-29'da
+> ayrıca söyledi): tamamlanmış günü yıldız için tekrar oynamak bir vazgeçiş
+> değil. Adım 5'in kapısı da ayarlar menüsünün Retry onayına eklendi, yoksa
+> 0 anahtarda oradan bedava retry açılıyordu.
+
 - [x] **Adım 4 — Harcama.** ✅ 2026-08-25 (D-068). Kaybedilen günden çıkarken −1: `GameManager`'ın
       abandon yolu ve retry yolu. **Henüz engelleme yok** — 0'da kalır, altına
       inmez.

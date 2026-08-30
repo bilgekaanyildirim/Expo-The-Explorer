@@ -155,6 +155,185 @@ namespace ExpoTheExplorer.Tests.EditMode
             return false;
         }
 
+        // --- the Day Start board must serve one of the tickets on screen ---------------
+        //
+        // The rule this suite is protecting: a Day that authors an opening board opens with
+        // exactly that board (GameManager suppresses the opening distribution), so the board
+        // itself has to be able to serve at least one of the first TicketSlotCount tickets.
+        // Every case below keeps ticketsRequiredForDay equal to the sequence length and
+        // passes a null food selection, so each test fails on its own rule and no other.
+
+        [Test]
+        public void Validate_DayStartBoardServesTheFirstTicket_NoError()
+        {
+            var day = DayWithBoard(
+                new List<ResolvedTicketEntry> { CreateEntry(), CreateEntry(), CreateEntry() },
+                DayStartEntry(main));
+
+            var result = DayValidator.Validate(day, null);
+
+            CollectionAssert.IsEmpty(result.Errors);
+        }
+
+        [Test]
+        public void Validate_DayStartBoardServesNoTicket_ReportsError()
+        {
+            var somethingElse = CreateFoodItem("somethingelse");
+            var day = DayWithBoard(
+                new List<ResolvedTicketEntry> { CreateEntry(), CreateEntry(), CreateEntry() },
+                DayStartEntry(somethingElse));
+
+            var result = DayValidator.Validate(day, null);
+
+            Assert.IsFalse(result.IsValid, "A board that serves nothing on screen is an opening with no move in it.");
+            Assert.IsTrue(HasErrorContaining(result, "none of the first 3 ticket(s) can be completed"));
+        }
+
+        // The boundary the whole rule turns on: only the tickets the player can SEE at open
+        // count. A board stocked for the fourth ticket leaves the opening screen unplayable
+        // just as surely as an empty one.
+        [Test]
+        public void Validate_DayStartBoardServesOnlyATicketPastTheThirdSlot_ReportsError()
+        {
+            var fourthTicketFood = CreateFoodItem("fourth");
+            var ticketSequence = new List<ResolvedTicketEntry>
+            {
+                CreateEntry(), CreateEntry(), CreateEntry(),
+                new(fourthTicketFood, null, null, new List<Modification>(), PatienceType.Normal, null, 0f),
+            };
+
+            var result = DayValidator.Validate(DayWithBoard(ticketSequence, DayStartEntry(fourthTicketFood)), null);
+
+            Assert.IsFalse(result.IsValid);
+            Assert.IsTrue(HasErrorContaining(result, "none of the first 3 ticket(s) can be completed"));
+        }
+
+        // A Day shorter than the slot row is judged on the tickets it actually has, and the
+        // message says so rather than claiming three.
+        [Test]
+        public void Validate_FewerTicketsThanSlots_JudgesOnlyTheTicketsThatExist()
+        {
+            var somethingElse = CreateFoodItem("somethingelse");
+            var day = DayWithBoard(new List<ResolvedTicketEntry> { CreateEntry() }, DayStartEntry(somethingElse));
+
+            var result = DayValidator.Validate(day, null);
+
+            Assert.IsFalse(result.IsValid);
+            Assert.IsTrue(HasErrorContaining(result, "none of the first 1 ticket(s) can be completed"));
+        }
+
+        // The rule fires on an authored opening board and on nothing else: with no board,
+        // BoardDistributor opens the Day exactly as it always has, and there is no authored
+        // arrangement for this gate to hold to a standard.
+        [Test]
+        public void Validate_NoDayStartBoard_SkipsTheRuleEntirely()
+        {
+            var day = DayWithBoard(new List<ResolvedTicketEntry> { CreateEntry(), CreateEntry(), CreateEntry() });
+
+            CollectionAssert.IsEmpty(DayValidator.Validate(day, null).Errors);
+        }
+
+        // Later timeline entries are not the opening board -- they play on a step that has
+        // not happened yet, so they can neither suppress the distribution nor satisfy this.
+        [Test]
+        public void Validate_BoardEntriesOnlyOnLaterSteps_SkipsTheRuleEntirely()
+        {
+            var day = DayWithBoard(
+                new List<ResolvedTicketEntry> { CreateEntry(), CreateEntry(), CreateEntry() },
+                new ResolvedBoardSpawnEntry(0, main, new List<Modification>(), true, 0, 0));
+
+            CollectionAssert.IsEmpty(DayValidator.Validate(day, null).Errors);
+        }
+
+        // Judged as a delivery is judged: every required item, in the required number.
+        [Test]
+        public void Validate_DayStartBoardMissesTheTicketsSideItem_ReportsError()
+        {
+            var side = CreateFoodItem("side", FoodCategory.Side);
+            var ticket = new ResolvedTicketEntry(main, side, null, new List<Modification>(), PatienceType.Normal, null, 0f);
+
+            var result = DayValidator.Validate(DayWithBoard(new List<ResolvedTicketEntry> { ticket }, DayStartEntry(main)), null);
+
+            Assert.IsFalse(result.IsValid, "Main alone does not complete a ticket that also wants a side.");
+        }
+
+        [Test]
+        public void Validate_DayStartBoardHasBothOfTheTicketsItems_NoError()
+        {
+            var side = CreateFoodItem("side", FoodCategory.Side);
+            var ticket = new ResolvedTicketEntry(main, side, null, new List<Modification>(), PatienceType.Normal, null, 0f);
+            var day = DayWithBoard(new List<ResolvedTicketEntry> { ticket }, DayStartEntry(main), DayStartEntry(side));
+
+            CollectionAssert.IsEmpty(DayValidator.Validate(day, null).Errors);
+        }
+
+        // A ticket wanting two colas is not served by one -- the board is compared as a
+        // multiset, the same way TraySlot compares a delivered tray.
+        [Test]
+        public void Validate_DayStartBoardHasOneCopyOfAnItemTheTicketWantsTwice_ReportsError()
+        {
+            var drink = CreateFoodItem("drink", FoodCategory.Drink);
+            // Side and drink slots holding the same food: one ticket, two of that item.
+            var ticket = new ResolvedTicketEntry(main, drink, drink, new List<Modification>(), PatienceType.Normal, null, 0f);
+            var day = DayWithBoard(new List<ResolvedTicketEntry> { ticket }, DayStartEntry(main), DayStartEntry(drink));
+
+            Assert.IsFalse(DayValidator.Validate(day, null).IsValid);
+        }
+
+        // Modifications are part of the identity, exactly as they are at the tray check: a
+        // plain burger does not serve a ticket that ordered extra cheese, and an item
+        // carrying a modification nobody asked for does not serve a plain one.
+        [Test]
+        public void Validate_DayStartBoardItemLacksTheTicketsModification_ReportsError()
+        {
+            var extraCheese = new Modification(CreateModificationConfig(), true);
+            var ticket = new ResolvedTicketEntry(main, null, null, new List<Modification> { extraCheese }, PatienceType.Normal, null, 0f);
+
+            var result = DayValidator.Validate(DayWithBoard(new List<ResolvedTicketEntry> { ticket }, DayStartEntry(main)), null);
+
+            Assert.IsFalse(result.IsValid);
+        }
+
+        [Test]
+        public void Validate_DayStartBoardItemCarriesTheTicketsModification_NoError()
+        {
+            var config = CreateModificationConfig();
+            var ticket = new ResolvedTicketEntry(
+                main, null, null, new List<Modification> { new(config, true) }, PatienceType.Normal, null, 0f);
+            var day = DayWithBoard(
+                new List<ResolvedTicketEntry> { ticket },
+                DayStartEntry(main, new List<Modification> { new(config, true) }));
+
+            CollectionAssert.IsEmpty(DayValidator.Validate(day, null).Errors);
+        }
+
+        // An entry without Use Exact Cell lands wherever the board has room, but it IS on
+        // the board -- which is all this rule asks. (The tutorial rule above asks about a
+        // cell and does require the flag; the two questions are different.)
+        [Test]
+        public void Validate_DayStartBoardEntryWithoutAnExactCell_StillCounts()
+        {
+            var day = DayWithBoard(
+                new List<ResolvedTicketEntry> { CreateEntry() },
+                new ResolvedBoardSpawnEntry(-1, main, new List<Modification>(), false, 0, 0));
+
+            CollectionAssert.IsEmpty(DayValidator.Validate(day, null).Errors);
+        }
+
+        private static ResolvedBoardSpawnEntry DayStartEntry(FoodItemConfig item, List<Modification> modifications = null)
+        {
+            return new ResolvedBoardSpawnEntry(-1, item, modifications ?? new List<Modification>(), true, 0, 0);
+        }
+
+        // ticketsRequiredForDay tracks the sequence length so the count rule stays quiet and
+        // each board test fails on the board rule alone.
+        private static DayDefinition DayWithBoard(
+            List<ResolvedTicketEntry> ticketSequence,
+            params ResolvedBoardSpawnEntry[] boardTimeline)
+        {
+            return new DayDefinition(0, ticketSequence.Count, ticketSequence, new List<ResolvedBoardSpawnEntry>(boardTimeline));
+        }
+
         // --- settings blocks (day-config-plan step 6) ---------------------------------
 
         // The one range error that can actually fire: TicketRuntimeSettings clamps with
@@ -261,16 +440,29 @@ namespace ExpoTheExplorer.Tests.EditMode
             return new ResolvedTicketEntry(main, null, null, new List<Modification>(), PatienceType.Normal, null, 0f);
         }
 
-        private FoodItemConfig CreateFoodItem(string id)
+        // The category is not decoration here: TicketRequirements attaches a ticket's
+        // modifications to the Main dish and to nothing else, so a side authored as a Main
+        // would be compared against a different key than the one the game would build.
+        private FoodItemConfig CreateFoodItem(string id, FoodCategory category = FoodCategory.Main)
         {
             var item = ScriptableObject.CreateInstance<FoodItemConfig>();
             spawned.Add(item);
 
             var serialized = new SerializedObject(item);
             serialized.FindProperty("id").stringValue = id;
+            serialized.FindProperty("category").enumValueIndex = (int)category;
             serialized.ApplyModifiedPropertiesWithoutUndo();
 
             return item;
+        }
+
+        // No fields set on purpose: RequiredItemKey compares modifications by config
+        // REFERENCE plus direction, so a bare instance is a complete identity for a test.
+        private ModificationConfig CreateModificationConfig()
+        {
+            var config = ScriptableObject.CreateInstance<ModificationConfig>();
+            spawned.Add(config);
+            return config;
         }
 
         private static void SetItemsList(FoodCatalog target, params FoodItemConfig[] values)

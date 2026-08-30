@@ -29,8 +29,21 @@ namespace ExpoTheExplorer.Core
         // empty modification list for those categories is correct rather than a shortcut.
         public static RequiredItemKey KeyFor(Ticket ticket, FoodItemConfig food)
         {
+            return KeyFor(ticket.Modifications, food);
+        }
+
+        // The same rule with the Ticket taken out of it, for the one caller that has an
+        // order in hand but no Ticket to build it from: DayValidator asks whether an
+        // AUTHORED ticket entry could be served off an authored board, at a point where no
+        // Ticket instance exists (and where creating one would drag TicketFactory, a name
+        // roll and a patience clock into a validation pass). Splitting the rule out here
+        // rather than letting that caller spell it out again is the whole point of this
+        // class -- an authoring gate that disagreed with TraySlot about what a ticket wants
+        // would pass a Day the player then cannot complete.
+        public static RequiredItemKey KeyFor(IReadOnlyList<Modification> ticketModifications, FoodItemConfig food)
+        {
             var modifications = food.Category == FoodCategory.Main
-                ? ticket.Modifications
+                ? ticketModifications ?? (IReadOnlyList<Modification>)Array.Empty<Modification>()
                 : Array.Empty<Modification>();
 
             return new RequiredItemKey(food, modifications);
@@ -41,12 +54,27 @@ namespace ExpoTheExplorer.Core
         // asking for two colas is not satisfied by one.
         public static Dictionary<RequiredItemKey, int> RequiredCounts(Ticket ticket)
         {
-            var counts = new Dictionary<RequiredItemKey, int>();
-            if (ticket == null) return counts;
+            if (ticket == null) return new Dictionary<RequiredItemKey, int>();
 
-            foreach (var food in ticket.RequiredItems)
+            return RequiredCounts(ticket.RequiredItems, ticket.Modifications);
+        }
+
+        // The Ticket-free form, for the authoring side (see the KeyFor overload above).
+        // Nulls inside the food list are SKIPPED rather than counted or thrown on: an
+        // authored ticket entry with an unfilled slot is a normal editing state, and a Day
+        // Editor that threw while the designer was mid-edit would be unusable.
+        public static Dictionary<RequiredItemKey, int> RequiredCounts(
+            IReadOnlyList<FoodItemConfig> foods,
+            IReadOnlyList<Modification> ticketModifications)
+        {
+            var counts = new Dictionary<RequiredItemKey, int>();
+            if (foods == null) return counts;
+
+            foreach (var food in foods)
             {
-                var key = KeyFor(ticket, food);
+                if (food == null) continue;
+
+                var key = KeyFor(ticketModifications, food);
                 counts.TryGetValue(key, out var count);
                 counts[key] = count + 1;
             }

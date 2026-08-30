@@ -37,9 +37,13 @@ namespace ExpoTheExplorer.UI.EditorTools
 
         private const string CanvasName = "SettingsCanvas";
 
-        // Above the HUD and the two popups. They are never on screen together -- the open
-        // button hides itself while either is up -- so this only decides what the menu
-        // covers, and a menu that appears UNDER the thing it pauses is a bug report.
+        // Above the HUD, and BELOW Popup Canvas since D-135 raised that to 300. The order
+        // against the Game Over and Day Complete popups still decides nothing -- they are
+        // never on screen with this menu, since the open button greys out and Open()
+        // refuses once the day is over -- but the no-keys popup SHARES that canvas and is
+        // opened BY this menu, so it has to land on top or it explains itself to the back
+        // of a panel. What this number still guarantees is the part that was always the
+        // point: the menu covers the HUD it pauses.
         private const int SortingOrder = 200;
 
         private static readonly Color PanelColor = new(0.10f, 0.12f, 0.18f, 0.98f);
@@ -91,6 +95,15 @@ namespace ExpoTheExplorer.UI.EditorTools
 
             haptics = Object.FindAnyObjectByType<HapticsBinder>();
 
+            // The scene's existing out-of-keys popup, so the retry confirmation is gated
+            // the same way the Game Over popup's Retry is (D-135). Found rather than
+            // built: there is one per scene by design (it needs a scene sessionHost, which
+            // a prefab asset could not carry), and building a second would put two windows
+            // on the same question. A scene without one leaves the field empty, which
+            // SettingsPopupView treats as "never gate" -- warned about below, because the
+            // quiet version of that is a free retry nobody notices.
+            var noKeysPopup = Object.FindAnyObjectByType<NoKeysPopupView>();
+
             var canvas = CreateCanvas();
             var view = canvas.gameObject.AddComponent<SettingsPopupView>();
 
@@ -140,17 +153,22 @@ namespace ExpoTheExplorer.UI.EditorTools
             // menu rather than sitting inside it. Built inactive: SettingsPopupView also
             // switches them off in Start, but a scene that LOOKS right when you open it is
             // worth more than one that only corrects itself at play time.
+            // BOTH QUESTIONS NAME THE KEY (D-135), because both buttons now spend one --
+            // and a resource that leaves without warning reads as a bug, not as a price.
+            // It is the last line of each question for the same reason it is the last
+            // thing the player decides on: the sentence above says what happens to the
+            // day, this one says what it costs.
             var retryConfirm = CreateConfirmation(
                 popupRoot.transform,
                 "RetryConfirm",
-                "Restart this day?\nEverything you have done today is lost.",
+                "Restart this day?\nEverything you have done today is lost.\nThis will cost 1 key.",
                 out var retryYes,
                 out var retryNo);
 
             var mainMenuConfirm = CreateConfirmation(
                 popupRoot.transform,
                 "MainMenuConfirm",
-                "Leave this day?\nThis attempt's earnings are taken back.",
+                "Leave this day?\nThis attempt's earnings are taken back.\nThis will cost 1 key.",
                 out var mainMenuYes,
                 out var mainMenuNo);
 
@@ -172,6 +190,7 @@ namespace ExpoTheExplorer.UI.EditorTools
             Wire(serialized, "mainMenuConfirmYesButton", mainMenuYes, unwired);
             Wire(serialized, "mainMenuConfirmNoButton", mainMenuNo, unwired);
             Wire(serialized, "hapticsToggleButton", hapticsButton.GetComponent<Button>(), unwired);
+            Wire(serialized, "noKeysPopup", noKeysPopup, unwired);
             Wire(serialized, "hapticsOnIndicator", hapticsOn.gameObject, unwired);
             Wire(serialized, "hapticsOffIndicator", hapticsOff.gameObject, unwired);
             Wire(serialized, "dayNumberText", dayNumber, unwired);
@@ -189,6 +208,15 @@ namespace ExpoTheExplorer.UI.EditorTools
                 Debug.LogError(
                     $"{nameof(SettingsPopupSetup)} built the menu but could not wire: {string.Join(", ", unwired)}. " +
                     $"Those field names are out of step with {nameof(SettingsPopupView)} — wire them by hand and fix this step.",
+                    view);
+            }
+
+            if (noKeysPopup == null)
+            {
+                Debug.LogWarning(
+                    $"{nameof(SettingsPopupSetup)}: this scene has no {nameof(NoKeysPopupView)}, so the menu's Retry is " +
+                    "not gated on keys — at zero keys it will restart the day for free. Add the popup to the scene and " +
+                    "drag it into the 'noKeysPopup' slot.",
                     view);
             }
 

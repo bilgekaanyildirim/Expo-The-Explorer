@@ -160,7 +160,11 @@ namespace ExpoTheExplorer.UI
             // a finished day with no UI at all.
             if (noKeysPopup != null && !noKeysPopup.HasKeyOrShow()) return;
 
-            gameManager.RetryDay();
+            // true: the day is lost and the player is throwing the attempt away, which is
+            // what costs the key. Stated at the call site since D-135 rather than inferred
+            // inside GameManager from IsAwaitingContinue -- the settings menu surrenders a
+            // day that is still RUNNING, so the flag stopped being able to answer this.
+            gameManager.RetryDay(givingUpOnAttempt: true);
             Hide();
         }
 

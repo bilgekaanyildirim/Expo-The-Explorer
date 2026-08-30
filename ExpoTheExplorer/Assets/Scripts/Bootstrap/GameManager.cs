@@ -242,6 +242,21 @@ namespace ExpoTheExplorer.Bootstrap
         // previous Day would keep applying that Day's numbers.
         private BoardDistributor boardDistributor;
 
+        // How many more OnTicketAssigned events open the Day and must therefore NOT
+        // distribute. Set by ApplyDayStartBoardPreSeed to TicketSlotCount when (and only
+        // when) this Day authored its own opening board, counted down by OnTicketAssigned.
+        //
+        // A COUNTER rather than a bool, because "the opening" is not one event: filling the
+        // three slots publishes TicketAssigned three times, and every one of them would
+        // otherwise spawn required items on top of the board the designer drew. Counting is
+        // safe precisely because the opening fill is synchronous -- ApplyDayStartBoardPreSeed
+        // runs immediately before FillEmptySlots/ResetSlotsForNewDay on all four day-start
+        // paths, and nothing else can publish a TicketAssigned in between, so the events
+        // this eats are exactly the opening ones. It counts assignments, not tickets, so a
+        // Day whose sequence is shorter than three still lands on zero (an exhausted
+        // sequence publishes a null assignment and that is still an opening event).
+        private int openingAssignmentsWithoutDistribution;
+
         // Still the single writer of SoftMoney/Gems (economy-plan.md Adım 1); it just
         // lives on the session now, because the main screen needs the same one.
         private Wallet wallet => Session.Wallet;
@@ -612,10 +627,27 @@ namespace ExpoTheExplorer.Bootstrap
                 throw new InvalidOperationException("No Day loaded -- board playback requires an authored Day (PR-7).");
             }
 
-            var activeTickets = State.TicketSlots.Where(t => t != null).ToList();
-            var lookaheadCount = Math.Max(GameState.TicketSlotCount, CurrentDay.TicketRuntime.UpcomingQueueSize);
-            var upcomingTickets = dayTicketSequenceProvider.PeekUpcoming(lookaheadCount);
-            boardDistributor.OnOrderPlaced(activeTickets, upcomingTickets);
+            // The opening fill of a Day that drew its own board distributes NOTHING -- see
+            // ApplyDayStartBoardPreSeed. The tray call below still runs: it clears the slot's
+            // tray, which has to happen for every assignment whatever the board is doing.
+            //
+            // Skipping the call outright, rather than letting the distributor run and
+            // discarding its spawns, is the point: OnOrderPlaced is what makes a ticket
+            // "guaranteed" for the rest of the Day (its selection is sticky), so a
+            // suppressed round must not consume the opening tickets' turn at that lottery.
+            // They enter it at the first real round instead, which is what lets the Day
+            // recover normally the moment a slot resolves.
+            if (openingAssignmentsWithoutDistribution > 0)
+            {
+                openingAssignmentsWithoutDistribution--;
+            }
+            else
+            {
+                var activeTickets = State.TicketSlots.Where(t => t != null).ToList();
+                var lookaheadCount = Math.Max(GameState.TicketSlotCount, CurrentDay.TicketRuntime.UpcomingQueueSize);
+                var upcomingTickets = dayTicketSequenceProvider.PeekUpcoming(lookaheadCount);
+                boardDistributor.OnOrderPlaced(activeTickets, upcomingTickets);
+            }
 
             TrayManager.OnTicketAssigned(assignment.SlotIndex);
         }
@@ -778,35 +810,43 @@ namespace ExpoTheExplorer.Bootstrap
         // to GameSession.Save (decisions.md D-021). The four callers below are unchanged.
         private void SaveProfile() => Session.Save();
 
-        // The key charge for giving up on a day (.claude/key-plan.md step 4). One place
-        // rather than two call sites, because this class cannot be reached by the EditMode
-        // suite at all -- it is in the predefined Assembly-CSharp (D-012) -- so the only
-        // protection this rule has is that there is exactly one copy of it to read.
+        // The key charge for GIVING UP ON A DAY (.claude/key-plan.md step 4, widened by
+        // D-135). One place rather than four call sites, because this class cannot be
+        // reached by the EditMode suite at all -- it is in the predefined Assembly-CSharp
+        // (D-012) -- so the only protection this rule has is that there is exactly one
+        // copy of it to read.
         //
-        // GATED ON IsAwaitingContinue, not on which method called: the user's rule is that
-        // a key is spent when a day is LOST and then left, so the flag states that
-        // literally. It also keeps DebugTicketDeliveryController's R key from eating a key
-        // when it replays a day that was going fine.
+        // THE RULE IS "GAVE UP", NOT "LOST". It used to be gated in here on
+        // IsAwaitingContinue, which made the settings menu's Retry and Main Menu free:
+        // that menu only opens while the day is still RUNNING, so the flag was never set
+        // on the way through and walking out mid-day cost nothing. The user's rule is
+        // that abandoning an attempt costs a key however it is abandoned, so the gate
+        // moved OUT to the callers, each of which knows whether it is a surrender.
         //
-        // CALLERS MUST READ THE FLAG BEFORE LivesManager.RefillForNewDay CLEARS IT, which
-        // is why this takes it as an argument instead of reading State itself. That
-        // ordering is the one thing here a mistake would break silently: the refill would
-        // clear the flag, this would see false, and giving up would quietly become free.
+        // What that buys beyond the new routes: the flag no longer has to be read before
+        // LivesManager.RefillForNewDay clears it. That ordering was the one mistake here
+        // that would have broken silently -- the refill clears the flag, this sees false,
+        // and giving up quietly becomes free -- and it is now unrepresentable, because
+        // there is no flag left to read at the wrong moment.
+        //
+        // WHAT IS NOT A SURRENDER, and must never call this: RetryCompletedDay. The
+        // player finished that day and is replaying it for a better star score; they are
+        // giving nothing up, so it costs nothing (the user restated this rule directly
+        // when D-135 was specified). The paid Continues are not surrenders either -- they
+        // stay INSIDE the day -- and neither is the debug menu's replay.
         //
         // The result is deliberately ignored. At zero keys the player must still be able
         // to leave -- blocking that is a softlock -- so this floors at zero rather than
-        // refusing. Step 5 is what stops them arriving here with nothing to spend.
-        private void SpendKeyForLostDay(bool dayWasLost)
+        // refusing. Step 5's popup is what stops them arriving here with nothing to spend.
+        private void SpendKeyForGivingUp()
         {
-            if (!dayWasLost) return;
-
             KeyManager.TrySpendKey();
 
             // Requested unconditionally rather than on TrySpendKey's result, and that is
-            // deliberate: at zero keys the spend floors and returns false, but leaving a
-            // lost day is exactly when the player most needs to be told the resource is
-            // gone. The rule itself (D-068 -- which exits cost a key, and that the exit is
-            // never blocked) is untouched; this line only reports it.
+            // deliberate: at zero keys the spend floors and returns false, but walking out
+            // of an attempt is exactly when the player most needs to be told the resource
+            // is gone. The rule itself (D-068/D-135 -- which exits cost a key, and that the
+            // exit is never blocked) is untouched; this line only reports it.
             //
             // The scene is about to be replaced on most routes here, so this can be lost
             // to the load before LateUpdate flushes it. That is a known gap rather than a
@@ -902,8 +942,11 @@ namespace ExpoTheExplorer.Bootstrap
             SceneFlow.LoadMainScreen();
         }
 
-        // Game Over popup's "Main Menu": the player walks out of an attempt they
-        // failed. Settled exactly the way the free Retry settles it --
+        // "Main Menu" from inside a day: the player walks out of an attempt they are not
+        // going to finish. Reached from the Game Over popup (the day was lost) and, since
+        // D-135, from the settings menu (the day was still running) -- and the settlement
+        // is the same either way, which is the whole reason this is one method. Settled
+        // exactly the way the free Retry settles it --
         // RevertToDayStart, so the attempt's earnings are taken back and its
         // spending is not -- and the day index is deliberately left alone, so the
         // main screen still offers this same Day.
@@ -917,10 +960,11 @@ namespace ExpoTheExplorer.Bootstrap
         // never money earned, so it cannot bank a failed day's income.
         public void ReturnToMainScreenAbandoningDay()
         {
-            // Defensive rather than load-bearing: this path is only reachable from the
-            // Game Over popup, i.e. from a day that never completed, so there is no debt
-            // to void. It is here so that "a failed day pays nothing" stays true by
-            // construction rather than by the reader tracing which events can overlap.
+            // Defensive rather than load-bearing: every route here comes from a day that
+            // never completed -- the Game Over popup, or the settings menu, which refuses
+            // to open once the day is over -- so there is no debt to void. It is here so
+            // that "an abandoned day pays nothing" stays true by construction rather than
+            // by the reader tracing which events can overlap.
             DiscardPendingReward();
 
             wallet.RevertToDayStart();
@@ -932,26 +976,30 @@ namespace ExpoTheExplorer.Bootstrap
             // carry a life count at all and this line's position relative to SaveProfile
             // no longer decides anything.
             //
-            // It stays because it is still true of the SCENE: this path is only reachable
-            // from the Game Over popup, i.e. with Lives at 0, and the day is reset here
-            // the same way the free Retry resets it. The next attempt starts full either
-            // way; the only difference is where the player goes next.
-            //
-            // Read the flag FIRST -- the line below clears it (key-plan step 4).
-            var dayWasLost = State.IsAwaitingContinue;
-
+            // It stays because it is still true of the SCENE: the day is reset here the
+            // same way the free Retry resets it, so whatever the player starts next opens
+            // on a full bar. What is NO LONGER true is the old note that this is only
+            // reached with Lives at 0 -- D-135's settings route arrives mid-day with
+            // hearts still on the row -- and the refill is correct for that case too.
             LivesManager.RefillForNewDay();
 
-            // Walking out of a lost day costs a key, exactly as retrying it does: the
-            // player is giving up on the attempt either way, and charging one route but
-            // not the other would just teach them which button is cheaper.
-            SpendKeyForLostDay(dayWasLost);
+            // Walking out of an attempt costs a key, exactly as restarting it does: the
+            // player gives up on it either way, and charging one route but not the other
+            // would only teach them which button is cheaper.
+            //
+            // UNCONDITIONAL since D-135. Every caller of a method named "abandoning day"
+            // is by definition a surrender, so there is no longer a flag here to read at
+            // the wrong moment -- and the completed-day exits do not come through here at
+            // all, they have ReturnToMainScreenFromCompletedDay.
+            SpendKeyForGivingUp();
 
             SaveProfile();
             SceneFlow.LoadMainScreen();
         }
 
-        // Free alternative to the paid Continue flow (GameOverPopupView) --
+        // The alternative to the paid Continue flow (GameOverPopupView), and "free" only
+        // in the sense that costs no Gems -- it does cost a KEY whenever the caller says
+        // the player is giving up (see the parameter below) --
         // abandons the current day attempt and restarts it at the same
         // difficulty (difficulty scale-down on retry is a still-open GDD
         // question, CLAUDE.md Section 4, deliberately not addressed here) --
@@ -963,15 +1011,17 @@ namespace ExpoTheExplorer.Bootstrap
         // OnTicketAssigned's own board playback, or a different order
         // reintroduces stale items. LivesManager/DayLifecycleManager are
         // independent of those and of each other.
-        public void RetryDay()
+        //
+        // givingUpOnAttempt states whether this restart is a SURRENDER, and it decides the
+        // key charge and the save below. It has NO DEFAULT on purpose: a defaulted false
+        // would make every future caller silently free, which is the same failure the flag
+        // read it replaced could hide. The three callers answer it honestly -- the Game
+        // Over popup and the settings menu with true (the player is throwing an attempt
+        // away), the debug menu with false (a cheat button has no business moving the
+        // economy, and it must stay able to replay a day that was going fine).
+        public void RetryDay(bool givingUpOnAttempt)
         {
             var ticketsBeforeRetry = State.TicketsDeliveredToday;
-
-            // Read BEFORE LivesManager.RefillForNewDay below clears it. A retry reached
-            // from the Game Over popup always has this set; the debug R key does not, and
-            // must not spend a key for replaying a day that was going fine
-            // (.claude/key-plan.md step 4).
-            var dayWasLost = State.IsAwaitingContinue;
 
             RefreshDayTicketSequenceProvider();
 
@@ -986,9 +1036,9 @@ namespace ExpoTheExplorer.Bootstrap
             // -- so the money is already rolled back by the time the save below runs.
             State.DayRetried.Publish(ticketsBeforeRetry);
 
-            if (!dayWasLost) return;
+            if (!givingUpOnAttempt) return;
 
-            SpendKeyForLostDay(true);
+            SpendKeyForGivingUp();
 
             // THIS PATH USED TO WRITE NOTHING, and that was a documented contract: a failed
             // day was never permanent, so there was nothing to persist. The key breaks that
@@ -1134,10 +1184,30 @@ namespace ExpoTheExplorer.Bootstrap
         // after the board is cleared and before any ticket gets assigned into
         // a slot -- everything after this point plays back per-ticket via
         // OnTicketAssigned instead.
+        //
+        // AND, when this Day authored one, that board is the ENTIRE opening: the ticket fill
+        // that follows distributes nothing, so the player sees exactly the arrangement the
+        // designer drew instead of it plus three tickets' worth of spawned ingredients (the
+        // user's decision, 2026-08-29). Which is why the answer is read from the Day's own
+        // timeline rather than from a flag: "this Day opens with an authored board" is a
+        // fact about the board, and a flag beside it could disagree with the thing it
+        // describes. DayValidator refuses to save such a Day unless one of the tickets on
+        // screen can actually be served from it -- see ValidateDayStartBoard, which is the
+        // other half of this decision and the reason suppressing the opening is safe.
+        //
+        // Set unconditionally, including to 0: a Day with no authored board must clear a
+        // count a PREVIOUS Day left behind, or advancing from an authored Day to a plain one
+        // would silence the plain Day's opening too.
         private void ApplyDayStartBoardPreSeed()
         {
             if (CurrentDay == null) return;
             DayBoardTimelinePlayer.ApplyForStep(State.Board, CurrentDay.BoardTimeline, -1);
+
+            openingAssignmentsWithoutDistribution =
+                DayBoardTimelinePlayer.HasEntriesForStep(CurrentDay.BoardTimeline, -1)
+                    ? GameState.TicketSlotCount
+                    : 0;
+
             ArmTutorial();
         }
 

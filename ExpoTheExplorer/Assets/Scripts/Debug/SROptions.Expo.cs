@@ -230,10 +230,14 @@ public partial class SROptions
         }
     }
 
+    // givingUpOnAttempt: false -- a cheat button has no business moving the economy
+    // (D-135). This replays the day and charges no key, whether or not the Game Over popup
+    // happens to be up; before D-135 it quietly charged one in that case, because the
+    // charge was inferred from IsAwaitingContinue rather than stated by the caller.
     [Category("Day"), Sort(3), DisplayName("Retry Day")]
     public void RetryDay()
     {
-        if (RequireDayScene()) Day.RetryDay();
+        if (RequireDayScene()) Day.RetryDay(givingUpOnAttempt: false);
     }
 
     [Category("Day"), Sort(4), DisplayName("Deliver Ticket 1")]

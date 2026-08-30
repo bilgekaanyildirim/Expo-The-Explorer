@@ -27,9 +27,17 @@ namespace ExpoTheExplorer.UI
     //
     // NOTHING HERE DECIDES WHAT AN EXIT COSTS. Retry and Main Menu call the two
     // GameManager methods the Game Over popup already calls, and those methods hold the
-    // money and key rules -- notably that leaving a day that has NOT been lost spends no
-    // key and banks nothing (SpendKeyForLostDay only fires on IsAwaitingContinue). A
-    // settings menu is not the place to invent an economy rule.
+    // money and key rules. What CHANGED in D-135 is those rules, not this view's posture:
+    // both exits now cost a key, because the player is giving up on an attempt either way
+    // and charging the lost-day route but not this one would only have taught them which
+    // button was cheaper. This view states that it is a surrender (givingUpOnAttempt) and
+    // stops there -- a settings menu is not the place to invent an economy rule, and it is
+    // not the place to decide what a surrender is worth.
+    //
+    // THE COMPLETED DAY IS NOT REACHABLE FROM HERE, which is what keeps "replaying a day
+    // you finished is free" true without this file knowing about it. Open() refuses once
+    // dayIsOver, so the only Retry on a finished day is the Day Complete popup's, and that
+    // one goes to RetryCompletedDay -- a different method that never charges.
     //
     // TWO CONFIRMATION PANELS RATHER THAN ONE SHARED PANEL, and that is the root
     // invariant rather than a style choice: a shared panel would need code to write the
@@ -67,6 +75,23 @@ namespace ExpoTheExplorer.UI
         [SerializeField] private GameObject mainMenuConfirmRoot;
         [SerializeField] private Button mainMenuConfirmYesButton;
         [SerializeField] private Button mainMenuConfirmNoButton;
+
+        // The out-of-keys explanation, asked on the retry confirmation's Yes (D-135). The
+        // same component the Game Over popup's Retry uses, and OPTIONAL for the same
+        // reason, with the direction of the failure chosen deliberately: unwired, Retry is
+        // simply never gated. A retry that costs an uncharged key is a small wrong; one
+        // that leaves the player unable to restart a day is a large one, and it would be
+        // indistinguishable from a bug in the key economy. NoKeysPopupView logs loudly at
+        // Start when it cannot work, which is what makes a forgotten drag findable.
+        //
+        // ITS CANVAS MUST SORT ABOVE THIS ONE or the explanation opens behind the menu it
+        // is explaining. In the day scene that is Popup Canvas at 300 against
+        // SettingsCanvas at 200 -- raised by D-135 for exactly this, and safe because the
+        // popups that share that canvas can never be on screen with this menu (Open()
+        // refuses on IsAwaitingContinue and dayIsOver, and the day is frozen while the
+        // menu is up, so neither can fire behind it).
+        [Tooltip("Shown when the retry confirmation is accepted with no keys left. Leave empty and Retry is never gated.")]
+        [SerializeField] private NoKeysPopupView noKeysPopup;
 
         [Header("Haptics switch")]
         [SerializeField] private Button hapticsToggleButton;
@@ -257,16 +282,38 @@ namespace ExpoTheExplorer.UI
 
         private void CancelMainMenu() => mainMenuConfirmRoot.SetActive(false);
 
-        // Close() BEFORE RetryDay, and the order matters: RetryDay resets the board, the
-        // tray, the slots and the lives of a day that carries on running in this same
-        // scene -- no load comes to tidy up after it -- so a pause left standing here
-        // would freeze the fresh attempt with no menu on screen to lift it.
+        // THE KEY CHECK HAPPENS ON THIS YES, and no button is ever disabled for it (the
+        // user's rule, key-plan step 5): a greyed control leaves the player staring at a
+        // dead button with no reason given, while the popup states the reason and offers
+        // both exits -- wait for the timer, or 40 Gems.
+        //
+        // The refusing branch returns BEFORE Close(), which is what makes this safe to
+        // read: the menu and this panel stay exactly where they are, the pause is still
+        // held, and the day is still frozen behind the explanation. So the player can
+        // watch the countdown, buy a refill and press Yes again, or back out -- and none
+        // of it costs them the attempt that is sitting paused underneath.
+        //
+        // Close() BEFORE RetryDay on the accepted branch, and that order matters: RetryDay
+        // resets the board, the tray, the slots and the lives of a day that carries on
+        // running in this same scene -- no load comes to tidy up after it -- so a pause
+        // left standing here would freeze the fresh attempt with no menu on screen to
+        // lift it.
         private void ConfirmRetry()
         {
+            if (noKeysPopup != null && !noKeysPopup.HasKeyOrShow()) return;
+
             Close();
-            gameManager.RetryDay();
+
+            // true: restarting from here throws away an attempt the player could still
+            // have finished, which is the surrender the key pays for (D-135).
+            gameManager.RetryDay(givingUpOnAttempt: true);
         }
 
+        // DELIBERATELY NOT GATED on keys, unlike the retry above. Blocking the only way
+        // out of a day at zero keys is a softlock, so this path always works and simply
+        // spends nothing when there is nothing to spend -- the floor D-068 put in
+        // GameManager, not a second rule invented here.
+        //
         // Close() first here too, though for a weaker reason: the scene is about to be
         // replaced, so this GameState is on its way out either way. It is called anyway
         // rather than relying on that -- "the load will clean it up" is exactly the kind
@@ -274,6 +321,10 @@ namespace ExpoTheExplorer.UI
         private void ConfirmMainMenu()
         {
             Close();
+
+            // Charges a key of its own accord since D-135 -- walking out of a running day
+            // is the same surrender as restarting it, so the method name is the whole
+            // statement and nothing needs to be passed.
             gameManager.ReturnToMainScreenAbandoningDay();
         }
 
@@ -325,9 +376,9 @@ namespace ExpoTheExplorer.UI
 
         // Every field here is wired by hand in the Editor -- a missing one should fail
         // loudly with a pointer to WHICH field, not a bare NullReferenceException three
-        // taps later. The optional fields (the two indicators, the day text, the stars)
-        // are deliberately absent from this list: the menu's exits must keep working on a
-        // half-dressed scene, since they are the way out of it.
+        // taps later. The optional fields (the two indicators, the day text, the stars,
+        // and the no-keys popup) are deliberately absent from this list: the menu's exits
+        // must keep working on a half-dressed scene, since they are the way out of it.
         private bool ValidateReferences()
         {
             var missing = new List<string>();
