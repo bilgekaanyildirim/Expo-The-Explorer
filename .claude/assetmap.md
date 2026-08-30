@@ -1,4 +1,4 @@
-<!-- stamp: 2026-08-28T15:20Z source-sig:6b260f4bc4fd assets:53 prefabs:12 scenes:3 asmdefs:18 -->
+<!-- stamp: 2026-08-29T15:23Z source-sig:64254a4350b7 assets:53 prefabs:14 scenes:3 asmdefs:18 -->
 # assetmap — asset inventory (data, prefabs, load surface, assemblies)
 
 Regenerate with `python3 .claude/hooks/build_assetmap.py`. `data-source.md`
@@ -84,7 +84,9 @@ the cost model reads the load-surface section before pricing a load.
 
 ## Prefabs
 
-- ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab | variant-of: - | scripts: PowerupShopView, HapticButton, KeysView, SoftMoneyView, GemsView, PowerupBarView, AutoCollectRunner, HudWalletSource
+- ExpoTheExplorer/Assets/Prefabs/Confetti.prefab | variant-of: - | scripts: -
+- ExpoTheExplorer/Assets/Prefabs/UI/CelebrationConfetti.prefab | variant-of: ExpoTheExplorer/Assets/Prefabs/Confetti.prefab | scripts: ConfettiView
+- ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab | variant-of: - | scripts: PowerupShopView, DayNumberView, HapticButton, KeysView, SoftMoneyView, GemsView, PowerupBarView, AutoCollectRunner
 - ExpoTheExplorer/Assets/Prefabs/UI/MainScreenTutorialStoreHint.prefab | variant-of: - | scripts: MainScreenStoreHintPopup
 - ExpoTheExplorer/Assets/Prefabs/UI/MainScreenTutorialWelcome.prefab | variant-of: - | scripts: MainScreenWelcomePopup
 - ExpoTheExplorer/Assets/Prefabs/UI/MetaUnlockPopup.prefab | variant-of: - | scripts: MetaUnlockPopup
@@ -105,7 +107,7 @@ the cost model reads the load-surface section before pricing a load.
 
 ## Runtime load surface
 
-- ExpoTheExplorer/Assets/Resources | 91 file(s) | loaded by string at runtime; ships in every build
+- ExpoTheExplorer/Assets/Resources | 49 file(s) | loaded by string at runtime; ships in every build
 - ExpoTheExplorer/Assets/StompyRobot/SRDebugger/Resources | 41 file(s) | loaded by string at runtime; ships in every build
 - ExpoTheExplorer/Assets/StompyRobot/SRDebugger/usr/Resources | 3 file(s) | loaded by string at runtime; ships in every build
 - ExpoTheExplorer/Assets/TextMesh Pro/Resources | 21 file(s) | loaded by string at runtime; ships in every build

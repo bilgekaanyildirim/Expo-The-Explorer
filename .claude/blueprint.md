@@ -231,6 +231,25 @@
      interface and no state machine -- abstraction-level.md's default answer. A second
      tutorial moment is the thing that would justify those, and it does not exist yet. -->
 
+- CelebrationSystem — the confetti a payoff throws: two authored cannons, fired once and gone — depends on: -
+<!-- CelebrationSystem, added 2026-08-29 (decisions.md D-131). The arrow is `-` and, like
+     HapticsSystem's, is meant to stay `-`: ConfettiView reads no game state, no session and no
+     config asset. It is handed a prefab and told to fire, and everything it needs is authored on
+     that prefab. The three call sites (DayCompletePopupView once, MetaGroundsView twice) all live
+     in Assembly-CSharp above it and point DOWN at it, which is the same shape HapticsBinder gives
+     haptics -- so nothing depends on this in the arrow sense either.
+
+     It runs the user's own ParticleSystem, and getting that on screen is the system's whole
+     technical content: a ParticleSystem is a world renderer and a Screen Space - Overlay canvas is
+     composited after every camera, so particles cannot draw over this game's UI at all (D-126 hit
+     the same wall with the tutorial's world-space arrow and gave up the world renderer; this keeps
+     it). The bridge is a stage parked far off-origin, an orthographic camera filming only it into
+     a transparent RenderTexture, and a RawImage drawing that texture as ordinary UI.
+
+     There is deliberately NO config asset and no look-field in code. Assets/Prefabs/Confetti.prefab
+     is the single authority for every number, edited in the ParticleSystem inspector -- which is
+     D-127's decision applied again: numbers tuned while looking at the thing they belong to. -->
+
 - HapticsSystem — which game moment plays which haptic, and which one wins when several land in the same frame — depends on: -
 <!-- HapticsSystem, added 2026-08-25 (decisions.md D-070). The arrow is `-` and stays `-`:
      this system READS a config asset and nothing else. It does not know GameState, the
@@ -391,6 +410,37 @@
 - TutorialPowerupIntro — Tutorial — variant-of: - — spawned by PowerupBarView
 - TutorialPowerupSpotlight — Tutorial — variant-of: - — spawned by PowerupBarView
 - TutorialStepHints — Tutorial — variant-of: - — spawned by TutorialSpotlightView
+- CelebrationConfetti — CelebrationSystem — variant-of: - — spawned by DayCompletePopupView and MetaGroundsView
+<!-- Added 2026-08-29 (decisions.md D-131). THE RIG, not the look: a stage holding an orthographic
+     camera and two nested instances of Confetti.prefab, plus a RawImage on its own canvas. Seeded
+     by ExpoTheExplorer > Celebration > Build Confetti, which refuses to rebuild it once it exists.
+
+     ITS ROOT IS A PLAIN TRANSFORM, and it is the one prefab here where that is right (compare
+     D-126, where a plain root was the bug): it has to hold a WORLD branch parked ten thousand
+     units from the origin and a UI branch, and one transform cannot sensibly parent both. They
+     are siblings, and ConfettiView detaches the UI half at runtime.
+
+     WHY A CAMERA AND A TEXTURE AT ALL: a ParticleSystem is a world renderer and both celebration
+     beats sit under Screen Space - Overlay canvases, which are composited after every camera, so
+     the particles can never draw over them. Filming them into a transparent RenderTexture and
+     showing that through a RawImage turns the layering into a UI question — which is how the
+     user's two rules are both met: the RawImage's canvas is left a root Overlay canvas at 300 on
+     the main screen (over everything), and mounted at the receipt popup's own sibling index in
+     the day scene (under the receipt, over the rest).
+
+     No GraphicRaycaster and the RawImage is never a raycast target: confetti must not be able to
+     eat a tap, and the cheapest guarantee is having nothing in the hierarchy that could. -->
+- Confetti — CelebrationSystem — variant-of: - — authoring (nested twice inside CelebrationConfetti)
+<!-- The user's hand-tuned ParticleSystem, 2026-08-29, and the confetti itself — everything about
+     the look lives here and nothing about it lives in code. It is INSTANCED into the rig rather
+     than copied, so tuning this one asset retunes both cannons. Its authored aim is load-bearing
+     and was read rather than overridden: the cone points at (0.5, 0.866, 0), up and to the right
+     in the screen plane, so the rig's LEFT cannon holder carries no rotation at all and the right
+     one is that aim mirrored by 60 degrees about Z.
+
+     A missing Confetti.prefab is fatal to the seeding step rather than substituted, which is the
+     honest failure: the step builds plumbing, and plumbing with nothing flowing through it is not
+     a celebration. -->
 - MetaUnlockPopup — MetaSystem — variant-of: - — spawned by MetaGroundsView
 <!-- Added 2026-08-28 (decisions.md D-128). What a DAY-UNLOCKED prop says when it opens: a
      picture of what it brought and a line naming it, both authored per prop on MetaCatalog.
