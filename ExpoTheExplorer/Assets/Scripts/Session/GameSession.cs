@@ -231,16 +231,6 @@ namespace ExpoTheExplorer.Session
         // here would add a second surface to keep in step for no gain.
         public Wallet Wallet => wallet;
 
-        // A persisted index is a claim about a catalog that may have changed since it was
-        // written -- a Day can be deleted, or the file can come from a build with more
-        // content -- so it is clamped rather than trusted. Landing on the last authored
-        // Day is the safe failure: the alternative is CurrentDay resolving to null and
-        // ticket creation throwing on the first slot fill.
-        //
-        // Internal rather than private only so the test suite can reach it; it is the one
-        // piece of this class that had no test at all while it lived in GameManager.
-        internal int ResolveStartingDayIndex(int persistedIndex) => ClampToCatalog(persistedIndex);
-
         // THE SINGLE WRITER of GameState.CurrentDayIndex (decisions.md D-092).
         //
         // It did not used to be. The number was assigned in three places -- twice in
@@ -267,6 +257,16 @@ namespace ExpoTheExplorer.Session
             State.CurrentDayIndex = ClampToCatalog(index);
         }
 
+        // A persisted index is a claim about a catalog that may have changed since it was
+        // written -- a Day can be deleted, or the file can come from a build with more
+        // content -- so it is clamped rather than trusted. Landing on the last authored
+        // Day is the safe failure: the alternative is CurrentDay resolving to null and
+        // ticket creation throwing on the first slot fill. Both callers rely on this: the
+        // constructor's load of the saved index, and GoToDay.
+        //
+        // It had a second, internal entry point (ResolveStartingDayIndex) that existed
+        // "only so the test suite can reach it" -- the 2026-08-30 audit found no such test
+        // and no other caller, so the wrapper is gone and this is the one clamp again.
         private int ClampToCatalog(int index)
         {
             if (DayCatalog == null || DayCatalog.Count == 0) return 0;

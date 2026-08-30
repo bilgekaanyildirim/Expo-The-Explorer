@@ -279,6 +279,13 @@ namespace ExpoTheExplorer.Bootstrap
 
         private void Awake()
         {
+            // Paired with the identical line in MainScreenRoot.Awake -- see the reasoning
+            // there. Short version: the platform default on mobile is 30, and this game is
+            // a finger dragging an item, which is the one interaction where the frame rate
+            // is the feel. Repeated here because the day scene is opened straight from the
+            // Editor all the time, without MainScreen ever loading.
+            Application.targetFrameRate = 60;
+
             EnsurePhysics2DRaycaster();
 
             // The whole session half of this method in one line (decisions.md D-021):

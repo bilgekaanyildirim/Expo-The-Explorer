@@ -1,4 +1,4 @@
-<!-- stamp: 2026-08-30 systems:22 unmapped:0 unassigned-files:21 -->
+<!-- stamp: 2026-08-30 systems:22 unmapped:0 unassigned-files:20 -->
 # index — system to location, one screen
 
 Step 1 of `procedures/locate.md`: read this before anything else, and only
@@ -10,8 +10,8 @@ maps and never invents a name.
 |---|---|---|---|---|---|---|
 | BoardDistribution | core | ExpoTheExplorer/Assets/Data/DataScripts/BoardDistributionSettings.cs, ExpoTheExplorer/Assets/Scripts/Core/RequiredItemKey.cs (+3) | - | - | - | OK |
 | BoardUI | core | ExpoTheExplorer/Assets/Data/DataScripts/GameConfig.cs, ExpoTheExplorer/Assets/Scripts/Core/BoardGrid.cs (+3) | - | - | ExpoTheExplorer/Assets/Data | OK |
-| Bootstrap | core | ExpoTheExplorer/Assets/Scripts/Bootstrap/GameManager.cs, ExpoTheExplorer/Assets/Scripts/Core/GameState.cs (+6) | - | - | - | OK |
-| CelebrationSystem | editor, ui | ExpoTheExplorer/Assets/Scripts/UI/ConfettiView.cs, ExpoTheExplorer/Assets/Scripts/UI/Editor/ConfettiSetup.cs | - | CelebrationConfetti, Confetti | - | OK |
+| Bootstrap | core | ExpoTheExplorer/Assets/Scripts/Core/GameState.cs, ExpoTheExplorer/Assets/Scripts/Core/SceneFlow.cs (+4) | - | - | - | OK |
+| CelebrationSystem | ui | ExpoTheExplorer/Assets/Scripts/UI/ConfettiView.cs | - | CelebrationConfetti, Confetti | - | OK |
 | DataTooling | editor | ExpoTheExplorer/Assets/Editor/DataConfigReserializer.cs | - | - | - | OK |
 | DayEditor | editor | ExpoTheExplorer/Assets/Editor/DayEditorDayStartPreview.cs, ExpoTheExplorer/Assets/Editor/DayEditorSpriteGUI.cs (+4) | - | - | - | OK |
 | DayLifecycle | core, ui | ExpoTheExplorer/Assets/Data/DataScripts/StarScoreConfig.cs, ExpoTheExplorer/Assets/Scripts/Systems/DayLifecycle/DayLifecycleManager.cs (+5) | - | - | ExpoTheExplorer/Assets/Data | OK |
@@ -20,17 +20,17 @@ maps and never invents a name.
 | EconomySystem | core | ExpoTheExplorer/Assets/Data/DataScripts/EconomyConfig.cs, ExpoTheExplorer/Assets/Scripts/Systems/EconomySystem/EconomyCalculator.cs (+2) | - | - | ExpoTheExplorer/Assets/Data | OK |
 | HapticsSystem | core, ui | ExpoTheExplorer/Assets/Data/DataScripts/HapticConfig.cs, ExpoTheExplorer/Assets/Scripts/Bootstrap/HapticsBinder.cs (+4) | - | - | ExpoTheExplorer/Assets/Data | OK |
 | KeySystem | core, ui | ExpoTheExplorer/Assets/Scripts/Systems/KeySystem/ExpoTheExplorer.Systems.KeySystem.asmdef, ExpoTheExplorer/Assets/Scripts/Systems/KeySystem/KeyManager.cs (+4) | - | NoKeysPopup | ExpoTheExplorer/Assets/Data | OK |
-| LivesSystem | core, ui | ExpoTheExplorer/Assets/Scripts/Systems/LivesSystem/ExpoTheExplorer.Systems.LivesSystem.asmdef, ExpoTheExplorer/Assets/Scripts/Systems/LivesSystem/LivesManager.cs (+3) | - | - | ExpoTheExplorer/Assets/Data | OK |
-| MainScreen | editor, ui | ExpoTheExplorer/Assets/Scripts/UI/MainScreenRoot.cs, ExpoTheExplorer/Assets/Scripts/UI/MainScreenView.cs (+2) | MainScreen | - | - | OK |
-| MetaSystem | core, editor, ui | ExpoTheExplorer/Assets/Scripts/Systems/MetaSystem/MetaLayout.cs, ExpoTheExplorer/Assets/Scripts/Systems/MetaSystem/MetaPurchase.cs (+13) | - | MetaUnlockPopup | ExpoTheExplorer/Assets/Data | OK |
+| LivesSystem | core, ui | ExpoTheExplorer/Assets/Scripts/Systems/LivesSystem/ExpoTheExplorer.Systems.LivesSystem.asmdef, ExpoTheExplorer/Assets/Scripts/UI/LivesView.cs | - | - | ExpoTheExplorer/Assets/Data | OK |
+| MainScreen | ui | ExpoTheExplorer/Assets/Scripts/UI/MainScreenView.cs | MainScreen | - | - | OK |
+| MetaSystem | core, editor, ui | ExpoTheExplorer/Assets/Scripts/Systems/MetaSystem/MetaLayout.cs, ExpoTheExplorer/Assets/Scripts/Systems/MetaSystem/MetaPurchase.cs (+10) | - | MetaUnlockPopup | ExpoTheExplorer/Assets/Data | OK |
 | PlayTesting | editor | ExpoTheExplorer/Assets/Editor/DayJumpWindow.cs | - | - | - | OK |
 | PowerupSystem | core, ui | ExpoTheExplorer/Assets/Data/DataScripts/PowerupType.cs, ExpoTheExplorer/Assets/Scripts/Systems/PowerupSystem/ExpoTheExplorer.Systems.PowerupSystem.asmdef (+8) | - | PowerupShop | ExpoTheExplorer/Assets/Data | OK |
 | ProgressionSystem | core, ui | ExpoTheExplorer/Assets/Scripts/Systems/ProgressionSystem/Wallet.cs, ExpoTheExplorer/Assets/Scripts/Systems/ProgressionSystem/DayRewardPurse.cs (+9) | - | HUDCanvas | - | OK |
 | Testing | core | ExpoTheExplorer/Assets/Tests/EditMode/ExpoTheExplorer.Tests.EditMode.asmdef, ExpoTheExplorer/Assets/Tests/EditMode/DayFileIOTests.cs | - | - | - | OK |
-| TicketSystem | core, ui | ExpoTheExplorer/Assets/Scripts/Core/Ticket.cs, ExpoTheExplorer/Assets/Data/DataScripts/TicketCardVisualsConfig.cs (+7) | - | TicketCard, TicketCard Into, TicketCard UpDown | ExpoTheExplorer/Assets/Data | OK |
+| TicketSystem | core, ui | ExpoTheExplorer/Assets/Scripts/Core/Ticket.cs, ExpoTheExplorer/Assets/Data/DataScripts/TicketCardVisualsConfig.cs (+7) | - | TicketCard, TicketCard UpDown | ExpoTheExplorer/Assets/Data | OK |
 | TraySystem | core | ExpoTheExplorer/Assets/Scripts/Systems/TraySystem/ExpoTheExplorer.Systems.TraySystem.asmdef, ExpoTheExplorer/Assets/Scripts/Systems/TraySystem/TraySlot.cs | - | - | - | OK |
-| Tutorial | core, editor, ui | ExpoTheExplorer/Assets/Scripts/Systems/Tutorial/TutorialDirector.cs, ExpoTheExplorer/Assets/Data/DataScripts/TutorialTextConfig.cs (+11) | - | TutorialPowerupIntro, TutorialPowerupSpotlight, TutorialStepHints, MainScreenTutorialWelcome, MainScreenTutorialStoreHint | ExpoTheExplorer/Assets/Data | OK |
+| Tutorial | core, ui | ExpoTheExplorer/Assets/Scripts/Systems/Tutorial/TutorialDirector.cs, ExpoTheExplorer/Assets/Data/DataScripts/TutorialTextConfig.cs (+9) | - | TutorialPowerupIntro, TutorialPowerupSpotlight, TutorialStepHints, MainScreenTutorialWelcome, MainScreenTutorialStoreHint | ExpoTheExplorer/Assets/Data | OK |
 
 ## Gaps
-- `sys: ?` on 21 codemap line(s) — first: ExpoTheExplorer/Assets/Data/ExpoTheExplorer.Data.asmdef, ExpoTheExplorer/Assets/Data/DataScripts/DragFeelConfig.cs, ExpoTheExplorer/Assets/Data/DataScripts/FoodCatalog.cs
-- 32 flagged codemap line(s) excluded from this table (STALE)
+- `sys: ?` on 20 codemap line(s) — first: ExpoTheExplorer/Assets/Data/ExpoTheExplorer.Data.asmdef, ExpoTheExplorer/Assets/Data/DataScripts/DragFeelConfig.cs, ExpoTheExplorer/Assets/Data/DataScripts/FoodCatalog.cs
+- 35 flagged codemap line(s) excluded from this table (STALE)

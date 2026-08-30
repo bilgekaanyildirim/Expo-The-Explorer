@@ -495,9 +495,11 @@
      project: every tutorial visual before them was built at runtime and authored nowhere,
      which the files argued for at length. The argument held only while nobody needed to
      restyle them -- a panel assembled from constants in C# cannot be restyled at all, and
-     the user asked to own their look. Seeded once by the menu step TutorialPopupSetup
-     (Assets/Scripts/UI/Editor), which REFUSES to overwrite an existing asset, so the
-     prefabs belong to the author from the first edit onward.
+     the user asked to own their look. Seeded once by a menu step (TutorialPopupSetup),
+     which REFUSED to overwrite an existing asset, so the prefabs belonged to the author
+     from the first edit onward. That seeding step and the other eleven builders under
+     Assets/Scripts/UI/Editor were deleted on 2026-08-30 (audit R-02): the prefabs on
+     disk are now the only copy, and the builders live only in git history.
 
      THE INTRO PREFAB'S ROOT CARRIES A SCREEN SPACE - OVERLAY CANVAS and must keep it
      (D-086). This scene's InGameCanvas is Screen Space - CAMERA at sortingOrder -1, so a
@@ -537,7 +539,10 @@
      reference, which is precisely what HudWalletSource (the seam) solves. Editing this
      prefab intentionally changes both screens at once -- for keys that is the point. -->
 - TicketCard — TicketSystem — variant-of: - — spawned by TicketCardsView
-- TicketCard Into — TicketSystem — variant-of: TicketCard — spawned by TicketCardsView
+<!-- TicketCard Into was listed here until 2026-08-30. It was a TicketCard variant that
+     no scene, prefab or config referenced -- the audit's GUID sweep found zero inbound
+     references -- so it was deleted with the other orphan assets (S-03). It is in git
+     history if the variant is ever wanted back. -->
 - TicketCard UpDown — TicketSystem — variant-of: TicketCard — spawned by TicketCardsView
 <!-- Prefab inventory filled in 2026-08-19 (D-013); it was template text until the
      HUD became the first thing deliberately SHARED between two scenes. HudCanvas is

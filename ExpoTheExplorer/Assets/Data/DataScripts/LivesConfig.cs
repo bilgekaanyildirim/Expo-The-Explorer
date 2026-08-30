@@ -15,10 +15,13 @@ namespace ExpoTheExplorer.Data
         [Tooltip("Gem cost to refill Lives and continue the current day after running out — placeholder, not balanced.")]
         [SerializeField] private int continueGemCost = 10;
 
-        [Tooltip("SoftMoney cost to refill Lives and continue the current day after running out — placeholder, not balanced.")]
-        [SerializeField] private int continueSoftMoneyCost = 250;
-
         public int ContinueGemCost => continueGemCost;
-        public int ContinueSoftMoneyCost => continueSoftMoneyCost;
+
+        // A continueSoftMoneyCost sat here until the 2026-08-30 audit, feeding a
+        // LivesManager.TryContinueWithSoftMoney whose button was never built into the
+        // Game Over prefab. The feature was declared dropped rather than deferred, so the
+        // field went with it. Removing a serialized field leaves a stale key in
+        // LivesConfig.asset until the asset is written again -- run
+        // ExpoTheExplorer > Re-serialize Data Configs (D-075).
     }
 }

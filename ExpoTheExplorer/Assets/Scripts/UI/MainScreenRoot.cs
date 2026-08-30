@@ -54,6 +54,19 @@ namespace ExpoTheExplorer.UI
         // ordering GameManager relies on, so both scenes behave identically.
         private void Awake()
         {
+            // 60 rather than the platform default, which on mobile is 30. The whole game is
+            // a finger dragging an item across a board, and a drag is the one interaction
+            // where the frame rate IS the feel -- at 30 the item visibly lags the finger.
+            // Set in both scene roots rather than once: the value survives a scene load, so
+            // in a real build MainScreen (build index 0) would be enough, but the day scene
+            // is opened directly from the Editor constantly and would otherwise run at half
+            // the shipped rate while it is being tuned. Assigning it twice costs nothing.
+            //
+            // A literal rather than a GameConfig field on purpose: the no-magic-numbers
+            // invariant governs CONTENT data -- numbers a designer tunes per Day -- and a
+            // frame-rate target is a platform setting that no Day can disagree about.
+            Application.targetFrameRate = 60;
+
             if (gameConfig == null || livesConfig == null || keyConfig == null)
             {
                 // Loud, because the failure is otherwise quiet: with no session the HUD

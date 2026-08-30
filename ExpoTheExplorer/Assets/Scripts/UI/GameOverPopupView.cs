@@ -10,8 +10,8 @@ using UnityEngine.UI;
 namespace ExpoTheExplorer.UI
 {
     // Shown once GameState.Lives hits 0 (GDD Section 6 -- Lives System /
-    // "continue" mechanic). Offers two paid continues (SoftMoney or Gems,
-    // both via LivesManager), a free Retry of the attempt, and a Main Menu
+    // "continue" mechanic). Offers ONE paid continue (Gems, via LivesManager),
+    // a free Retry of the attempt, and a Main Menu
     // button that abandons it for the main screen -- which settles the attempt
     // on the way out (earnings taken back, spending kept) rather than just
     // navigating, see GameManager.ReturnToMainScreenAbandoningDay and
@@ -121,11 +121,6 @@ namespace ExpoTheExplorer.UI
         private void Hide()
         {
             popupRoot.SetActive(false);
-        }
-
-        private void OnSoftMoneyClicked()
-        {
-            if (gameManager.LivesManager.TryContinueWithSoftMoney()) Hide();
         }
 
         private void OnGemClicked()

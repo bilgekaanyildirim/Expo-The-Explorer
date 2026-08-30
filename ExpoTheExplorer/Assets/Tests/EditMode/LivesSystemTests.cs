@@ -27,11 +27,10 @@ namespace ExpoTheExplorer.Tests.EditMode
             Object.DestroyImmediate(livesConfig);
         }
 
-        private void SetLivesConfig(int continueGemCost, int continueSoftMoneyCost)
+        private void SetLivesConfig(int continueGemCost)
         {
             var serialized = new SerializedObject(livesConfig);
             serialized.FindProperty("continueGemCost").intValue = continueGemCost;
-            serialized.FindProperty("continueSoftMoneyCost").intValue = continueSoftMoneyCost;
             serialized.ApplyModifiedPropertiesWithoutUndo();
         }
 
@@ -142,7 +141,7 @@ namespace ExpoTheExplorer.Tests.EditMode
         [Test]
         public void TryContinueWithGems_WithEnoughGems_SpendsGemsAndRefillsLivesToMaxLives_AndClearsIsAwaitingContinue()
         {
-            SetLivesConfig(continueGemCost: 5, continueSoftMoneyCost: 250);
+            SetLivesConfig(continueGemCost: 5);
             var state = new GameState(gameConfig);
             state.MaxLives = 3;
             state.Lives = 0;
@@ -161,7 +160,7 @@ namespace ExpoTheExplorer.Tests.EditMode
         [Test]
         public void TryContinueWithGems_WithoutEnoughGems_ReturnsFalse_AndSpendsNothing_AndLeavesLivesAtZero()
         {
-            SetLivesConfig(continueGemCost: 5, continueSoftMoneyCost: 250);
+            SetLivesConfig(continueGemCost: 5);
             var state = new GameState(gameConfig);
             state.Lives = 0;
             state.IsAwaitingContinue = true;
@@ -176,42 +175,14 @@ namespace ExpoTheExplorer.Tests.EditMode
             Assert.IsTrue(state.IsAwaitingContinue);
         }
 
-        [Test]
-        public void TryContinueWithSoftMoney_WithEnoughSoftMoney_SpendsSoftMoneyAndRefillsLivesToMaxLives_AndClearsIsAwaitingContinue()
-        {
-            SetLivesConfig(continueGemCost: 5, continueSoftMoneyCost: 250);
-            var state = new GameState(gameConfig);
-            state.MaxLives = 3;
-            state.Lives = 0;
-            state.IsAwaitingContinue = true;
-            state.SoftMoney = 500;
-            var manager = new LivesManager(state, livesConfig, new Wallet(state));
-
-            var result = manager.TryContinueWithSoftMoney();
-
-            Assert.IsTrue(result);
-            Assert.AreEqual(250, state.SoftMoney);
-            Assert.AreEqual(state.MaxLives, state.Lives);
-            Assert.IsFalse(state.IsAwaitingContinue);
-        }
-
-        [Test]
-        public void TryContinueWithSoftMoney_WithoutEnoughSoftMoney_ReturnsFalse_AndSpendsNothing_AndLeavesLivesAtZero()
-        {
-            SetLivesConfig(continueGemCost: 5, continueSoftMoneyCost: 250);
-            var state = new GameState(gameConfig);
-            state.Lives = 0;
-            state.IsAwaitingContinue = true;
-            state.SoftMoney = 100;
-            var manager = new LivesManager(state, livesConfig, new Wallet(state));
-
-            var result = manager.TryContinueWithSoftMoney();
-
-            Assert.IsFalse(result);
-            Assert.AreEqual(100, state.SoftMoney);
-            Assert.AreEqual(0, state.Lives);
-            Assert.IsTrue(state.IsAwaitingContinue);
-        }
+        // The two TryContinueWithSoftMoney cases that stood here are gone with the method
+        // (2026-08-30 audit). They were the ONLY thing still calling it: the SoftMoney
+        // continue's button was never built into the Game Over prefab, so the feature was
+        // reachable from this file and nowhere else, and the user's call was that it had
+        // been dropped rather than half-built. What they pinned -- spend-then-refill, and
+        // refuse-without-spending when the player cannot afford it -- is still pinned by
+        // the two TryContinueWithGems cases above, which exercise the same
+        // RefillLivesAndResume through the surviving paid path.
 
         // THE ORDER INSIDE RefillLivesAndResume, pinned from the only place it can be
         // observed: a LivesChanged subscriber (decisions.md D-103). GameState.Lives
@@ -264,7 +235,7 @@ namespace ExpoTheExplorer.Tests.EditMode
         [Test]
         public void TryContinueWithGems_ClearsIsAwaitingContinue_BeforeLivesChangedIsPublished()
         {
-            SetLivesConfig(continueGemCost: 5, continueSoftMoneyCost: 250);
+            SetLivesConfig(continueGemCost: 5);
             var state = new GameState(gameConfig);
             state.Lives = 0;
             state.IsAwaitingContinue = true;

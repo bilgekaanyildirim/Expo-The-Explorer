@@ -54,20 +54,19 @@ namespace ExpoTheExplorer.Systems.LivesSystem
             }
         }
 
-        // Spends SoftMoney to refill Lives and resume the current day (GDD
-        // Section 6). Returns false without spending anything if the player
-        // can't afford ContinueSoftMoneyCost.
-        public bool TryContinueWithSoftMoney()
-        {
-            if (!wallet.TrySpendSoftMoney(config.ContinueSoftMoneyCost)) return false;
-
-            RefillLivesAndResume();
-            return true;
-        }
-
         // Spends Gems to refill Lives and resume the current day (GDD Section
         // 6). Returns false without spending anything if the player can't
         // afford ContinueGemCost.
+        //
+        // THE ONLY PAID CONTINUE. There was a SoftMoney one beside it until the
+        // 2026-08-30 audit: GDD Section 6 and CLAUDE.md both promised "two paid
+        // continues", but the button was never in the Game Over prefab, so
+        // GameOverPopupView.OnSoftMoneyClicked was bound to nothing and this
+        // method's twin was reachable only from its own tests. The user's call
+        // was that the feature was dropped rather than half-built, so it is gone
+        // along with LivesConfig.continueSoftMoneyCost, which existed to feed it.
+        // Re-adding it is a design decision, not a bug fix -- and it needs a
+        // button in the prefab, which is the half that was missing all along.
         public bool TryContinueWithGems()
         {
             if (!wallet.TrySpendGems(config.ContinueGemCost)) return false;
