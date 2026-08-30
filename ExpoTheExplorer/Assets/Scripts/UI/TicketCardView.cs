@@ -34,6 +34,13 @@ namespace ExpoTheExplorer.UI
 
         [SerializeField] private Image background;
         [SerializeField] private TMP_Text customerNameText;
+        [Tooltip("OPTIONAL. The customer's face, drawn per ticket from TicketGenerationConfig's Customer Portraits list. " +
+                 "Wire it to a WHITE child Image INSIDE CustomerPhotoFrame, not to the frame's own Image: only .sprite and " +
+                 ".enabled are ever written here, so the frame keeps the tint the prefab author gave it and the portrait's " +
+                 "transparency lets that colour show through as the frame it is. Pointing this at the frame itself works " +
+                 "too, but then the photo REPLACES the frame instead of sitting in it, and the frame's beige would tint " +
+                 "the face. Left empty, or with no portraits authored, the frame simply stays as drawn.")]
+        [SerializeField] private Image customerPhotoImage;
         [Tooltip("Filled (Horizontal, Origin Left) Image drained by the ticket's remaining time. Sits inside the timer bar's track, which draws the outline around it.")]
         [SerializeField] private Image timerFillImage;
         [Tooltip("Inactive divider tick, cloned once per segment boundary. Must be a sibling AFTER the fill so the ticks draw over it, and anchored to the track's left edge with a vertical stretch — only its horizontal offset is moved. Keep its width equal to the track sprite's outline, or the ticks read as a different line weight.")]
@@ -118,17 +125,22 @@ namespace ExpoTheExplorer.UI
             modificationRowTemplate.gameObject.SetActive(false);
             timerDividerTemplate.gameObject.SetActive(false);
 
-            // The one optional reference on this card, and the only one whose absence
+            // The two optional references on this card, and the only ones whose absence
             // ValidateReferences deliberately does NOT fail on: that would set isValid
             // false and take the WHOLE card down — an invisible ticket — over a missing
             // decoration the card has a working degraded mode without (the paper still
-            // flashes).
+            // flashes; the photo frame still sits there as the author drew it).
             // But an unwired one is a feature that is simply not there with nothing on
             // screen to say why, so it says so here instead: once per card, at build
             // time, naming the prefab to wire rather than going quiet.
             if (dangerImage == null)
             {
                 Debug.LogWarning($"{nameof(TicketCardView)} on '{name}' has no {nameof(dangerImage)} wired — a ticket running out of time will still flash its paper, but no danger icon will appear. Wire it on the TicketCard prefab.", this);
+            }
+
+            if (customerPhotoImage == null)
+            {
+                Debug.LogWarning($"{nameof(TicketCardView)} on '{name}' has no {nameof(customerPhotoImage)} wired — tickets will still carry a customer portrait, but nothing will draw it. Wire it to a white child Image inside CustomerPhotoFrame on the TicketCard prefab.", this);
             }
 
             RebuildContent(null);
@@ -278,6 +290,7 @@ namespace ExpoTheExplorer.UI
                 canvasGroup.alpha = 0f;
 
                 customerNameText.text = string.Empty;
+                SetCustomerPhoto(null);
                 timerFillImage.fillAmount = 0f;
                 ClearTimerDividers();
                 dishImage.enabled = false;
@@ -289,6 +302,7 @@ namespace ExpoTheExplorer.UI
             canvasGroup.alpha = 1f;
 
             customerNameText.text = ticket.CustomerName;
+            SetCustomerPhoto(ticket.CustomerPortrait);
 
             var main = ticket.RequiredItems.FirstOrDefault(item => item.Category == FoodCategory.Main);
             SetDishImage(main);
@@ -433,6 +447,25 @@ namespace ExpoTheExplorer.UI
 
                 timerDividers.Add(divider);
             }
+        }
+
+        // The customer's face, in the same shape SetDishImage takes: enable when there is
+        // something to show, disable when there is not, and never touch anything else.
+        //
+        // Writes .sprite and .enabled ONLY — no colour, no alpha, no SetActive. That is
+        // the whole contract that lets CustomerPhotoFrame stay a frame: this draws into a
+        // child of it, and the frame's own authored tint is never this script's business
+        // (the same rule dangerImage follows). It also means an unauthored portrait list
+        // leaves the card exactly as it looked before D-139 rather than half-dressed.
+        //
+        // The reference is optional, so this is the one place that has to null-check it;
+        // Initialize has already said so once in the Console.
+        private void SetCustomerPhoto(Sprite portrait)
+        {
+            if (customerPhotoImage == null) return;
+
+            customerPhotoImage.sprite = portrait;
+            customerPhotoImage.enabled = portrait != null;
         }
 
         private void SetDishImage(FoodItemConfig main)

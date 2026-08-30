@@ -25,4 +25,5 @@ MonoBehaviour:
     modificationCountLambda: 2
     maxModificationCount: 10
   namesDatabase: {fileID: 4900000, guid: 1c64065cf806c4c5493057a797fe8dfb, type: 3}
+  customerPortraits: []
   upcomingQueueSize: 10

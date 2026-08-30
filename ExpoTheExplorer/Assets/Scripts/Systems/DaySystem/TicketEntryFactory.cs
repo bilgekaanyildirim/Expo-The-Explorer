@@ -19,9 +19,20 @@ namespace ExpoTheExplorer.Systems.DaySystem
                 ? ticketFactory.PickRandomCustomerName()
                 : entry.CustomerNameOverride;
 
+            // The face is drawn HERE, beside the name, because this is the path that
+            // builds the ticket the player is handed — and because the factory's random
+            // is unseeded on this path, unlike the seeded one Day generation uses
+            // (decisions.md D-139, and the note on PickRandomCustomerPortrait itself).
+            //
+            // No CustomerPortraitOverride to match CustomerNameOverride above: a Day
+            // authors names and nothing has asked it to author faces, and an override
+            // nobody sets would be a second authority for this field waiting to drift
+            // from the draw.
+            var customerPortrait = ticketFactory.PickRandomCustomerPortrait();
+
             var timeLimitSeconds = entry.TimeLimitSecondsWith(ticketRuntime);
 
-            return new Ticket(customerName, entry.PatienceType, entry.RequiredItems, entry.Modifications, timeLimitSeconds, arrivalSequence);
+            return new Ticket(customerName, entry.PatienceType, entry.RequiredItems, entry.Modifications, timeLimitSeconds, arrivalSequence, customerPortrait);
         }
     }
 }

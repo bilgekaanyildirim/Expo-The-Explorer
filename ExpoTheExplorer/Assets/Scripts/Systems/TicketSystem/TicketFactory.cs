@@ -44,6 +44,34 @@ namespace ExpoTheExplorer.Systems.TicketSystem
             return config.CustomerNames[random.Next(config.CustomerNames.Count)];
         }
 
+        // The face that goes with the name, and drawn the same way — uniformly, and
+        // independently of which name came out, since the two lists have no id to
+        // join them on (decisions.md D-139).
+        //
+        // Deliberately NOT called from Create below, which is why it is a separate
+        // method rather than a line inside it. Create is the AUTHORING path, and
+        // DayContentGenerator hands this factory a SEEDED System.Random: one more draw
+        // inside Create would shift that stream, so every already-generated Day would
+        // re-roll to different content for the same seed. The played ticket is built by
+        // TicketEntryFactory off the runtime factory, which is unseeded, and that is
+        // where this is called from.
+        //
+        // Answers null on an unauthored list instead of throwing (see
+        // TicketGenerationConfig.CustomerPortraits): a nameless customer is a broken
+        // ticket, a faceless one is just the card as it looked before portraits existed.
+        //
+        // UnityEngine.Sprite is spelled out rather than imported: this file's `random`
+        // field is a System.Random, and a `using UnityEngine` here would make the bare
+        // name Random ambiguous against UnityEngine.Random in every one of the dozen
+        // places below that use it.
+        public UnityEngine.Sprite PickRandomCustomerPortrait()
+        {
+            var portraits = config.CustomerPortraits;
+            return portraits == null || portraits.Count == 0
+                ? null
+                : portraits[random.Next(portraits.Count)];
+        }
+
         public Ticket Create(IReadOnlyList<FoodItemConfig> pool, string customerName, PatienceType patienceType)
         {
             var mains = pool.Where(item => item.Category == FoodCategory.Main).ToList();

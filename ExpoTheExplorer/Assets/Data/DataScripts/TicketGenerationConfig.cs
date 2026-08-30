@@ -100,6 +100,15 @@ namespace ExpoTheExplorer.Data
 
         private IReadOnlyList<string> namesFromDatabase;
 
+        [Header("Customer Portraits")]
+        [Tooltip("Faces drawn for a ticket's customer photo frame (Assets/Art/Characters). Drawn INDEPENDENTLY of the " +
+                 "name — there is no id lining the two up, since the names database holds hundreds of entries and this " +
+                 "list holds a couple of dozen faces, so two tickets can wear the same face exactly as they can already " +
+                 "wear the same name. Leave it empty and every ticket gets a null portrait, which leaves the card's photo " +
+                 "frame as authored — this is a legal state, not a misconfiguration, and it is what the card looked like " +
+                 "before portraits existed.")]
+        [SerializeField] private List<Sprite> customerPortraits = new();
+
         [Header("Lookahead — placeholder, not balanced")]
         [Tooltip("How many tickets are pre-generated and held in a lookahead queue ahead of the 3 active slots. BoardDistributor's noise pool leaks items from these not-yet-active tickets (GDD Section 4). Must be at least 3 (TicketSlotManager clamps it).")]
         [SerializeField] private int upcomingQueueSize = 10;
@@ -115,6 +124,11 @@ namespace ExpoTheExplorer.Data
         public IReadOnlyList<string> CustomerNames =>
             namesFromDatabase ??= ParseNamesDatabase() ?? throw new InvalidOperationException(
                 $"{name}: Names Database is not assigned or contains no valid entries (see Assets/Database/names.json).");
+        // Unlike CustomerNames, this one never throws on an empty list: a missing names
+        // database means TicketFactory cannot name a customer at all, while a missing
+        // portrait list means the photo frame stays as authored — a degraded look, not a
+        // broken ticket, and the exact state the card was in before D-139.
+        public IReadOnlyList<Sprite> CustomerPortraits => customerPortraits;
         public int UpcomingQueueSize => upcomingQueueSize;
 
         // The four play-time values, packaged for the runtime (decisions.md D-005). Since
