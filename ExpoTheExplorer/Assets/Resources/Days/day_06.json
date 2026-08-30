@@ -153,6 +153,22 @@
                 "useExactCell": true,
                 "x": 2,
                 "y": 2
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "hotdog",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 1,
+                "y": 3
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "cola",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 3,
+                "y": 3
             }
         ],
         "tutorial": {

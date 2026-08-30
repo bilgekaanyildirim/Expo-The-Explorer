@@ -3,14 +3,14 @@
         "dayIndex": 13,
         "ticketsRequiredForDay": 12,
         "boardDistribution": {
-            "noiseLeakCountLambda": 1.600000023841858,
+            "noiseLeakCountLambda": 1.0,
             "guaranteedTicketCountMode": "Manual",
             "guaranteedTicketCount": 2,
             "guaranteedTicketCountLambda": 1.8589999675750733,
             "earlyTicketWeightDecay": 0.5,
             "urgentTimeThresholdSeconds": 10.0,
             "leakDepth": 8,
-            "maxLeakCount": 1
+            "maxLeakCount": 2
         },
         "ticketRuntime": {
             "impatientTimeLimitSeconds": 15.0,
@@ -74,7 +74,12 @@
                 "mainItemId": "hotdog",
                 "sideItemId": "fries",
                 "drinkItemId": "fanta",
-                "modifications": [],
+                "modifications": [
+                    {
+                        "modificationId": "extraketchup",
+                        "isAddition": true
+                    }
+                ],
                 "patienceType": "Normal",
                 "customerNameOverride": "",
                 "timeLimitSecondsOverride": 0.0
@@ -115,7 +120,12 @@
                 "mainItemId": "hotdog",
                 "sideItemId": "fries",
                 "drinkItemId": "fanta",
-                "modifications": [],
+                "modifications": [
+                    {
+                        "modificationId": "extramayonnaise",
+                        "isAddition": true
+                    }
+                ],
                 "patienceType": "Patient",
                 "customerNameOverride": "",
                 "timeLimitSecondsOverride": 0.0
@@ -153,7 +163,11 @@
                 "timeLimitSecondsOverride": 0.0
             }
         ],
-        "boardTimeline": []
+        "boardTimeline": [],
+        "tutorial": {
+            "enabled": false,
+            "steps": []
+        }
     },
     "editorMeta": {
         "allowedFoodItemIds": [
