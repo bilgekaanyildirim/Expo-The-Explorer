@@ -1,4 +1,4 @@
-<!-- stamp: 2026-08-29T15:23Z source-sig:64254a4350b7 assets:53 prefabs:14 scenes:3 asmdefs:18 -->
+<!-- stamp: 2026-08-30T12:40Z source-sig:51fea8269300 assets:49 prefabs:13 scenes:2 asmdefs:18 -->
 # assetmap — asset inventory (data, prefabs, load surface, assemblies)
 
 Regenerate with `python3 .claude/hooks/build_assetmap.py`. `data-source.md`
@@ -49,8 +49,6 @@ the cost model reads the load-surface section before pricing a load.
 - ExpoTheExplorer/Assets/Data/FoodData/Beverages/Food_BluberryMilkshake.asset | type: FoodItemConfig | script: ExpoTheExplorer/Assets/Data/DataScripts/FoodItemConfig.cs
 - ExpoTheExplorer/Assets/Data/FoodData/Beverages/Food_Cola.asset | type: FoodItemConfig | script: ExpoTheExplorer/Assets/Data/DataScripts/FoodItemConfig.cs
 - ExpoTheExplorer/Assets/Data/FoodData/Beverages/Food_Fanta.asset | type: FoodItemConfig | script: ExpoTheExplorer/Assets/Data/DataScripts/FoodItemConfig.cs
-- ExpoTheExplorer/Assets/Data/FoodData/Beverages/Food_IceMatcha.asset | type: FoodItemConfig | script: ExpoTheExplorer/Assets/Data/DataScripts/FoodItemConfig.cs
-- ExpoTheExplorer/Assets/Data/FoodData/Beverages/Food_Matcha.asset | type: FoodItemConfig | script: ExpoTheExplorer/Assets/Data/DataScripts/FoodItemConfig.cs
 - ExpoTheExplorer/Assets/Data/FoodData/Beverages/Food_Sprite.asset | type: FoodItemConfig | script: ExpoTheExplorer/Assets/Data/DataScripts/FoodItemConfig.cs
 - ExpoTheExplorer/Assets/Data/FoodData/Beverages/Food_StawberryMilkshake.asset | type: FoodItemConfig | script: ExpoTheExplorer/Assets/Data/DataScripts/FoodItemConfig.cs
 - ExpoTheExplorer/Assets/Data/FoodData/Beverages/Food_StrawberryMatcha.asset | type: FoodItemConfig | script: ExpoTheExplorer/Assets/Data/DataScripts/FoodItemConfig.cs
@@ -61,13 +59,11 @@ the cost model reads the load-surface section before pricing a load.
 - ExpoTheExplorer/Assets/Data/FoodData/Burger/Mod_NoLettuce.asset | type: ModificationConfig | script: ExpoTheExplorer/Assets/Data/DataScripts/ModificationConfig.cs
 - ExpoTheExplorer/Assets/Data/FoodData/Burger/Mod_NoTomato.asset | type: ModificationConfig | script: ExpoTheExplorer/Assets/Data/DataScripts/ModificationConfig.cs
 - ExpoTheExplorer/Assets/Data/FoodData/Desserts/Food_ChocolateCookie.asset | type: FoodItemConfig | script: ExpoTheExplorer/Assets/Data/DataScripts/FoodItemConfig.cs
-- ExpoTheExplorer/Assets/Data/FoodData/Desserts/Food_ChocolateDonut.asset | type: FoodItemConfig | script: ExpoTheExplorer/Assets/Data/DataScripts/FoodItemConfig.cs
 - ExpoTheExplorer/Assets/Data/FoodData/Desserts/Food_ChocolateIceCream.asset | type: FoodItemConfig | script: ExpoTheExplorer/Assets/Data/DataScripts/FoodItemConfig.cs
 - ExpoTheExplorer/Assets/Data/FoodData/Desserts/Food_DoubleChocolateCookie.asset | type: FoodItemConfig | script: ExpoTheExplorer/Assets/Data/DataScripts/FoodItemConfig.cs
 - ExpoTheExplorer/Assets/Data/FoodData/Desserts/Food_MatchaCake.asset | type: FoodItemConfig | script: ExpoTheExplorer/Assets/Data/DataScripts/FoodItemConfig.cs
 - ExpoTheExplorer/Assets/Data/FoodData/Desserts/Food_MatchaDonut.asset | type: FoodItemConfig | script: ExpoTheExplorer/Assets/Data/DataScripts/FoodItemConfig.cs
 - ExpoTheExplorer/Assets/Data/FoodData/Desserts/Food_MatchaIceCream.asset | type: FoodItemConfig | script: ExpoTheExplorer/Assets/Data/DataScripts/FoodItemConfig.cs
-- ExpoTheExplorer/Assets/Data/FoodData/Desserts/Food_StrawberryDonut.asset | type: FoodItemConfig | script: ExpoTheExplorer/Assets/Data/DataScripts/FoodItemConfig.cs
 - ExpoTheExplorer/Assets/Data/FoodData/Desserts/Food_Sufle.asset | type: FoodItemConfig | script: ExpoTheExplorer/Assets/Data/DataScripts/FoodItemConfig.cs
 - ExpoTheExplorer/Assets/Data/FoodData/Desserts/Food_VanillaIceCream.asset | type: FoodItemConfig | script: ExpoTheExplorer/Assets/Data/DataScripts/FoodItemConfig.cs
 - ExpoTheExplorer/Assets/Data/FoodData/Hotdog/Food_Hotdog.asset | type: FoodItemConfig | script: ExpoTheExplorer/Assets/Data/DataScripts/FoodItemConfig.cs
@@ -95,7 +91,6 @@ the cost model reads the load-surface section before pricing a load.
 - ExpoTheExplorer/Assets/Prefabs/UI/TutorialPowerupIntro.prefab | variant-of: - | scripts: TutorialPowerupIntroView
 - ExpoTheExplorer/Assets/Prefabs/UI/TutorialPowerupSpotlight.prefab | variant-of: - | scripts: TutorialPowerupSpotlightView
 - ExpoTheExplorer/Assets/Prefabs/UI/TutorialStepHints.prefab | variant-of: - | scripts: TutorialStepHints
-- ExpoTheExplorer/Assets/Prefabs/UI/Tickets/TicketCard Into.prefab | variant-of: ExpoTheExplorer/Assets/Prefabs/UI/Tickets/TicketCard.prefab | scripts: -
 - ExpoTheExplorer/Assets/Prefabs/UI/Tickets/TicketCard UpDown.prefab | variant-of: ExpoTheExplorer/Assets/Prefabs/UI/Tickets/TicketCard.prefab | scripts: -
 - ExpoTheExplorer/Assets/Prefabs/UI/Tickets/TicketCard.prefab | variant-of: - | scripts: ModificationSlotView, TicketCardView, TrayFillCounterView
 
@@ -103,11 +98,10 @@ the cost model reads the load-surface section before pricing a load.
 
 - ExpoTheExplorer/Assets/Scenes/MainScreen.unity
 - ExpoTheExplorer/Assets/Scenes/SampleScene.unity
-- ExpoTheExplorer/Assets/Settings/Scenes/URP2DSceneTemplate.unity
 
 ## Runtime load surface
 
-- ExpoTheExplorer/Assets/Resources | 49 file(s) | loaded by string at runtime; ships in every build
+- ExpoTheExplorer/Assets/Resources | 47 file(s) | loaded by string at runtime; ships in every build
 - ExpoTheExplorer/Assets/StompyRobot/SRDebugger/Resources | 41 file(s) | loaded by string at runtime; ships in every build
 - ExpoTheExplorer/Assets/StompyRobot/SRDebugger/usr/Resources | 3 file(s) | loaded by string at runtime; ships in every build
 - ExpoTheExplorer/Assets/TextMesh Pro/Resources | 21 file(s) | loaded by string at runtime; ships in every build

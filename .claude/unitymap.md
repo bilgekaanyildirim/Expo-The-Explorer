@@ -1,4 +1,4 @@
-<!-- stamp: 2026-08-29T15:23Z source-sig:12400f17dc9e scenes:3 prefabs:14 generator:python-fallback status: DEGRADED 407 missing-script -->
+<!-- stamp: 2026-08-30T12:40Z source-sig:87008dc57815 scenes:2 prefabs:13 generator:python-fallback status: DEGRADED 405 missing-script -->
 # unitymap — scene and prefab structure
 
 Read this instead of opening a `.unity`/`.prefab` file. Tree indentation is
@@ -71,7 +71,7 @@ Unity menu item Tools > unity-dev > Export unitymap.
 - MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/MetaUnlockPopup.prefab | Label
 - MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/MetaUnlockPopup.prefab | MetaUnlockPopup
 - MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/MetaUnlockPopup.prefab | Panel
-- ... 244 more
+- ... 242 more
 
 ## PREFAB ExpoTheExplorer/Assets/Prefabs/Confetti.prefab   (1 object(s))
 - Confetti  [RectTransform, ParticleSystem, ParticleSystemRenderer]  refs: LightsModule=NULL, ShapeModule=NULL, SubModule=NULL, UVModule=NULL, moveWithCustomTransform=NULL
@@ -228,9 +228,6 @@ Unity menu item Tools > unity-dev > Export unitymap.
           - Buy  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1), MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:306cc8c2)]
             - Label  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
   - PowerupShopButton  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1), MISSING SCRIPT (guid:4e29b1a8)]
-
-## PREFAB ExpoTheExplorer/Assets/Prefabs/UI/Tickets/TicketCard Into.prefab   variant-of: ExpoTheExplorer/Assets/Prefabs/UI/Tickets/TicketCard.prefab   (1 object(s))
-- * TicketCard Into  (prefab instance of ExpoTheExplorer/Assets/Prefabs/UI/Tickets/TicketCard.prefab)
 
 ## PREFAB ExpoTheExplorer/Assets/Prefabs/UI/Tickets/TicketCard UpDown.prefab   variant-of: ExpoTheExplorer/Assets/Prefabs/UI/Tickets/TicketCard.prefab   (1 object(s))
 - * TicketCard UpDown  (prefab instance of ExpoTheExplorer/Assets/Prefabs/UI/Tickets/TicketCard.prefab)
@@ -464,10 +461,6 @@ Unity menu item Tools > unity-dev > Export unitymap.
 - * HUDCanvas  (prefab instance of ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab)
 - * NoKeysPopup  (prefab instance of ExpoTheExplorer/Assets/Prefabs/UI/NoKeysPopup.prefab)
 - ... 15 more object(s) not listed; regenerate with the Editor exporter for the full tree
-
-## SCENE ExpoTheExplorer/Assets/Settings/Scenes/URP2DSceneTemplate.unity   (2 object(s))
-- Main Camera  [AudioListener, MISSING SCRIPT (guid:a79441f3), Camera, Transform]
-- Global Light 2D  [MISSING SCRIPT (guid:073797af), Transform]
 
 ## Script index — component name -> codemap path
 

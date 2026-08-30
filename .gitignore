@@ -82,3 +82,4 @@ crashlytics-build.properties
 .claude/hooks/__pycache__/
 .claude/worktrees/
 .claude/**/__pycache__/
+*.slnx
