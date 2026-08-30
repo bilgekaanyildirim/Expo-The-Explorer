@@ -574,6 +574,85 @@ namespace ExpoTheExplorer.Tests.EditMode
             Assert.IsEmpty(MetaPurchase.ShopItems(location, Owned(), 0, softMoney: 10_000));
         }
 
+        // --- is there anything to buy right now -------------------------------------------
+
+        // The market button's badge asks this and nothing else, so what it must NOT be is
+        // "the shop list is non-empty" -- these first two tests are the pair that pins that
+        // difference, since the list deliberately keeps unaffordable rows.
+        [Test]
+        public void HasAffordableOffer_APropWithinReach_IsTrue()
+        {
+            var location = Location("Meta1", 0, Purchase("Bench", price: 100));
+
+            Assert.IsTrue(MetaPurchase.HasAffordableOffer(location, Owned(), 0, softMoney: 100));
+        }
+
+        [Test]
+        public void HasAffordableOffer_EverythingTooExpensive_IsFalseEvenThoughTheShopHasRows()
+        {
+            var location = Location("Meta1", 0, Purchase("Fountain", price: 400));
+
+            // The row is there to be saved for -- that is the list's job. The badge's job is
+            // to stay quiet until the saving is done.
+            Assert.IsNotEmpty(MetaPurchase.ShopItems(location, Owned(), 0, softMoney: 399));
+            Assert.IsFalse(MetaPurchase.HasAffordableOffer(location, Owned(), 0, softMoney: 399));
+        }
+
+        [Test]
+        public void HasAffordableOffer_OneAffordableAmongUnaffordable_IsTrue()
+        {
+            var location = Location(
+                "Meta1", 0, Purchase("Fountain", price: 400), Purchase("Bench", price: 50));
+
+            Assert.IsTrue(MetaPurchase.HasAffordableOffer(location, Owned(), 0, softMoney: 60));
+        }
+
+        [Test]
+        public void HasAffordableOffer_TheLastPropIsBought_GoesQuiet()
+        {
+            var location = Location("Meta1", 0, Purchase("Bench", price: 50));
+
+            // The moment after a purchase, with money still in the wallet: the badge must go
+            // off because there is nothing LEFT, not because the player is broke.
+            Assert.IsFalse(
+                MetaPurchase.HasAffordableOffer(location, Owned("Meta1.Bench"), 0, softMoney: 10_000));
+        }
+
+        [Test]
+        public void HasAffordableOffer_DayUnlockedProp_IsNotSomethingToBuy()
+        {
+            var location = Location("Meta1", 0, DayUnlocked("Fryer", 4));
+
+            // It arrives on its own day and no wallet can hurry it, so a badge over it would
+            // send the player to a shop that has never listed it.
+            Assert.IsFalse(MetaPurchase.HasAffordableOffer(location, Owned(), 0, softMoney: 10_000));
+        }
+
+        [Test]
+        public void HasAffordableOffer_AreaLockedProp_IsNotSomethingToBuy()
+        {
+            var square = Purchase("Square", price: 500, unlocksArea: true);
+            var bench = Purchase("Bench", price: 50, requiresAreaId: "Square");
+            var location = Location("Meta1", 0, square, bench);
+
+            // The bench is affordable and the square is not, and the shop hides the bench
+            // entirely until the square is owned (D-019) -- so the badge agrees with the list
+            // it is pointing at rather than promising a row that is not there.
+            Assert.IsFalse(MetaPurchase.HasAffordableOffer(location, Owned(), 0, softMoney: 60));
+
+            // ...and the moment the square IS owned, the same bench turns it on.
+            Assert.IsTrue(
+                MetaPurchase.HasAffordableOffer(location, Owned("Meta1.Square"), 0, softMoney: 60));
+        }
+
+        [Test]
+        public void HasAffordableOffer_LockedLocation_IsFalse()
+        {
+            var location = Location("Meta2", 12, Purchase("Fountain", price: 100));
+
+            Assert.IsFalse(MetaPurchase.HasAffordableOffer(location, Owned(), 0, softMoney: 10_000));
+        }
+
         // --- degenerate input ------------------------------------------------------------
 
         // Every entry point takes data straight from an asset an author is mid-way through
@@ -593,6 +672,10 @@ namespace ExpoTheExplorer.Tests.EditMode
             Assert.IsEmpty(MetaResolver.ActiveItems(null, Owned(), 0));
             Assert.IsEmpty(MetaPurchase.ShopItems(null, Owned(), 0, 0));
             Assert.AreEqual(MetaPurchaseVerdict.NotForSale, MetaPurchase.Evaluate(null, null, Owned(), 0, 0));
+
+            // The badge asks this on every screen open, before anything is certainly
+            // resolved, so a null location is its normal early state rather than a bug.
+            Assert.IsFalse(MetaPurchase.HasAffordableOffer(null, Owned(), 0, 10_000));
         }
     }
 }

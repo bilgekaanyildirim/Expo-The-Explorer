@@ -1,6 +1,8 @@
 using System.Collections;
 using System.Collections.Generic;
+using DG.Tweening;
 using ExpoTheExplorer.Bootstrap;
+using ExpoTheExplorer.Core;
 using ExpoTheExplorer.Data;
 using ExpoTheExplorer.Session;
 using ExpoTheExplorer.Systems.MetaSystem;
@@ -78,6 +80,28 @@ namespace ExpoTheExplorer.UI
         [Tooltip("Optional. A Button on the full-screen backdrop — tapping outside the sheet closes the shop. Set its Transition to None so the dim layer does not flash.")]
         [SerializeField] private Button backdropButton;
 
+        // OPTIONAL, like comingSoonLabel and for the same reason: a shop built before this
+        // existed has a null here and behaves exactly as it always did, so it stays out of
+        // ValidateReferences. A missing badge costs a nudge; making it required would make
+        // every already-built shop log an error over an ornament.
+        //
+        // A RectTransform rather than a GameObject, because the hop below moves
+        // anchoredPosition -- and asking for the type the animation needs is what makes
+        // "this must be a UI object" a thing the Inspector refuses rather than a thing that
+        // fails at runtime.
+        [Header("Can-buy badge")]
+        [Tooltip("Optional. A marker under the market button, switched on whenever this location has a prop the player can actually afford, and switched off the moment that stops being true. Hops in place while it is up.")]
+        [SerializeField] private RectTransform canBuyBadge;
+
+        [Tooltip("How far the badge hops, in UI units.")]
+        [SerializeField, Min(0f)] private float canBuyHopHeight = 16f;
+
+        [Tooltip("How long ONE hop takes, up and back down.")]
+        [SerializeField, Min(0.05f)] private float canBuyHopDuration = 0.34f;
+
+        [Tooltip("The still moment between two hops. Hop plus rest is the period the player sees.")]
+        [SerializeField, Min(0f)] private float canBuyHopRest = 1.15f;
+
         [Header("List")]
         [Tooltip("Who the player is: the wallet, the day they are on, and which props they already own. Read only — nothing here writes to it.")]
         [SerializeField] private SessionHost sessionHost;
@@ -93,6 +117,14 @@ namespace ExpoTheExplorer.UI
 
         [Tooltip("An INACTIVE row authored in the scene, cloned once per offer. Style this one and every row follows. Leave it disabled — it is a template, not the first row.")]
         [SerializeField] private MetaShopRowView rowTemplate;
+
+        // OPTIONAL on purpose, unlike everything else this list needs. A shop built before
+        // this existed has a null here and behaves exactly as it did -- an unfinished
+        // location's shop opens empty. Putting it in ValidateReferences instead would make
+        // every already-built shop log an error at Start over a label, which is a worse
+        // failure than the one it would be reporting.
+        [Tooltip("Optional. Shown INSTEAD of the list when the location being shopped has no props authored yet — the same state the Meta window warns about. Built by ExpoTheExplorer > Meta > Build Meta Shop; the words on it are yours to retype.")]
+        [SerializeField] private GameObject comingSoonLabel;
 
         [Header("Confirm popup")]
         [Tooltip("The confirm popup's root. Active only while a purchase is being previewed.")]
@@ -147,6 +179,23 @@ namespace ExpoTheExplorer.UI
         // player has since closed with their own thumb.
         private Coroutine reopenRoutine;
 
+        // The badge's hop, held so it can be killed. One sequence at a time and never two:
+        // ShowCanBuyBadge is reached from three different events, and a second sequence
+        // driving the same anchoredPosition would fight the first over a value neither owns
+        // exclusively.
+        private Sequence canBuyHop;
+
+        // The badge's authored resting height, read ONCE at Start and put back whenever the
+        // hop is killed. Captured before anything animates, so it is the position the scene
+        // was saved with rather than wherever a hop happened to be interrupted -- reading it
+        // at kill time instead would let the badge drift upward over a session.
+        private float canBuyBadgeRestY;
+
+        // The state whose SoftMoneyChanged this view is subscribed to, held so OnDestroy can
+        // unsubscribe from the same object it subscribed to rather than walking the session
+        // chain again -- by then the host may be half torn down.
+        private GameState watchedState;
+
         // Keeps the popup off the very edge when the previewed prop sits at a corner of the
         // map. Not serialized: it is a "do not touch the screen border" constant, not a look.
         private const float ScreenMargin = 24f;
@@ -163,6 +212,20 @@ namespace ExpoTheExplorer.UI
             // (D-036). An incomplete shop should be invisible, not stuck open.
             if (panel != null) panel.SetActive(false);
             if (confirmPopup != null) confirmPopup.SetActive(false);
+
+            // Same paragraph, same reason: an unfinished shop should be quiet, not nagging.
+            // A badge left on by a scene saved with it visible would pulse over a market
+            // button whose listener never got wired.
+            //
+            // The rest height is captured HERE, in the same breath, because this is the last
+            // moment it is certainly the authored one -- and unlike the two SetActive calls
+            // above it must happen even when validation then fails, or a later show would
+            // hop the badge back to zero.
+            if (canBuyBadge != null)
+            {
+                canBuyBadgeRestY = canBuyBadge.anchoredPosition.y;
+                canBuyBadge.gameObject.SetActive(false);
+            }
 
             if (!ValidateReferences()) return;
 
@@ -185,6 +248,32 @@ namespace ExpoTheExplorer.UI
             if (backdropButton != null) backdropButton.onClick.AddListener(OnCloseClicked);
             confirmBuyButton.onClick.AddListener(OnConfirmBuyClicked);
             confirmCancelButton.onClick.AddListener(ClosePreview);
+
+            // THE TWO EVENTS SetOpen CANNOT COVER. Every transition of this state machine
+            // ends in ApplyVisibility, which re-asks the badge's question -- so the screen
+            // opening, the shop opening and closing, a preview going up and coming down, and
+            // the SetOpen(false) a purchase ends on are all already handled by being
+            // transitions. What is left is the two ways the ANSWER changes while the machine
+            // sits still:
+            //
+            //   money   -- the powerup shop sells on this same screen, and the debug menu
+            //              grants here too. Subscribed to GameState rather than to either of
+            //              them, because Wallet is the single writer and its state is where
+            //              every spender already has to go through.
+            //   location -- the player walks to another location while the panel is closed,
+            //              which is precisely the window the badge is up for.
+            //
+            // Both are event-frequency and both are one bool's worth of work; neither adds
+            // anything per frame.
+            watchedState = sessionHost.Session?.State;
+            watchedState?.SoftMoneyChanged.Subscribe(OnWatchedMoneyChanged);
+            grounds.ViewedLocationChanged.Subscribe(OnViewedLocationChanged);
+
+            // The badge's first answer. Start's SetOpen(false) above ran BEFORE these
+            // subscriptions and asked it once already; this is not that call repeated for
+            // safety, it is the one that runs after Refresh has had a chance to resolve the
+            // grounds, since an unresolved ViewedLocation reads as "nothing to buy".
+            RefreshCanBuyBadge();
         }
 
         private void OnDestroy()
@@ -194,7 +283,24 @@ namespace ExpoTheExplorer.UI
             if (backdropButton != null) backdropButton.onClick.RemoveListener(OnCloseClicked);
             if (confirmBuyButton != null) confirmBuyButton.onClick.RemoveListener(OnConfirmBuyClicked);
             if (confirmCancelButton != null) confirmCancelButton.onClick.RemoveListener(ClosePreview);
+
+            watchedState?.SoftMoneyChanged.Unsubscribe(OnWatchedMoneyChanged);
+            if (grounds != null) grounds.ViewedLocationChanged.Unsubscribe(OnViewedLocationChanged);
+
+            // The tween outlives this component otherwise: DOTween holds the sequence, not
+            // the object, and a scene change during a hop would tick it against a destroyed
+            // RectTransform. SetLink covers the badge being destroyed; this covers THIS
+            // component going away while the badge does not.
+            KillCanBuyHop(restore: false);
         }
+
+        // Both discard the payload: the badge's question is re-asked in full rather than
+        // updated from what changed, because "can anything be bought" depends on the money
+        // AND the location AND what is owned, and an update from one of the three is how two
+        // answers to one question get started.
+        private void OnWatchedMoneyChanged(int softMoney) => RefreshCanBuyBadge();
+
+        private void OnViewedLocationChanged(MetaLocation location) => RefreshCanBuyBadge();
 
         private void OnMarketClicked() => SetOpen(!isOpen);
 
@@ -249,6 +355,102 @@ namespace ExpoTheExplorer.UI
             var previewing = pendingItem != null;
             panel.SetActive(isOpen && !previewing);
             confirmPopup.SetActive(previewing);
+
+            // The badge rides along on the same door, which is what makes "returning to the
+            // screen" and "a purchase just went through" cost no call sites of their own:
+            // Start closes the shop, and so does the last line of a purchase. Cheap enough to
+            // belong here -- a walk over one location's item list, on a tap.
+            RefreshCanBuyBadge();
+        }
+
+        // Visible when the player could act on it and it is not in the way: something in this
+        // location is affordable, and the sheet the button opens is not already up. Hiding it
+        // while the shop is open is not tidiness -- the market button is drawn ON TOP of the
+        // panel (see its field), so a badge that stayed would hop over the very list it was
+        // pointing at, telling the player to go somewhere they already are.
+        //
+        // NOT cached. The answer depends on the balance, the location and the owned set, and
+        // a cached bool would be a fourth place those three facts are known -- exactly the
+        // kind of second copy that starts lying after the change nobody remembered to hook.
+        private void RefreshCanBuyBadge()
+        {
+            if (canBuyBadge == null) return;
+
+            SetCanBuyBadgeVisible(!isOpen && pendingItem == null && HasSomethingToBuy());
+        }
+
+        // Asks the rules, as everything on this screen does. A null session or an unresolved
+        // location answers NO rather than being an error: both mean the screen has not
+        // finished building, and a badge that flashed on during a load would be a promise
+        // made before anything was known -- the same call RebuildRows makes one field over.
+        private bool HasSomethingToBuy()
+        {
+            var session = sessionHost.Session;
+            var location = grounds.ViewedLocation;
+            if (session == null || location == null) return false;
+
+            return MetaPurchase.HasAffordableOffer(
+                location, session.OwnedMetaItemIds, session.State.CurrentDayIndex, session.State.SoftMoney);
+        }
+
+        // Idempotent on purpose, because the three triggers overlap freely -- a purchase
+        // publishes a money change AND ends in a transition, so this runs twice in one frame
+        // for one event. Asking whether the object is already active before touching the
+        // tween is what keeps that from restarting the hop mid-air and turning a steady pulse
+        // into a stutter.
+        private void SetCanBuyBadgeVisible(bool visible)
+        {
+            if (visible == canBuyBadge.gameObject.activeSelf) return;
+
+            if (!visible)
+            {
+                KillCanBuyHop(restore: true);
+                canBuyBadge.gameObject.SetActive(false);
+                return;
+            }
+
+            canBuyBadge.gameObject.SetActive(true);
+            StartCanBuyHop();
+        }
+
+        // Hop, land, wait, hop again -- built as a sequence rather than a yoyo so the REST is
+        // part of the loop. A yoyo of the same two tweens would bounce continuously, and a
+        // badge that never stands still stops reading as "look here" and starts reading as
+        // decoration.
+        //
+        // The two eases are the shape of a jump seen from the side: leaving the ground fast
+        // and slowing at the top (OutQuad), then falling back with the opposite curve. Same
+        // pair, and the same reason, as every other hop in this project.
+        private void StartCanBuyHop()
+        {
+            KillCanBuyHop(restore: true);
+
+            // A zero hop is a legitimate authoring choice -- the badge simply appears and
+            // sits there -- so it is not a warning, but it must not become a sequence that
+            // loops forever moving nothing.
+            if (canBuyHopHeight <= 0f) return;
+
+            var half = canBuyHopDuration * 0.5f;
+
+            canBuyHop = DOTween.Sequence()
+                .Append(canBuyBadge.DOAnchorPosY(canBuyBadgeRestY + canBuyHopHeight, half).SetEase(Ease.OutQuad))
+                .Append(canBuyBadge.DOAnchorPosY(canBuyBadgeRestY, half).SetEase(Ease.InQuad))
+                .AppendInterval(canBuyHopRest)
+                .SetLoops(-1)
+                .SetLink(canBuyBadge.gameObject);
+        }
+
+        // `restore` is the difference between hiding the badge and tearing it down. Hiding
+        // puts it back on its authored line so the next show starts from the ground; teardown
+        // must not touch a transform that may already be destroyed.
+        private void KillCanBuyHop(bool restore)
+        {
+            canBuyHop?.Kill();
+            canBuyHop = null;
+
+            if (!restore || canBuyBadge == null) return;
+
+            canBuyBadge.anchoredPosition = new Vector2(canBuyBadge.anchoredPosition.x, canBuyBadgeRestY);
         }
 
         // A row's BUY. Replaces whatever was being previewed rather than refusing -- tapping
@@ -536,6 +738,26 @@ namespace ExpoTheExplorer.UI
                 return;
             }
 
+            // ASKED BEFORE MetaPurchase, not after it, and that ordering is the feature. A
+            // location with nothing authored in it yet is a fact about the CATALOG, and the
+            // catalog answers it (`HasNoItems` -- the very condition MetaCatalogValidator
+            // warns about in the Meta window). Deriving it from an empty offer list instead
+            // would fold it together with the case where the player has simply bought
+            // everything, and that player would be promised more props for a location that
+            // is finished.
+            //
+            // No id and no location count appears here: whichever location is unfinished
+            // says so, this one or the fourth one, without this file learning its name
+            // (D-015 -- nothing about the meta side is hardcoded).
+            if (location.HasNoItems)
+            {
+                if (comingSoonLabel != null) comingSoonLabel.SetActive(true);
+
+                // Nothing further to build. The rows were already cleared above, so the sheet
+                // shows the label over an empty list rather than the label over stale rows.
+                return;
+            }
+
             // The list is already filtered AND ordered by the rules layer: area-locked props
             // are gone, and what remains is affordable-first then cheapest-first (D-035). The
             // view does not re-sort or re-filter -- one authority for what a shop shows.
@@ -592,6 +814,16 @@ namespace ExpoTheExplorer.UI
                 if (row != null) Destroy(row.gameObject);
             }
             rows.Clear();
+
+            // The label goes down with the rows, because it is the list's other face rather
+            // than a thing of its own: RebuildRows raises exactly one of the two, and both
+            // are dropped here. That is what keeps "when does COMING SOON go away" a question
+            // with a single answer -- the same discipline ClosePreview enforces for the
+            // ghost, and for the same reason (D-024: a second owner is how the first shop's
+            // ghost learned to survive the panel that summoned it). It also means walking to
+            // a finished location cannot leave the previous one's label standing over its
+            // rows, since every open rebuilds through here.
+            if (comingSoonLabel != null) comingSoonLabel.SetActive(false);
         }
 
         // ALL of these are REQUIRED, unlike the grounds' optional location bar: a shop with

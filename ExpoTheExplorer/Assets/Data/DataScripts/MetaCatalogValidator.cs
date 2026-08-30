@@ -117,9 +117,14 @@ namespace ExpoTheExplorer.Data
                 }
                 previousUnlockDay = location.UnlockAtDayIndex;
 
-                if (location.Items == null || location.Items.Count == 0)
+                // Through the location's own property rather than counting the list here, so
+                // this warning and the shop's COMING SOON label are driven by ONE condition.
+                // The shop reads the same property, which is what makes "if the Meta window
+                // warns about it, the player is told it is coming" true by construction
+                // instead of by two pieces of code happening to agree.
+                if (location.HasNoItems)
                 {
-                    warnings.Add($"Location '{location.Id}' has no items: it would render as a bare background.");
+                    warnings.Add($"Location '{location.Id}' has no items: it would render as a bare background, and its shop shows COMING SOON instead of a list.");
                 }
             }
 

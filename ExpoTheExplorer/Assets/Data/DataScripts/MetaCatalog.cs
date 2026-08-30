@@ -204,6 +204,21 @@ namespace ExpoTheExplorer.Data
         public int UnlockAtDayIndex => unlockAtDayIndex;
         public IReadOnlyList<MetaItemDefinition> Items => items;
 
+        // A location nobody has authored anything into yet. ONE property with TWO readers,
+        // and that is the whole point of it existing rather than each side writing
+        // `Items.Count == 0` for itself: MetaCatalogValidator warns about exactly this state
+        // in the Meta window ("it would render as a bare background"), and the shop shows its
+        // COMING SOON label for exactly this state -- so the warning the author sees while
+        // authoring and the message the player sees while playing cannot come to disagree
+        // about what "empty" means.
+        //
+        // Deliberately NOT the same question as "the shop has no offers". A location where
+        // the player has bought every prop also lists nothing, and that is a FINISHED
+        // location -- telling that player more is coming would be a promise made by an empty
+        // list rather than by anyone who authored content. This asks about the catalog, not
+        // about the save file.
+        public bool HasNoItems => items == null || items.Count == 0;
+
         public MetaLocation() { }
 
         public MetaLocation(

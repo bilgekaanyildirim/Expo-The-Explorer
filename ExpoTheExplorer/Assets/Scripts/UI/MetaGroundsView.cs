@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using DG.Tweening;
 using ExpoTheExplorer.Bootstrap;
+using ExpoTheExplorer.Core;
 using ExpoTheExplorer.Data;
 using ExpoTheExplorer.Session;
 using ExpoTheExplorer.Systems.MetaSystem;
@@ -100,6 +101,16 @@ namespace ExpoTheExplorer.UI
         [Tooltip("Assets/Prefabs/UI/MetaUnlockPopup.prefab — shown when a prop opens on its own, if that prop authors an unlock message. Built by ExpoTheExplorer > Meta > Build Meta Grounds.")]
         [SerializeField] private MetaUnlockPopup unlockPopupPrefab;
 
+        // ON TOP OF EVERYTHING HERE, unlike in the day scene, and that is the user's call
+        // rather than a default: on the main screen both beats happen with the popups already
+        // closed, so there is nothing the celebration should stay under. It is fired and left
+        // to run -- never awaited, never parented to anything this view tears down -- so a
+        // burst outlives the silhouette it was fired over and the map can carry on to the next
+        // prop underneath it. Optional and silent when empty: the map opens props perfectly
+        // well without paper falling on them.
+        [Tooltip("Optional. Assets/Prefabs/UI/CelebrationConfetti.prefab — fired when a bought prop lands and when a Day-unlocked prop finishes opening. Built by ExpoTheExplorer > Celebration > Build Confetti.")]
+        [SerializeField] private ConfettiView confettiPrefab;
+
         // A purchased prop is PLACED rather than simply present: it drops the last stretch
         // into its spot and the ground takes the hit. Every number here is feel, so it is
         // serialized next to the other feel on this component and NOT in the catalog -- D-015
@@ -126,6 +137,9 @@ namespace ExpoTheExplorer.UI
 
         [Tooltip("How many times the map swings before it settles. The swing damps to nothing across the duration, so a higher count reads as a buzz and a lower one as a single thud.")]
         [SerializeField, Min(1f)] private float placementShakeOscillations = 2f;
+
+        [Tooltip("How long the map stays zoomed on a just-bought prop watching the confetti before it travels back out. A CAP, not a delay: the zoom leaves as soon as the burst ends OR this many seconds pass, whichever comes first. Set it to the confetti's full Start Lifetime to watch the whole thing, or half of it to leave on the way down.")]
+        [SerializeField, Min(0f)] private float placementConfettiHoldSeconds = 1.5f;
 
         private readonly List<GameObject> spawnedProps = new();
 
@@ -205,16 +219,35 @@ namespace ExpoTheExplorer.UI
         // Which location the shop should be listing. D-027 deleted this property with the
         // first shop, on the grounds that an entry point with no caller reads as one that
         // is used somewhere -- so it comes back only now that MetaShopView actually reads
-        // it (Ş2). What did NOT come back is the ViewedLocationChanged event: the shop
-        // rebuilds its list every time its panel opens, and the only moment the player can
-        // walk to another location is while that panel is closed. An event would be a
-        // publisher written before its subscriber.
+        // it (Ş2). The ViewedLocationChanged event below stayed away for the same reason for
+        // just as long -- the shop rebuilds its list every time its panel opens, so a
+        // published change had nobody to tell -- and it exists now because the market
+        // button's CAN-BUY BADGE is up while the panel is closed, which is exactly the window
+        // that argument relied on being empty.
         //
         // This is also why the shop has no MetaCatalog field of its own. The catalog
         // reference stays in one place; two components free to point at two different
         // catalogs would break D-015's single-authority rule quietly.
         public MetaLocation ViewedLocation =>
             viewedIndex >= 0 && viewedIndex < unlockedLocations.Count ? unlockedLocations[viewedIndex] : null;
+
+        // Fires when the player WALKS to another location, and only then -- never on the
+        // first draw and never on a refresh that redraws the same grounds. Subscribers use it
+        // to re-ask a question whose answer is per-location; publishing it for a redraw would
+        // make "the location changed" mean "something happened", which is a signal nobody can
+        // act on precisely.
+        //
+        // Carries the location rather than being a bare ping, the same call HudWalletSource
+        // makes for its three buses: a subscriber that needs the value should not have to
+        // reach back through the publisher to get it.
+        public EventBus<MetaLocation> ViewedLocationChanged { get; } = new();
+
+        // What the last publish said, so a redraw of the same grounds stays silent. Held as
+        // the LOCATION rather than the index because the index is a position in a list that
+        // grows: earning a new location shifts nothing today (they append), but an index
+        // compared across two different `unlockedLocations` is a comparison that is only
+        // accidentally right.
+        private MetaLocation announcedLocation;
 
         // Which location the player is looking at is UI state, not saved state (K6-4): the
         // screen opens on the newest unlocked one and they walk back from there. Storing it
@@ -281,6 +314,24 @@ namespace ExpoTheExplorer.UI
             DrawBackground(location);
             DrawProps(location, session.OwnedMetaItemIds, currentDay);
             DrawLocationBar(location, currentDay);
+
+            // LAST, and only on an actual change of location -- including the FIRST one,
+            // where it changes from "nothing resolved yet" to whichever grounds the player
+            // opens on. That first publish is not a nicety: Unity does not order Start()
+            // across GameObjects, so a subscriber cannot know whether it woke before or
+            // after these grounds resolved. Publishing the first resolve means both orders
+            // end correct -- either the subscriber was already listening and is told, or it
+            // wakes later and reads ViewedLocation for itself.
+            //
+            // Announced from here rather than from Step, even though walking is what the
+            // event is FOR, because Step's clamp can land back on the location it started on
+            // and Refresh is the only place that knows what was actually drawn. A redraw of
+            // the same grounds -- a purchase, a re-open -- publishes nothing, which is what
+            // keeps "the location changed" from decaying into "something happened".
+            if (announcedLocation == location) return;
+
+            announcedLocation = location;
+            ViewedLocationChanged.Publish(location);
         }
 
         // Is a purchase still playing out on screen? True from the moment one is handed over
@@ -475,45 +526,63 @@ namespace ExpoTheExplorer.UI
                 // turned the shake off should still get the thump in the hand.
                 haptics?.Request(HapticMoment.PropLanded);
 
-                if (placementShakeSeconds <= 0f || placementShakeStrength <= 0f) yield break;
+                // The same beat, seen. Beside the haptic and ABOVE the shake guard for the
+                // identical reason: the prop has landed whether or not the ground is authored
+                // to react, so a scene with the shake turned off still gets the celebration.
+                var burst = ConfettiView.BurstOnTop(confettiPrefab);
 
-                // The map is shaken by moving the CONTENT, not the viewport. Moving the
-                // viewport would move the mask window and open a sliver of empty screen at
-                // the edges; the content carries D-046's oversized continuation layer as a
-                // child, which is exactly the art that keeps the edges covered while it
-                // moves.
-                //
-                // The offset is the content's anchoredPosition, which lives in the VIEWPORT's
-                // space and is therefore untouched by the zoom -- so the shake is a fixed
-                // number of screen units however far the map is magnified. That is the right
-                // answer here and the opposite of the drop's, and for the same principle: a
-                // camera shake is about the screen, a falling prop is about the prop.
-                //
-                // Nothing here touches the ScrollRect. It has been off since FocusOn (D-032)
-                // and RestoreFocus is what turns it back on, once the map has travelled out
-                // at the end of this method -- so the whole placement runs inside a window
-                // where scrolling is already suspended. An earlier version disabled and
-                // re-enabled it around the shake; that was dead code the moment D-049 kept
-                // the framing, and dead code that claims to own a flag is worse than none.
-                shakeBase = content.anchoredPosition;
-                shaking = true;
-
-                var shaken = 0f;
-                while (shaken < placementShakeSeconds)
+                // AN IF, NOT A BAIL-OUT, since D-134. This was `yield break`, which left the try
+                // before anything below could run -- so a scene with the shake turned off would
+                // have skipped the confetti wait at the bottom and silently kept the old
+                // zoom-out timing. A behaviour that splits on an unrelated authored number is
+                // exactly the kind of difference that hides for months.
+                if (placementShakeSeconds > 0f && placementShakeStrength > 0f)
                 {
-                    shaken += Time.unscaledDeltaTime;
-                    var t = Mathf.Clamp01(shaken / placementShakeSeconds);
+                    // The map is shaken by moving the CONTENT, not the viewport. Moving the
+                    // viewport would move the mask window and open a sliver of empty screen at
+                    // the edges; the content carries D-046's oversized continuation layer as a
+                    // child, which is exactly the art that keeps the edges covered while it
+                    // moves.
+                    //
+                    // The offset is the content's anchoredPosition, which lives in the VIEWPORT's
+                    // space and is therefore untouched by the zoom -- so the shake is a fixed
+                    // number of screen units however far the map is magnified. That is the right
+                    // answer here and the opposite of the drop's, and for the same principle: a
+                    // camera shake is about the screen, a falling prop is about the prop.
+                    //
+                    // Nothing here touches the ScrollRect. It has been off since FocusOn (D-032)
+                    // and RestoreFocus is what turns it back on, once the map has travelled out
+                    // at the end of this method -- so the whole placement runs inside a window
+                    // where scrolling is already suspended. An earlier version disabled and
+                    // re-enabled it around the shake; that was dead code the moment D-049 kept
+                    // the framing, and dead code that claims to own a flag is worse than none.
+                    shakeBase = content.anchoredPosition;
+                    shaking = true;
 
-                    // A damped swing rather than random jitter per frame: an impact has a
-                    // direction, and noise at 60fps reads as a glitch. Negative first, so the
-                    // ground gives way UNDER the prop that just hit it, and the amplitude
-                    // falls linearly to nothing so the last frame is already home.
-                    var swing = -Mathf.Sin(t * placementShakeOscillations * 2f * Mathf.PI);
-                    content.anchoredPosition =
-                        shakeBase + new Vector2(0f, swing * placementShakeStrength * (1f - t));
+                    var shaken = 0f;
+                    while (shaken < placementShakeSeconds)
+                    {
+                        shaken += Time.unscaledDeltaTime;
+                        var t = Mathf.Clamp01(shaken / placementShakeSeconds);
 
-                    yield return null;
+                        // A damped swing rather than random jitter per frame: an impact has a
+                        // direction, and noise at 60fps reads as a glitch. Negative first, so
+                        // the ground gives way UNDER the prop that just hit it, and the
+                        // amplitude falls linearly to nothing so the last frame is already home.
+                        var swing = -Mathf.Sin(t * placementShakeOscillations * 2f * Mathf.PI);
+                        content.anchoredPosition =
+                            shakeBase + new Vector2(0f, swing * placementShakeStrength * (1f - t));
+
+                        yield return null;
+                    }
                 }
+
+                // THE ZOOM WAITS FOR THE PAPER (D-134, the user's ask). ReleaseFraming is the
+                // last line of the finally below, and it is what travels the map back out --
+                // so this is the last thing that can happen while the player is still looking
+                // at the prop they just bought. Here rather than in the finally because C#
+                // forbids `yield return` inside one.
+                yield return WaitForConfetti(burst);
             }
             finally
             {
@@ -547,6 +616,40 @@ namespace ExpoTheExplorer.UI
                 // the map home anyway would undo that plan from a coroutine nobody is looking
                 // at any more.
                 if (generation == placementGeneration) ReleaseFraming();
+            }
+        }
+
+        // WHICHEVER COMES FIRST: the burst ending, or the authored hold running out.
+        //
+        // Both halves earn their place. Polling the rig — it destroys itself when its last
+        // particle dies — means a burst shorter than the hold releases the map immediately
+        // instead of parking it on an empty screen, and it needs no number at all to do that.
+        // The hold is what answers the question the particle system cannot: where the good part
+        // ENDS. A burst's tail is its slowest, sparsest seconds, and "leave while it is still
+        // falling" is a judgement about the moment, not a property of the emitter.
+        //
+        // IT IS A CAP RATHER THAN A DELAY, and that is what keeps it honest next to the
+        // lifetime it sits beside: set it past the burst and the poll wins, so the worst a stale
+        // number can do is stop mattering. It also serves as this method's softlock bound —
+        // the wait holds the map zoomed with the ScrollRect off, so an unbounded one against a
+        // particle system somebody later gives a sixty-second lifetime would strand the screen
+        // the player buys from.
+        //
+        // This landed, was reverted to the plain full-burst wait, and came back within the hour
+        // on the user's own third pass. The version that survived is the one they can settle
+        // themselves in the inspector, which is the actual lesson: the disagreement was never
+        // about the mechanism, it was about a number that has to be felt rather than argued.
+        //
+        // Unscaled, like every other clock in this file.
+        private IEnumerator WaitForConfetti(ConfettiView burst)
+        {
+            if (burst == null) yield break;
+
+            var waited = 0f;
+            while (burst != null && waited < placementConfettiHoldSeconds)
+            {
+                waited += Time.unscaledDeltaTime;
+                yield return null;
             }
         }
 
@@ -869,6 +972,15 @@ namespace ExpoTheExplorer.UI
             // -- while this one rises from silhouette to solid. Giving a gradual reveal an
             // impact haptic would describe a blow the screen never struck.
             haptics?.Request(HapticMoment.PropUnlocked);
+
+            // Fired on the same line as the buzz, and therefore on BOTH routes to an open prop
+            // -- the reveal running its course and the player tapping past it. Skipping skips
+            // the animation, not the event, so the paper flies either way.
+            //
+            // Before the hold and before the popup rather than after: the confetti IS the
+            // moment the prop opened, and paper that starts falling once the explaining popup
+            // is already up reads as a second, unrelated event.
+            ConfettiView.BurstOnTop(confettiPrefab);
 
             yield return WaitOrSkip(celebrationHoldSeconds);
 
@@ -1433,6 +1545,10 @@ namespace ExpoTheExplorer.UI
             // Back to the top: the new location's art is a different height, and leaving the
             // scroll where it was would drop the player into the middle of it.
             if (scroll != null) scroll.verticalNormalizedPosition = 1f;
+
+            // No publish here: the Refresh above has already made it, and only if the walk
+            // actually landed somewhere new. See the end of Refresh for why that is the one
+            // place that can tell.
         }
 
         private void Clear()

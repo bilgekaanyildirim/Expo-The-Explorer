@@ -36,12 +36,23 @@ namespace ExpoTheExplorer.UI.EditorTools
         private const string HeaderName = "Header";
         private const string CloseButtonName = "CloseButton";
 
-        // Labels, not content: the shop's fixed identity and the two column headings, written
-        // once into scene objects the author is free to retype. Nothing reads them back, and
-        // none of them varies per save, per Day or per location.
+        // Same rule again: a name used only when CREATING this object.
+        private const string ComingSoonName = "ComingSoon";
+
+        // Labels, not content: the shop's fixed identity, the two column headings, and what
+        // an unfinished location's shop says instead of a list — written once into scene
+        // objects the author is free to retype. Nothing reads them back, and none of them
+        // varies per save, per Day or per location.
+        //
+        // COMING SOON belongs with these rather than in MetaCatalog: WHICH locations show it
+        // is data (the catalog says which ones have no props yet, and MetaShopView asks the
+        // catalog), but the sentence itself is the same on every one of them — a fixed piece
+        // of this screen's furniture, like MARKET above it.
         private const string TitleText = "MARKET";
         private const string NameHeaderLabel = "NAME";
         private const string PriceHeaderLabel = "PRICE";
+        private const string ComingSoonText = "COMING SOON";
+        private const float ComingSoonFontSize = 42f;
 
         private const float TitleHeight = 64f;
         private const float TitleFontSize = 40f;
@@ -217,8 +228,53 @@ namespace ExpoTheExplorer.UI.EditorTools
                 added.Add(CloseButtonName);
             }
 
+            // Tested on its own, like the X and for the same reason: it has a serialized
+            // field that can be empty, so "has this part been added yet" is answerable
+            // without asking about the wrap. The property is captured rather than looked up
+            // twice, so a component older than this field is skipped instead of throwing.
+            //
+            // LAST, and after the wrap branch above, because it is placed against the
+            // viewport's rect -- and that rect is what the wrap moves down past the title and
+            // the heading row. Reading it before would put the label over both.
+            var comingSoon = serialized.FindProperty("comingSoonLabel");
+            if (comingSoon != null && comingSoon.objectReferenceValue == null)
+            {
+                comingSoon.objectReferenceValue = BuildComingSoon(sheet, viewport).gameObject;
+                added.Add(ComingSoonName);
+            }
+
             serialized.ApplyModifiedProperties();
             return added;
+        }
+
+        // What an unfinished location's shop says instead of a list. Built INACTIVE:
+        // MetaShopView raises it only for a location the catalog has no props in, and the
+        // scene's own checkbox is not the authority -- the same call every other toggled
+        // object in this step makes.
+        //
+        // It takes the VIEWPORT's rect rather than a hand-written one, which is what keeps it
+        // centred over the list however the sheet is later restyled: the list's own area is
+        // the area a "there is nothing here" message belongs in. Copied, not parented -- a
+        // child of the viewport would scroll, and a label that scrolls out of the sheet is
+        // one the player can lose.
+        private static TMP_Text BuildComingSoon(RectTransform sheet, RectTransform viewport)
+        {
+            var text = CreateText(ComingSoonName, sheet, ComingSoonFontSize);
+            text.rectTransform.anchorMin = viewport.anchorMin;
+            text.rectTransform.anchorMax = viewport.anchorMax;
+            text.rectTransform.pivot = viewport.pivot;
+            text.rectTransform.offsetMin = viewport.offsetMin;
+            text.rectTransform.offsetMax = viewport.offsetMax;
+            text.text = ComingSoonText;
+
+            // Dimmed the same amount as the column headings. This is not the shop telling the
+            // player something is wrong -- it is the shop being quiet about a place that is
+            // not finished yet, and full-strength white would read as an alert.
+            text.color = new Color(1f, 1f, 1f, 0.55f);
+
+            Undo.RegisterCreatedObjectUndo(text.gameObject, "Build Meta Shop");
+            text.gameObject.SetActive(false);
+            return text;
         }
 
         // The sheet moves INSIDE it, which is what makes the block and the list appear and

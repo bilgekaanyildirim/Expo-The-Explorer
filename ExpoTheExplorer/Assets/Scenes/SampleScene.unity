@@ -7410,6 +7410,7 @@ MonoBehaviour:
   mainMenuConfirmRoot: {fileID: 1757755799}
   mainMenuConfirmYesButton: {fileID: 818752161}
   mainMenuConfirmNoButton: {fileID: 352756468}
+  noKeysPopup: {fileID: 0}
   hapticsToggleButton: {fileID: 1253482587}
   hapticsOnIndicator: {fileID: 640318906}
   hapticsOffIndicator: {fileID: 242841320}
@@ -9726,6 +9727,7 @@ MonoBehaviour:
   goBackButton: {fileID: 1099021662}
   rewardFlight: {fileID: 1635341550}
   animConfig: {fileID: 11400000, guid: 836ace345c29845f1b25f60bb6a89488, type: 2}
+  confettiPrefab: {fileID: 6293293850659977852, guid: ca020470e09e444d6b66fc4dbdcebd28, type: 3}
 --- !u!114 &1635341550
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -10377,7 +10379,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: 'Restart this day?
 
-    Everything you have done today is lost.'
+    Everything you have done today is lost and you
+    will lose a key!'
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -10551,7 +10554,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: 'Leave this day?
 
-    This attempt''s earnings are taken back.'
+    This attempt''s earnings are taken back and you will
+    lose a key!'
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}

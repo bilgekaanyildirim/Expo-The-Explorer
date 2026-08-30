@@ -150,6 +150,26 @@ namespace ExpoTheExplorer.Tests.EditMode
             Assert.IsTrue(result.Warnings.Any(w => w.Contains("no items")));
         }
 
+        // The contract MetaShopView leans on. The warning above and the shop's COMING SOON
+        // label are the SAME question asked by two readers in two assemblies, and this is the
+        // only place that can catch them drifting apart: if someone later loosens the warning
+        // to cover, say, a location whose props are all Day-unlocked, the shop would start
+        // promising content for a location that already has some. Asserted from both ends --
+        // the property answers what the warning fires on, and stays quiet for a furnished
+        // location, which is the case that must never show the label.
+        [Test]
+        public void HasNoItems_IsExactlyWhatTheEmptyLocationWarningFiresOn()
+        {
+            var empty = new MetaLocation("Meta1", 0, new List<MetaItemDefinition>(), CreateSprite());
+            var furnished = ValidLocation("Meta2", 0, ValidPurchase());
+
+            Assert.IsTrue(empty.HasNoItems, "An empty location is the one the shop must say COMING SOON for.");
+            Assert.IsFalse(furnished.HasNoItems, "A location with a prop in it must never show the label.");
+
+            Assert.IsTrue(Validate(empty).Warnings.Any(w => w.Contains("no items")));
+            Assert.IsFalse(Validate(furnished).Warnings.Any(w => w.Contains("no items")));
+        }
+
         // --- items ----------------------------------------------------------------------
 
         [Test]

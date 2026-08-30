@@ -81,6 +81,35 @@ namespace ExpoTheExplorer.Systems.MetaSystem
             int softMoney) =>
             Evaluate(location, item, ownedKeys, currentDayIndex, softMoney) == MetaPurchaseVerdict.Ok;
 
+        // Is there anything in this location the player could walk up and buy RIGHT NOW --
+        // the question the market button's badge asks so it can nag, or stay quiet.
+        //
+        // AFFORDABLE, not merely offered, and that is the whole point of it being a separate
+        // question from ShopItems: the list deliberately KEEPS rows the player cannot pay for
+        // (seeing the price is what makes a prop worth saving for, D-019), so a badge derived
+        // from "is the list non-empty" would be lit for every player who has not bought the
+        // location out. Lit means "you can afford something", which is the only version of the
+        // signal worth interrupting anyone for.
+        //
+        // Runs Evaluate rather than re-deriving anything, so the badge and the BUY it is
+        // pointing at cannot come to different conclusions -- the same reason the commit path
+        // re-evaluates instead of trusting the row it was drawn from.
+        //
+        // Short-circuits on the first yes: a badge is a bool, and counting the rest would be
+        // work nobody reads. Callers that want the list call ShopItems.
+        public static bool HasAffordableOffer(
+            MetaLocation location, ISet<string> ownedKeys, int currentDayIndex, int softMoney)
+        {
+            if (location?.Items == null) return false;
+
+            foreach (var item in location.Items)
+            {
+                if (CanBuy(location, item, ownedKeys, currentDayIndex, softMoney)) return true;
+            }
+
+            return false;
+        }
+
         // Everything the shop should list for a location, IN THE ORDER it should list them.
         // Both halves of that are rules rather than presentation, which is why they live
         // here with the tests and not in the view.

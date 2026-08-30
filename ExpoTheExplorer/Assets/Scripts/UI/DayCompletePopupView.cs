@@ -71,6 +71,14 @@ namespace ExpoTheExplorer.UI
         [Tooltip("Optional. Read for the delay this popup waits before appearing, so the last delivery's own lift and fade is seen first. Leave it empty and the popup appears instantly.")]
         [SerializeField] private BoardAnimationConfig animConfig;
 
+        // OPTIONAL, and not in ValidateReferences at all -- not even reported, unlike
+        // rewardFlight. The flight is the payout wearing a costume, so an author who leaves it
+        // empty has lost something; this is decoration on a receipt that reads perfectly well
+        // without it, and an error in the console for a missing party trick trains people to
+        // ignore the console.
+        [Tooltip("Optional. Assets/Prefabs/UI/CelebrationConfetti.prefab — two cannons fired the moment the receipt appears. Built by ExpoTheExplorer > Celebration > Build Confetti.")]
+        [SerializeField] private ConfettiView confettiPrefab;
+
         private GameState state;
 
         private void Start()
@@ -142,6 +150,19 @@ namespace ExpoTheExplorer.UI
             }
 
             popupRoot.SetActive(true);
+
+            // UNDER THIS POPUP AND OVER EVERYTHING ELSE, which is the user's requirement and
+            // the reason this is BurstBelow rather than BurstOnTop: the receipt has to stay
+            // readable, and the rest of the day scene is what the paper is celebrating over.
+            // BurstBelow does that by sibling index, so it survives the popup being moved.
+            //
+            // AFTER SetActive, not before: it reads popupRoot's place in the canvas, and an
+            // inactive branch is skipped by the parent lookup that finds the canvas.
+            //
+            // Fired and forgotten. Nothing below waits on it, and every exit from this popup
+            // destroys the scene or the burst with it -- so tapping straight through the
+            // payout cannot leave paper hanging in the air.
+            ConfettiView.BurstBelow(confettiPrefab, popupRoot.transform as RectTransform);
 
             // The stars are no longer switched on here. Since D-057 they are SEATED, one
             // at a time, by the reward flight -- and each one that lands releases a gem

@@ -24,6 +24,8 @@ MonoBehaviour:
       sprite: {fileID: 21300000, guid: 7fc5c6a7374254b95834773072a2563b, type: 3}
       shopIcon: {fileID: 21300000, guid: 4985f0b37596b42deb3c54d7439e2fad, type: 3}
       unlock: 0
+      unlockMessage: 
+      unlockImage: {fileID: 0}
       price: 1000
       unlockAtDayIndex: 1
       normalizedPosition: {x: 0.51, y: 0.65}
@@ -36,6 +38,8 @@ MonoBehaviour:
       sprite: {fileID: 21300000, guid: 55709da23c221499b92016e7a9a7e30f, type: 3}
       shopIcon: {fileID: 21300000, guid: 7b9956ba3749a4df0b8425fc5d09c13b, type: 3}
       unlock: 0
+      unlockMessage: 
+      unlockImage: {fileID: 0}
       price: 100
       unlockAtDayIndex: 2
       normalizedPosition: {x: 0.404, y: 0.7328448}
@@ -48,6 +52,8 @@ MonoBehaviour:
       sprite: {fileID: 21300000, guid: 74519892a798841f2bcfdd279ba5e340, type: 3}
       shopIcon: {fileID: 21300000, guid: dc76479c898824eddacaf51d775c5bca, type: 3}
       unlock: 0
+      unlockMessage: 
+      unlockImage: {fileID: 0}
       price: 50
       unlockAtDayIndex: 0
       normalizedPosition: {x: 0.86193156, y: 0.68225783}
@@ -60,6 +66,8 @@ MonoBehaviour:
       sprite: {fileID: 21300000, guid: a7d6a9ed437e14bf3af4c0abe5761bc1, type: 3}
       shopIcon: {fileID: 21300000, guid: 186e7a20903b745b7af8c3e4dfa53b7f, type: 3}
       unlock: 0
+      unlockMessage: 
+      unlockImage: {fileID: 0}
       price: 120
       unlockAtDayIndex: 0
       normalizedPosition: {x: 0.103050165, y: 0.67408985}
@@ -72,6 +80,8 @@ MonoBehaviour:
       sprite: {fileID: 21300000, guid: 9c79556fea0d942e484401a21349b2d2, type: 3}
       shopIcon: {fileID: 21300000, guid: 96012d587a73c47cfb650fc8714fb4ad, type: 3}
       unlock: 0
+      unlockMessage: 
+      unlockImage: {fileID: 0}
       price: 30
       unlockAtDayIndex: 0
       normalizedPosition: {x: 0.78710204, y: 0.6384596}
@@ -84,6 +94,8 @@ MonoBehaviour:
       sprite: {fileID: 21300000, guid: 12aca5f67cee84e7ebeaf3de7fcb99e5, type: 3}
       shopIcon: {fileID: 21300000, guid: 9a1cba960bc3842578472e0a090b7819, type: 3}
       unlock: 0
+      unlockMessage: 
+      unlockImage: {fileID: 0}
       price: 150
       unlockAtDayIndex: 0
       normalizedPosition: {x: 0.76556367, y: 0.145}
@@ -96,6 +108,8 @@ MonoBehaviour:
       sprite: {fileID: 21300000, guid: a57750ee57e064facbd9ed28352b84dd, type: 3}
       shopIcon: {fileID: 21300000, guid: 9a1cba960bc3842578472e0a090b7819, type: 3}
       unlock: 0
+      unlockMessage: 
+      unlockImage: {fileID: 0}
       price: 150
       unlockAtDayIndex: 0
       normalizedPosition: {x: 0.4068196, y: 0.12}
@@ -108,6 +122,8 @@ MonoBehaviour:
       sprite: {fileID: 21300000, guid: 36eea32a064c04e0fb1f437c08db4398, type: 3}
       shopIcon: {fileID: 21300000, guid: 263e2ed76130e429db8e08086d7bf91a, type: 3}
       unlock: 0
+      unlockMessage: 
+      unlockImage: {fileID: 0}
       price: 200
       unlockAtDayIndex: 0
       normalizedPosition: {x: 0.45340985, y: 0.8017242}
@@ -120,6 +136,8 @@ MonoBehaviour:
       sprite: {fileID: 21300000, guid: 9ef0e8f1390424c90a6f8f9b25b1e40a, type: 3}
       shopIcon: {fileID: 21300000, guid: 85202693e11ad4b298d9e817ef6ab89a, type: 3}
       unlock: 0
+      unlockMessage: 
+      unlockImage: {fileID: 0}
       price: 75
       unlockAtDayIndex: 0
       normalizedPosition: {x: 0.5, y: 0.08}
@@ -132,6 +150,8 @@ MonoBehaviour:
       sprite: {fileID: 21300000, guid: 91d4576f0516049138a55183d9390802, type: 3}
       shopIcon: {fileID: 21300000, guid: 3e0951151473246dd851bf18acd9607a, type: 3}
       unlock: 0
+      unlockMessage: 
+      unlockImage: {fileID: 0}
       price: 500
       unlockAtDayIndex: 0
       normalizedPosition: {x: 0.5, y: 0.2}
@@ -144,6 +164,8 @@ MonoBehaviour:
       sprite: {fileID: 21300000, guid: efd29483535de4b3381f5ede60fa62df, type: 3}
       shopIcon: {fileID: 21300000, guid: 7f3ac30c8a31e46339d677c92f998a19, type: 3}
       unlock: 0
+      unlockMessage: 
+      unlockImage: {fileID: 0}
       price: 60
       unlockAtDayIndex: 0
       normalizedPosition: {x: 0.7551746, y: 0.29308453}
@@ -156,6 +178,8 @@ MonoBehaviour:
       sprite: {fileID: 21300000, guid: 7450436f8bf2d447daad8b8c464400c2, type: 3}
       shopIcon: {fileID: 21300000, guid: 7f3ac30c8a31e46339d677c92f998a19, type: 3}
       unlock: 0
+      unlockMessage: 
+      unlockImage: {fileID: 0}
       price: 60
       unlockAtDayIndex: 0
       normalizedPosition: {x: 0.79307324, y: 0.47707692}
@@ -168,6 +192,8 @@ MonoBehaviour:
       sprite: {fileID: 21300000, guid: 9060cc4c91bd14f0482ab4b030ef3402, type: 3}
       shopIcon: {fileID: 21300000, guid: 7f3ac30c8a31e46339d677c92f998a19, type: 3}
       unlock: 0
+      unlockMessage: 
+      unlockImage: {fileID: 0}
       price: 60
       unlockAtDayIndex: 0
       normalizedPosition: {x: 0.22870068, y: 0.4760147}
@@ -180,6 +206,8 @@ MonoBehaviour:
       sprite: {fileID: 21300000, guid: 79fb5059ba05146c898cc66eceb6a5d7, type: 3}
       shopIcon: {fileID: 21300000, guid: 7f3ac30c8a31e46339d677c92f998a19, type: 3}
       unlock: 0
+      unlockMessage: 
+      unlockImage: {fileID: 0}
       price: 60
       unlockAtDayIndex: 0
       normalizedPosition: {x: 0.26805273, y: 0.2648209}
@@ -192,6 +220,8 @@ MonoBehaviour:
       sprite: {fileID: 21300000, guid: c85020536df3b4a1b88baf60740c2208, type: 3}
       shopIcon: {fileID: 21300000, guid: 1c6a0e872867a4f4a896e0a0d2c16d02, type: 3}
       unlock: 0
+      unlockMessage: 
+      unlockImage: {fileID: 0}
       price: 250
       unlockAtDayIndex: 0
       normalizedPosition: {x: 0.5029283, y: 0.36635092}
@@ -204,6 +234,8 @@ MonoBehaviour:
       sprite: {fileID: 949779574724527240, guid: 11cbd3c18951943d6a5d4d93b1a1c8ca, type: 3}
       shopIcon: {fileID: 0}
       unlock: 1
+      unlockMessage: 
+      unlockImage: {fileID: 0}
       price: 0
       unlockAtDayIndex: 0
       normalizedPosition: {x: 0.35, y: 0.7038461}
@@ -216,6 +248,8 @@ MonoBehaviour:
       sprite: {fileID: 21300000, guid: 7013cd49e5a34401a87b3a6db4b3f7c6, type: 3}
       shopIcon: {fileID: 0}
       unlock: 1
+      unlockMessage: Now you can serve drinks!!!
+      unlockImage: {fileID: 21300000, guid: f537c52041e3d40858b3a189ee962027, type: 3}
       price: 0
       unlockAtDayIndex: 3
       normalizedPosition: {x: 0.66571146, y: 0.64541924}
@@ -228,6 +262,8 @@ MonoBehaviour:
       sprite: {fileID: 21300000, guid: 92459bede654345d68b9300b77f42d74, type: 3}
       shopIcon: {fileID: 0}
       unlock: 1
+      unlockMessage: Now you can serve fries!!!
+      unlockImage: {fileID: 21300000, guid: d053bf9d019d04564af39d4b99556378, type: 3}
       price: 0
       unlockAtDayIndex: 6
       normalizedPosition: {x: 0.37850678, y: 0.7231951}
@@ -239,5 +275,5 @@ MonoBehaviour:
     displayName: meta2
     backgroundSprite: {fileID: 21300000, guid: 9fc6569daf0904c458d21e263cc67f55, type: 3}
     backgroundBgSprite: {fileID: 0}
-    unlockAtDayIndex: 29
+    unlockAtDayIndex: 20
     items: []
