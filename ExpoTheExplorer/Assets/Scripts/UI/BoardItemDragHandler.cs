@@ -82,6 +82,18 @@ namespace ExpoTheExplorer.UI
         // to exactly that, and nothing else ever writes a container's scale). The default
         // mattered -- see SettleForAutoCollect below for what reading it unset cost.
         private Vector3 homeScale = Vector3.one;
+
+        // The scale and hitbox this container has while it lives on the BOARD, snapshotted
+        // by Configure at creation — before any tray has had a chance to shrink it. They are
+        // captured rather than written as constants because BoardView owns both facts (scale
+        // one by construction, collider exactly one cell) and a second copy here would be a
+        // second authority on them. What they answer is the question homeScale cannot: a tray
+        // item's homeScale is correctly its TRAY scale (a tap that never became a drag, and a
+        // snap-back, both leave it sitting in its slot), so neither the drag's grow target nor
+        // the restore on the way back to the board can be read off it.
+        private Vector3 boardScale = Vector3.one;
+        private Vector2 boardHitSize;
+
         private float lastFingerX;
         private float lastFingerY;
         private WorldTrayView hoveredTray;
@@ -116,6 +128,10 @@ namespace ExpoTheExplorer.UI
             this.dragFeel = dragFeel;
             this.animConfig = animConfig;
             this.haptics = haptics;
+
+            boardScale = transform.localScale;
+            if (ownCollider == null) ownCollider = GetComponent<Collider2D>();
+            if (ownCollider is BoxCollider2D boxCollider) boardHitSize = boxCollider.size;
         }
 
         public void SetCell(int x, int y, BoardItem item)
@@ -182,7 +198,24 @@ namespace ExpoTheExplorer.UI
             homePosition = transform.position;
             homeScale = transform.localScale;
 
-            scaleTween = transform.DOScale(homeScale * dragFeel.pickupScaleMultiplier, dragFeel.pickupScaleDuration).SetEase(Ease.OutBack);
+            // An item picked OUT OF A TRAY is sitting at its shrunken tray scale, and it grows
+            // toward the BOARD scale rather than that one: it is on its way to a board cell or
+            // to another tray, and a tray-sized item under the finger is both hard to see and
+            // a lie about what it will be when it lands. A board item is already at boardScale,
+            // so this reads as no change at all on the ordinary path. homeScale stays what it
+            // was snapshotted as — the two readers below (a tap that never dragged, and the
+            // snap-back) both put the item back where it came from, which for a tray item is
+            // its slot, at tray scale.
+            var dragScale = currentTraySlotIndex.HasValue ? boardScale : homeScale;
+            scaleTween = transform.DOScale(dragScale * dragFeel.pickupScaleMultiplier, dragFeel.pickupScaleDuration).SetEase(Ease.OutBack);
+
+            // The tray widened this hitbox in world terms and shrank the transform under it;
+            // back at board scale it has to be a cell again, or the item would drag around a
+            // hitbox stretched to whatever the tray needed.
+            if (currentTraySlotIndex.HasValue && ownCollider is BoxCollider2D pickedUpCollider)
+            {
+                pickedUpCollider.size = boardHitSize;
+            }
 
             // Snap straight to the resting hover position (finger + offset)
             // the moment it's picked up, and remember the finger's starting
@@ -360,7 +393,16 @@ namespace ExpoTheExplorer.UI
             // that delivered (started by OnDrop too) — PlaceInSlotAndDeliver
             // has already done exactly this, and the item is on a one-way
             // trip from here: settle into the slot, then out with the tray.
-            if (!deliverySuccessInProgress)
+            // WasAcceptedByTray joins deliverySuccessInProgress here for the same reason and
+            // one turn later in the sequence: on a DIRECT tray hit, OnDrop -> PlaceInSlot ->
+            // SeatInSlot has already run by the time UGUI calls this, and SeatInSlot now
+            // starts a SCALE tween as well as a position one. Undoing the pickup grow at this
+            // point would write over the seat's own target the frame before it takes effect --
+            // once the seat owns the scale, the pickup teardown must not touch it. The
+            // fallback path below (hoveredTray.TryAcceptDrop, for a drop the pointer raycast
+            // missed) is unaffected: it runs AFTER this, so the reset lands first and the seat
+            // tween still starts from the item's board scale.
+            if (!deliverySuccessInProgress && !WasAcceptedByTray)
             {
                 scaleTween?.Kill();
                 transform.localScale = homeScale;
@@ -551,7 +593,7 @@ namespace ExpoTheExplorer.UI
         // travelMultiplier stretches the settle tween for an item AUTO-COLLECT moved
         // (D-112). Defaulted to 1, so every finger drop is unchanged and the number only
         // exists on the path that asks for it.
-        public void PlaceInSlot(Transform slotTransform, int slotIndex, float travelMultiplier = 1f)
+        public void PlaceInSlot(Transform slotTransform, int slotIndex, float seatScale, float travelMultiplier = 1f)
         {
             if (slotTransform == null) return;
 
@@ -562,7 +604,7 @@ namespace ExpoTheExplorer.UI
             // the same frame anyway.
             haptics?.Request(HapticMoment.ItemDroppedInTray);
 
-            SeatInSlot(slotTransform, slotIndex, travelMultiplier);
+            SeatInSlot(slotTransform, slotIndex, travelMultiplier, seatScale);
         }
 
         // Called by WorldTrayView.TryAcceptDrop for the drop that just COMPLETED an
@@ -584,14 +626,17 @@ namespace ExpoTheExplorer.UI
         // handed to the next ticket, so picking it back up would drag an item the model
         // no longer knows about.
         public void PlaceInSlotAndDeliver(
-            Transform slotTransform, int slotIndex, Action onSettled, float travelMultiplier = 1f)
+            Transform slotTransform, int slotIndex, Action onSettled, float seatScale, float travelMultiplier = 1f)
         {
             deliverySuccessInProgress = true;
             if (ownCollider != null) ownCollider.enabled = false;
 
             // OnEndDrag's own scale reset is skipped while deliverySuccessInProgress is
-            // set, so the pickup grow is undone here instead -- a seated item sits at
-            // its home scale like every other item in the tray.
+            // set, so the pickup grow is undone here instead. This lands the item at its
+            // pre-pickup scale, which is where the seat tween below then starts from on
+            // its way down to the tray's size -- so the delivering item shrinks into its
+            // slot exactly like every other item in the tray, rather than sitting there
+            // at board size for the whole delivery.
             scaleTween?.Kill();
             transform.localScale = homeScale;
 
@@ -604,14 +649,14 @@ namespace ExpoTheExplorer.UI
                 return;
             }
 
-            SeatInSlot(slotTransform, slotIndex, travelMultiplier).OnComplete(() => onSettled?.Invoke());
+            SeatInSlot(slotTransform, slotIndex, travelMultiplier, seatScale).OnComplete(() => onSettled?.Invoke());
         }
 
         // Reparent without letting the item jump to the slot's local zero
         // instantly — restoring its world position right after SetParent keeps
         // it exactly where it visually was, so the settle tween has an actual
         // distance to travel instead of the item just appearing already-seated.
-        private Tween SeatInSlot(Transform slotTransform, int slotIndex, float travelMultiplier)
+        private Tween SeatInSlot(Transform slotTransform, int slotIndex, float travelMultiplier, float seatScale)
         {
             currentTraySlotIndex = slotIndex;
 
@@ -621,6 +666,42 @@ namespace ExpoTheExplorer.UI
             positionTween = transform
                 .DOLocalMove(Vector3.zero, animConfig.TraySettleDuration * travelMultiplier)
                 .SetEase(Ease.OutBack);
+
+            // The scale half of the same move, and the reason a tray stopped being a pile:
+            // an item arrives at its board size, which is very nearly the size of the whole
+            // tray (one cell is ~1.09 world units against a 1.48-unit tray), so three of them
+            // could never sit apart no matter where the slots were. It rides the position
+            // tween's own duration so the item shrinks INTO its slot as one gesture.
+            //
+            // Not a fixed multiple of boardScale: the caller measured this against the tray's
+            // real world size, which is what keeps three items inside a tray whose sprite does
+            // not change with the aspect ratio while the board's cells do.
+            transform.DOScale(boardScale * seatScale, animConfig.TraySettleDuration * travelMultiplier)
+                .SetEase(Ease.OutQuad);
+
+            // The hitbox is a full CELL while the art inside it is only OverallScale of one
+            // (0.85 on nineteen of the twenty-one foods) -- the padding BoardItem applies so a
+            // board item does not touch its cell's edges. On the board that slack is free,
+            // since neighbouring cells are a cell apart. In a tray it is not: the seat scale
+            // now divides that padding out so the ART fills its authored size, which leaves a
+            // cell-sized collider standing ~18% proud of its own item and reaching into the
+            // one beside it. So the same factor is applied here, and the target lands on
+            // exactly the item the player can see.
+            //
+            // The multiplier on top is 1, deliberately. The tray is packed edge to edge, so a
+            // target bigger than its item necessarily reaches into the next item's, and two
+            // overlapping targets hand the gesture to whichever is nearest the camera rather
+            // than to the one under the finger -- the exact defect this whole feature exists
+            // to remove. Nothing is given up for it: at 0.52-0.87 world units these are
+            // 100-167px targets on a 1080-wide phone. Undone by ApplyPickupVisuals on the way
+            // back out, which restores the full cell a board item wants.
+            if (ownCollider is BoxCollider2D seatedCollider)
+            {
+                var overallScale = CurrentItem?.Config != null ? CurrentItem.Config.OverallScale : 1f;
+                if (overallScale <= 0f) overallScale = 1f;
+                seatedCollider.size = boardHitSize * (overallScale * animConfig.TrayItemHitMultiplier);
+            }
+
             return positionTween;
         }
 

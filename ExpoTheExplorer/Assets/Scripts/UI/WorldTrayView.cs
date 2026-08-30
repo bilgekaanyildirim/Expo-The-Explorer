@@ -322,18 +322,66 @@ namespace ExpoTheExplorer.UI
         // 3, matching the 3 physical slots), so an empty slot is always
         // found before this needs to fall back to the (occupied) preferred
         // slot as a last resort.
-        private Transform ResolvePlacementSlot(FoodCategory category)
+        // Returns the CATEGORY whose slot this item lands in, which is not always its own.
+        // Split out from ResolvePlacementSlot because the destination now decides two things
+        // rather than one -- where the item goes AND how big it is drawn (a tray's three
+        // places are three different sizes) -- and answering them from two separate walks of
+        // the same fallback chain is how they would eventually disagree.
+        private FoodCategory ResolvePlacementCategory(FoodCategory category)
         {
             var preferred = SlotFor(category);
-            if (preferred != null && preferred.childCount == 0) return preferred;
+            if (preferred != null && preferred.childCount == 0) return category;
 
             foreach (var fallback in OverflowOrder[category])
             {
                 var slot = SlotFor(fallback);
-                if (slot != null && slot.childCount == 0) return slot;
+                if (slot != null && slot.childCount == 0) return fallback;
             }
 
-            return preferred;
+            return category;
+        }
+
+        private Transform ResolvePlacementSlot(FoodCategory category) => SlotFor(ResolvePlacementCategory(category));
+
+        // How much an accepted item has to shrink to be a TRAY item rather than a board one,
+        // for the slot it is actually landing in (the three are three different sizes).
+        //
+        // The two sizes live in different spaces and that is the whole reason this exists. A
+        // tray is a fixed world sprite -- 1.48 x 1.09 units, inner surface about 1.18 wide --
+        // while a board item is one cell across and BoardView derives a cell from the CAMERA
+        // (1.09 units at 9:16, 1.46 at 3:4). So an item arrives at very nearly the size of the
+        // entire tray, three of them want 3.3 units of a 1.48-unit surface, and they pile up
+        // no matter where the slots sit. Nothing had ever changed a tray item's scale: the
+        // seat tween moved the item and left its size alone.
+        //
+        // Dividing an ABSOLUTE authored size by the live cell size is what makes the answer
+        // survive an aspect-ratio change. A plain multiplier of the board size tuned on a
+        // phone would overflow the tray on a tablet, where cells grow and the tray does not.
+        //
+        // Falls back to 1 -- the item's own board scale, i.e. today's behaviour -- if the
+        // board has not sized itself yet. That is a drop before BoardView's Start, which
+        // cannot happen from a finger; taking the un-shrunk item beats dividing by zero.
+        // Dividing by the item's OWN OverallScale as well as by the cell is what makes the
+        // authored number honest. A board item is not drawn at one cell: BoardItem multiplies
+        // every resolved layer by Config.OverallScale, which is 0.85 on nineteen of the
+        // twenty-one foods (0.8 and 0.9 on the other two) -- padding so an item does not touch
+        // its cell's edges. Ignoring it made every tray item 10-15% smaller than the size that
+        // asked for it (fries authored at 0.52 arriving at 0.44, the hotdog 0.78 rather than
+        // 0.87), which reads on screen as exactly what it is: gaps nobody asked for.
+        //
+        // Cancelling that padding is right for a TRAY and would be wrong for the board -- a
+        // tray has three fixed places and the art should fill them, a board cell wants the
+        // breathing room -- and the board is untouched. It also makes the two off-spec foods
+        // sit at the same size as everything else in a tray, which is what a fixed slot wants.
+        private float ResolveSeatScale(FoodCategory placementCategory, BoardItem item)
+        {
+            var cellSize = boardView != null ? boardView.CellSize : 0f;
+            if (cellSize <= 0f) return 1f;
+
+            var overallScale = item?.Config != null ? item.Config.OverallScale : 1f;
+            if (overallScale <= 0f) overallScale = 1f;
+
+            return animConfig.TrayItemWorldSizeFor(placementCategory) / (cellSize * overallScale);
         }
 
         public void OnDrop(PointerEventData eventData)
@@ -426,6 +474,12 @@ namespace ExpoTheExplorer.UI
             gameManager.Tutorial?.NotifyTrayAccepted(slotIndex);
 
             var newCount = gameManager.TrayManager.GetContents(slotIndex).Count;
+
+            // Resolved ONCE for both branches below. Where this item goes and how big it is
+            // drawn are the same answer read twice, and the slots it walks are about to gain
+            // a child, so asking again after the seat could give a different one.
+            var placement = ResolvePlacementCategory(item.Config.Category);
+
             if (newCount == 0)
             {
                 // This drop just completed the tray and TrayManager already ran
@@ -456,7 +510,8 @@ namespace ExpoTheExplorer.UI
                     deliveryInProgress = true;
                     deliveringItem = dragHandler;
                     dragHandler.PlaceInSlotAndDeliver(
-                        ResolvePlacementSlot(item.Config.Category), slotIndex, PlayDeliverySuccess, travelMultiplier);
+                        SlotFor(placement), slotIndex, PlayDeliverySuccess,
+                        ResolveSeatScale(placement, item), travelMultiplier);
                 }
                 else
                 {
@@ -465,7 +520,8 @@ namespace ExpoTheExplorer.UI
             }
             else
             {
-                dragHandler.PlaceInSlot(ResolvePlacementSlot(item.Config.Category), slotIndex, travelMultiplier);
+                dragHandler.PlaceInSlot(
+                    SlotFor(placement), slotIndex, ResolveSeatScale(placement, item), travelMultiplier);
             }
 
             lastKnownCount = newCount;

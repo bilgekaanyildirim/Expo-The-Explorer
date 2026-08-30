@@ -18,6 +18,10 @@ MonoBehaviour:
   popInJumpPower: 0.5
   autoCollectTravelMultiplier: 2
   slotClearDuration: 0.15
+  trayMainDishWorldSize: 0.83
+  traySideWorldSize: 0.53
+  trayDrinkWorldSize: 0.5
+  trayItemHitMultiplier: 1
   scatterShakeDuration: 0.5
   scatterShakeStrength: 0.3
   scatterShakeFrequency: 8

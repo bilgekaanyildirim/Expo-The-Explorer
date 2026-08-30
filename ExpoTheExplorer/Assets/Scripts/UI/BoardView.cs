@@ -45,6 +45,15 @@ namespace ExpoTheExplorer.UI
         private Camera resolvedCamera;
         private BoardItemDragHandler.DragFeelSettings dragFeel;
 
+        // The world size of one board cell, and so of one board item — every item's sprite
+        // layers are fitted to it (ApplyFittedScale) and its hitbox is exactly this square.
+        // Exposed for WorldTrayView, which has to divide by it: a tray is a fixed-size world
+        // sprite, this is camera-derived, and turning an absolute tray size into an item
+        // scale is the one place those two spaces meet. Zero until FitToCamera has run in
+        // Start; a caller reaching it before then is asking a question the camera has not
+        // answered yet, and the tray guards for it rather than dividing by zero.
+        public float CellSize => cellSize;
+
         private void Start()
         {
             board = gameManager.State.Board;
