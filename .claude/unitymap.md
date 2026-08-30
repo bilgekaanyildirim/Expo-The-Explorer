@@ -1,4 +1,4 @@
-<!-- stamp: 2026-08-30T14:30Z source-sig:d6195ea8c684 scenes:2 prefabs:13 generator:python-fallback status: DEGRADED 405 missing-script -->
+<!-- stamp: 2026-08-30T17:11Z source-sig:00fd9995d296 scenes:2 prefabs:15 generator:python-fallback status: DEGRADED 406 missing-script -->
 # unitymap — scene and prefab structure
 
 Read this instead of opening a `.unity`/`.prefab` file. Tree indentation is
@@ -71,10 +71,21 @@ Unity menu item Tools > unity-dev > Export unitymap.
 - MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/MetaUnlockPopup.prefab | Label
 - MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/MetaUnlockPopup.prefab | MetaUnlockPopup
 - MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/MetaUnlockPopup.prefab | Panel
-- ... 242 more
+- ... 246 more
 
 ## PREFAB ExpoTheExplorer/Assets/Prefabs/Confetti.prefab   (1 object(s))
 - Confetti  [RectTransform, ParticleSystem, ParticleSystemRenderer]  refs: LightsModule=NULL, ShapeModule=NULL, SubModule=NULL, UVModule=NULL, moveWithCustomTransform=NULL
+
+## PREFAB ExpoTheExplorer/Assets/Prefabs/TrayArea Variant.prefab   variant-of: ExpoTheExplorer/Assets/Prefabs/TrayArea.prefab   (4 object(s))
+- * TrayArea Variant  (prefab instance of ExpoTheExplorer/Assets/Prefabs/TrayArea.prefab)
+
+## PREFAB ExpoTheExplorer/Assets/Prefabs/TrayArea.prefab   (6 object(s))
+- TrayArea  [Transform, SpriteRenderer, BoxCollider2D, WorldTrayView]  refs: animConfig=set, boardView=NULL, drinkSlot=set, gameManager=NULL, highlightVisual=set, mainDishSlot=set, sideSlot=set, ticketCardsView=NULL, wrongVisual=set
+  - MainDishSlot  [Transform]
+  - SideSlot  [Transform]
+  - DrinkSlot  [Transform]
+  - HighlightVisual [inactive]  [Transform, SpriteRenderer]
+  - WrongVisual [inactive]  [Transform, SpriteRenderer]
 
 ## PREFAB ExpoTheExplorer/Assets/Prefabs/UI/CelebrationConfetti.prefab   variant-of: ExpoTheExplorer/Assets/Prefabs/Confetti.prefab   (9 object(s))
 - CelebrationConfetti  [Transform, ConfettiView]  refs: cannons=set, screenCanvas=set, screenImage=set, stage=set, stageCamera=set
@@ -232,12 +243,13 @@ Unity menu item Tools > unity-dev > Export unitymap.
 ## PREFAB ExpoTheExplorer/Assets/Prefabs/UI/Tickets/TicketCard UpDown.prefab   variant-of: ExpoTheExplorer/Assets/Prefabs/UI/Tickets/TicketCard.prefab   (1 object(s))
 - * TicketCard UpDown  (prefab instance of ExpoTheExplorer/Assets/Prefabs/UI/Tickets/TicketCard.prefab)
 
-## PREFAB ExpoTheExplorer/Assets/Prefabs/UI/Tickets/TicketCard.prefab   (26 object(s))
-- TicketCard  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1), TicketCardView, TrayFillCounterView, CanvasGroup]  refs: background=set, canvasGroup=set, customerNameText=set, dangerImage=set, dishImage=set, drinkImage=set, modificationRowTemplate=set, modificationsListParent=set, sideImage=set, timerDividerTemplate=set, timerFillImage=set, fillCounterText=set
+## PREFAB ExpoTheExplorer/Assets/Prefabs/UI/Tickets/TicketCard.prefab   (27 object(s))
+- TicketCard  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1), TicketCardView, TrayFillCounterView, CanvasGroup]  refs: background=set, canvasGroup=set, customerNameText=set, customerPhotoImage=set, dangerImage=set, dishImage=set, drinkImage=set, modificationRowTemplate=set, modificationsListParent=set, sideImage=set, timerDividerTemplate=set, timerFillImage=set, fillCounterText=set
   - Dish  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
   - Header  [RectTransform, CanvasRenderer]
     - CustomerName  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
     - CustomerPhotoFrame  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
+      - CustomerPhoto  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
   - Modifications  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:8a869552)]
     - Modification  [RectTransform, CanvasRenderer, ModificationSlotView, MISSING SCRIPT (guid:fe87c0e1)]  refs: background=set, directionImage=set, ingredientImage=set
       - Ingridient  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
@@ -297,7 +309,7 @@ Unity menu item Tools > unity-dev > Export unitymap.
       - Background  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
   - PlayButton  [MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, RectTransform, HapticButton]  refs: haptics=set
     - PlayButtonLabel  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
-  - MetaShop  [RectTransform, MetaShopView]  refs: backdropButton=set, closeButton=set, comingSoonLabel=set, confirmBox=set, confirmBuyButton=set, confirmCancelButton=set, confirmNameLabel=set, confirmPopup=set, confirmPriceLabel=set, grounds=set, haptics=set, marketButton=set, panel=set, rowTemplate=set, rowsParent=set, sessionHost=set
+  - MetaShop  [RectTransform, MetaShopView]  refs: backdropButton=set, canBuyBadge=set, closeButton=set, comingSoonLabel=set, confirmBox=set, confirmBuyButton=set, confirmCancelButton=set, confirmNameLabel=set, confirmPopup=set, confirmPriceLabel=set, grounds=set, haptics=set, marketButton=set, panel=set, rowTemplate=set, rowsParent=set, sessionHost=set
     - Backdrop [inactive]  [RectTransform, MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
       - Backdrop  [RectTransform, MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
         - Panel  [RectTransform, MISSING SCRIPT (guid:1aa08ab6), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
@@ -339,13 +351,7 @@ Unity menu item Tools > unity-dev > Export unitymap.
 - * NoKeysPopup  (prefab instance of ExpoTheExplorer/Assets/Prefabs/UI/NoKeysPopup.prefab)
 - * PowerupShop  (prefab instance of ExpoTheExplorer/Assets/Prefabs/UI/PowerupShop.prefab)
 
-## SCENE ExpoTheExplorer/Assets/Scenes/SampleScene.unity   (135 object(s))
-- TrayArea  [WorldTrayView, BoxCollider2D, SpriteRenderer, Transform]  refs: animConfig=set, boardView=set, drinkSlot=set, gameManager=set, highlightVisual=set, mainDishSlot=set, sideSlot=set, ticketCardsView=set, wrongVisual=set
-  - MainDishSlot  [Transform]
-  - SideSlot  [Transform]
-  - DrinkSlot  [Transform]
-  - HighlightVisual [inactive]  [SpriteRenderer, Transform]
-  - WrongVisual [inactive]  [SpriteRenderer, Transform]
+## SCENE ExpoTheExplorer/Assets/Scenes/SampleScene.unity   (120 object(s))
 - LifeLostHeart  [LifeLostHeartView, Transform]  refs: animConfig=set, slotHearts=set
 - Main Camera  [AudioListener, MISSING SCRIPT (guid:a79441f3), Camera, Transform]
 - Popup Canvas  [GameOverPopupView, MISSING SCRIPT (guid:dc42784c), MISSING SCRIPT (guid:0cd44c10), Canvas, RectTransform, NoKeysPopupView]  refs: animConfig=set, gameManager=set, gemButton=set, haptics=set, livesRefillText=set, mainMenuButton=set, noKeysPopup=set, popupRoot=set, retryButton=set, closeButton=set, countdownText=set, gemButton=set, gemCostLabel=set, haptics=set, notEnoughGemsLabel=set, popupRoot=set, sessionHost=set
@@ -393,12 +399,6 @@ Unity menu item Tools > unity-dev > Export unitymap.
           - Star3Filled  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
 - Global Light 2D  [MISSING SCRIPT (guid:073797af), Transform]
 - GameManager  [GameManager, Transform, HapticsBinder, DebugMenuBinder]  refs: autoCollectRunner=set, economyConfig=set, foodCatalog=set, gameConfig=set, haptics=set, keyConfig=set, lifeLostHeartView=set, livesConfig=set, metaCatalog=set, noiseClearRunner=set, powerupConfig=set, starScoreConfig=set, ticketGenerationConfig=set, config=set, gameManager=set, sessionHost=set, host=set, metaCatalog=set
-- TrayArea (1)  [WorldTrayView, BoxCollider2D, SpriteRenderer, Transform]  refs: animConfig=set, boardView=set, drinkSlot=set, gameManager=set, highlightVisual=set, mainDishSlot=set, sideSlot=set, ticketCardsView=set, wrongVisual=set
-  - MainDishSlot  [Transform]
-  - SideSlot  [Transform]
-  - DrinkSlot  [Transform]
-  - HighlightVisual [inactive]  [SpriteRenderer, Transform]
-  - WrongVisual [inactive]  [SpriteRenderer, Transform]
 - TicketCardsView  [TicketCardsView, Transform]  refs: animConfig=set, cardPrefab=set, cardsParent=set, gameManager=set, visualsConfig=set
 - EventSystem  [MISSING SCRIPT (guid:01614664), MISSING SCRIPT (guid:76c392e4), Transform]
 - StartingPoint  [Transform]
@@ -443,12 +443,6 @@ Unity menu item Tools > unity-dev > Export unitymap.
 - Backgroundcanvas  [MISSING SCRIPT (guid:dc42784c), MISSING SCRIPT (guid:0cd44c10), Canvas, RectTransform]
   - Background  [RectTransform, CanvasRenderer, MetaBackdropView, MISSING SCRIPT (guid:1344c3c8)]  refs: catalog=set, sessionHost=set, target=set
 - HapticReciever  [MISSING SCRIPT (guid:ceb29a83), Transform]
-- TrayArea (2)  [WorldTrayView, BoxCollider2D, SpriteRenderer, Transform]  refs: animConfig=set, boardView=set, drinkSlot=set, gameManager=set, highlightVisual=set, mainDishSlot=set, sideSlot=set, ticketCardsView=set, wrongVisual=set
-  - MainDishSlot  [Transform]
-  - SideSlot  [Transform]
-  - DrinkSlot  [Transform]
-  - HighlightVisual [inactive]  [SpriteRenderer, Transform]
-  - WrongVisual [inactive]  [SpriteRenderer, Transform]
 - ShopCanvas  [MISSING SCRIPT (guid:dc42784c), MISSING SCRIPT (guid:0cd44c10), Canvas, RectTransform]
 - InGameCanvas  [MISSING SCRIPT (guid:dc42784c), MISSING SCRIPT (guid:0cd44c10), Canvas, RectTransform]
   - UpperPanel  [RectTransform, CanvasRenderer]
@@ -456,11 +450,13 @@ Unity menu item Tools > unity-dev > Export unitymap.
   - BrokenHeart [inactive]  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
   - BrokenHeart (1) [inactive]  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
   - BrokenHeart (2) [inactive]  [MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, RectTransform]
+- * TrayArea (1)  (prefab instance of ExpoTheExplorer/Assets/Prefabs/TrayArea.prefab)
+- * TrayArea  (prefab instance of ExpoTheExplorer/Assets/Prefabs/TrayArea.prefab)
 - * PowerupShop  (prefab instance of ExpoTheExplorer/Assets/Prefabs/UI/PowerupShop.prefab)
+- * TrayArea (2)  (prefab instance of ExpoTheExplorer/Assets/Prefabs/TrayArea.prefab)
 - * TicketCard UpDown  (prefab instance of ExpoTheExplorer/Assets/Prefabs/UI/Tickets/TicketCard UpDown.prefab)
 - * HUDCanvas  (prefab instance of ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab)
 - * NoKeysPopup  (prefab instance of ExpoTheExplorer/Assets/Prefabs/UI/NoKeysPopup.prefab)
-- ... 15 more object(s) not listed; regenerate with the Editor exporter for the full tree
 
 ## Script index — component name -> codemap path
 

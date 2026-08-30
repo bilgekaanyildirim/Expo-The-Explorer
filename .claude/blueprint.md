@@ -544,6 +544,28 @@
      references -- so it was deleted with the other orphan assets (S-03). It is in git
      history if the variant is ever wanted back. -->
 - TicketCard UpDown — TicketSystem — variant-of: TicketCard — spawned by TicketCardsView
+- TrayArea — TraySystem — variant-of: - — authoring (three instances placed by hand in SampleScene)
+<!-- Became a prefab on 2026-08-30, during D-140. It had been three separate scene objects,
+     which is why the tray's three item slots had to be authored three times and why the
+     first attempt at respacing them was nine transforms. The prefab is where the tray's
+     LAYOUT lives -- MainDishSlot (-0.26, 0), SideSlot (0.38, 0.26), DrinkSlot (0.38, -0.25),
+     one BoxCollider2D (1.5 x 3.5, offset y 1.2) for the whole drop zone.
+     WHAT MUST STAY A PER-INSTANCE OVERRIDE, and the hazard the conversion already hit once:
+     slotIndex (0/1/2) and the three SCENE references -- gameManager, boardView,
+     ticketCardsView. A prefab asset cannot store a scene reference, so those read None in
+     the asset and live only on the instances. Never press Apply All / Apply Overrides from
+     a tray instance: Unity drops the scene references rather than writing them, and pushes
+     one instance's slotIndex onto all three. Two of the three trays lost exactly this when
+     the prefab was first created, and the symptom is quiet -- ValidateReferences logs, sets
+     isValid false, and that tray silently refuses every drop. Same rule, same reason, as
+     the HUDCanvas line above. -->
+- TrayArea Variant — TraySystem — variant-of: TrayArea — authoring (layout reference only, in no scene)
+<!-- Not a shipped prefab: the user built it during D-140 to eyeball the tray layout, with
+     real food sprites parented under the three slots at hand-picked scales. Those scales are
+     what BoardAnimationConfig's three tray sizes were finally set from (burger 0.07 at PPU
+     100 = 0.825 world = the 0.83 long edge, fries 0.53, cola 0.50). Keep it as the visual
+     reference for retuning them, or delete it -- nothing loads it. -->
+
 <!-- Prefab inventory filled in 2026-08-19 (D-013); it was template text until the
      HUD became the first thing deliberately SHARED between two scenes. HudCanvas is
      filed under ProgressionSystem because the wallet HUD is that system's per

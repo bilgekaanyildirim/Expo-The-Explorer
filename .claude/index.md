@@ -1,4 +1,4 @@
-<!-- stamp: 2026-08-30 systems:22 unmapped:0 unassigned-files:2 -->
+<!-- stamp: 2026-08-30 systems:22 unmapped:0 unassigned-files:12 -->
 # index — system to location, one screen
 
 Step 1 of `procedures/locate.md`: read this before anything else, and only
@@ -9,7 +9,7 @@ maps and never invents a name.
 | system | shard(s) | entry files | scenes | prefabs | data | status |
 |---|---|---|---|---|---|---|
 | BoardDistribution | core | ExpoTheExplorer/Assets/Data/DataScripts/BoardDistributionSettings.cs, ExpoTheExplorer/Assets/Scripts/Core/RequiredItemKey.cs (+4) | - | - | - | OK |
-| BoardUI | core | ExpoTheExplorer/Assets/Data/DataScripts/GameConfig.cs, ExpoTheExplorer/Assets/Scripts/Core/BoardGrid.cs (+4) | - | - | ExpoTheExplorer/Assets/Data | OK |
+| BoardUI | core, ui | ExpoTheExplorer/Assets/Data/DataScripts/GameConfig.cs, ExpoTheExplorer/Assets/Scripts/Core/BoardGrid.cs (+6) | - | - | ExpoTheExplorer/Assets/Data | OK |
 | Bootstrap | core | ExpoTheExplorer/Assets/Data/ExpoTheExplorer.Data.asmdef, ExpoTheExplorer/Assets/Scripts/Bootstrap/GameManager.cs (+10) | - | - | - | OK |
 | CelebrationSystem | ui | ExpoTheExplorer/Assets/Scripts/UI/ConfettiView.cs | - | CelebrationConfetti, Confetti | - | OK |
 | DataTooling | editor | ExpoTheExplorer/Assets/Editor/DataConfigReserializer.cs | - | - | - | OK |
@@ -26,11 +26,11 @@ maps and never invents a name.
 | PlayTesting | editor | ExpoTheExplorer/Assets/Editor/DayJumpWindow.cs | - | - | - | OK |
 | PowerupSystem | core, ui | ExpoTheExplorer/Assets/Data/DataScripts/PowerupType.cs, ExpoTheExplorer/Assets/Scripts/Systems/PowerupSystem/ExpoTheExplorer.Systems.PowerupSystem.asmdef (+8) | - | PowerupShop | ExpoTheExplorer/Assets/Data | OK |
 | ProgressionSystem | core, ui | ExpoTheExplorer/Assets/Scripts/Systems/ProgressionSystem/Wallet.cs, ExpoTheExplorer/Assets/Scripts/Systems/ProgressionSystem/DayRewardPurse.cs (+10) | - | HUDCanvas | - | OK |
-| Testing | core | ExpoTheExplorer/Assets/Tests/EditMode/ExpoTheExplorer.Tests.EditMode.asmdef, ExpoTheExplorer/Assets/Tests/EditMode/BoardGridTests.cs (+6) | - | - | - | OK |
+| Testing | core | ExpoTheExplorer/Assets/Tests/EditMode/BoardGridTests.cs, ExpoTheExplorer/Assets/Tests/EditMode/BoardItemLayerTests.cs (+5) | - | - | - | OK |
 | TicketSystem | core, ui | ExpoTheExplorer/Assets/Data/DataScripts/TicketCardVisualsConfig.cs, ExpoTheExplorer/Assets/Data/DataScripts/TicketRuntimeSettings.cs (+10) | - | TicketCard, TicketCard UpDown | ExpoTheExplorer/Assets/Data, ExpoTheExplorer/Assets/Data/FoodData/Burger, ExpoTheExplorer/Assets/Data/FoodData/Hotdog | OK |
-| TraySystem | core, ui | ExpoTheExplorer/Assets/Scripts/Systems/TraySystem/ExpoTheExplorer.Systems.TraySystem.asmdef, ExpoTheExplorer/Assets/Scripts/Systems/TraySystem/TraySlot.cs (+1) | - | - | - | OK |
+| TraySystem | core, ui | ExpoTheExplorer/Assets/Scripts/Systems/TraySystem/ExpoTheExplorer.Systems.TraySystem.asmdef, ExpoTheExplorer/Assets/Scripts/Systems/TraySystem/TraySlot.cs (+2) | - | TrayArea, TrayArea Variant | - | OK |
 | Tutorial | core, ui | ExpoTheExplorer/Assets/Scripts/Systems/Tutorial/TutorialDirector.cs, ExpoTheExplorer/Assets/Data/DataScripts/TutorialTextConfig.cs (+9) | - | TutorialPowerupIntro, TutorialPowerupSpotlight, TutorialStepHints, MainScreenTutorialWelcome, MainScreenTutorialStoreHint | ExpoTheExplorer/Assets/Data | OK |
 
 ## Gaps
-- `sys: ?` on 2 codemap line(s) — first: ExpoTheExplorer/Assets/Data/DataScripts/FoodCatalog.cs, ExpoTheExplorer/Assets/Data/DataScripts/FoodItemConfig.cs
-- 29 flagged codemap line(s) excluded from this table (STALE)
+- `sys: ?` on 12 codemap line(s) — first: ExpoTheExplorer/Assets/Data/DataScripts/FoodCatalog.cs, ExpoTheExplorer/Assets/Data/DataScripts/FoodItemConfig.cs, ExpoTheExplorer/Assets/Scripts/Simulation/AutoCollectPolicy.cs
+- 27 flagged codemap line(s) excluded from this table (STALE)

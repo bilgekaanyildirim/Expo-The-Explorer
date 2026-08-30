@@ -1,4 +1,4 @@
-<!-- stamp: 2026-08-30T14:30Z source-sig:16af3b14b84a assets:49 prefabs:13 scenes:2 asmdefs:18 -->
+<!-- stamp: 2026-08-30T19:08Z source-sig:74d8d50a9a81 assets:49 prefabs:15 scenes:2 asmdefs:19 -->
 # assetmap — asset inventory (data, prefabs, load surface, assemblies)
 
 Regenerate with `python3 .claude/hooks/build_assetmap.py`. `data-source.md`
@@ -8,9 +8,10 @@ the cost model reads the load-surface section before pricing a load.
 ## Assemblies (.asmdef) — the real compile boundary
 
 - ExpoTheExplorer/Assets/Data/ExpoTheExplorer.Data.asmdef | name: ExpoTheExplorer.Data | refs: - | platforms: all | covers: ExpoTheExplorer/Assets/Data/**
-- ExpoTheExplorer/Assets/Editor/ExpoTheExplorer.Editor.asmdef | name: ExpoTheExplorer.Editor | refs: ExpoTheExplorer.Data,ExpoTheExplorer.Core,ExpoTheExplorer.Systems.DaySystem,ExpoTheExplorer.Systems.TicketSystem,ExpoTheExplorer.Systems.ProgressionSystem | platforms: Editor | covers: ExpoTheExplorer/Assets/Editor/**
+- ExpoTheExplorer/Assets/Editor/ExpoTheExplorer.Editor.asmdef | name: ExpoTheExplorer.Editor | refs: ExpoTheExplorer.Data,ExpoTheExplorer.Core,ExpoTheExplorer.Systems.DaySystem,ExpoTheExplorer.Systems.TicketSystem,ExpoTheExplorer.Systems.ProgressionSystem,ExpoTheExplorer.Simulation | platforms: Editor | covers: ExpoTheExplorer/Assets/Editor/**
 - ExpoTheExplorer/Assets/Scripts/Core/ExpoTheExplorer.Core.asmdef | name: ExpoTheExplorer.Core | refs: ExpoTheExplorer.Data | platforms: all | covers: ExpoTheExplorer/Assets/Scripts/Core/**
 - ExpoTheExplorer/Assets/Scripts/Session/ExpoTheExplorer.Session.asmdef | name: ExpoTheExplorer.Session | refs: ExpoTheExplorer.Core,ExpoTheExplorer.Data,ExpoTheExplorer.Systems.ProgressionSystem,ExpoTheExplorer.Systems.LivesSystem,ExpoTheExplorer.Systems.KeySystem,ExpoTheExplorer.Systems.PowerupSystem | platforms: all | covers: ExpoTheExplorer/Assets/Scripts/Session/**
+- ExpoTheExplorer/Assets/Scripts/Simulation/ExpoTheExplorer.Simulation.asmdef | name: ExpoTheExplorer.Simulation | refs: ExpoTheExplorer.Core,ExpoTheExplorer.Data,ExpoTheExplorer.Systems.DaySystem,ExpoTheExplorer.Systems.TicketSystem,ExpoTheExplorer.Systems.BoardDistribution,ExpoTheExplorer.Systems.TraySystem | platforms: Editor | covers: ExpoTheExplorer/Assets/Scripts/Simulation/**
 - ExpoTheExplorer/Assets/Scripts/Systems/BoardDistribution/ExpoTheExplorer.Systems.BoardDistribution.asmdef | name: ExpoTheExplorer.Systems.BoardDistribution | refs: ExpoTheExplorer.Core,ExpoTheExplorer.Data | platforms: all | covers: ExpoTheExplorer/Assets/Scripts/Systems/BoardDistribution/**
 - ExpoTheExplorer/Assets/Scripts/Systems/DayLifecycle/ExpoTheExplorer.Systems.DayLifecycle.asmdef | name: ExpoTheExplorer.Systems.DayLifecycle | refs: ExpoTheExplorer.Core,ExpoTheExplorer.Data,ExpoTheExplorer.Systems.EconomySystem | platforms: all | covers: ExpoTheExplorer/Assets/Scripts/Systems/DayLifecycle/**
 - ExpoTheExplorer/Assets/Scripts/Systems/DaySystem/ExpoTheExplorer.Systems.DaySystem.asmdef | name: ExpoTheExplorer.Systems.DaySystem | refs: ExpoTheExplorer.Core,ExpoTheExplorer.Data,ExpoTheExplorer.Systems.TicketSystem,ExpoTheExplorer.Systems.BoardDistribution | platforms: all | covers: ExpoTheExplorer/Assets/Scripts/Systems/DaySystem/**
@@ -81,6 +82,8 @@ the cost model reads the load-surface section before pricing a load.
 ## Prefabs
 
 - ExpoTheExplorer/Assets/Prefabs/Confetti.prefab | variant-of: - | scripts: -
+- ExpoTheExplorer/Assets/Prefabs/TrayArea Variant.prefab | variant-of: ExpoTheExplorer/Assets/Prefabs/TrayArea.prefab | scripts: -
+- ExpoTheExplorer/Assets/Prefabs/TrayArea.prefab | variant-of: - | scripts: WorldTrayView
 - ExpoTheExplorer/Assets/Prefabs/UI/CelebrationConfetti.prefab | variant-of: ExpoTheExplorer/Assets/Prefabs/Confetti.prefab | scripts: ConfettiView
 - ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab | variant-of: - | scripts: PowerupShopView, DayNumberView, HapticButton, KeysView, SoftMoneyView, GemsView, PowerupBarView, AutoCollectRunner
 - ExpoTheExplorer/Assets/Prefabs/UI/MainScreenTutorialStoreHint.prefab | variant-of: - | scripts: MainScreenStoreHintPopup

@@ -1,0 +1,749 @@
+<title>Day Editor El Kitabı</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=JetBrains+Mono:wght@400;500;700&display=swap">
+
+<style>
+:root{
+  --ground:#F1F3F7;
+  --surface:#FFFFFF;
+  --surface-2:#E9ECF2;
+  --ink:#13161C;
+  --ink-soft:#5B6270;
+  --ink-faint:#868D9B;
+  --rule:#D9DDE5;
+  --rule-soft:#E6E9EF;
+  --accent:#2159C4;
+  --accent-soft:#E4ECFB;
+  --ok:#2C7147;
+  --warn:#9E6412;
+  --stop:#B33A2E;
+  --shadow:0 1px 2px rgba(19,22,28,.06);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#101218;
+    --surface:#171A21;
+    --surface-2:#1E222B;
+    --ink:#E9EBF0;
+    --ink-soft:#9DA4B2;
+    --ink-faint:#767E8D;
+    --rule:#2A2F3A;
+    --rule-soft:#22262F;
+    --accent:#74A6FF;
+    --accent-soft:#1B2740;
+    --ok:#63BE8A;
+    --warn:#D9A75F;
+    --stop:#E87B6D;
+    --shadow:0 1px 2px rgba(0,0,0,.3);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#101218;
+  --surface:#171A21;
+  --surface-2:#1E222B;
+  --ink:#E9EBF0;
+  --ink-soft:#9DA4B2;
+  --ink-faint:#767E8D;
+  --rule:#2A2F3A;
+  --rule-soft:#22262F;
+  --accent:#74A6FF;
+  --accent-soft:#1B2740;
+  --ok:#63BE8A;
+  --warn:#D9A75F;
+  --stop:#E87B6D;
+  --shadow:0 1px 2px rgba(0,0,0,.3);
+}
+
+*{box-sizing:border-box}
+body{
+  background:var(--ground);
+  color:var(--ink);
+  font-family:"Source Serif 4",Georgia,"Times New Roman",serif;
+  font-size:16.5px;
+  line-height:1.62;
+  -webkit-font-smoothing:antialiased;
+}
+.mono,code,.chip,.lbl,th,.nav a,.step-n,.toc-n{
+  font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+h1,h2,h3,h4,.brand{
+  font-family:Archivo,"Helvetica Neue",Arial,sans-serif;
+  text-wrap:balance;
+}
+
+/* ---------- shell ---------- */
+.shell{
+  display:grid;
+  grid-template-columns:250px minmax(0,1fr);
+  gap:0;
+  max-width:1180px;
+  margin:0 auto;
+  align-items:start;
+}
+.rail{
+  position:sticky;
+  top:0;
+  height:100vh;
+  overflow-y:auto;
+  padding:38px 26px 40px 28px;
+  border-right:1px solid var(--rule);
+}
+.main{
+  padding:38px 44px 120px 44px;
+  min-width:0;
+}
+@media (max-width:900px){
+  .shell{grid-template-columns:1fr}
+  .rail{position:static;height:auto;border-right:0;border-bottom:1px solid var(--rule);padding:26px 22px}
+  .main{padding:28px 22px 80px}
+}
+
+/* ---------- rail ---------- */
+.brand{
+  font-size:15px;
+  font-weight:700;
+  letter-spacing:-.01em;
+  line-height:1.25;
+  margin:0 0 4px;
+}
+.brand span{display:block;color:var(--ink-faint);font-weight:500;font-size:11px;letter-spacing:.09em;text-transform:uppercase;margin-top:7px}
+.nav{margin-top:26px;display:flex;flex-direction:column;gap:1px}
+.nav a{
+  display:grid;
+  grid-template-columns:22px 1fr;
+  gap:9px;
+  align-items:baseline;
+  font-size:12.5px;
+  line-height:1.4;
+  text-decoration:none;
+  color:var(--ink-soft);
+  padding:6px 8px 6px 4px;
+  border-radius:3px;
+}
+.nav a:hover{color:var(--ink);background:var(--surface-2)}
+.nav a:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.toc-n{color:var(--ink-faint);font-size:11px}
+.nav a:hover .toc-n{color:var(--accent)}
+
+/* ---------- masthead ---------- */
+.mast{border-bottom:2px solid var(--ink);padding-bottom:20px;margin-bottom:30px}
+.kicker{
+  font-family:"JetBrains Mono",monospace;
+  font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--accent);margin:0 0 12px;
+}
+h1{font-size:clamp(30px,4.4vw,44px);line-height:1.06;letter-spacing:-.025em;font-weight:700;margin:0 0 14px}
+.dek{font-size:18px;color:var(--ink-soft);max-width:60ch;margin:0}
+
+/* ---------- sections ---------- */
+section{margin-top:54px;scroll-margin-top:24px}
+.sec-h{display:flex;align-items:baseline;gap:12px;border-top:1px solid var(--ink);padding-top:12px;margin-bottom:6px}
+.sec-n{
+  font-family:"JetBrains Mono",monospace;font-size:11px;font-weight:700;
+  color:var(--accent);letter-spacing:.08em;padding-top:5px;
+}
+h2{font-size:25px;letter-spacing:-.02em;font-weight:700;margin:0;line-height:1.18}
+.sec-sub{color:var(--ink-soft);font-size:15px;margin:2px 0 22px;max-width:62ch}
+h3{font-size:18px;letter-spacing:-.012em;font-weight:600;margin:34px 0 8px}
+h4{font-size:13px;font-weight:600;letter-spacing:.03em;margin:26px 0 8px;color:var(--ink-soft)}
+p{max-width:66ch;margin:0 0 14px}
+ul,ol{max-width:66ch;padding-left:20px;margin:0 0 14px}
+li{margin-bottom:6px}
+a{color:var(--accent)}
+
+code{
+  font-size:.855em;
+  background:var(--surface-2);
+  padding:1.5px 5px;
+  border-radius:3px;
+  color:var(--ink);
+}
+strong{font-weight:600}
+
+/* ---------- field list ---------- */
+.fields{border-top:1px solid var(--rule);margin:18px 0 8px}
+.f{border-bottom:1px solid var(--rule-soft);padding:15px 0}
+.f-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:9px;margin-bottom:5px}
+.f-n{font-family:"JetBrains Mono",monospace;font-size:13.5px;font-weight:700;letter-spacing:-.01em}
+.chip{
+  font-size:10.5px;letter-spacing:.04em;
+  color:var(--ink-soft);
+  border:1px solid var(--rule);
+  padding:1.5px 6px;border-radius:20px;
+  font-variant-numeric:tabular-nums;
+  white-space:nowrap;
+}
+.chip.acc{color:var(--accent);border-color:var(--accent);background:var(--accent-soft)}
+.f p{margin:0 0 6px;font-size:15.5px}
+.f p:last-child{margin-bottom:0}
+.f .hint{color:var(--ink-soft);font-size:14px}
+
+/* ---------- notes ---------- */
+.note{
+  background:var(--surface);
+  border:1px solid var(--rule);
+  padding:16px 18px;
+  margin:20px 0;
+  max-width:70ch;
+  box-shadow:var(--shadow);
+}
+.lbl{
+  display:block;font-size:10.5px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;
+  margin-bottom:7px;color:var(--accent);
+}
+.note.stop{border-color:var(--stop)}
+.note.stop .lbl{color:var(--stop)}
+.note.warn .lbl{color:var(--warn)}
+.note p{margin:0;font-size:15.5px;max-width:none}
+.note p + p{margin-top:9px}
+
+/* ---------- steps ---------- */
+.steps{list-style:none;padding:0;margin:20px 0;max-width:70ch;counter-reset:s}
+.steps li{
+  display:grid;grid-template-columns:30px 1fr;gap:14px;
+  padding:13px 0;border-bottom:1px solid var(--rule-soft);margin:0;
+}
+.step-n{font-size:11.5px;font-weight:700;color:var(--accent);padding-top:5px;font-variant-numeric:tabular-nums}
+.steps b{font-family:Archivo,sans-serif;font-size:15.5px;font-weight:600;display:block;margin-bottom:2px}
+.steps p{margin:0;font-size:15px;color:var(--ink-soft);max-width:none}
+
+/* ---------- tables ---------- */
+.tw{overflow-x:auto;margin:18px 0 22px;border:1px solid var(--rule);background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:520px;font-size:14.5px}
+th{
+  text-align:left;font-size:10.5px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--ink-soft);padding:11px 14px;border-bottom:1px solid var(--rule);white-space:nowrap;
+  background:var(--surface-2);
+}
+td{padding:11px 14px;border-bottom:1px solid var(--rule-soft);vertical-align:top}
+tr:last-child td{border-bottom:0}
+td.t{font-family:"JetBrains Mono",monospace;font-size:12.5px;white-space:nowrap}
+.tag{font-family:"JetBrains Mono",monospace;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+.tag.e{color:var(--stop)}
+.tag.w{color:var(--warn)}
+
+/* ---------- anatomy diagram ---------- */
+.anat{
+  display:grid;grid-template-columns:1fr 2.1fr;gap:1px;
+  background:var(--rule);border:1px solid var(--rule);margin:22px 0;
+}
+.anat > div{background:var(--surface);padding:15px 16px}
+.anat .top{grid-column:1/-1}
+.anat h4{margin:0 0 5px;font-size:12px;color:var(--accent);letter-spacing:.08em;text-transform:uppercase;font-family:"JetBrains Mono",monospace;font-weight:700}
+.anat p{margin:0;font-size:14.5px;color:var(--ink-soft);max-width:none}
+@media (max-width:640px){.anat{grid-template-columns:1fr}}
+
+/* ---------- misc ---------- */
+.path{
+  font-family:"JetBrains Mono",monospace;font-size:13px;
+  background:var(--surface);border:1px solid var(--rule);
+  padding:10px 13px;display:inline-block;margin:6px 0 16px;
+  overflow-x:auto;max-width:100%;
+}
+.kv{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 20px}
+.kv .chip{font-size:11px;padding:3px 9px}
+hr.perf{border:0;border-top:1px dashed var(--rule);margin:34px 0}
+.end{
+  margin-top:60px;border-top:2px solid var(--ink);padding-top:16px;
+  font-size:13px;color:var(--ink-faint);font-family:"JetBrains Mono",monospace;
+}
+@media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
+
+/* ---------- print / PDF ---------- */
+@page{margin:16mm 15mm}
+@media print{
+  /* Every selector shape the dark palette uses is repeated here, so an equal-specificity
+     tie is broken by source order (this block is last) rather than lost to :not(). */
+  :root,
+  :root:not([data-theme="light"]),
+  :root[data-theme="dark"]{
+    color-scheme:light;
+    --ground:#FFFFFF;--surface:#FFFFFF;--surface-2:#F1F3F7;
+    --ink:#13161C;--ink-soft:#4C525F;--ink-faint:#767D8B;
+    --rule:#C9CED8;--rule-soft:#DFE3EA;
+    --accent:#1B4CAF;--accent-soft:#EEF3FC;
+    --ok:#25603C;--warn:#87550F;--stop:#9C3025;--shadow:none;
+  }
+  body{background:#fff !important;color:#13161C !important;font-size:10.2pt;line-height:1.5}
+  .shell{display:block;max-width:none}
+  .rail{display:none}
+  .main{padding:0}
+  .mast{padding-bottom:14px;margin-bottom:22px}
+  h1{font-size:26pt}
+  .dek{font-size:12pt}
+  h2{font-size:15pt}
+  h3{font-size:12pt;margin-top:20px}
+  section{margin-top:26px;break-before:auto}
+  .sec-h{break-after:avoid}
+  h2,h3,h4{break-after:avoid}
+  .f,.note,.steps li,.tw,.anat > div,p{break-inside:avoid}
+  .tw{overflow:visible}
+  table{min-width:0;font-size:9.4pt}
+  td.t{white-space:normal}
+  .note{box-shadow:none}
+  a{color:var(--ink);text-decoration:none}
+  .path{white-space:normal;word-break:break-all}
+  .end{break-inside:avoid}
+}
+</style>
+
+<div class="shell">
+<nav class="rail">
+  <p class="brand">Day Editor<span>Bölüm Yazma El Kitabı</span></p>
+  <div class="nav">
+    <a href="#giris"><span class="toc-n">00</span><span>Nedir, nerede</span></a>
+    <a href="#anatomi"><span class="toc-n">01</span><span>Ekranın anatomisi</span></a>
+    <a href="#akis"><span class="toc-n">02</span><span>Bir gün nasıl yapılır</span></a>
+    <a href="#day"><span class="toc-n">03</span><span>Day — kimlik ve uzunluk</span></a>
+    <a href="#food"><span class="toc-n">04</span><span>Food Selection</span></a>
+    <a href="#gen"><span class="toc-n">05</span><span>Generation Settings</span></a>
+    <a href="#seq"><span class="toc-n">06</span><span>Ticket Sequence</span></a>
+    <a href="#board"><span class="toc-n">07</span><span>Start Board</span></a>
+    <a href="#runtime"><span class="toc-n">08</span><span>Ticket Runtime</span></a>
+    <a href="#dist"><span class="toc-n">09</span><span>Board Distribution</span></a>
+    <a href="#kaydet"><span class="toc-n">10</span><span>Kaydetme ve doğrulama</span></a>
+    <a href="#test"><span class="toc-n">11</span><span>Test: Play From Day</span></a>
+    <a href="#tuzak"><span class="toc-n">12</span><span>Tuzaklar</span></a>
+  </div>
+</nav>
+
+<main class="main">
+
+<header class="mast">
+  <p class="kicker">Expo the Explorer · İçerik Üretim Aracı</p>
+  <h1>Day Editor El Kitabı</h1>
+  <p class="dek">Oyundaki her “gün”ün — siparişler, tahta, süreler, zorluk — yazıldığı ekran. Bu döküman her alanın ne yaptığını, hangi sayının oyunda neye dokunduğunu ve bir günü baştan sona nasıl kuracağını anlatır.</p>
+</header>
+
+<section id="giris">
+  <div class="sec-h"><span class="sec-n">00</span><h2>Nedir, nerede açılır</h2></div>
+  <p class="sec-sub">Bir “gün” oyunun bölümüdür: hangi siparişlerin geleceği, tahtanın nasıl açılacağı, sürelerin ne olacağı.</p>
+
+  <p>Unity’de üst menüden: <code>ExpoTheExplorer ▸ Day Editor</code>. Yanındaki <code>ExpoTheExplorer ▸ Play From Day</code> ise test aracıdır (bölüm 11).</p>
+
+  <p>Her gün diskte tek bir dosyadır:</p>
+  <div class="path">ExpoTheExplorer/Assets/Resources/Days/day_00.json … day_21.json</div>
+
+  <p>Dosya adındaki numara <strong>Day Index</strong>’tir ve oyunun oynatma sırası budur. Editörde kaydettiğin an dosya yazılır; başka hiçbir yerde günle ilgili ayar yoktur.</p>
+
+  <div class="note">
+    <span class="lbl">Temel kural</span>
+    <p>JSON dosyalarını elle açıp düzenlemeyin. Editör, dışarıda yazılmış geçersiz bir değeri kaydederken düzeltemez; oyun o günü yüklemeyi reddeder ve gün listeden düşer. Her değişiklik Day Editor üzerinden yapılmalı.</p>
+  </div>
+</section>
+
+<section id="anatomi">
+  <div class="sec-h"><span class="sec-n">01</span><h2>Ekranın anatomisi</h2></div>
+  <p class="sec-sub">Pencere üç parçadır: soldaki gün listesi, üstteki şerit, sağdaki gün içeriği.</p>
+
+  <div class="anat">
+    <div class="top">
+      <h4>Üst şerit</h4>
+      <p><strong>+ New Day</strong> yeni bir gün açar. Yanındaki beş alan (Food Catalog, Game Config, Ticket Generation Config, Ticket Card Visuals, Board Visuals) projeden otomatik bulunur — normalde dokunmazsınız. Yalnızca editör “yanlış olanı bulmuşsa” elle sürüklenir.</p>
+    </div>
+    <div>
+      <h4>Sol: gün listesi</h4>
+      <p>Bütün günler sırayla. Adının yanındaki <strong>*</strong> = kaydedilmemiş değişiklik var. Satırın sağındaki <strong>×</strong> günü siler. Satırı sürükleyip bırakmak günlerin sırasını değiştirir.</p>
+    </div>
+    <div>
+      <h4>Sağ: seçili günün içeriği</h4>
+      <p>En üstte kayıt durumu barı, altında sırayla Food Selection, Day, Generation Settings, Ticket Sequence, Start Board, Ticket Runtime, Board Distribution ve en altta Save / Duplicate / Delete.</p>
+    </div>
+  </div>
+
+  <h3>Kayıt durumu barı</h3>
+  <p>Sayfanın en tepesinde durur, çünkü Save butonu birkaç ekran aşağıdadır. Üç hâli vardır:</p>
+  <ul>
+    <li><strong style="color:var(--ok)">Saved</strong> — bu gün dosyasıyla birebir aynı.</li>
+    <li><strong style="color:var(--warn)">UNSAVED CHANGES</strong> — yaptıkların henüz diske yazılmadı.</li>
+    <li><strong style="color:var(--warn)">Never saved</strong> — bu günün henüz dosyası yok (yeni veya kopyalanmış).</li>
+  </ul>
+  <p>Yanındaki <strong>Revert Changes</strong>, son kaydetmeden bu yana yapılan her şeyi geri alır ve sorar. Pencere başlığında da <code>Day Editor*</code> görürsen kaydedilmemiş bir gün var demektir.</p>
+
+  <div class="note">
+    <span class="lbl">Kaybolmaya karşı</span>
+    <p>Kaydetmeden başka bir güne geçmeye çalışırsan editör sorar: <strong>Save</strong> / <strong>Keep Editing</strong> / <strong>Discard</strong>. Pencereyi kapatırken de sorar. Gün doğrulama hatalıysa “Save” çalışmaz ve editör hangi hatanın kaldığını söyler.</p>
+  </div>
+</section>
+
+<section id="akis">
+  <div class="sec-h"><span class="sec-n">02</span><h2>Bir gün nasıl yapılır</h2></div>
+  <p class="sec-sub">Alanlar ekranda bu sırayla dizilmiştir; çalışma sırası da budur.</p>
+
+  <ol class="steps">
+    <li><span class="step-n">01</span><div><b>Günü aç</b><p><strong>+ New Day</strong> ile sıfırdan, ya da benzer bir günü seçip <strong>Duplicate</strong> ile kopyalayarak. Kopyalamak neredeyse her zaman daha hızlıdır.</p></div></li>
+    <li><span class="step-n">02</span><div><b>Yemekleri seç — Food Selection</b><p>Bu gün hangi yemekleri servis ediyor? Buradaki seçim her şeyin havuzudur: siparişler de tahta da yalnız bunlardan kurulur.</p></div></li>
+    <li><span class="step-n">03</span><div><b>Uzunluğu yaz — Tickets Required For Day</b><p>Gün kaç siparişte biter. Bilet sayısı bununla birebir eşleşmek zorunda.</p></div></li>
+    <li><span class="step-n">04</span><div><b>Üretim ayarlarını kur — Generation Settings</b><p>Yan ürün/içecek oranı, modifikasyon yoğunluğu, sabır dağılımı, hangi ana yemeğin ne sıklıkta çıkacağı.</p></div></li>
+    <li><span class="step-n">05</span><div><b>Siparişleri üret — Generate</b><p>Yukarıdaki ayarlara göre tüm bilet sırasını yazar. Sonra kart kart elle düzeltilir.</p></div></li>
+    <li><span class="step-n">06</span><div><b>Açılış tahtasını kur — Start Board</b><p>İsteğe bağlı. Gün belirli malzemelerle açılsın istiyorsan hücrelere tıklayarak yerleştir.</p></div></li>
+    <li><span class="step-n">07</span><div><b>Süreleri ayarla — Ticket Runtime</b><p>Üç sabır tipinin saniyeleri ve kaç bilet önden hazırlanacağı.</p></div></li>
+    <li><span class="step-n">08</span><div><b>Zorluğu dengele — Board Distribution</b><p>Tahtaya ne kadar gürültü sızacak, kaç bilet garanti tamamlanabilir olacak. Bu, içerik bittikten <em>sonra</em> yapılan pas.</p></div></li>
+    <li><span class="step-n">09</span><div><b>Kaydet ve oyna</b><p><strong>Save</strong>, sonra <code>Play From Day</code> ile doğrudan o günden gir.</p></div></li>
+  </ol>
+</section>
+
+<section id="day">
+  <div class="sec-h"><span class="sec-n">03</span><h2>Day — kimlik ve uzunluk</h2></div>
+  <p class="sec-sub">İki alan; ikisi de günün iskeletidir.</p>
+
+  <div class="fields">
+    <div class="f">
+      <div class="f-h"><span class="f-n">Day Index</span><span class="chip">tam sayı</span></div>
+      <p>Günün numarası ve dosya adı. Kaydettiğinde dosya bu numaraya göre adlandırılır — numarayı değiştirip kaydetmek dosyayı yeniden adlandırır, eskisini siler.</p>
+      <p class="hint">Bu kutunun altında günün doğrulama mesajları görünür: kırmızı = hata (kaydettirmez), sarı = uyarı (kaydettirir).</p>
+    </div>
+    <div class="f">
+      <div class="f-h"><span class="f-n">Tickets Required For Day</span><span class="chip">tam sayı</span></div>
+      <p>Gün kaç sipariş tamamlanınca biter. <strong>Ticket Sequence’teki kart sayısı buna eşit olmak zorunda</strong>; değilse Save kapalı kalır ve hata mesajı iki sayıyı da yazar.</p>
+      <p class="hint">Generate bu sayı kadar bilet üretir, yani önce bunu yazmak işi kolaylaştırır.</p>
+    </div>
+  </div>
+</section>
+
+<section id="food">
+  <div class="sec-h"><span class="sec-n">04</span><h2>Food Selection</h2></div>
+  <p class="sec-sub">Bu günün menüsü. Ekranda görsel bir ızgara olarak durur.</p>
+
+  <p>Katalogdaki her yemek bir kutucuktur; tıklayınca güne girer, tekrar tıklayınca çıkar. Seçili olanlar mavi çerçeveyle işaretlenir. Üstte <strong>Select All</strong> / <strong>Clear All</strong>, her kategori satırında da <strong>All</strong> / <strong>None</strong> vardır.</p>
+
+  <p>Bu seçim üç yerin tek kaynağıdır:</p>
+  <ul>
+    <li><strong>Generate</strong> yalnız buradan sipariş kurar.</li>
+    <li>Bilet editöründeki Main / Side / Drink seçenekleri yalnız burayı gösterir.</li>
+    <li>Start Board’a yalnız buradan yemek konabilir.</li>
+  </ul>
+
+  <p>Bir <strong>Main</strong> seçtiğinde Generation Settings altındaki <strong>Main Dish Weights</strong> listesine o yemek için otomatik bir satır eklenir; seçimi kaldırınca satır kaybolur. O listeyi elle ekleyip çıkaramazsın — üyeliği bu ızgara belirler.</p>
+
+  <div class="note warn">
+    <span class="lbl">Sık karşılaşılan</span>
+    <p>Bir günde <strong>en az bir Main</strong> seçili olmalı. Yoksa Generate çalışmaz ve editör bunu açıkça söyler. Ayrıca seçimden çıkardığın bir yemek biletlerde kalmışsa doğrulama hata verir: “bu yemek bu günün seçiminde değil”.</p>
+  </div>
+</section>
+
+<section id="gen">
+  <div class="sec-h"><span class="sec-n">05</span><h2>Generation Settings</h2></div>
+  <p class="sec-sub">Başlığında “authoring only” yazar, çünkü burası oyunu değil <strong>Generate tuşunu</strong> etkiler.</p>
+
+  <p>Bu bölümdeki hiçbir sayı oyun içinde okunmaz. Bunlar “bu günün bilet sırası hangi ayarlarla üretildi”nin kaydıdır ve bir sonraki Generate’in girdisidir. Yani mevcut bir günün zorluğunu buradan değiştiremezsin — değiştirip tekrar Generate’e basman gerekir.</p>
+
+  <h3>Sipariş içeriği</h3>
+  <div class="fields">
+    <div class="f">
+      <div class="f-h"><span class="f-n">Side Inclusion Chance</span><span class="chip">0 – 1</span></div>
+      <p>Üretilen bir siparişin yan ürün içerme olasılığı. <code>0.9</code> = biletlerin yaklaşık %90’ında yan ürün olur.</p>
+    </div>
+    <div class="f">
+      <div class="f-h"><span class="f-n">Drink Inclusion Chance</span><span class="chip">0 – 1</span></div>
+      <p>Aynısı içecek için.</p>
+    </div>
+    <div class="f">
+      <div class="f-h"><span class="f-n">Modification Count Lambda</span><span class="chip">0 – 10</span><span class="chip">pasif</span></div>
+      <p>Eski bir yedek değer. Her Main’in kendi satırında kendi lambda’sı olduğu için Generate buraya artık hiç bakmaz. Dosya uyumluluğu için duruyor — <strong>görmezden gelin.</strong></p>
+    </div>
+    <div class="f">
+      <div class="f-h"><span class="f-n">Modification Addition Chance</span><span class="chip">0 – 1</span></div>
+      <p>Bir modifikasyonun “ekle” mi “çıkar” mı olacağı. <strong>Sadece iki yönlü modifikasyonlar için</strong> geçerlidir; yalnızca-ekleme veya yalnızca-çıkarma tanımlı modifikasyonlar yönünü kendileri taşır.</p>
+    </div>
+  </div>
+
+  <h3>Patience Mix</h3>
+  <p>Generate’in kaç sabırlı, kaç normal, kaç sabırsız müşteri koyacağı — <strong>ve hangi sırayla</strong>. Sırayla yazar: önce Patient’lar, sonra Normal’lar, sonra Impatient’lar. Yani günün zorluk eğrisini buradan çizersin.</p>
+  <div class="fields">
+    <div class="f">
+      <div class="f-h"><span class="f-n">Patient</span><span class="f-n">Normal</span><span class="f-n">Impatient</span><span class="chip">≥ 0</span></div>
+      <p>Üçü de <code>0</code> ise bu <strong>“yazılmamış”</strong> demektir, “boş gün” değil: Generate her biletin sabrını rastgele atar.</p>
+      <p class="hint">Alanların altındaki satır ne üreteceğini önceden yazar (“Generate will lay down 7 Patient, then 0 Normal…”). Toplam, Tickets Required For Day ile tutmuyorsa orada uyarır.</p>
+    </div>
+  </div>
+
+  <h3>Main Dish Weights</h3>
+  <p>Food Selection’da seçtiğin her ana yemek için bir satır. Satırların <em>varlığı</em> otomatik, içindeki sayılar senin.</p>
+  <div class="fields">
+    <div class="f">
+      <div class="f-h"><span class="f-n">Weight</span><span class="chip">bağıl ağırlık</span></div>
+      <p>Bu yemeğin çıkma sıklığı, diğerlerine oranla. İki yemek 1.0 ve 3.0 ise ikincisi üç kat sık gelir. Mutlak bir yüzde değil, oran.</p>
+    </div>
+    <div class="f">
+      <div class="f-h"><span class="f-n">Modification Count Lambda</span><span class="chip">0 – 10</span></div>
+      <p>Bu yemeğin siparişlerinde ortalama kaç modifikasyon olacağı (Poisson oranı). <code>0</code> = bu yemek hiç modifikasyon almaz. Yükseldikçe “ekstra mayonez, ketçapsız, ekstra hardal” yığılır.</p>
+    </div>
+    <div class="f">
+      <div class="f-h"><span class="f-n">Max Modification Count</span><span class="chip">1 – 10</span></div>
+      <p>Bu yemeğin bir siparişte alabileceği modifikasyon tavanı. Gerçek tavan, bu sayı ile yemeğin kendi sunduğu modifikasyon sayısının <strong>küçüğüdür</strong> — 3 modifikasyonu olan bir yemekte bunu 10 yapmak hiçbir şey değiştirmez.</p>
+      <p class="hint">Lambda ile birlikte okunur: lambda “ortalama kaç tane”, bu “en fazla kaç tane”.</p>
+    </div>
+  </div>
+
+  <p>Bu bölümün altında iki salt-okunur önizleme durur: yan ürün/içecek çıkma yüzdeleri ve modifikasyon sayısı dağılımı. Sayıları kaydetmeden görmek için oradadır.</p>
+</section>
+
+<section id="seq">
+  <div class="sec-h"><span class="sec-n">06</span><h2>Ticket Sequence</h2></div>
+  <p class="sec-sub">Günün asıl içeriği: hangi sipariş, hangi sırayla gelecek.</p>
+
+  <p>Siparişler yatay bir <strong>kart şeridi</strong> olarak görünür — oyundaki bilet kartının aynısı. Şeritteki hareketler:</p>
+  <ul>
+    <li><strong>Sol tık + sürükle</strong> — kartı başka bir sıraya taşır. Mavi çizgi nereye düşeceğini gösterir.</li>
+    <li><strong>Sağ tık</strong> — kartı düzenlemek için açar. Tekrar sağ tık kapatır.</li>
+  </ul>
+  <p>Şeridin altındaki <strong>Add Ticket</strong> boş bir bilet ekler. Üstteki <strong>Generate</strong> ise <strong>tüm sırayı siler ve baştan üretir</strong> — sorar, ama elle yaptığın düzeltmeler gider.</p>
+
+  <h3>Seçili biletin editörü</h3>
+  <div class="fields">
+    <div class="f">
+      <div class="f-h"><span class="f-n">Generate Random Ticket</span><span class="chip">buton</span></div>
+      <p>Yalnız bu bileti yeniden üretir (Main / Side / Drink / modifikasyonlar / sabır tipi). Bir kart tutmadıysa tek tuşla yeniden atmanın yolu.</p>
+    </div>
+    <div class="f">
+      <div class="f-h"><span class="f-n">Main Item</span><span class="chip">zorunlu</span></div>
+      <p>Ana yemek. Resme tıklayarak seçilir; seçili olana tekrar tıklamak boşaltır. Yalnız Food Selection’dakiler listelenir.</p>
+    </div>
+    <div class="f">
+      <div class="f-h"><span class="f-n">Modifications</span></div>
+      <p>Ana yemeğin hemen altında durur, çünkü <strong>modifikasyonlar ana yemekten gelir</strong> — yan ürün ve içecek modifikasyon taşımaz. Sunulan modifikasyonlar kutucuk olarak listelenir; tıkla ekle, iki yönlü olanlara sağ tıklayarak +/− yönünü çevir.</p>
+      <p class="hint">Yemek değiştiğinde eski modifikasyonlar kartta kalabilir; editör bunları “bu yemeğin sunmadığı” diye işaretler ama kaydetmeni engellemez. Temizlemek senin işin.</p>
+    </div>
+    <div class="f">
+      <div class="f-h"><span class="f-n">Side Item · Drink Item</span><span class="chip">isteğe bağlı</span></div>
+      <p>Yan ürün ve içecek. Boş bırakılabilir.</p>
+    </div>
+    <div class="f">
+      <div class="f-h"><span class="f-n">Patience Type</span><span class="chip">Patient / Normal / Impatient</span></div>
+      <p>Müşterinin sabrı. Kartın kenar rengini belirler (yeşil / krem / kırmızı) ve <strong>süresini</strong> Ticket Runtime’dan çeker. Ticket ömrü boyunca değişmez.</p>
+    </div>
+    <div class="f">
+      <div class="f-h"><span class="f-n">Name Override</span><span class="chip">metin</span></div>
+      <p>Müşterinin adını sabitler. Boş bırakılırsa isim havuzundan rastgele çekilir — normal davranış budur. <strong>Yüz için karşılığı yoktur</strong>, portre her zaman rastgeledir.</p>
+    </div>
+    <div class="f">
+      <div class="f-h"><span class="f-n">Time Override</span><span class="chip">saniye</span></div>
+      <p>Bu bilete özel süre. <code>0</code> = kapalı, sabır tipinin süresi geçerli. <strong>0’dan büyük her değer</strong> hem sabır tipini hem günün ayarını ezer.</p>
+      <p class="hint">Tek bir bileti “kasten zor” yapmak için; günün geneli için Ticket Runtime kullanılır.</p>
+    </div>
+    <div class="f">
+      <div class="f-h"><span class="f-n">Delete This Ticket</span><span class="chip">buton</span></div>
+      <p>Bileti siler. Tickets Required For Day’i de düşürmeyi unutma, yoksa Save kapanır.</p>
+    </div>
+  </div>
+</section>
+
+<section id="board">
+  <div class="sec-h"><span class="sec-n">07</span><h2>Start Board — açılış tahtası</h2></div>
+  <p class="sec-sub">Gün açıldığında tahtada hazır duran malzemeler. İsteğe bağlıdır.</p>
+
+  <p>Solda tahtanın ızgarası, sağda seçili hücrenin editörü durur. Kullanımı:</p>
+  <ol>
+    <li>Izgarada bir <strong>hücreye tıkla</strong> — sağda “Cell (x, y)” açılır.</li>
+    <li>Sağdaki yemek kutucuklarından birine <strong>tıkla</strong> — o hücreye yerleşir.</li>
+    <li>Aynı yemeğe <strong>tekrar tıkla</strong> ya da <strong>Clear Cell</strong> — hücre boşalır.</li>
+  </ol>
+  <p>Yerleştirilen malzemeye, tıpkı bilette olduğu gibi <strong>modifikasyon</strong> eklenebilir — “ekstra hardallı sosisli” tahtada hazır durabilir. Yalnız Food Selection’daki yemekler konabilir.</p>
+
+  <div class="note stop">
+    <span class="lbl">Kritik kural</span>
+    <p>Bir gün açılış tahtası yazıyorsa oyun <strong>tam olarak o malzemelerle</strong> açılır — üstüne hiçbir şey spawn edilmez. Bu yüzden ekrandaki <strong>ilk üç biletten en az biri</strong> o tahtadan tamamlanabilir olmalı.</p>
+    <p>Değilse Save kapanır ve hata şunu der: “none of the first N ticket(s) can be completed from it”. Sebebi basit — hiçbir bilet tamamlanamıyorsa oyuncu, bir bilet zaman aşımına uğrayana kadar boş tahtaya bakar.</p>
+  </div>
+
+  <p>Açılış tahtası hiç yazılmamışsa (tek bir hücre bile dolu değilse) bu kural devreye girmez ve gün normal dağıtımla açılır.</p>
+</section>
+
+<section id="runtime">
+  <div class="sec-h"><span class="sec-n">08</span><h2>Ticket Runtime — süreler</h2></div>
+  <p class="sec-sub">Buradaki değerler oyunda doğrudan okunur. Her gün kendi sürelerini taşır.</p>
+
+  <div class="fields">
+    <div class="f">
+      <div class="f-h"><span class="f-n">Impatient Time Limit Seconds</span><span class="chip">saniye</span></div>
+      <p>Sabırsız (kırmızı) müşterinin süresi.</p>
+    </div>
+    <div class="f">
+      <div class="f-h"><span class="f-n">Normal Time Limit Seconds</span><span class="chip">saniye</span></div>
+      <p>Normal (krem) müşterinin süresi.</p>
+    </div>
+    <div class="f">
+      <div class="f-h"><span class="f-n">Patient Time Limit Seconds</span><span class="chip">saniye</span></div>
+      <p>Sabırlı (yeşil) müşterinin süresi.</p>
+      <p class="hint">Tasarım kuralı Impatient &lt; Normal &lt; Patient’tır. Bozarsan editör <strong>uyarır ama kaydettirir</strong> — kasten yapılıyor olabilir. <code>0</code> ise <strong>hata</strong> verir: sıfır saniyelik bilet geldiği anda yanar ve oyun günü yüklemeyi reddeder.</p>
+    </div>
+    <div class="f">
+      <div class="f-h"><span class="f-n">Upcoming Queue Size</span><span class="chip">≥ 1</span></div>
+      <p>Ekrandaki 3 aktif slotun önünde kaç biletin hazır bekletileceği. Bu kuyruk aynı zamanda <strong>gürültü kaynağıdır</strong>: tahtaya sızan “yanlış” malzemeler buradaki bekleyen biletlerden alınır.</p>
+      <p class="hint">Board Distribution’daki <code>Leak Depth</code> bu sayıyı aşarsa fazlası boşa gider; editör bunu uyarı olarak söyler.</p>
+    </div>
+  </div>
+
+  <div class="note">
+    <span class="lbl">Neden burada</span>
+    <p>Süreler yalnızca zorluğu değil <strong>parayı</strong> da belirler. Bahşiş, biletin kendi süresinin ne kadarı kaldığına göre üç kademeye ayrılır (yeşil / turuncu / kırmızı bar). Yani süreyi uzatmak, oyuncuya daha çok “tam bahşiş” penceresi vermek demektir.</p>
+  </div>
+</section>
+
+<section id="dist">
+  <div class="sec-h"><span class="sec-n">09</span><h2>Board Distribution — zorluk</h2></div>
+  <p class="sec-sub">Tahtaya ne düşeceğini belirleyen sekiz sayı. Günün asıl zorluk kolu burasıdır.</p>
+
+  <h3>Önce mekanizma</h3>
+  <p>Her yeni sipariş bir slota girdiğinde tahta üretimi tetiklenir — sürekli çalışan bir zamanlayıcı yoktur. Sırayla iki şey olur:</p>
+  <ol>
+    <li><strong>Gerekli havuz.</strong> Sistem o tur için birkaç bileti “garantili” seçer ve o biletlerin eksik malzemelerini tahtaya koyar. Oyuncunun her an tamamlayabileceği en az bir bilet olmasını sağlayan şey budur.</li>
+    <li><strong>Gürültü havuzu.</strong> Ardından, kuyrukta <em>bekleyen</em> biletlerden malzeme “sızdırılır”. Bunlar şu an hiçbir işe yaramaz, tahtayı doldurur ve zorluğun asıl kaynağıdır. Oyuncu kullanmadıkça kalırlar; kendiliğinden yok olmazlar.</li>
+  </ol>
+
+  <hr class="perf">
+
+  <h4>Gürültü — tahta ne kadar dolsun</h4>
+  <div class="fields">
+    <div class="f">
+      <div class="f-h"><span class="f-n">Noise Leak Count Lambda</span><span class="chip">0 – 10</span></div>
+      <p>Her turda ortalama kaç gürültü malzemesi sızacağı. <code>0</code> = hiç gürültü yok, gün tertemiz. Yükseldikçe tahta hızla dolar.</p>
+    </div>
+    <div class="f">
+      <div class="f-h"><span class="f-n">Max Leak Count</span><span class="chip">1 – 10</span></div>
+      <p>Tek turda sızabilecek en fazla malzeme. Lambda’nın tavanı — “ortalama 2 ama asla 4’ten fazla değil” demenin yolu.</p>
+    </div>
+    <div class="f">
+      <div class="f-h"><span class="f-n">Leak Depth</span><span class="chip">1 – 10</span></div>
+      <p>Gürültünün kuyrukta <strong>ne kadar ileriden</strong> alınabileceği. <code>1</code> = yalnız sıradaki bilet, <code>10</code> = on bilet sonrasına kadar. Derinlik arttıkça tahtadaki malzemeler oyuncunun gördüğü siparişlerle daha az ilgili görünür — kafa karışıklığı artar.</p>
+      <p class="hint">Kaç malzeme sızacağını <em>değil</em>, hangilerinin aday olduğunu belirler. Upcoming Queue Size’ı aşan kısmı boşa gider.</p>
+    </div>
+  </div>
+
+  <p>Bu üçünün altında <strong>Noise Leak Preview</strong> kutusu, “0 sızıntı %x, 1 sızıntı %y…” diye gerçek olasılıkları yazar. Sayıyı çevirirken oraya bakın.</p>
+
+  <h4>Garanti — kaç bilet tamamlanabilir olsun</h4>
+  <div class="fields">
+    <div class="f">
+      <div class="f-h"><span class="f-n">Guaranteed Ticket Count Mode</span><span class="chip">Manual / Poisson</span></div>
+      <p><strong>Manual</strong> = her tur sabit sayıda bilet garanti. <strong>Poisson</strong> = sayı her tur rastgele belirlenir (ama asla 0 olmaz). Manual öngörülebilir, Poisson dalgalı.</p>
+    </div>
+    <div class="f">
+      <div class="f-h"><span class="f-n">Guaranteed Ticket Count</span><span class="chip">1 – 3</span><span class="chip acc">Manual</span></div>
+      <p>Manual modda her turun bütçesi. <code>1</code> = zor (hep tek bilet tamamlanabilir), <code>3</code> = rahat (üçü de).</p>
+    </div>
+    <div class="f">
+      <div class="f-h"><span class="f-n">Guaranteed Ticket Count Lambda</span><span class="chip">0 – 10</span><span class="chip acc">Poisson</span></div>
+      <p>Poisson modda ortalama bütçe. <strong>“Her zaman üç” için bunu yükseltmeyin</strong> — 10’da bile ancak %82 üç çıkar. Kesinlik istiyorsanız Manual + 3 doğru araç.</p>
+    </div>
+    <div class="f">
+      <div class="f-h"><span class="f-n">Early Ticket Weight Decay</span><span class="chip">0 – 1</span></div>
+      <p>Garanti hakkı dağıtılırken <strong>erken gelmiş biletlerin ne kadar kayırılacağı</strong>. Düşük değer (0.2) = neredeyse hep en eski bilet seçilir, sıra disiplinli. Yüksek değer (0.9) = seçim daha adil/rastgele, oyuncu sıradan bağımsız çalışmak zorunda kalır.</p>
+    </div>
+    <div class="f">
+      <div class="f-h"><span class="f-n">Urgent Time Threshold Seconds</span><span class="chip">0 – 30</span></div>
+      <p>Bir biletin süresi bunun altına düştüğünde, kura ne derse desin <strong>koşulsuz garanti</strong> olur ve eksik malzemeleri tahtaya konur. Aciliyet her zaman kazanır ve bütçeyi aşabilir.</p>
+      <p class="hint">Oyuncuyu “malzemesi olmayan bir bilet gözümün önünde yandı” hissinden koruyan emniyet valfi. Düşürmek günü sertleştirir.</p>
+    </div>
+  </div>
+
+  <p>Yanda <strong>Guaranteed Ticket Preview</strong>, seçtiğin moda göre tur başına bütçeyi yazar. Altındaki not önemli: bu <em>bütçedir</em>; aciliyet eşiğini geçen biletler bunun üstüne eklenir.</p>
+
+  <div class="note">
+    <span class="lbl">Zorluk nasıl kurulur</span>
+    <p><strong>Kolay gün:</strong> Guaranteed 2–3, Noise Lambda düşük (0–1), Leak Depth sığ (1–3), Urgent eşiği yüksek (12–15 sn).</p>
+    <p><strong>Zor gün:</strong> Guaranteed 1, Noise Lambda yüksek (2+), Leak Depth derin (6–10), Urgent eşiği düşük (5–8 sn), Early Decay yüksek.</p>
+  </div>
+</section>
+
+<section id="kaydet">
+  <div class="sec-h"><span class="sec-n">10</span><h2>Kaydetme ve doğrulama</h2></div>
+  <p class="sec-sub">Sayfanın en altındaki dört buton, ve editörün kaydetmeden önce yaptığı kontroller.</p>
+
+  <div class="kv">
+    <span class="chip acc">Save</span>
+    <span class="chip">Revert Changes</span>
+    <span class="chip">Duplicate</span>
+    <span class="chip">Delete</span>
+  </div>
+  <ul>
+    <li><strong>Save</strong> — günü dosyaya yazar. <strong>Doğrulama hatası varsa tuş kapalıdır.</strong></li>
+    <li><strong>Revert Changes</strong> — son kaydetmeye geri döner. Sorar.</li>
+    <li><strong>Duplicate</strong> — günün kopyasını çıkarır. Yeni gün yapmanın en hızlı yolu.</li>
+    <li><strong>Delete</strong> — günü ve dosyasını siler.</li>
+  </ul>
+
+  <h3>Hatalar — kaydettirmez</h3>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Mesaj</th><th>Anlamı ve çözümü</th></tr></thead>
+      <tbody>
+        <tr><td class="t">ticketSequence has N entries<br>but ticketsRequiredForDay is M</td><td>Bilet sayısı ile gün uzunluğu tutmuyor. Bilet ekle/çıkar ya da sayıyı düzelt.</td></tr>
+        <tr><td class="t">Ticket i: 'x' is not in this Day's<br>food selection</td><td>Bir bilette, Food Selection’dan çıkarılmış bir yemek duruyor. Ya yemeği geri seç ya bileti düzelt.</td></tr>
+        <tr><td class="t">Day Start board: none of the first N<br>ticket(s) can be completed from it</td><td>Açılış tahtası ilk biletlerin hiçbirine yetmiyor. Tahtaya eksik malzemeyi koy ya da ilk bileti değiştir.</td></tr>
+        <tr><td class="t">every patience time limit must be<br>greater than 0</td><td>Ticket Runtime’da bir süre 0 kalmış.</td></tr>
+        <tr><td class="t">Not configured yet</td><td>Üst şeritteki config alanları boş. Normalde otomatik dolar; dolmadıysa elle sürükleyin.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Uyarılar — kaydettirir</h3>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Mesaj</th><th>Anlamı</th></tr></thead>
+      <tbody>
+        <tr><td class="t">GDD Section 8 expects<br>Impatient &lt; Normal &lt; Patient</td><td>Süre sıralaması ters. Kasten yapılmış olabilir, o yüzden engellenmiyor.</td></tr>
+        <tr><td class="t">Leak Depth reaches past<br>Upcoming Queue Size</td><td>Derinlik kuyruktan uzun; fazlası hiçbir işe yaramıyor. İkisinden birini hizala.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="test">
+  <div class="sec-h"><span class="sec-n">11</span><h2>Test: Play From Day</h2></div>
+  <p class="sec-sub"><code>ExpoTheExplorer ▸ Play From Day</code> — yazdığın günü baştan başlamadan oynamak için.</p>
+
+  <p>Pencere bütün günleri listeler. Başındaki <strong>&gt;</strong> işareti oyuncunun şu an bulunduğu günü gösterir. Her satırda “<code>7 required · 7 authored</code>” yazar — beklenen bilet sayısı ve yazılmış bilet sayısı; tutmuyorsa gün zaten kaydedilmemiş demektir.</p>
+
+  <div class="fields">
+    <div class="f">
+      <div class="f-h"><span class="f-n">Play</span></div>
+      <p>Doğrudan gün sahnesine girer. <strong>Anahtar harcamaz, ana ekranı ve meta akışını atlar.</strong> Bir günü dengelerken kullanılacak hızlı döngü budur.</p>
+    </div>
+    <div class="f">
+      <div class="f-h"><span class="f-n">Main Screen</span></div>
+      <p>Gerçek giriş yolu — ana ekrandan, anahtarıyla. Test edilen şey <em>güne giriş akışının kendisiyse</em> bu kullanılır.</p>
+    </div>
+  </div>
+
+  <p>Bir günü bitirmek oyuncunun kayıtlı gün numarasını ilerletir, yani pencere kendini tazeler.</p>
+</section>
+
+<section id="tuzak">
+  <div class="sec-h"><span class="sec-n">12</span><h2>Tuzaklar</h2></div>
+  <p class="sec-sub">Geri alınamayan ya da sessizce yanlış giden şeyler.</p>
+
+  <div class="note stop">
+    <span class="lbl">Gün sırasını değiştirmek</span>
+    <p>Listede bir günü sürükleyip bırakmak <strong>bütün günleri 0’dan başlayarak yeniden numaralar</strong> ve dosyaları yeniden yazar. <strong>Geri alınamaz.</strong></p>
+    <p>Daha önemlisi: bir günü <em>numarasıyla</em> anan her şey güncellenmez — Meta Catalog’daki mekân/dekor açılış günleri, powerup’ların tanıtım günü. Taşımadan sonra hepsi başka bir güne işaret eder ve elle düzeltilmeleri gerekir.</p>
+    <p>Editör, kaydedilmemiş ya da numarası değiştirilmiş bir gün varsa taşımayı reddeder — önce onu kaydet ya da geri al.</p>
+  </div>
+
+  <div class="note warn">
+    <span class="lbl">Tutorial bloğu</span>
+    <p>Bazı günlerde (şu an <code>day_00</code>) oyuncuya ilk hamlesini zorla yaptıran bir tutorial bloğu var. <strong>Bunun editör arayüzü yok</strong>, elle yazılmıştır. Günü editörde açıp kaydetmek bloğu bozmaz — olduğu gibi taşınır — ama içeriğini editörden değiştiremezsin.</p>
+  </div>
+
+  <div class="note warn">
+    <span class="lbl">Generate her şeyi ezer</span>
+    <p><strong>Generate</strong> bilet sırasının tamamını siler. Kartları elle düzelttikten sonra ayarları değiştirip tekrar Generate’e basarsan o düzeltmeler gider. Önce üret, sonra elle düzelt — tersi değil. Tek bir kartı yenilemek için kartın kendi <strong>Generate Random Ticket</strong> tuşu var.</p>
+  </div>
+
+  <div class="note">
+    <span class="lbl">Generation Settings oyunu etkilemez</span>
+    <p>Yayınlanmış bir günün zorluğunu Generation Settings’ten değiştiremezsin — orası yalnız Generate’in girdisidir. Oyun içi zorluk <strong>Board Distribution</strong> ve <strong>Ticket Runtime</strong>’dadır; onlar anında etkilidir.</p>
+  </div>
+
+  <div class="note">
+    <span class="lbl">Yeni alan eklendiğinde</span>
+    <p>Eski bir gün dosyasında olmayan bir alan editörde tasarlanmış varsayılan değeriyle açılır ve ilk kaydetmede dosyaya yazılır. Yani eski bir günü açıp kaydetmek onu güncel şemaya taşır — zararsızdır, hatta istenen şeydir.</p>
+  </div>
+</section>
+
+<p class="end">Expo the Explorer · Day Editor · Kaynak: Assets/Editor/DayEditor*.cs, Assets/Scripts/Systems/DaySystem</p>
+
+</main>
+</div>

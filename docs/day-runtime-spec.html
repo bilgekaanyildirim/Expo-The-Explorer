@@ -1,0 +1,1517 @@
+<title>Day Runtime Specification</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Serif:wght@400;600&display=swap">
+
+<style>
+:root{
+  --paper:#EDEFEE;
+  --surface:#FFFFFF;
+  --surface-2:#E3E7E5;
+  --ink:#15181A;
+  --ink-2:#4E5658;
+  --ink-3:#7C8688;
+  --rule:#CDD4D2;
+  --rule-2:#DFE4E2;
+  --accent:#0D6B70;
+  --accent-bg:#E0EDED;
+  --unknown:#9E6410;
+  --unknown-bg:#F4EADB;
+  --error:#A63A30;
+  --error-bg:#F6E6E4;
+  --ok:#2C6A4C;
+  --shadow:0 1px 0 rgba(21,24,26,.05);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#0F1213;
+    --surface:#171B1C;
+    --surface-2:#1F2425;
+    --ink:#E6EAE9;
+    --ink-2:#9BA5A6;
+    --ink-3:#727C7E;
+    --rule:#2B3233;
+    --rule-2:#232829;
+    --accent:#57BCC0;
+    --accent-bg:#12292B;
+    --unknown:#D9A055;
+    --unknown-bg:#2C2317;
+    --error:#E4837A;
+    --error-bg:#2E1D1B;
+    --ok:#6BBE93;
+    --shadow:0 1px 0 rgba(0,0,0,.3);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0F1213;
+  --surface:#171B1C;
+  --surface-2:#1F2425;
+  --ink:#E6EAE9;
+  --ink-2:#9BA5A6;
+  --ink-3:#727C7E;
+  --rule:#2B3233;
+  --rule-2:#232829;
+  --accent:#57BCC0;
+  --accent-bg:#12292B;
+  --unknown:#D9A055;
+  --unknown-bg:#2C2317;
+  --error:#E4837A;
+  --error-bg:#2E1D1B;
+  --ok:#6BBE93;
+  --shadow:0 1px 0 rgba(0,0,0,.3);
+}
+
+*{box-sizing:border-box}
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:"IBM Plex Serif",Georgia,serif;
+  font-size:16px;
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,h4,.rail-h,.sig-k{
+  font-family:"IBM Plex Sans Condensed","Helvetica Neue",Arial,sans-serif;
+  text-wrap:balance;
+}
+code,pre,.mono,.tag,.anchor,th,.rail a,.fld,.sig{
+  font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+
+/* ---- shell ---- */
+.shell{display:grid;grid-template-columns:236px minmax(0,1fr);max-width:1220px;margin:0 auto}
+.rail{
+  position:sticky;top:0;height:100vh;overflow-y:auto;
+  padding:34px 20px 40px 26px;border-right:1px solid var(--rule);
+}
+.main{padding:34px 46px 120px;min-width:0}
+@media (max-width:920px){
+  .shell{grid-template-columns:1fr}
+  .rail{position:static;height:auto;border-right:0;border-bottom:1px solid var(--rule);padding:22px}
+  .main{padding:26px 20px 80px}
+}
+
+/* ---- rail ---- */
+.rail-h{font-size:13px;font-weight:700;letter-spacing:-.005em;margin:0 0 3px;line-height:1.3}
+.rail-h span{display:block;font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);font-weight:500;margin-top:6px}
+.rail nav{margin-top:22px;display:flex;flex-direction:column}
+.rail a{
+  display:grid;grid-template-columns:24px 1fr;gap:7px;align-items:baseline;
+  font-size:11.5px;line-height:1.35;text-decoration:none;color:var(--ink-2);
+  padding:5px 6px 5px 3px;border-radius:2px;
+}
+.rail a:hover{color:var(--ink);background:var(--surface-2)}
+.rail a:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.rail .n{color:var(--ink-3);font-size:10px;font-weight:600}
+.rail a:hover .n{color:var(--accent)}
+
+/* ---- masthead ---- */
+.mast{border-bottom:3px double var(--ink);padding-bottom:18px;margin-bottom:26px}
+.eyebrow{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.15em;text-transform:uppercase;color:var(--accent);margin:0 0 11px;font-weight:600}
+h1{font-size:clamp(28px,4vw,40px);line-height:1.05;letter-spacing:-.02em;font-weight:700;margin:0 0 12px}
+.dek{font-size:17px;color:var(--ink-2);max-width:62ch;margin:0 0 16px}
+.meta-row{display:flex;flex-wrap:wrap;gap:7px}
+
+/* ---- sections ---- */
+section{margin-top:50px;scroll-margin-top:20px}
+.sh{display:flex;align-items:baseline;gap:11px;border-top:1px solid var(--ink);padding-top:11px;margin-bottom:5px}
+.sn{font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:700;color:var(--accent);letter-spacing:.05em;padding-top:4px;white-space:nowrap}
+h2{font-size:24px;letter-spacing:-.015em;font-weight:700;margin:0;line-height:1.16}
+.sub{color:var(--ink-2);font-size:14.5px;margin:2px 0 20px;max-width:64ch}
+h3{font-size:17px;letter-spacing:-.008em;font-weight:600;margin:32px 0 7px}
+h4{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;margin:24px 0 8px;color:var(--ink-2);font-family:"IBM Plex Mono",monospace}
+p{max-width:68ch;margin:0 0 13px}
+ul,ol{max-width:68ch;padding-left:20px;margin:0 0 13px}
+li{margin-bottom:5px}
+a{color:var(--accent)}
+strong{font-weight:600}
+code{font-size:.85em;background:var(--surface-2);padding:1px 4px;border-radius:2px}
+
+/* ---- source anchor ---- */
+.anchor{
+  display:inline-block;font-size:10.5px;font-weight:500;
+  color:var(--accent);background:var(--accent-bg);
+  border:1px solid var(--accent);border-radius:2px;
+  padding:1px 5px;margin:0 0 9px;
+}
+.anchor.multi{margin-right:4px}
+
+/* ---- tags ---- */
+.tag{
+  display:inline-block;font-size:10px;letter-spacing:.04em;font-weight:600;
+  border:1px solid var(--rule);color:var(--ink-2);
+  padding:1px 6px;border-radius:2px;background:var(--surface);white-space:nowrap;
+}
+.tag.req{color:var(--error);border-color:var(--error)}
+.tag.opt{color:var(--ink-3)}
+.tag.acc{color:var(--accent);border-color:var(--accent)}
+
+/* ---- callouts ---- */
+.box{border:1px solid var(--rule);background:var(--surface);padding:14px 16px;margin:18px 0;max-width:72ch;box-shadow:var(--shadow)}
+.box .lbl{display:block;font-family:"IBM Plex Mono",monospace;font-size:10px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;margin-bottom:7px;color:var(--accent)}
+.box p{margin:0;font-size:15px;max-width:none}
+.box p+p{margin-top:8px}
+.box ul,.box ol{max-width:none;margin:8px 0 0;font-size:15px}
+.box.unknown{border-left:3px solid var(--unknown);background:var(--unknown-bg)}
+.box.unknown .lbl{color:var(--unknown)}
+.box.err{border-left:3px solid var(--error);background:var(--error-bg)}
+.box.err .lbl{color:var(--error)}
+
+/* ---- pre ---- */
+pre{
+  background:var(--surface);border:1px solid var(--rule);
+  padding:13px 15px;margin:14px 0;overflow-x:auto;
+  font-size:12.5px;line-height:1.62;color:var(--ink);
+}
+pre .c{color:var(--ink-3)}
+pre .k{color:var(--accent);font-weight:600}
+pre b{color:var(--unknown);font-weight:600}
+
+/* ---- field list ---- */
+.fields{border-top:1px solid var(--rule);margin:14px 0 6px}
+.fld-row{border-bottom:1px solid var(--rule-2);padding:11px 0;display:grid;grid-template-columns:minmax(0,1fr);gap:4px}
+.fld-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px}
+.fld{font-size:13px;font-weight:600;letter-spacing:-.01em}
+.fld-t{font-size:11.5px;color:var(--ink-2);font-family:"IBM Plex Mono",monospace}
+.fld-row p{margin:0;font-size:14.5px;max-width:none;color:var(--ink-2)}
+.fld-row p strong{color:var(--ink)}
+
+/* ---- tables ---- */
+.tw{overflow-x:auto;margin:16px 0 20px;border:1px solid var(--rule);background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:540px;font-size:13.5px}
+th{
+  text-align:left;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ink-2);padding:9px 12px;border-bottom:1px solid var(--rule);
+  background:var(--surface-2);white-space:nowrap;
+}
+td{padding:9px 12px;border-bottom:1px solid var(--rule-2);vertical-align:top}
+tr:last-child td{border-bottom:0}
+td.m{font-family:"IBM Plex Mono",monospace;font-size:12px}
+td.nw{white-space:nowrap}
+.num{font-variant-numeric:tabular-nums}
+
+/* ---- function contract ---- */
+.fn{border:1px solid var(--rule);background:var(--surface);margin:20px 0;box-shadow:var(--shadow)}
+.fn>.sig{
+  background:var(--surface-2);border-bottom:1px solid var(--rule);
+  padding:11px 15px;font-size:12.5px;line-height:1.55;overflow-x:auto;
+}
+.fn>.body{padding:14px 15px}
+.fn .body p{max-width:none;font-size:14.5px}
+.fn .body h4{margin-top:14px}
+.fn .body h4:first-child{margin-top:0}
+.fn .body ul{max-width:none;font-size:14.5px;margin-bottom:0}
+
+hr.rule{border:0;border-top:1px solid var(--rule-2);margin:30px 0}
+.end{margin-top:56px;border-top:3px double var(--ink);padding-top:14px;font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--ink-3)}
+@media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
+
+@page{margin:15mm 14mm}
+@media print{
+  :root,:root:not([data-theme="light"]),:root[data-theme="dark"]{
+    color-scheme:light;
+    --paper:#fff;--surface:#fff;--surface-2:#F0F2F1;--ink:#15181A;--ink-2:#454C4E;--ink-3:#6E7779;
+    --rule:#C2C9C7;--rule-2:#DCE1DF;--accent:#0A575B;--accent-bg:#EAF2F2;
+    --unknown:#7F5010;--unknown-bg:#F7F0E3;--error:#8C2F26;--error-bg:#F9EBE9;--ok:#255A40;--shadow:none;
+  }
+  body{background:#fff !important;color:#15181A !important;font-size:9.6pt;line-height:1.45}
+  .shell{display:block;max-width:none}
+  .rail{display:none}
+  .main{padding:0}
+  h1{font-size:23pt}h2{font-size:14pt}h3{font-size:11.5pt}
+  section{margin-top:24px}
+  .sh,h2,h3,h4{break-after:avoid}
+  .fn,.box,.tw,pre,.fld-row,p{break-inside:avoid}
+  .tw{overflow:visible}table{min-width:0;font-size:8.6pt}
+  pre{font-size:8.4pt}
+  a{color:inherit;text-decoration:none}
+}
+</style>
+
+<div class="shell">
+<aside class="rail">
+  <p class="rail-h">Day Runtime Spec<span>Simulator Contract</span></p>
+  <nav>
+    <a href="#s0"><span class="n">§0</span><span>Kapsam ve okuma notu</span></a>
+    <a href="#s1"><span class="n">§1</span><span>Day JSON şeması</span></a>
+    <a href="#s2"><span class="n">§2</span><span>Ticket generation</span></a>
+    <a href="#s3"><span class="n">§3</span><span>Board generation</span></a>
+    <a href="#s4"><span class="n">§4</span><span>Noise / leak</span></a>
+    <a href="#s5"><span class="n">§5</span><span>Board state</span></a>
+    <a href="#s6"><span class="n">§6</span><span>Ticket lifecycle</span></a>
+    <a href="#s7"><span class="n">§7</span><span>Start board</span></a>
+    <a href="#s8"><span class="n">§8</span><span>Difficulty rules</span></a>
+    <a href="#s9"><span class="n">§9</span><span>Validation</span></a>
+    <a href="#s10"><span class="n">§10</span><span>Simulator contract</span></a>
+    <a href="#s11"><span class="n">§11</span><span>UNKNOWN listesi</span></a>
+  </nav>
+</aside>
+
+<main class="main">
+
+<header class="mast">
+  <p class="eyebrow">Expo the Explorer · Runtime Implementation Spec · rev 2026-08-30</p>
+  <h1>Day Runtime Specification</h1>
+  <p class="dek">Harici bir web tabanlı Day Editor ve balancing simulator yazmak için gereken davranış sözleşmesi. Her madde Unity kaynağından doğrulanmıştır; sınıf ve metot adları her bölümde verilir.</p>
+  <div class="meta-row">
+    <span class="tag acc">kaynak: Assets/Scripts</span>
+    <span class="tag">Unity 6000.x</span>
+    <span class="tag">JsonUtility</span>
+    <span class="tag" style="color:var(--unknown);border-color:var(--unknown)">UNKNOWN işaretli</span>
+  </div>
+</header>
+
+<section id="s0">
+  <div class="sh"><span class="sn">§0</span><h2>Kapsam ve okuma notu</h2></div>
+  <p class="sub">Bu döküman Day Editor kullanım kılavuzunun devamı değil, tamamlayıcısıdır: burada UI değil, çalışan kodun davranışı tarif edilir.</p>
+
+  <p>Her iddianın altında kaynak çıpası vardır — <span class="anchor">ClassName.MethodName</span> — ve iddia yalnızca o dosyadan okunarak yazılmıştır. Kodda göremediğim hiçbir davranış varsayılmamıştır.</p>
+
+  <div class="box unknown">
+    <span class="lbl">İşaretleme</span>
+    <p><strong>UNKNOWN</strong> = kodda kesin cevabı bulunmayan, veya kasten belirtilmemiş (unspecified) davranış. <strong>NEEDS DECISION</strong> = simülatörü yazarken senin bir karar vermen gereken nokta. Tam liste <a href="#s11">§11</a>'de toplanmıştır.</p>
+  </div>
+
+  <h4>Sistemin genel şekli</h4>
+  <p>İki tamamen ayrı rastgelelik alanı var ve bunları karıştırmamak simülatörün en kritik tasarım kararıdır:</p>
+  <div class="tw">
+  <table>
+    <thead><tr><th>Alan</th><th>Ne zaman çalışır</th><th>Girdisi</th><th>Çıktısı</th></tr></thead>
+    <tbody>
+      <tr><td class="nw"><strong>Authoring</strong></td><td class="nw">Editörde "Generate" tıklanınca</td><td><code>editorMeta.ticketGeneration</code> + food pool + seed</td><td><code>runtime.ticketSequence</code> (diske yazılır)</td></tr>
+      <tr><td class="nw"><strong>Runtime</strong></td><td class="nw">Oyun oynanırken, her ticket atamasında</td><td><code>runtime.boardDistribution</code> + <code>runtime.ticketRuntime</code> + canlı state</td><td>Tahtaya düşen item'lar (kalıcı değil)</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>Authoring bir kez çalışır ve sonucu JSON'a gömülür. Runtime her oyunda yeniden çalışır ve hiçbir yere yazılmaz. Bir balancing simulator'ın asıl işi ikincisidir; birincisi yalnızca girdi üretmek için gerekir.</p>
+</section>
+
+<section id="s1">
+  <div class="sh"><span class="sn">§1</span><h2>Day JSON şeması</h2></div>
+  <p class="sub">Tam C# model ağacı, tipler, default'lar, opsiyonellik ve eksik alan davranışı.</p>
+
+  <h3>1.1 Serialization sistemi</h3>
+  <span class="anchor multi">DayCatalogParser.ParseAll</span><span class="anchor multi">DayJsonSource.LoadAll</span>
+  <p><strong><code>UnityEngine.JsonUtility</code></strong> kullanılıyor — üçüncü parti JSON kütüphanesi yok. Yükleme zinciri:</p>
+  <pre><span class="c">// 1. Klasörün tamamı TextAsset olarak okunur</span>
+Resources.LoadAll&lt;TextAsset&gt;(<span class="k">"Days"</span>)          <span class="c">// DayJsonSource</span>
+<span class="c">// 2. Her dosya ayrı ayrı parse edilir</span>
+JsonUtility.FromJson&lt;DayJson&gt;(file.Json)         <span class="c">// try/catch içinde</span>
+<span class="c">// 3. Resolve: id'ler FoodCatalog'a, enum'lar string'den</span>
+<span class="c">// 4. Sonuç DayIndex'e göre sıralanır</span>
+results.Sort((a, b) =&gt; a.DayIndex.CompareTo(b.DayIndex));</pre>
+
+  <p>Bunun simülatör için üç önemli sonucu var:</p>
+  <ul>
+    <li><strong>Dosya adı hiçbir şey belirlemez.</strong> Oyun sırası <code>runtime.dayIndex</code> alanından gelir; <code>day_07.json</code> içinde <code>dayIndex: 3</code> yazıyorsa o gün 3. sıradadır. Dosya adı yalnızca Day Editor'ün kendi kaydetme/yeniden adlandırma mantığında kullanılır.</li>
+    <li><strong>Bir günün bozuk olması diğerlerini etkilemez.</strong> Parse veya resolve hatası o günü listeden düşürür, <code>Debug.LogError</code> basar, döngü devam eder.</li>
+    <li><strong>Yinelenen <code>dayIndex</code> hata basar ama günü düşürmez</strong> — her ikisi de listeye eklenir. <span class="anchor">DayCatalogParser.ParseAll · seenIndices</span></li>
+  </ul>
+
+  <div class="box unknown">
+    <span class="lbl">UNKNOWN — JsonUtility eksik-alan semantiği</span>
+    <p>Kod içi yorumlar (<code>DayJson.cs</code>, <code>DayCatalogParser.ResolveBoardDistribution</code>) şunu <em>iddia ediyor</em>: <strong>iç içe <code>[Serializable]</code> bir sınıf alanı JSON'da yoksa, JsonUtility null değil, tüm alanları CLR default'unda olan bir örnek döndürür.</strong> Bütün "absence by content" tasarımı bu iddiaya dayanıyor.</p>
+    <p>Buna karşın <code>ResolveDay</code> yine de <code>runtime == null</code> kontrolü yapıyor — yani kodun kendisi iki ihtimale karşı da korunmuş. Ben bu davranışı çalıştırıp doğrulamadım. <strong>NEEDS DECISION:</strong> TypeScript tarafında <code>JSON.parse</code> eksik alanı <code>undefined</code> bırakır. Simülatörün, parse'tan hemen sonra bir <strong>normalizasyon katmanı</strong> çalıştırıp eksik nesneleri "tüm alanları sıfır" nesnelere çevirmesi gerekir — yoksa aşağıdaki absence kuralları hiç tetiklenmez.</p>
+    <p>Diziler farklı: kod her yerde <code>?? Array.Empty&lt;T&gt;()</code> ile korunuyor, yani <strong>eksik dizi null olarak gelebilir</strong> ve bu beklenen durumdur.</p>
+  </div>
+
+  <h3>1.2 Kök model ağacı</h3>
+  <span class="anchor">Systems/DaySystem/DayJson.cs</span>
+  <pre>DayJson
+├── runtime      : DayRuntimeJson    <b>← yoksa gün düşer</b>
+└── editorMeta   : DayEditorMetaJson <span class="c">← runtime hiç okumaz</span>
+
+DayRuntimeJson
+├── dayIndex               : int
+├── ticketsRequiredForDay  : int
+├── boardDistribution      : BoardDistributionJson  <b>← yoksa gün düşer</b>
+├── ticketRuntime          : TicketRuntimeJson      <b>← yoksa gün düşer</b>
+├── ticketSequence         : TicketEntryJson[]
+├── boardTimeline          : BoardSpawnEntryJson[]
+└── tutorial               : TutorialJson           <span class="c">← opsiyonel</span>
+
+DayEditorMetaJson
+├── allowedFoodItemIds : string[]
+└── ticketGeneration   : TicketGenerationJson</pre>
+
+  <p><strong><code>editorMeta</code> runtime tarafından hiçbir koşulda okunmaz.</strong> <code>DayCatalogParser</code> içinde tek bir referansı yoktur — bu sözleşme kod yorumunda açıkça yazılıdır. Simülatörde de bu ayrımı koru: <code>editorMeta</code> yalnızca <code>generateTicketSequence</code>'ın girdisidir.</p>
+
+  <h3>1.3 Alan tabloları</h3>
+
+  <h4>DayRuntimeJson</h4>
+  <div class="tw">
+  <table>
+    <thead><tr><th>Alan</th><th>C# tipi</th><th>Default</th><th>Zorunlu?</th><th>Not</th></tr></thead>
+    <tbody>
+      <tr><td class="m">dayIndex</td><td class="m">int</td><td class="m num">0</td><td><span class="tag opt">de facto</span></td><td>Sıralama anahtarı. 0 geçerli bir değer, kontrol edilmez.</td></tr>
+      <tr><td class="m">ticketsRequiredForDay</td><td class="m">int</td><td class="m num">0</td><td><span class="tag opt">de facto</span></td><td>Parser kontrol etmez; yalnız <code>DayValidator</code> sequence uzunluğuyla karşılaştırır.</td></tr>
+      <tr><td class="m">boardDistribution</td><td class="m">object</td><td>—</td><td><span class="tag req">zorunlu</span></td><td>Yoksa/geçersizse <strong>gün tamamen düşer</strong>.</td></tr>
+      <tr><td class="m">ticketRuntime</td><td class="m">object</td><td>—</td><td><span class="tag req">zorunlu</span></td><td>Yoksa/geçersizse <strong>gün tamamen düşer</strong>.</td></tr>
+      <tr><td class="m">ticketSequence</td><td class="m">array</td><td class="m">null → []</td><td><span class="tag opt">opsiyonel</span></td><td>Boş dizi parse edilir; gün 0 biletle yüklenir.</td></tr>
+      <tr><td class="m">boardTimeline</td><td class="m">array</td><td class="m">null → []</td><td><span class="tag opt">opsiyonel</span></td><td>Boş = açılış tahtası yok.</td></tr>
+      <tr><td class="m">tutorial</td><td class="m">object</td><td class="m">enabled=false</td><td><span class="tag opt">opsiyonel</span></td><td>Bozuk olsa bile gün düşmez, sadece tutorial null olur.</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h4>BoardDistributionJson</h4>
+  <span class="anchor multi">DayCatalogParser.ResolveBoardDistribution</span><span class="anchor multi">BoardDistributionSettings ctor</span>
+  <div class="tw">
+  <table>
+    <thead><tr><th>Alan</th><th>Tip</th><th>Parser reddi</th><th>Ctor clamp</th><th>Editör aralığı</th></tr></thead>
+    <tbody>
+      <tr><td class="m">noiseLeakCountLambda</td><td class="m">float</td><td>—</td><td>yok</td><td class="num">0–10</td></tr>
+      <tr><td class="m">guaranteedTicketCountMode</td><td class="m">string</td><td>boş veya parse edilemez → <strong>gün düşer</strong></td><td>—</td><td>Manual / Poisson</td></tr>
+      <tr><td class="m">guaranteedTicketCount</td><td class="m">int</td><td><code>&lt; 1</code> → <strong>gün düşer</strong></td><td class="num">Clamp(1,3)</td><td class="num">1–3</td></tr>
+      <tr><td class="m">guaranteedTicketCountLambda</td><td class="m">float</td><td>—</td><td>yok</td><td class="num">0–10</td></tr>
+      <tr><td class="m">earlyTicketWeightDecay</td><td class="m">float</td><td>—</td><td class="num">Clamp01</td><td class="num">0–1</td></tr>
+      <tr><td class="m">urgentTimeThresholdSeconds</td><td class="m">float</td><td>—</td><td class="num">Max(0)</td><td class="num">0–30</td></tr>
+      <tr><td class="m">leakDepth</td><td class="m">int</td><td><code>&lt; 1</code> → <strong>gün düşer</strong></td><td class="num">Clamp(1,10)</td><td class="num">1–10</td></tr>
+      <tr><td class="m">maxLeakCount</td><td class="m">int</td><td><code>&lt; 1</code> → <strong>gün düşer</strong></td><td class="num">Clamp(1,10)</td><td class="num">1–10</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p><strong>Absence tespiti içerikten yapılır:</strong> <code>guaranteedTicketCountMode</code> boş string ise blok "yazılmamış" sayılır ve gün düşer. İki lambda kasten clamp'lenmez — bunlar Poisson oranıdır ve <code>TruncatedPoisson</code> sonucu zaten sınırlar.</p>
+
+  <h4>TicketRuntimeJson</h4>
+  <span class="anchor multi">DayCatalogParser.ResolveTicketRuntime</span><span class="anchor multi">TicketRuntimeSettings ctor</span>
+  <div class="tw">
+  <table>
+    <thead><tr><th>Alan</th><th>Tip</th><th>Parser reddi</th><th>Ctor clamp</th></tr></thead>
+    <tbody>
+      <tr><td class="m">impatientTimeLimitSeconds</td><td class="m">float</td><td><code>&lt;= 0</code> → <strong>gün düşer</strong></td><td class="num">Max(0)</td></tr>
+      <tr><td class="m">normalTimeLimitSeconds</td><td class="m">float</td><td><code>&lt;= 0</code> → <strong>gün düşer</strong></td><td class="num">Max(0)</td></tr>
+      <tr><td class="m">patientTimeLimitSeconds</td><td class="m">float</td><td><code>&lt;= 0</code> → <strong>gün düşer</strong></td><td class="num">Max(0)</td></tr>
+      <tr><td class="m">upcomingQueueSize</td><td class="m">int</td><td><code>&lt; 1</code> → <strong>gün düşer</strong></td><td class="num">Max(1)</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>Burada absence tespiti üç sürenin de <code>&gt; 0</code> olmasını şart koşarak yapılır — yarı dolu bir blok tek alan üzerinden geçemez.</p>
+
+  <h4>TicketEntryJson</h4>
+  <span class="anchor">DayCatalogParser.ResolveTicketEntry</span>
+  <div class="tw">
+  <table>
+    <thead><tr><th>Alan</th><th>Tip</th><th>Zorunlu?</th><th>Çözümlenemezse</th></tr></thead>
+    <tbody>
+      <tr><td class="m">mainItemId</td><td class="m">string</td><td><span class="tag req">zorunlu</span></td><td>Katalogda yoksa <strong>gün düşer</strong></td></tr>
+      <tr><td class="m">sideItemId</td><td class="m">string</td><td><span class="tag opt">opsiyonel</span></td><td>Boş → null. Doluysa ve yoksa <strong>gün düşer</strong></td></tr>
+      <tr><td class="m">drinkItemId</td><td class="m">string</td><td><span class="tag opt">opsiyonel</span></td><td>Boş → null. Doluysa ve yoksa <strong>gün düşer</strong></td></tr>
+      <tr><td class="m">modifications</td><td class="m">array</td><td><span class="tag opt">opsiyonel</span></td><td>Bilinmeyen id → <strong>gün düşer</strong></td></tr>
+      <tr><td class="m">patienceType</td><td class="m">string</td><td><span class="tag req">zorunlu</span></td><td>Parse edilemezse <strong>gün düşer</strong></td></tr>
+      <tr><td class="m">customerNameOverride</td><td class="m">string</td><td><span class="tag opt">opsiyonel</span></td><td>Boş → isim havuzundan rastgele</td></tr>
+      <tr><td class="m">timeLimitSecondsOverride</td><td class="m">float</td><td><span class="tag opt">opsiyonel</span></td><td><code>0</code> → kapalı (bkz. <a href="#s8">§8.1</a>)</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h4>BoardSpawnEntryJson · ModificationEntryJson</h4>
+  <div class="tw">
+  <table>
+    <thead><tr><th>Alan</th><th>Tip</th><th>Anlamı</th></tr></thead>
+    <tbody>
+      <tr><td class="m">triggerStepIndex</td><td class="m">int</td><td><code>-1</code> = Day Start. Başka değerler şemada var ama <strong>hiçbir yerden tetiklenmiyor</strong> — bkz. <a href="#s7">§7</a>.</td></tr>
+      <tr><td class="m">itemId</td><td class="m">string</td><td>Katalogda yoksa <strong>gün düşer</strong>.</td></tr>
+      <tr><td class="m">modifications</td><td class="m">array</td><td>Item'ın taşıdığı modifikasyonlar.</td></tr>
+      <tr><td class="m">useExactCell</td><td class="m">bool</td><td><code>false</code> → boş hücreye yerleştirilir (deterministik, bkz. §7.2).</td></tr>
+      <tr><td class="m">x, y</td><td class="m">int</td><td>Yalnız <code>useExactCell</code> true iken anlamlı.</td></tr>
+      <tr><td class="m">modificationId</td><td class="m">string</td><td>Modifikasyon id'si.</td></tr>
+      <tr><td class="m">isAddition</td><td class="m">bool</td><td><code>true</code> = ekle, <code>false</code> = çıkar.</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h4>TicketGenerationJson · MainDishWeightJson (editorMeta)</h4>
+  <div class="tw">
+  <table>
+    <thead><tr><th>Alan</th><th>Tip</th><th>Eksikse</th></tr></thead>
+    <tbody>
+      <tr><td class="m">sideInclusionChance</td><td class="m">float</td><td class="m num">0.0</td></tr>
+      <tr><td class="m">drinkInclusionChance</td><td class="m">float</td><td class="m num">0.0</td></tr>
+      <tr><td class="m">modificationCountLambda</td><td class="m">float</td><td class="m num">0.0 — pratikte okunmaz</td></tr>
+      <tr><td class="m">modificationAdditionChance</td><td class="m">float</td><td class="m num">0.0</td></tr>
+      <tr><td class="m">patientTicketCount</td><td class="m">int</td><td class="m num">0</td></tr>
+      <tr><td class="m">normalTicketCount</td><td class="m">int</td><td class="m num">0</td></tr>
+      <tr><td class="m">impatientTicketCount</td><td class="m">int</td><td class="m num">0</td></tr>
+      <tr><td class="m">mainDishWeights[]</td><td class="m">array</td><td class="m">null → []</td></tr>
+      <tr><td class="m">· foodItemId</td><td class="m">string</td><td>Katalogda yoksa <strong>satır sessizce düşer</strong></td></tr>
+      <tr><td class="m">· weight</td><td class="m">float</td><td class="m num">0.0</td></tr>
+      <tr><td class="m">· modificationCountLambda</td><td class="m">float</td><td class="m num">0.0</td></tr>
+      <tr><td class="m">· maxModificationCount</td><td class="m">int</td><td class="m num">0 → <strong>10</strong>'a normalize edilir</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="box">
+    <span class="lbl">Kritik: maxModificationCount = 0</span>
+    <span class="anchor">MainDishWeight.NormalizeMaxModificationCount</span>
+    <p>Bu alan sonradan eklendiği için eski dosyalarda yok ve <code>0</code> olarak deserialize oluyor. <code>0</code> düz okunsa "bu yemek asla modifikasyon almaz" demek olurdu — sessiz bir balans değişikliği. Bu yüzden <strong>okuma anında</strong> normalize edilir:</p>
+    <pre>NormalizeMaxModificationCount(v) => v &lt; 1 ? 10 : v</pre>
+    <p>Simülatörde bu kuralı <em>tek bir yerde</em> tut. Editör slider'ı da aynı fonksiyondan geçiyor.</p>
+  </div>
+
+  <h3>1.4 Enum'lar ve geçerli değerler</h3>
+  <p>Üç enum JSON'da <strong>string olarak</strong> tutulur ve <code>Enum.TryParse</code> ile çözülür. <code>TryParse</code> burada <code>ignoreCase</code> parametresi olmadan çağrılıyor, yani <strong>büyük/küçük harf duyarlıdır</strong>: <code>"patient"</code> parse edilmez, gün düşer.</p>
+  <div class="tw">
+  <table>
+    <thead><tr><th>Enum</th><th>JSON alanı</th><th>Geçerli değerler</th><th>Ordinal</th></tr></thead>
+    <tbody>
+      <tr><td class="m">PatienceType</td><td class="m">patienceType</td><td class="m">Impatient · Normal · Patient</td><td class="m num">0 · 1 · 2</td></tr>
+      <tr><td class="m">GuaranteedTicketCountMode</td><td class="m">guaranteedTicketCountMode</td><td class="m">Manual · Poisson</td><td class="m num">0 · 1</td></tr>
+      <tr><td class="m">(tutorial kind)</td><td class="m">tutorial.steps[].kind</td><td class="m">ForcedMove · "" (boş)</td><td>—</td></tr>
+      <tr><td class="m">FoodCategory</td><td>JSON'da yok</td><td class="m">Main · Side · Drink</td><td class="m num">0 · 1 · 2</td></tr>
+      <tr><td class="m">ModificationDirection</td><td>JSON'da yok</td><td class="m">AdditionOnly · RemovalOnly · Both</td><td class="m num">0 · 1 · 2</td></tr>
+      <tr><td class="m">LayerVisibility</td><td>JSON'da yok</td><td class="m">AlwaysVisible · VisibleByDefault · HiddenByDefault</td><td class="m num">0 · 1 · 2</td></tr>
+      <tr><td class="m">TicketState</td><td>runtime-only</td><td class="m">Active · Delivered · Cancelled</td><td class="m num">0 · 1 · 2</td></tr>
+      <tr><td class="m">TipTier</td><td>runtime-only</td><td class="m">Full · Warning · Critical</td><td class="m num">0 · 1 · 2</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="box">
+    <span class="lbl">Dikkat — PatienceType ordinal sırası</span>
+    <p><code>PatienceType</code> deklarasyon sırası <strong>Impatient, Normal, Patient</strong>'tır. Rastgele sabır çekimi <code>(PatienceType)random.Next(0,3)</code> yaptığı için bu sıra önemlidir. Ama <code>DayContentGenerator</code>'daki <strong>Patience Mix sırası bunun tam tersidir</strong> (<code>PatienceOrder = {Patient, Normal, Impatient}</code>) — kasten, çünkü enum sırasıyla üretilse gün en sert biletlerle başlardı. İkisini karıştırma.</p>
+  </div>
+
+  <h3>1.5 Eski dosyada alan eksikse — özet</h3>
+  <div class="tw">
+  <table>
+    <thead><tr><th>Eksik olan</th><th>Runtime (DayCatalogParser)</th><th>Editör (DayEditorModel)</th></tr></thead>
+    <tbody>
+      <tr><td>boardDistribution bloğu</td><td class="nw"><strong>Gün düşer</strong>, LogError</td><td>Tasarım default'ları ile açılır</td></tr>
+      <tr><td>ticketRuntime bloğu</td><td class="nw"><strong>Gün düşer</strong>, LogError</td><td>45 / 90 / 150 / 10 ile açılır</td></tr>
+      <tr><td>ticketGeneration bloğu</td><td>Okunmaz</td><td>Default'lar; Generate base asset'i kullanır</td></tr>
+      <tr><td>maxModificationCount</td><td>10'a normalize</td><td>10'a normalize</td></tr>
+      <tr><td>patience mix (3 alan)</td><td>Okunmaz</td><td>0/0/0 = "yazılmamış" → uniform roll</td></tr>
+      <tr><td>tutorial bloğu</td><td>Tutorial null</td><td>Dokunulmadan taşınır (UI yok)</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p><strong>Editör kasten daha hoşgörülüdür.</strong> Runtime katı, editör toleranslı — böylece eski bir gün açılıp yeniden kaydedilerek güncel şemaya taşınabilir. Editör ayrıca aralık dışı değerleri <em>yükleme anında</em> clamp'ler, yoksa dışarıda düzenlenmiş bozuk bir dosya olduğu gibi geri yazılırdı.</p>
+</section>
+
+<section id="s2">
+  <div class="sh"><span class="sn">§2</span><h2>Ticket generation algoritması</h2></div>
+  <p class="sub">"Generate" butonunun tam akışı ve rastgele çekimlerin sırası.</p>
+  <span class="anchor multi">DayContentGenerator.Generate</span><span class="anchor multi">TicketFactory.Create</span><span class="anchor multi">TruncatedPoisson.Sample</span>
+
+  <h3>2.1 Üst seviye akış</h3>
+  <pre><span class="k">Generate</span>(catalog, baseTicketConfig, editorMeta, ticketsRequiredForDay, seed):
+  random  = <span class="k">new</span> System.Random(seed)          <span class="c">// TEK rastgelelik kaynağı</span>
+  config  = ResolveTicketGenerationConfig(...)   <span class="c">// asset klonu, çekim yok</span>
+  pool    = ResolveFoodPool(catalog, editorMeta) <span class="c">// çekim yok</span>
+  <span class="k">return</span> GenerateCore(pool, config, N, random, editorMeta)
+
+<span class="k">GenerateCore</span>:
+  factory      = <span class="k">new</span> TicketFactory(config, random)
+  patiencePlan = BuildPatiencePlan(p, n, i, N)   <span class="c">// deterministik, çekim yok</span>
+  <span class="k">for</span> idx = 0 .. N-1:
+      patience = patiencePlan.Count &gt; 0
+                   ? patiencePlan[idx]            <span class="c">// ÇEKİM YOK</span>
+                   : factory.PickRandomPatienceType()  <span class="c">// 1 çekim</span>
+      ticket   = factory.Create(pool, <span class="k">"Simulated Customer"</span>, patience)
+      out[idx] = ToTicketEntryJson(ticket)</pre>
+
+  <h4>Food pool çözümlemesi</h4>
+  <span class="anchor">DayContentGenerator.ResolveFoodPool</span>
+  <p>Havuz, <strong>katalog sırası korunarak</strong> filtrelenir — id listesi üzerinden map yapılmaz:</p>
+  <pre>pool = catalog.Items.Where(i =&gt; i != null &amp;&amp; allowedIds.Contains(i.Id))</pre>
+  <p>Sonuçları: (a) katalog sırası korunur, (b) id listesindeki tekrarlar item'ı çoğaltmaz, (c) silinmiş bir asset'in id'si null entry üretmez, sadece yok sayılır. <strong>Boş seçim = boş havuz</strong>, "her şey" demek değil — bu durumda <code>Create</code> exception atar (editör önceden engeller).</p>
+
+  <h4>Patience plan</h4>
+  <span class="anchor">DayContentGenerator.BuildPatiencePlan</span>
+  <pre><span class="k">BuildPatiencePlan</span>(patient, normal, impatient, N):
+  <span class="k">if</span> N &lt;= 0                              → []
+  <span class="k">if</span> patient&lt;=0 &amp;&amp; normal&lt;=0 &amp;&amp; impatient&lt;=0 → []   <span class="c">// "yazılmamış"</span>
+
+  counts = [max(0,patient), max(0,normal), max(0,impatient)]
+  order  = [Patient, Normal, Impatient]       <span class="c">// enum sırası DEĞİL</span>
+  plan   = []
+  <span class="k">for</span> i in 0..2:
+      <span class="k">for</span> n in 0..counts[i]-1:
+          <span class="k">if</span> plan.Count &gt;= N: <span class="k">break</span>       <span class="c">// fazlası KUYRUKTAN kesilir</span>
+          plan.Add(order[i])
+  <span class="k">while</span> plan.Count &lt; N: plan.Add(Normal)   <span class="c">// eksik Normal ile doldurulur</span>
+  <span class="k">return</span> plan</pre>
+  <p>Fazlalık kuyruktan kesildiği için önce Impatient, sonra Normal kaybolur. Eksik <strong>orantısal değil, Normal ile</strong> doldurulur — nötr tip, günü sessizce kolaylaştırmayan/zorlaştırmayan tek seçim.</p>
+
+  <h3>2.2 Tek bir biletin üretimi — çekim sırası</h3>
+  <span class="anchor">TicketFactory.Create</span>
+  <p>Bu sıra <strong>birebir</strong> uygulanmalıdır; bir çekimin atlanması veya sırasının değişmesi tüm akışı kaydırır.</p>
+
+  <div class="tw">
+  <table>
+    <thead><tr><th>#</th><th>Adım</th><th>Çekim</th><th>Koşul</th></tr></thead>
+    <tbody>
+      <tr><td class="num">0</td><td>Patience (plan yoksa)</td><td class="m">Next(0,3)</td><td>Yalnız patiencePlan boşsa</td></tr>
+      <tr><td class="num">1</td><td>Main seçimi</td><td class="m">NextDouble()</td><td>totalWeight &gt; 0 ise. Değilse <code class="m">Next(mains.Count)</code></td></tr>
+      <tr><td class="num">2</td><td>Side dahil mi</td><td class="m">NextDouble()</td><td><strong>Her zaman çekilir</strong></td></tr>
+      <tr><td class="num">3</td><td>Side hangisi</td><td class="m">Next(cand.Count)</td><td>Yalnız #2 geçtiyse <em>ve</em> aday varsa</td></tr>
+      <tr><td class="num">4</td><td>Drink dahil mi</td><td class="m">NextDouble()</td><td><strong>Her zaman çekilir</strong></td></tr>
+      <tr><td class="num">5</td><td>Drink hangisi</td><td class="m">Next(cand.Count)</td><td>Yalnız #4 geçtiyse <em>ve</em> aday varsa</td></tr>
+      <tr><td class="num">6</td><td>Modifikasyon sayısı</td><td class="m">NextDouble()</td><td><strong>Yalnız <code>maxMods &gt; 0</code> ise</strong></td></tr>
+      <tr><td class="num">7</td><td>Hangi modifikasyonlar</td><td class="m">Next(i, count)</td><td>Seçilen her modifikasyon için birer kez</td></tr>
+      <tr><td class="num">8</td><td>Her modifikasyonun yönü</td><td class="m">NextDouble()</td><td><strong>Yalnız <code>Both</code> yönlü olanlar için</strong></td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="box err">
+    <span class="lbl">Sık yapılacak üç hata</span>
+    <p><strong>1. Side/Drink şans çekimi koşulsuzdur.</strong> <code>TryAddRandomItem</code> önce <code>NextDouble()</code> çeker, <em>sonra</em> aday listesine bakar. Havuzda hiç içecek olmasa bile çekim yapılır ve akış kayar.</p>
+    <p><strong>2. <code>TruncatedPoisson.Sample</code>, <code>n == 0</code> iken hiç çekim yapmadan 0 döner.</strong> Yani modifikasyonu olmayan bir ana yemek akıştan hiçbir sayı tüketmez.</p>
+    <p><strong>3. Yön çekimi yalnız <code>Both</code> için yapılır.</strong> <code>AdditionOnly</code>/<code>RemovalOnly</code> yönünü kendi tanımından alır, çekim yoktur.</p>
+  </div>
+
+  <h4>Main dish ağırlık normalizasyonu</h4>
+  <span class="anchor">TicketFactory.PickWeightedMain · ResolveWeight</span>
+  <pre><span class="k">ResolveWeight</span>(food):
+  <span class="k">foreach</span> entry <span class="k">in</span> config.MainDishWeights:
+      <span class="k">if</span> entry.Food == food: <span class="k">return</span> max(0, entry.Weight)
+  <span class="k">return</span> 1.0                    <span class="c">// MainDishWeight.DefaultWeight</span>
+
+<span class="k">PickWeightedMain</span>(mains):
+  weights[i]  = ResolveWeight(mains[i])       <span class="c">// double olarak biriktirilir</span>
+  totalWeight = Σ weights
+  <span class="k">if</span> totalWeight &lt;= 0: <span class="k">return</span> mains[random.Next(mains.Count)]
+
+  roll = random.NextDouble() * totalWeight
+  cum  = 0
+  <span class="k">for</span> i in 0..mains.Count-1:
+      cum += weights[i]
+      <span class="k">if</span> roll &lt; cum: <span class="k">return</span> mains[i]
+  <span class="k">return</span> mains[^1]                            <span class="c">// float artığına karşı</span></pre>
+  <p>Yani <strong>normalizasyon yoktur</strong> — ağırlıklar toplanır, rulet çarkı toplam üzerinden çevrilir. Ağırlıkların 1'e veya 100'e toplanması gerekmez. <code>mains</code> listesinin sırası havuz sırasıdır, o da katalog sırasıdır.</p>
+  <p><strong>Listede olmayan bir Main varsayılan 1.0 ağırlık alır.</strong> Day Editor listeyi seçili Main'lerle senkron tuttuğu için pratikte tetiklenmez, ama elle düzenlenmiş bir dosyada tetiklenir — simülatör bunu uygulamalı.</p>
+
+  <h4>Side ve drink havuzu</h4>
+  <span class="anchor">TicketFactory.TryAddRandomItem</span>
+  <pre><span class="k">TryAddRandomItem</span>(pool, category, inclusionChance, requiredItems):
+  <span class="k">if</span> random.NextDouble() &gt;= inclusionChance: <span class="k">return</span>   <span class="c">// ÇEKİM HER ZAMAN</span>
+  candidates = pool.Where(i =&gt; i.Category == category)
+  <span class="k">if</span> candidates.Count == 0: <span class="k">return</span>
+  requiredItems.Add(candidates[random.Next(candidates.Count)])</pre>
+  <p>Her ikisi de aynı <code>pool</code>'dan (Day'in food selection'ı) çekilir, kategoriye göre filtrelenir, <strong>uniform</strong> seçilir. Side/drink için ağırlık sistemi yoktur.</p>
+
+  <h4>Poisson implementasyonu</h4>
+  <span class="anchor">Core/TruncatedPoisson.cs</span>
+  <p>Gerçek Poisson pmf'i değil, <strong>normalize edilmemiş terim oranı</strong> kullanılır. <code>e^-λ</code> çarpanı toplama bölününce sadeleştiği için hiç hesaplanmaz:</p>
+  <pre><span class="k">Terms</span>(n, λ):
+  terms[0] = 1
+  <span class="k">for</span> k = 1..n: terms[k] = terms[k-1] * λ / k
+  <span class="k">return</span> terms                    <span class="c">// uzunluk n+1</span>
+
+<span class="k">Sample</span>(n, λ, random):
+  <span class="k">if</span> n == 0: <span class="k">return</span> 0             <span class="c">// ÇEKİM YOK</span>
+  terms = Terms(n, λ)
+  total = Σ terms
+  roll  = random.NextDouble() * total
+  cum   = 0
+  <span class="k">for</span> k = 0..n:
+      cum += terms[k]
+      <span class="k">if</span> roll &lt; cum: <span class="k">return</span> k
+  <span class="k">return</span> n
+
+<span class="k">Probabilities</span>(n, λ):              <span class="c">// editör önizlemesi, çekim yok</span>
+  terms = Terms(n, λ); <span class="k">return</span> terms.map(t =&gt; t / Σterms)</pre>
+  <p><code>terms[0]</code> her zaman tam olarak 1 olduğu için toplam her zaman <code>&gt;= 1</code> — sıfıra bölme riski yoktur. <code>λ = 0</code> iken <code>terms = [1,0,0,...]</code>, sonuç daima 0.</p>
+
+  <h4>MaxModificationCount uygulanışı</h4>
+  <span class="anchor">TicketFactory.Create · ResolveMaxModificationCount</span>
+  <pre>λ       = ResolveModificationCountLambda(main)
+          <span class="c">// listede varsa entry'nin λ'sı, yoksa config.ModificationCountLambda</span>
+maxMods = <b>min</b>(main.AvailableModifications.Count,
+                ResolveMaxModificationCount(main))
+          <span class="c">// listede varsa entry.MaxModificationCount (normalize edilmiş),</span>
+          <span class="c">// yoksa DefaultMaxModificationCount = 10</span>
+count   = TruncatedPoisson.Sample(maxMods, λ, random)</pre>
+  <p><strong>İki tavan buluşur ve küçüğü kazanır.</strong> Yemeğin kendi listesinden fazlasını istemek imkânsızdır — <code>MaxModificationCount</code>'u 10 yapmak, 3 modifikasyonu olan bir yemekte hiçbir şey değiştirmez.</p>
+
+  <h4>Modifikasyon seçimi — tekrar mümkün mü?</h4>
+  <span class="anchor">TicketFactory.ChooseModifications</span>
+  <p><strong>Hayır.</strong> Kısmi Fisher-Yates ile <em>yerine koymadan</em> uniform alt küme seçilir:</p>
+  <pre><span class="k">ChooseModifications</span>(available, count):
+  shuffled = copy(available)
+  limit    = min(count, shuffled.Count)
+  <span class="k">for</span> i = 0..limit-1:
+      swapIndex = random.Next(i, shuffled.Count)   <span class="c">// [i, Count)</span>
+      swap(shuffled[i], shuffled[swapIndex])
+  <span class="k">return</span> shuffled[0..limit]</pre>
+  <p>Aynı modifikasyon bir bilette iki kez çıkamaz. Not: <code>random.Next(i, count)</code> .NET'te <strong>üst sınır hariçtir</strong> — TS portunda <code>i + floor(rand() * (count - i))</code>.</p>
+
+  <h4>Yön belirleme</h4>
+  <span class="anchor">TicketFactory.CreateModification</span>
+  <pre>isAddition = modConfig.AllowedDirection <span class="k">switch</span>
+    AdditionOnly → <span class="k">true</span>                                    <span class="c">// çekim yok</span>
+    RemovalOnly  → <span class="k">false</span>                                   <span class="c">// çekim yok</span>
+    Both         → random.NextDouble() &lt; ModificationAdditionChance</pre>
+
+  <h3>2.3 Seed ve tekrarlanabilirlik</h3>
+  <span class="anchor multi">DayEditorModel.Generate</span><span class="anchor multi">DayContentGenerator.Generate</span>
+  <p><code>Generate</code> bir <code>seed: int</code> parametresi alır ve <code>new System.Random(seed)</code> ile tek bir akış kurar. Ancak Day Editor bunu şöyle çağırır:</p>
+  <pre>var seed = UnityEngine.Random.Range(int.MinValue, int.MaxValue);
+var result = DayContentGenerator.Generate(catalog, config, meta, N, seed);</pre>
+  <p><strong>Seed hiçbir yere kaydedilmez.</strong> Kullanıcıya gösterilen bir seed alanı yoktur; her tıklama farklı sonuç verir ve bu kasten böyledir. Üretilmiş bir günü seed'inden yeniden üretmek mümkün değildir — üretilen <code>ticketSequence</code> tek kayıttır.</p>
+
+  <div class="box unknown">
+    <span class="lbl">NEEDS DECISION — System.Random taşınamaz</span>
+    <p>.NET'in <code>System.Random</code>'ı Knuth'un subtractive generator'ının bir varyantıdır. <strong>TypeScript'te birebir yeniden üretilemez</strong> (implementasyonu .NET Framework ve .NET Core arasında bile değişti). Dolayısıyla simülatör, Unity'nin belirli bir seed'iyle <em>aynı bilet dizisini</em> üretemez.</p>
+    <p>Önerilen yaklaşım: simülatöre <strong>RNG'yi dışarıdan enjekte et</strong> (<code>rng: () =&gt; number</code>) ve doğruluğu <em>dizi eşitliği</em> ile değil <strong>dağılım eşitliği</strong> ile doğrula — 10⁵ bilet üret, ana yemek frekanslarını, modifikasyon sayısı histogramını ve side/drink oranlarını Unity'nin ürettikleriyle karşılaştır. Belirlenimli test için kendi seedlenebilir PRNG'ni kullan (mulberry32 vb.).</p>
+    <p>Ayrıca <code>Next(a, b)</code> ve <code>NextDouble()</code> farklı sayıda bit tüketir; "aynı çekim sırası" ancak <em>kendi</em> RNG'nde anlamlıdır.</p>
+  </div>
+
+  <h4>Üretilen JSON'a yazılmayanlar</h4>
+  <span class="anchor">DayContentGenerator.ToTicketEntryJson</span>
+  <p>Üretim sırasında oluşan bir <code>Ticket</code> nesnesinin şu alanları <strong>diske yazılmaz</strong>: müşteri adı (sabit <code>"Simulated Customer"</code> kullanılır ve atılır), <code>arrivalSequence</code>, ve süre. Üretilen entry'de <code>customerNameOverride = ""</code> ve <code>timeLimitSecondsOverride = 0</code> olarak sabitlenir.</p>
+  <p>Ayrıca <code>PickRandomCustomerPortrait()</code> bu yolda <strong>kasten çağrılmaz</strong> — çağrılsaydı seed akışını kaydırır ve mevcut her gün aynı seed'le farklı içerik üretirdi.</p>
+</section>
+
+<section id="s3">
+  <div class="sh"><span class="sn">§3</span><h2>Runtime board generation</h2></div>
+  <p class="sub">Yeni bilet geldiğinde tahtaya ne düştüğünün tam akışı.</p>
+  <span class="anchor multi">BoardDistributor.OnOrderPlaced</span><span class="anchor multi">GameManager.OnTicketAssigned</span>
+
+  <h3>3.1 Tetikleme</h3>
+  <p>Üretim <strong>sipariş tetiklemelidir</strong> — zamanlayıcı ya da her-kare yoklama yoktur. Zincir tamamen senkrondur:</p>
+  <pre>TicketSlotManager.AssignTicket(slot)
+  └─ state.TicketAssigned.Publish((slot, ticket))
+       └─ GameManager.OnTicketAssigned
+            ├─ <span class="k">if</span> openingAssignmentsWithoutDistribution &gt; 0 → sayacı azalt, ATLA
+            └─ <span class="k">else</span>
+                 activeTickets  = State.TicketSlots.Where(t =&gt; t != null)
+                 lookaheadCount = <b>max</b>(3, CurrentDay.TicketRuntime.UpcomingQueueSize)
+                 upcoming       = provider.PeekUpcoming(lookaheadCount)
+                 boardDistributor.OnOrderPlaced(activeTickets, upcoming)
+            └─ TrayManager.OnTicketAssigned(slot)   <span class="c">// her koşulda</span></pre>
+
+  <p>Dikkat edilecek noktalar:</p>
+  <ul>
+    <li><strong><code>activeTickets</code> filtresi yalnızca null kontrolüdür</strong> — <code>Delivered</code>/<code>Cancelled</code> durumundaki bir bilet hâlâ dizide durabilir ve buraya geçer. Durum filtresi bir alt katmanda, <code>SelectGuaranteedTickets</code> içinde uygulanır.</li>
+    <li><strong>Ticket null olsa bile çağrılır.</strong> Bilet dizisi bittiğinde slot boş kalır ve yine bir <code>TicketAssigned</code> yayınlanır; bu kasten atlanmaz — atlandığında günün son biletleri hiç garanti turu almadan kalıyordu (kayıtlı bir playtest bug'ı).</li>
+    <li><strong>Lookahead tabanı 3'tür.</strong> <code>UpcomingQueueSize</code> daha küçük olsa bile en az 3 bilet ileriye bakılır.</li>
+    <li><code>PeekUpcoming</code> cursor'u ilerletmez ve <strong>örnekleri cache'ler</strong> — aynı index için sonra <code>NextTicket()</code> çağrıldığında <em>tam olarak aynı</em> nesne döner. Bu, leak dedup'ının referans kimliğine dayanması için zorunludur.</li>
+  </ul>
+
+  <h3>3.2 OnOrderPlaced — okuma sırası</h3>
+  <pre><span class="k">OnOrderPlaced</span>(activeTickets, upcomingTickets):
+  SpawnMissingRequiredItems(activeTickets, upcomingTickets)   <span class="c">// ÖNCE</span>
+  LeakNoiseItems(upcomingTickets)                             <span class="c">// SONRA</span></pre>
+  <p>Sıra kilitli bir tasarım kuralıdır: gerekli havuz her zaman gürültüden önce spawn eder. Board dolmaya başladığında gerekli item'ların yer bulma önceliği buradan gelir.</p>
+
+  <h3>3.3 Missing required items hesabı</h3>
+  <span class="anchor">BoardDistributor.SpawnMissingRequiredItems · CountItemsOnBoard</span>
+  <pre><span class="k">SpawnMissingRequiredItems</span>(active, upcoming):
+  guaranteed = SelectGuaranteedTickets(active, upcoming)
+  <span class="k">if</span> guaranteed.Count == 0: <span class="k">return</span>
+
+  <span class="c">// 1) İhtiyaç: garantili biletlerin item'ları toplanır</span>
+  neededCounts = {}
+  <span class="k">foreach</span> ticket <span class="k">in</span> guaranteed:
+      <span class="k">foreach</span> food <span class="k">in</span> ticket.RequiredItems:
+          mods = (food.Category == Main) ? ticket.Modifications : []
+          key  = RequiredItemKey(food, mods)
+          neededCounts[key] += 1          <span class="c">// TOPLANIR</span>
+
+  <span class="c">// 2) Mevcut: tahtadaki her hücre taranır</span>
+  presentCounts = {}
+  <span class="k">for</span> x = 0..Width-1:  <span class="k">for</span> y = 0..Height-1:
+      item = Board.ItemAt(x, y)
+      <span class="k">if</span> item != null: presentCounts[RequiredItemKey(item.Config, item.Modifications)] += 1
+
+  <span class="c">// 3) Fark kadar spawn</span>
+  <span class="k">foreach</span> (key, needed) <span class="k">in</span> neededCounts:
+      present = presentCounts[key] ?? 0
+      <span class="k">for</span> i = present .. needed-1:
+          Board.RequestSpawn(BoardItem(key.Food, key.Modifications), random)</pre>
+
+  <h4>RequiredItemKey — eşitlik kuralı</h4>
+  <span class="anchor">Core/RequiredItemKey.cs</span>
+  <p>Bir item'ı <strong>(yemek + modifikasyon kümesi)</strong> olarak tanımlar. Modifikasyon listesi bir <code>HashSet</code> imzasına çevrilir, yani <strong>sıra bağımsızdır</strong> ve <code>SetEquals</code> ile karşılaştırılır. Hash, XOR ile birleştirilir (yine sıra bağımsız).</p>
+  <p>TS karşılığı: modifikasyonları <code>(modId, isAddition)</code> çiftleri olarak sırala, deterministik bir string'e serialize et, <code>Map</code> anahtarı yap. Örn: <code>`${foodId}|${sortedMods.join(',')}`</code>.</p>
+
+  <div class="box">
+    <span class="lbl">Modifikasyonlar yalnız ana yemeğe aittir</span>
+    <span class="anchor">TicketRequirements.KeyFor</span>
+    <p>Bir biletin modifikasyonları <strong>yalnız Main kategorisindeki item'a</strong> uygulanır; Side ve Drink için boş liste kullanılır. Bu kural teslimatın doğru sayılıp sayılmadığını belirlediği için kritiktir ve <code>TicketRequirements</code> altında tek bir yerde toplanmıştır.</p>
+    <p><strong>Bilinen tekrar:</strong> <code>BoardDistributor</code> aynı kuralı iki yerde daha kendi eliyle yazar (<code>SpawnMissingRequiredItems</code> ve <code>LeakNoiseItems</code>). Kod yorumunda bilerek kayıt altına alınmış bir borç. Simülatörde tek fonksiyona indir.</p>
+  </div>
+
+  <h4>Birden fazla bilet aynı item'ı isterse</h4>
+  <p><strong>Sayılar toplanır.</strong> Üç garantili bilet de hamburger istiyorsa <code>neededCounts[burger] = 3</code> olur ve tahtada 1 tane varsa 2 tane daha spawn edilir. Ancak dikkat: modifikasyonlar anahtarın parçası olduğu için "ekstra hardallı hotdog" ile "düz hotdog" <strong>farklı anahtarlardır</strong> ve birbirinin yerini tutmaz.</p>
+
+  <h3>3.4 Guaranteed ticket seçimi — pseudocode</h3>
+  <span class="anchor">BoardDistributor.SelectGuaranteedTickets</span>
+  <p>Bu, sistemin en karmaşık parçasıdır. <code>guaranteedTickets</code> bir <strong>instance alanıdır</strong> — turlar arasında yaşar (sticky).</p>
+
+  <pre><span class="k">SelectGuaranteedTickets</span>(activeTickets, upcomingTickets):
+
+  <span class="c">// ── 1. Havuz: aktif + kuyruk, varış sırasına göre ──────────────</span>
+  pool = activeTickets.Where(t =&gt; t != null &amp;&amp; t.State == Active)
+                      .Concat(upcomingTickets)
+                      .OrderBy(t =&gt; t.ArrivalSequence)
+
+  <span class="c">// ── 2. Budama: havuzdan çıkanlar garantiden de çıkar ───────────</span>
+  guaranteedTickets.IntersectWith(pool)
+
+  <span class="c">// ── 3. Aciliyet: koşulsuz eklenir, bütçeden ÖNCE ───────────────</span>
+  <span class="k">foreach</span> ticket <span class="k">in</span> activeTickets:
+      <span class="k">if</span> ticket != null
+         &amp;&amp; ticket.State == Active
+         &amp;&amp; ticket.RemainingSeconds &lt; settings.UrgentTimeThresholdSeconds:
+          guaranteedTickets.Add(ticket)      <span class="c">// STRICT &lt;  (eşitlik dahil değil)</span>
+
+  <span class="c">// ── 4. Bütçe ──────────────────────────────────────────────────</span>
+  budget = (mode == Poisson)
+      ? TruncatedPoisson.Sample(<b>3 - 1</b>, GuaranteedTicketCountLambda, random) <b>+ 1</b>
+      : GuaranteedTicketCount
+
+  <span class="c">// ── 5. Bütçe YALNIZCA aktif biletleri sayar ───────────────────</span>
+  activeSet   = HashSet(activeTickets.Where(t =&gt; t != null &amp;&amp; t.State == Active))
+  slotsToFill = budget - guaranteedTickets.Count(t =&gt; activeSet.Contains(t))
+
+  <span class="k">if</span> slotsToFill &gt; 0:
+      <span class="c">// 5a. ÖNCE aktifler (varış sırası korunur)</span>
+      activeCandidates = pool.Where(t =&gt; activeSet.Contains(t)
+                                      &amp;&amp; !guaranteedTickets.Contains(t))
+      <span class="k">foreach</span> picked <span class="k">in</span> WeightedSampleWithoutReplacement(activeCandidates, slotsToFill):
+          guaranteedTickets.Add(picked)
+          slotsToFill--
+
+      <span class="c">// 5b. Her aktif bilet kapsandıktan SONRA kuyruk</span>
+      <span class="k">if</span> slotsToFill &gt; 0:
+          upcomingCandidates = pool.Where(t =&gt; !activeSet.Contains(t)
+                                            &amp;&amp; !guaranteedTickets.Contains(t))
+          <span class="k">foreach</span> picked <span class="k">in</span> WeightedSampleWithoutReplacement(upcomingCandidates, slotsToFill):
+              guaranteedTickets.Add(picked)
+
+  <span class="k">return</span> guaranteedTickets.ToList()</pre>
+
+  <h4>Manual ve Poisson modun farkı</h4>
+  <div class="tw">
+  <table>
+    <thead><tr><th>Mod</th><th>Bütçe formülü</th><th>Aralık</th><th>Çekim</th></tr></thead>
+    <tbody>
+      <tr><td class="nw"><strong>Manual</strong></td><td class="m">GuaranteedTicketCount</td><td class="m num">1–3 (ctor clamp)</td><td>Yok</td></tr>
+      <tr><td class="nw"><strong>Poisson</strong></td><td class="m">Sample(2, λ, rng) + 1</td><td class="m num">1–3</td><td>1 × NextDouble()</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p><strong><code>+1</code> kaydırması kritiktir.</strong> Çekim <code>0..TicketSlotCount-1</code> aralığında yapılır ve sonra 1 eklenir, böylece bütçe asla 0 olamaz — "her zaman en az bir bilet tamamlanabilir olmalı" kuralı bir clamp ile değil bu kaydırmayla sağlanır. Simülatörde <code>Sample(2, λ)</code> yazıp <code>+1</code>'i unutmak, olmayan bir "0 bilet" durumu üretir.</p>
+  <p>λ = 10'da bile sonuç ~%82 ihtimalle 3'tür; %99 için λ ≈ 199 gerekir. "Her zaman üç" istiyorsan Manual + 3 doğru araçtır.</p>
+
+  <h4>EarlyTicketWeightDecay — birebir formül</h4>
+  <span class="anchor">BoardDistributor.WeightedSampleWithoutReplacement</span>
+  <pre><span class="k">WeightedSampleWithoutReplacement</span>(pool, count):
+  remaining = copy(pool)          <span class="c">// varış sırasında, asla yeniden sıralanmaz</span>
+  result    = []
+
+  <span class="k">for</span> picks = 0 .. count-1:
+      <span class="k">if</span> remaining.Count == 0: <span class="k">break</span>
+
+      <span class="c">// ── HER ÇEKİMDE yeniden hesaplanır ──</span>
+      <span class="k">for</span> i = 0 .. remaining.Count-1:
+          weights[i] = <b>Math.Pow(EarlyTicketWeightDecay, i)</b>
+      totalWeight = Σ weights
+
+      roll        = random.NextDouble() * totalWeight
+      cum         = 0
+      chosenIndex = remaining.Count - 1        <span class="c">// fallback</span>
+      <span class="k">for</span> i = 0 .. remaining.Count-1:
+          cum += weights[i]
+          <span class="k">if</span> roll &lt; cum: chosenIndex = i; <span class="k">break</span>
+
+      result.Add(remaining[chosenIndex])
+      remaining.RemoveAt(chosenIndex)          <span class="c">// index'ler kayar</span>
+
+  <span class="k">return</span> result</pre>
+  <p>Ağırlık <strong>bilete değil, kalan listedeki sıraya</strong> bağlıdır. <code>remaining</code> hep varış sırasında kaldığı için index 0 daima "henüz seçilmemişlerin en erkeni"dir. Uç değerler:</p>
+  <ul>
+    <li><code>decay = 0</code> → <code>0^0 = 1</code>, <code>0^i = 0</code> (i≥1) → <strong>deterministik en-erken-önce</strong>.</li>
+    <li><code>decay = 1</code> → tüm ağırlıklar 1 → <strong>uniform</strong>.</li>
+  </ul>
+  <p>Not: JS'de <code>Math.pow(0, 0)</code> da <code>1</code> döner, uyumlu.</p>
+
+  <h4>Aciliyet ile bütçe etkileşimi</h4>
+  <p>Sıralama şöyledir ve sonucu üç maddede özetlenebilir:</p>
+  <ol>
+    <li><strong>Acil biletler bütçeden önce eklenir</strong> (adım 3), yani bütçe hesabı onları zaten kapsanmış sayar.</li>
+    <li><strong>Bütçe içindeyken aciliyet bütçe tüketir:</strong> bütçe 2 ve 1 acil bilet varsa <code>slotsToFill = 1</code>.</li>
+    <li><strong>Bütçeyi aşarsa aciliyet kazanır:</strong> bütçe 1 ve 3 acil bilet varsa <code>slotsToFill = -2</code> olur, ek seçim yapılmaz, ama üç acil bilet de garantilidir. Aciliyet her zaman kazanır.</li>
+  </ol>
+  <p>Yalnız <strong>aktif</strong> biletler acil olabilir: kuyruktaki bir biletin <code>RemainingSeconds</code>'ı slota girene kadar <code>TimeLimitSeconds</code>'ta donmuştur.</p>
+
+  <div class="box">
+    <span class="lbl">Sticky seçim — atlanamaz</span>
+    <p><code>guaranteedTickets</code> her turda sıfırdan hesaplanmaz; budanır ve üstüne eklenir. Her <code>OnOrderPlaced</code>'de piyango yeniden çevrilseydi, hiçbir şey spawn edilmiş item'ı geri almadığı için "en az bir bilet" garantisi tekrarlı çekimlerle sessizce "eninde sonunda her bilet"e kayardı. Bir bilet garanti kümesinden yalnızca havuzdan tamamen çıkınca (teslim/iptal) düşer.</p>
+    <p>Simülatörde bu, <code>BoardDistributor</code>'ın <strong>durumlu (stateful)</strong> olması gerektiği anlamına gelir: <code>guaranteedTickets</code> ve <code>leakedTickets</code> kümeleri gün boyunca yaşar ve <strong>gün/retry değişiminde sıfırdan kurulur</strong> (<code>GameManager.RefreshDayTicketSequenceProvider</code> distributor'ı yeniden inşa eder).</p>
+  </div>
+</section>
+
+<section id="s4">
+  <div class="sh"><span class="sn">§4</span><h2>Noise / leak algoritması</h2></div>
+  <p class="sub">Tahtaya sızan "işe yaramaz" item'lar — zorluğun asıl kaynağı.</p>
+  <span class="anchor">BoardDistributor.LeakNoiseItems</span>
+
+  <pre><span class="k">LeakNoiseItems</span>(upcomingTickets):
+
+  <span class="c">// 1. Budama: kuyruktan çıkmış biletler dedup setinden düşer</span>
+  leakedTickets.IntersectWith(upcomingTickets)
+
+  <span class="c">// 2. Adaylar: LeakDepth kadar ÖNDEN, henüz sızmamış olanlar</span>
+  candidates = upcomingTickets.<b>Take(LeakDepth)</b>
+                              .Where(t =&gt; !leakedTickets.Contains(t))
+  <span class="k">if</span> candidates.Count == 0: <span class="k">return</span>        <span class="c">// ÇEKİM YOK — erken çıkış</span>
+
+  <span class="c">// 3. Kaç tane sızacak</span>
+  leakCount = <b>min</b>( TruncatedPoisson.Sample(MaxLeakCount, NoiseLeakCountLambda, random),
+                   candidates.Count )
+
+  <span class="c">// 4. Sızdırma döngüsü</span>
+  <span class="k">for</span> i = 0 .. leakCount-1:
+      index        = random.Next(candidates.Count)     <span class="c">// ① ticket seçimi</span>
+      sourceTicket = candidates[index]
+      candidates.RemoveAt(index)                       <span class="c">// yerine koymadan</span>
+
+      food = sourceTicket.RequiredItems[random.Next(sourceTicket.RequiredItems.Count)]  <span class="c">// ② item seçimi</span>
+      mods = (food.Category == Main) ? sourceTicket.Modifications : []
+
+      Board.RequestSpawn(BoardItem(food, mods), random)  <span class="c">// ③ hücre seçimi</span>
+      leakedTickets.Add(sourceTicket)</pre>
+
+  <h3>Soru–cevap</h3>
+  <div class="tw">
+  <table>
+    <thead><tr><th>Soru</th><th>Cevap</th></tr></thead>
+    <tbody>
+      <tr><td class="nw"><strong>MaxLeakCount nerede uygulanır?</strong></td><td><code>TruncatedPoisson.Sample</code>'ın <code>n</code> parametresi olarak — yani dağılımın <strong>kesme noktasıdır</strong>, sonradan uygulanan bir clamp değil. Bu yüzden editördeki olasılık önizlemesi yalnız <code>(MaxLeakCount, λ)</code>'ya bağlıdır ve kuyrukta kaç bilet olduğundan bağımsızdır.</td></tr>
+      <tr><td class="nw"><strong>Sonra ikinci bir sınır var mı?</strong></td><td>Evet: <code>min(sample, candidates.Count)</code>. Örn. MaxLeakCount=5 ama LeakDepth içinde 2 sızmamış bilet varsa en fazla 2 sızar.</td></tr>
+      <tr><td class="nw"><strong>LeakDepth ne belirler?</strong></td><td>Yalnız <strong>hangi biletlerin aday</strong> olduğunu — kaç item sızacağını değil. <code>Take(LeakDepth)</code>, kuyruğun önünden (index 0 = en yakın gelecek bilet) o kadarını alır.</td></tr>
+      <tr><td class="nw"><strong>Seçim ticket bazlı mı item bazlı mı?</strong></td><td><strong>Önce ticket, sonra item.</strong> Uniform bir bilet seçilir (①), sonra o biletin <code>RequiredItems</code> listesinden uniform bir item seçilir (②). Yani çok item'lı bir bilet, her item'ı için ayrı şans <em>almaz</em>; bilet başına tek item sızar.</td></tr>
+      <tr><td class="nw"><strong>Aynı item bir spawn'da iki kez gelebilir mi?</strong></td><td><strong>Evet.</strong> Bilet seçimi yerine koymadan yapılır (aynı bilet iki kez seçilemez), ama iki <em>farklı</em> bilet aynı yemeği içerebilir ve ikisi de o yemeği sızdırabilir.</td></tr>
+      <tr><td class="nw"><strong>Aynı bilet birden çok kez sızdırır mı?</strong></td><td><strong>Hayır.</strong> Ne aynı spawn içinde (<code>RemoveAt</code>), ne de kuyrukta beklediği sürece (<code>leakedTickets</code>). Bilet kuyruktan çıkıp slota girince set budanır; onun yerine gelen yeni bilet hemen uygun hale gelir.</td></tr>
+      <tr><td class="nw"><strong>Aktif biletin de ihtiyacı olan bir item noise olarak seçilebilir mi?</strong></td><td><strong>Evet.</strong> Kaynak yalnız kuyruktur, ama sızan yemek aktif bir biletin istediğiyle çakışabilir. Üstelik bu item bir sonraki turda <code>presentCounts</code>'a sayılır ve o biletin gerekli-havuz spawn'ını azaltır. Bu <em>engellenmiş bir durum değildir</em>.</td></tr>
+      <tr><td class="nw"><strong>Board doluysa?</strong></td><td><code>RequestSpawn</code> boş hücre bulamazsa item'ı <code>pendingSpawns</code> kuyruğuna alır ve <code>false</code> döner. Kimse dönüş değerini kontrol etmez. Bir hücre boşaldığında <code>RemoveItem</code> o hücreyi kuyruktan doldurur. Bkz. <a href="#s5">§5.3</a>.</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section id="s5">
+  <div class="sh"><span class="sn">§5</span><h2>Board state</h2></div>
+  <p class="sub">Izgaranın boyutu, hücre modeli, yerleştirme ve kaldırma.</p>
+  <span class="anchor multi">Core/BoardGrid.cs</span><span class="anchor multi">Data/GameConfig.cs</span>
+
+  <h3>5.1 Boyut ve model</h3>
+  <p>Boyut <code>GameConfig</code> ScriptableObject'inden gelir — <strong>Day JSON'da değildir</strong>, yani tüm günler aynı tahtayı paylaşır:</p>
+  <pre>[SerializeField] <span class="k">private int</span> boardWidth  = <b>6</b>;
+[SerializeField] <span class="k">private int</span> boardHeight = <b>5</b>;
+<span class="c">// BoardGrid ctor: cells = new BoardItem[Width, Height]</span></pre>
+  <p>Bunlar serialize edilmiş alanlardır; <code>.asset</code> dosyasındaki değer kodda yazan default'u ezebilir. <strong>Simülatörde board boyutunu parametrik tut</strong>, 6×5'i sabitleme.</p>
+
+  <div class="tw">
+  <table>
+    <thead><tr><th>Üye</th><th>Tip</th><th>Anlamı</th></tr></thead>
+    <tbody>
+      <tr><td class="m">cells</td><td class="m">BoardItem[Width,Height]</td><td>Hücre başına 0 veya 1 item. Yığın yok.</td></tr>
+      <tr><td class="m">pendingSpawns</td><td class="m">Queue&lt;BoardItem&gt;</td><td>Yer bulamayan item'lar (FIFO).</td></tr>
+      <tr><td class="m">OccupiedCellCount</td><td class="m">int</td><td>Dolu hücre sayısı.</td></tr>
+      <tr><td class="m">CellCount</td><td class="m">int</td><td><code>Width * Height</code></td></tr>
+      <tr><td class="m">IsFull</td><td class="m">bool</td><td><code>OccupiedCellCount &gt;= CellCount</code></td></tr>
+      <tr><td class="m">CellChanged</td><td class="m">EventBus&lt;(int,int)&gt;</td><td>Yalnız koordinat taşır; abone <code>ItemAt</code> ile okur.</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>Bir <code>BoardItem</code> <code>(FoodItemConfig Config, IReadOnlyList&lt;Modification&gt; Modifications)</code> taşır — yani modifikasyonlar item'ın üzerindedir, hücrenin değil.</p>
+
+  <h3>5.2 Hücre seçimi — random mı deterministik mi?</h3>
+  <span class="anchor">BoardGrid.RequestSpawn · TryGetEmptyCell</span>
+  <p><strong>Çağırana bağlıdır.</strong> <code>RequestSpawn</code>'un <code>random</code> parametresi opsiyoneldir ve iki farklı davranış üretir:</p>
+  <pre><span class="k">TryGetEmptyCell</span>(random, out x, out y):
+  <span class="k">if</span> random == null:
+      <span class="k">return</span> TryGetFirstEmptyCell(out x, out y)   <span class="c">// DETERMİNİSTİK</span>
+
+  emptyCells = []
+  <span class="k">for</span> scanY = 0..Height-1:          <span class="c">// dış döngü Y</span>
+      <span class="k">for</span> scanX = 0..Width-1:       <span class="c">// iç döngü X</span>
+          <span class="k">if</span> cells[scanX, scanY] == null: emptyCells.Add((scanX, scanY))
+  <span class="k">if</span> emptyCells.Count == 0: <span class="k">return false</span>
+  (x, y) = emptyCells[random.Next(emptyCells.Count)]   <span class="c">// UNIFORM</span></pre>
+  <p><code>TryGetFirstEmptyCell</code> aynı tarama sırasını (Y dış, X iç) kullanır ve ilk boşu döner.</p>
+
+  <div class="tw">
+  <table>
+    <thead><tr><th>Çağıran</th><th>random verilir mi?</th><th>Sonuç</th></tr></thead>
+    <tbody>
+      <tr><td class="m">BoardDistributor.SpawnMissingRequiredItems</td><td><span class="tag acc">evet</span></td><td>Uniform rastgele hücre</td></tr>
+      <tr><td class="m">BoardDistributor.LeakNoiseItems</td><td><span class="tag acc">evet</span></td><td>Uniform rastgele hücre</td></tr>
+      <tr><td class="m">TrayManager.ScatterBackToBoard</td><td><span class="tag acc">evet</span></td><td>Uniform rastgele hücre</td></tr>
+      <tr><td class="m">DayBoardTimelinePlayer.ApplyForStep</td><td><span class="tag opt">hayır</span></td><td><strong>İlk boş hücre</strong> — kasten deterministik</td></tr>
+      <tr><td class="m">BoardItemDragHandler (geçersiz bırakma)</td><td><span class="tag opt">hayır</span></td><td>İlk boş hücre</td></tr>
+      <tr><td class="m">WorldTrayView (tepsiden geri)</td><td><span class="tag opt">hayır</span></td><td>İlk boş hücre</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>5.3 Kaldırma ve backfill</h3>
+  <span class="anchor">BoardGrid.RemoveItem</span>
+  <pre><span class="k">RemoveItem</span>(x, y):
+  <span class="k">if</span> !IsInBounds(x,y): <span class="k">return null</span>
+  removed = cells[x,y]
+  <span class="k">if</span> removed == null: <span class="k">return null</span>
+
+  cells[x,y] = null
+  OccupiedCellCount--
+
+  <span class="k">if</span> pendingSpawns.Count &gt; 0:
+      TryPlaceItem(pendingSpawns.Dequeue(), x, y)   <span class="c">// AYNI hücreye backfill</span>
+                                                    <span class="c">// CellChanged'i kendi yayınlar</span>
+  <span class="k">else</span>:
+      CellChanged.Publish((x,y))
+
+  <span class="k">return</span> removed</pre>
+  <p><strong>Backfill anında ve aynı hücreye olur.</strong> Bu, oyuncunun bir item'ı aldığı anda o hücrede yeni bir item belirebileceği anlamına gelir. <code>Clear()</code> bu yüzden önce <code>pendingSpawns.Clear()</code> yapar — sonra yapsaydı döngü sırasında hücreler yeniden dolar ve tahta hiç boşalmazdı.</p>
+
+  <h3>5.4 Oyuncu item kullandığında</h3>
+  <span class="anchor multi">BoardItemDragHandler.DetachFromBoard</span><span class="anchor multi">TrayManager.TryAddItem</span>
+  <p>Kaldırma, sürükleme başında değil <strong>tepsi kabul ettiği anda</strong> olur ve sıralaması kasten böyledir:</p>
+  <pre>WorldTrayView → TrayManager.TryAddItem(slotIndex, item, <b>dragHandler.DetachFromBoard</b>)
+
+<span class="k">TryAddItem</span>(slotIndex, item, onAccepted):
+  ticket = state.TicketSlots[slotIndex]
+  <span class="k">if</span> ticket == null || ticket.State != Active: <span class="k">return false</span>
+  <span class="k">if</span> slot.IsFull(ticket): <span class="k">return false</span>
+
+  <b>onAccepted?.Invoke()</b>          <span class="c">// ← board.RemoveItem BURADA çalışır</span>
+  slot.Add(item)
+
+  <span class="k">if</span> slot.IsFull(ticket):        <span class="c">// items.Count &gt;= ticket.RequiredItems.Count</span>
+      <span class="k">if</span> slot.Matches(ticket):
+          slot.Clear()             <span class="c">// ÖNCE temizle</span>
+          deliverTicket(slotIndex) <span class="c">// SONRA teslim (senkron cascade)</span>
+      <span class="k">else</span>:
+          loseLife(slotIndex)
+          ScatterBackToBoard(slotIndex, slot)
+          slot.Clear()
+  <span class="k">return true</span></pre>
+  <p><code>onAccepted</code>'ın batch check'ten <em>önce</em> çalışması zorunludur: teslimat senkron olarak <code>OnOrderPlaced</code>'e kadar iner ve o sırada item hâlâ eski hücresinde durursa, başka bir aktif biletle paylaşılan bir kombinasyon "zaten tahtada var" diye okunur ve hiç yenilenmez.</p>
+
+  <h3>5.5 Kullanılmayan item'lar ne kadar kalır?</h3>
+  <p><strong>Süresiz.</strong> Kodda item'lara bağlı hiçbir zamanlayıcı, ömür veya çürüme yoktur. Bir item tahtadan yalnız şu yollarla çıkar:</p>
+  <ul>
+    <li>Oyuncu alıp bir tepsiye koyar (<code>DetachFromBoard</code>).</li>
+    <li><code>BoardGrid.Clear()</code> — gün sıfırlaması.</li>
+    <li>Noise Clear powerup'ı (<code>NoiseClearRunner</code>) — aktif biletlerin hâlâ ihtiyaç duyduğu sayının üzerindeki kopyaları siler.</li>
+  </ul>
+  <p>Yani tahta yalnızca birikir. Bir balancing simülatörünün ölçmesi gereken asıl metrik budur: <strong>doluluk oranının zaman içindeki eğrisi</strong> ve <code>pendingSpawns</code>'ın büyümesi.</p>
+</section>
+
+<section id="s6">
+  <div class="sh"><span class="sn">§6</span><h2>Ticket lifecycle</h2></div>
+  <p class="sub">Oluşturmadan teslimat veya timeout'a kadar durum akışı.</p>
+  <span class="anchor multi">TicketSlotManager</span><span class="anchor multi">Core/Ticket.cs</span>
+
+  <h3>6.1 Slot sayısı</h3>
+  <pre><span class="k">public const int</span> TicketSlotCount = <b>3</b>;      <span class="c">// Core/GameState.cs</span>
+<span class="k">public</span> Ticket[] TicketSlots { <span class="k">get</span>; } = <span class="k">new</span> Ticket[TicketSlotCount];</pre>
+  <p>Bir <code>const</code>'tur, config'ten gelmez — kilitli bir tasarım kuralıdır. Poisson bütçe formülü (<code>Sample(TicketSlotCount - 1, ...)</code>) ve tutorial tray doğrulaması bu sabiti okur.</p>
+
+  <h3>6.2 Durumlar</h3>
+  <pre><span class="k">enum</span> TicketState { Active, Delivered, Cancelled }
+<span class="c">// Ticket ctor: State = Active, RemainingSeconds = timeLimitSeconds</span></pre>
+  <p>Geçişler tek yönlüdür ve yalnız iki yerden yazılır: <code>DeliverTicket</code> (→ Delivered) ve <code>CancelTicket</code> (→ Cancelled). Geri dönüş yoktur.</p>
+
+  <h3>6.3 Teslimat zinciri — tamamen senkron</h3>
+  <pre>TrayManager.TryAddItem  ── tepsi doldu ve eşleşti
+  ├─ slot.Clear()
+  └─ deliverTicket(slotIndex)   → TicketSlotManager.DeliverTicket
+       ├─ ticket.State = Delivered
+       ├─ state.TicketDelivered.Publish((slotIndex, ticket))
+       │     └─ GameManager: ekonomi kaydı, DayLifecycleManager.RecordDelivery
+       └─ <b>AssignTicket(slotIndex)</b>
+            ├─ <span class="k">if</span> IsDayComplete: <span class="k">return</span>
+            ├─ ticket = nextTicketProvider()        <span class="c">// null olabilir</span>
+            ├─ state.TicketSlots[slotIndex] = ticket
+            ├─ state.TicketAssigned.Publish((slotIndex, ticket))
+            │     └─ GameManager.OnTicketAssigned
+            │          ├─ boardDistributor.OnOrderPlaced(...)   <span class="c">// §3</span>
+            │          └─ TrayManager.OnTicketAssigned(slotIndex)
+            └─ <span class="k">if</span> ticket == null &amp;&amp; AllSlotsEmpty():
+                   IsDayComplete = <span class="k">true</span>
+                   state.DayCompleted.Publish(TicketsDeliveredToday)</pre>
+  <p><strong>Sıra: yeni bilet → sonra board generation.</strong> Board üretimi, yeni bilet slota <em>yerleştikten sonra</em> tetiklenir, yani <code>OnOrderPlaced</code> yeni bileti aktif listede görür.</p>
+
+  <h3>6.4 Timeout</h3>
+  <span class="anchor">TicketSlotManager.Tick</span>
+  <pre><span class="k">Tick</span>(deltaSeconds):
+  <span class="k">if</span> IsDayComplete: <span class="k">return</span>
+  <span class="k">for</span> i = 0..2:
+      ticket = state.TicketSlots[i]
+      <span class="k">if</span> ticket == null || ticket.State != Active: <span class="k">continue</span>
+
+      ticket.RemainingSeconds = <b>max(0, ticket.RemainingSeconds - deltaSeconds)</b>
+      <span class="k">if</span> ticket.RemainingSeconds &lt;= 0:
+          loseLife(i)                       <span class="c">// ÖNCE can</span>
+          <span class="k">if</span> state.IsAwaitingContinue:
+              deferredTimeouts[i] = <span class="k">true</span>    <span class="c">// son can → iptal ERTELENİR</span>
+              <span class="k">continue</span>
+          CancelTicket(i)</pre>
+  <p><strong>Evet, timeout board generation tetikler.</strong> <code>CancelTicket</code> → <code>TicketCancelled.Publish</code> → <code>AssignTicket</code> → <code>TicketAssigned</code> → <code>OnOrderPlaced</code>. Teslimatla aynı zincir.</p>
+  <p>Tek istisna: son can gittiyse iptal ertelenir (<code>deferredTimeouts</code>), böylece Game Over popup'ının arkasında yeni item'lar patlamaz. Ertelenen iptaller Continue sonrası ilk canlı karede <code>ResolveDeferredTimeouts</code> ile çalışır ve o zaman board turunu tetikler.</p>
+
+  <h4>Tick ne zaman çalışmaz</h4>
+  <span class="anchor">GameManager.Update</span>
+  <pre><span class="k">Update</span>():
+  <span class="k">if</span> State.IsAwaitingContinue: <span class="k">return</span>   <span class="c">// Game Over popup açık</span>
+  <span class="k">if</span> State.IsPaused: <span class="k">return</span>              <span class="c">// ayarlar menüsü / powerup shop</span>
+  <span class="k">if</span> Tutorial != null &amp;&amp; Tutorial.IsArmed: <span class="k">return</span>  <span class="c">// tutorial adımı</span>
+
+  TicketSlotManager.ResolveDeferredTimeouts()
+  TicketSlotManager.Tick(Time.deltaTime)
+  NotifyTutorialOfTicketPatience()</pre>
+  <p>Üç ayrı bayrak, üç ayrı sebep — kasten birleştirilmemiş. Simülatör bir "wall clock" yerine <strong>sabit adımlı bir tick</strong> kullanmalı ve bu üç durağı modelleyip modellememeye karar vermeli (balancing için genelde gereksiz).</p>
+
+  <h3>6.5 Day completion — tam koşul</h3>
+  <span class="anchor">TicketSlotManager.AssignTicket</span>
+  <pre><span class="k">if</span> ticket == null <b>&amp;&amp;</b> AllSlotsEmpty():
+      IsDayComplete = <span class="k">true</span>
+      state.DayCompleted.Publish(state.TicketsDeliveredToday)</pre>
+  <p>Yani gün, <strong>bilet dizisi tükendiğinde <em>ve</em> üç slotun üçü de boşaldığında</strong> biter. Bu tetikleyici olan çözüm bir teslimat da olabilir, bir iptal de.</p>
+
+  <div class="box err">
+    <span class="lbl">Gün bitişi teslimat sayısına bağlı DEĞİL</span>
+    <p>Bu kayıtlı bir bug düzeltmesi. <code>nextTicketProvider()</code> slot başına bir kez çağrılır (gün başında 3, sonra her çözümde 1), yani dizi her zaman "N teslimat" hedefine ulaşılmadan birkaç çözüm önce tükenir — ve timeout olan bilet hiç teslim sayılmaz. Bitişi teslimat sayısına bağlamak günü <strong>tamamlanamaz</strong> yapıyordu.</p>
+    <p><strong>Sonuç:</strong> <code>ticketsRequiredForDay</code> bir <em>bitiş koşulu değildir</em>, yalnızca dizinin uzunluğudur (ve validator bunu zorunlu tutar). Oyuncu bir bileti timeout'a düşürse bile gün, dizi tükenip slotlar boşalınca biter — sadece daha az teslimatla.</p>
+  </div>
+
+  <h3>6.6 Bilet örnekleri nereden gelir</h3>
+  <span class="anchor multi">DayTicketSequenceProvider</span><span class="anchor multi">TicketEntryFactory.Create</span>
+  <pre><span class="k">NextTicket</span>():
+  index = cursor; cursor++
+  <span class="k">if</span> peekCache.has(index): <span class="k">return</span> peekCache.pop(index)   <span class="c">// AYNI nesne</span>
+  <span class="k">return</span> TicketEntryFactory.Create(sequence[index], ticketRuntime, factory, <b>index</b>)
+
+<span class="k">PeekUpcoming</span>(count):                     <span class="c">// cursor'u İLERLETMEZ</span>
+  <span class="k">for</span> index = cursor .. min(cursor+count, len)-1:
+      <span class="k">if</span> !peekCache.has(index):
+          peekCache[index] = TicketEntryFactory.Create(sequence[index], ..., <b>index</b>)
+      result.Add(peekCache[index])</pre>
+  <p><strong><code>arrivalSequence</code> = dizideki index'tir</strong> — artan bir sayaç değil. Yani varış sırası authoring sırasıyla birebir aynıdır ve `OrderBy(ArrivalSequence)` deterministiktir.</p>
+  <p><code>TicketEntryFactory.Create</code> iki rastgele çekim yapar (isim ve portre) ve bunlar <strong>seedlenmemiş</strong> factory'den gelir; balancing açısından anlamsızdır, simülatörde atlanabilir.</p>
+</section>
+
+<section id="s7">
+  <div class="sh"><span class="sn">§7</span><h2>Start board</h2></div>
+  <p class="sub">Açılış tahtası nasıl yüklenir ve neden normal dağıtımı bastırır.</p>
+  <span class="anchor multi">GameManager.ApplyDayStartBoardPreSeed</span><span class="anchor multi">DayBoardTimelinePlayer</span>
+
+  <h3>7.1 Yükleme</h3>
+  <pre><span class="k">ApplyDayStartBoardPreSeed</span>():
+  <span class="k">if</span> CurrentDay == null: <span class="k">return</span>
+  DayBoardTimelinePlayer.ApplyForStep(State.Board, CurrentDay.BoardTimeline, <b>-1</b>)
+
+  openingAssignmentsWithoutDistribution =
+      DayBoardTimelinePlayer.HasEntriesForStep(CurrentDay.BoardTimeline, -1)
+          ? <b>GameState.TicketSlotCount</b>   <span class="c">// 3</span>
+          : <b>0</b>
+  ArmTutorial()</pre>
+  <p>Bu, tahta temizlendikten <em>sonra</em> ve ilk bilet ataması yapılmadan <em>önce</em> çalışır. Dört gün-başlangıcı yolunun (ilk yükleme, iki retry, sonraki güne geçiş) hepsi buradan geçer.</p>
+  <p><strong>Sayaç koşulsuz atanır, 0 dahil</strong> — açılış tahtası olmayan bir gün, önceki günün bıraktığı sayacı temizlemek zorundadır.</p>
+
+  <h3>7.2 Yerleştirme kuralı</h3>
+  <span class="anchor">DayBoardTimelinePlayer.ApplyForStep</span>
+  <pre><span class="k">ApplyForStep</span>(board, timeline, stepIndex):
+  <span class="k">foreach</span> entry <span class="k">in</span> timeline:
+      <span class="k">if</span> !PlaysOnStep(entry, stepIndex): <span class="k">continue</span>
+      item = BoardItem(entry.Item, entry.Modifications)
+      <span class="k">if</span> entry.UseExactCell &amp;&amp; board.TryPlaceItem(item, entry.X, entry.Y): <span class="k">continue</span>
+      board.RequestSpawn(item)          <span class="c">// random YOK → ilk boş hücre</span>
+
+<span class="k">PlaysOnStep</span>(entry, stepIndex):
+  entry != null &amp;&amp; entry.TriggerStepIndex == stepIndex &amp;&amp; entry.Item != null</pre>
+  <p>Üç davranış:</p>
+  <ul>
+    <li><code>useExactCell</code> açık ve hücre boşsa → oraya konur.</li>
+    <li><code>useExactCell</code> açık ama hücre <strong>doluysa</strong> (aynı hücreye iki entry) → sessizce ilk boş hücreye düşer.</li>
+    <li><code>useExactCell</code> kapalı → ilk boş hücreye.</li>
+  </ul>
+  <p><strong>Hiç randomness yoktur</strong> — kasten. Aynı authored gün her çalıştırmada aynı açılış tahtasını verir. Timeline listesi sırayla işlenir, yani JSON'daki dizi sırası yerleşimi etkiler.</p>
+
+  <h3>7.3 Normal generation neden bastırılır</h3>
+  <p>Açılış tahtası yazan bir gün, oyuncunun gördüğü tahtanın <strong>tam olarak tasarımcının çizdiği şey</strong> olmasını ister. Bastırılmasaydı üç biletlik gerekli-havuz spawn'ı üstüne binerdi.</p>
+  <p>Bastırma, <code>OnTicketAssigned</code>'da <strong>çağrıyı tamamen atlayarak</strong> yapılır, distributor'ı çalıştırıp sonucu atarak değil. Bu fark önemlidir: <code>OnOrderPlaced</code> bir bileti günün geri kalanı için "garantili" yapan şeydir (sticky seçim), dolayısıyla bastırılmış bir tur açılış biletlerinin piyango sırasını <em>tüketmemelidir</em>. Onlar ilk gerçek turda piyangoya girerler.</p>
+
+  <h3>7.4 İlk gerçek spawn ne zaman?</h3>
+  <p>Sayaç 3'ten başlar ve açılış <code>FillEmptySlots</code>/<code>ResetSlotsForNewDay</code> üç <code>TicketAssigned</code> yayınlar, üçü de yutulur. <strong>İlk dağıtım turu, 4. atamada</strong> — yani ilk bilet çözüldüğünde (teslim veya iptal) çalışır.</p>
+  <p>Açılış tahtası <em>olmayan</em> bir günde sayaç 0'dır ve üç açılış ataması da normal dağıtım yapar.</p>
+  <p>Sayaç <strong>atama sayar, bilet değil</strong>: dizisi üçten kısa bir gün de sıfıra iner, çünkü tükenmiş dizi null atama yayınlar ve o da bir açılış olayıdır.</p>
+
+  <h3>7.5 Validation'daki "first N"</h3>
+  <span class="anchor">DayValidator.ValidateDayStartBoard</span>
+  <pre>ticketsOnScreenAtOpen = <b>Math.Min(GameState.TicketSlotCount, day.TicketSequence.Count)</b>
+                        <span class="c">// = min(3, bilet sayısı)</span></pre>
+  <p>Yani N, ekranda açılışta olacak bilet sayısıdır: normalde 3, ama 2 biletlik bir günde 2.</p>
+  <p>Kural: <strong>bu N biletten en az biri</strong> açılış tahtasından tamamlanabilmelidir. "Hepsi" değil — bir tamamlanabilir bilet bir hamledir, hamle bir slot boşaltır, boşalan slot yeni bilet getirir ve bastırılan dağıtım oradan devam eder.</p>
+
+  <div class="box unknown">
+    <span class="lbl">UNKNOWN — triggerStepIndex ≠ -1</span>
+    <p><code>BoardSpawnEntryJson.triggerStepIndex</code> şemada herhangi bir <code>int</code> kabul eder ve <code>ApplyForStep</code> parametrik bir <code>stepIndex</code> alır. Ancak kodun tamamında <code>ApplyForStep</code> <strong>yalnızca <code>-1</code> ile çağrılır</strong> (<code>ApplyDayStartBoardPreSeed</code>). Day Editor da yalnız <code>-1</code> yazar.</p>
+    <p><strong>Sonuç:</strong> <code>-1</code> dışındaki bir <code>triggerStepIndex</code> hiçbir zaman tetiklenmez — item sessizce hiç spawn edilmez. Bu bir kalıntı mı yoksa gelecekteki bir özellik için mi bırakıldı, koddan anlaşılmıyor. <strong>NEEDS DECISION:</strong> simülatörde ya yalnız <code>-1</code>'i destekle, ya da editörde başka değer yazılmasını engelle.</p>
+  </div>
+</section>
+
+<section id="s8">
+  <div class="sh"><span class="sn">§8</span><h2>Difficulty-relevant runtime rules</h2></div>
+
+  <h3>8.1 Süre çözümlemesi</h3>
+  <span class="anchor">ResolvedTicketEntry.TimeLimitSecondsWith</span>
+  <pre><span class="k">TimeLimitSecondsWith</span>(ticketRuntime):
+  <span class="k">if</span> TimeLimitSecondsOverride <b>&gt; 0</b>: <span class="k">return</span> TimeLimitSecondsOverride
+  <span class="k">return</span> ticketRuntime == null ? 0 : ticketRuntime.TimeLimitSecondsFor(PatienceType)</pre>
+  <p>Zincir <strong>iki basamaklıdır</strong>, üçüncü bir fallback yoktur:</p>
+  <ol>
+    <li><strong>Override</strong> — yalnız <code>&gt; 0</code> ise. <code>0</code> "kapalı" demektir, "sıfır saniye" değil. Negatif de kapalıdır.</li>
+    <li><strong>Günün patience limiti</strong> — <code>runtime.ticketRuntime</code>'dan, oynanan günün kendi değeri.</li>
+  </ol>
+  <p><code>ticketRuntime == null</code> hâli yalnız authoring tarafındadır (validator için kurulan DayDefinition) ve <code>0</code> döner; oynanan bir günde bu mümkün değildir çünkü parser bloksuz günü reddeder.</p>
+  <p>Bu kural <strong>tek bir yerde</strong> durur ve iki yer okur: oyuncuya verilen süre (<code>TicketEntryFactory.Create</code>) ve yıldız puanının paydası (<code>DayDefinition.TotalTicketSeconds</code>) — ikisinin ayrışmaması için.</p>
+
+  <h3>8.2 Timer ne zaman başlar</h3>
+  <p>Üç ayrı an vardır ve karıştırılmamalıdır:</p>
+  <div class="tw">
+  <table>
+    <thead><tr><th>An</th><th>Ne olur</th><th>RemainingSeconds</th></tr></thead>
+    <tbody>
+      <tr><td class="nw"><strong>İnşa</strong></td><td><code>Ticket</code> ctor (Peek veya Next ile)</td><td class="m">= TimeLimitSeconds</td></tr>
+      <tr><td class="nw"><strong>Slota atama</strong></td><td><code>AssignTicket</code></td><td class="m">değişmez</td></tr>
+      <tr><td class="nw"><strong>İlk Tick</strong></td><td><code>TicketSlotManager.Tick</code></td><td class="m">azalmaya başlar</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p><strong>Sayaç yalnız <code>Tick</code> içinde ve yalnız <code>State == Active</code> olan slot biletleri için azalır.</strong> <code>PeekUpcoming</code> ile önceden inşa edilmiş kuyruk biletleri tam süreyle donmuş bekler — bu yüzden bir kuyruk bileti asla "acil" olamaz.</p>
+  <p>Pratikte timer, bilet slota girdikten sonraki ilk <code>Update</code> karesinde başlar (üç durak da açık değilse).</p>
+
+  <h3>8.3 Urgent threshold hangi değere bakar</h3>
+  <pre>ticket.RemainingSeconds <b>&lt;</b> settings.UrgentTimeThresholdSeconds</pre>
+  <p><strong>Ham saniye</strong>, oran değil. Ve <strong>strict <code>&lt;</code></strong> — tam eşitlik acil sayılmaz. Yalnız <code>activeTickets</code> üzerinde, yalnız <code>State == Active</code> için değerlendirilir.</p>
+  <p>Bu, bahşiş kademeleriyle <strong>aynı şey değildir</strong>: kademeler oranla (<code>Remaining / TimeLimit</code>) çalışır, aciliyet mutlak saniyeyle. Bir Patient bilet (150 sn) 10 sn kala hem "acil"dir hem de bahşiş olarak zaten Critical'dır; bir Impatient bilet (45 sn) 10 sn kala aciliyete girer ama oranı 0.22'dir, o da Critical. Yine de eşikler bağımsızdır ve ayrı ayrı ayarlanır.</p>
+
+  <h3>8.4 Tip / payout formülü</h3>
+  <span class="anchor">EconomySystem/EconomyCalculator.cs</span>
+  <pre><span class="k">CalculatePayout</span>(ticket):
+  orderValue = Σ item.BasePrice <span class="k">for</span> item <span class="k">in</span> ticket.RequiredItems   <span class="c">// null atlanır</span>
+
+  ratio = ticket.TimeLimitSeconds &lt;= 0
+            ? 0
+            : clamp01(ticket.RemainingSeconds / ticket.TimeLimitSeconds)
+
+  tier  = ratio <b>&lt;=</b> config.CriticalRatio ? Critical
+        : ratio <b>&lt;=</b> config.WarningRatio  ? Warning
+        :                                   Full
+
+  rate  = tier == Critical ? TipRateCritical
+        : tier == Warning  ? TipRateWarning
+        :                    TipRateFull
+
+  Tip   = orderValue * rate
+  Total = orderValue + Tip</pre>
+  <div class="tw">
+  <table>
+    <thead><tr><th>Kalan oran</th><th>Bar rengi</th><th>Kademe</th><th>Bahşiş oranı</th></tr></thead>
+    <tbody>
+      <tr><td class="m">&gt; WarningRatio (0.666)</td><td>yeşil</td><td class="m">Full</td><td class="m">TipRateFull</td></tr>
+      <tr><td class="m">&gt; CriticalRatio, &lt;= WarningRatio</td><td>turuncu</td><td class="m">Warning</td><td class="m">TipRateWarning</td></tr>
+      <tr><td class="m">&lt;= CriticalRatio (0.333)</td><td>kırmızı</td><td class="m">Critical</td><td class="m">TipRateCritical</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <ul>
+    <li><strong>Order Value hiçbir zaman ölçeklenmez</strong> — başarılı teslimat onu tam öder. Yalnız bahşiş değişir.</li>
+    <li><strong>Item sayısı formüle girmez.</strong> Büyük sipariş daha çok eder çünkü item'ları pahalıdır, ve daha düşük kademeye düşer çünkü toplaması gerçekten uzun sürer.</li>
+    <li><strong>Patience formüle girmez</strong> — yalnız verdiği süre üzerinden dolaylı etkisi vardır. Oranlar biletin kendi limitine göre olduğu için kademeler her patience tipi için otomatik ölçeklenir.</li>
+    <li><strong>Critical önce test edilir ve iki sınır da <code>&lt;=</code></strong> — barın boyadığı renkle birebir aynı, eşik üstünde duran bir oran farklı kovaya düşemez.</li>
+    <li>Eşikler ve üç oran <strong><code>EconomyConfig</code></strong>'te durur (görsel config'te değil), çünkü parayı belirlerler.</li>
+  </ul>
+  <p>Değerler <code>Assets/Data/EconomyConfig.asset</code>'ten okunur; simülatöre parametre olarak geçilmeli.</p>
+</section>
+
+<section id="s9">
+  <div class="sh"><span class="sn">§9</span><h2>Validation kuralları</h2></div>
+  <p class="sub">Koddan çıkarılmış tam liste. UI dökümanında olmayanlar işaretlidir.</p>
+  <span class="anchor">Systems/DaySystem/DayValidator.cs</span>
+
+  <h3>9.1 Errors — Save'i kapatır</h3>
+  <div class="tw">
+  <table>
+    <thead><tr><th>#</th><th>Kaynak metot</th><th>Koşul</th><th>UI dok.</th></tr></thead>
+    <tbody>
+      <tr><td class="num">E1</td><td class="m">Validate</td><td><code>TicketSequence.Count != TicketsRequiredForDay</code></td><td>var</td></tr>
+      <tr><td class="num">E2</td><td class="m">Validate</td><td>Bir biletin Main/Side/Drink item'ı <code>allowedFoods</code> içinde değil. Bilet başına <em>ve item başına</em> ayrı hata üretir.</td><td>var</td></tr>
+      <tr><td class="num">E3</td><td class="m">ValidateDayStartBoard</td><td>Açılış tahtası var, ama ilk <code>min(3, N)</code> biletin hiçbiri ondan tamamlanamıyor.</td><td>var</td></tr>
+      <tr><td class="num">E4</td><td class="m">ValidateTicketRuntime</td><td>Üç patience süresinden herhangi biri <code>&lt;= 0</code>.</td><td>var</td></tr>
+      <tr><td class="num">E5</td><td class="m">ValidateTutorial</td><td><code>TargetTraySlotIndex</code> 0..2 aralığı dışında.</td><td><strong style="color:var(--unknown)">YOK</strong></td></tr>
+      <tr><td class="num">E6</td><td class="m">ValidateTutorial</td><td>Adımın <code>(SourceX, SourceY)</code> hücresine <code>triggerStepIndex == -1</code> <em>ve</em> <code>useExactCell == true</code> olan bir boardTimeline entry'si yok.</td><td><strong style="color:var(--unknown)">YOK</strong></td></tr>
+      <tr><td class="num">E7</td><td class="m">ValidateTutorial</td><td>İki tutorial adımı aynı kaynak hücreyi kullanıyor (ilki item'ı alır, ikincisi tamamlanamaz).</td><td><strong style="color:var(--unknown)">YOK</strong></td></tr>
+      <tr><td class="num">E8</td><td class="m">DayEditorModel.Validate</td><td>Config asset'leri atanmamış → <code>"Not configured yet"</code>. Validator'ın kendisi değil, editör kısa devresi.</td><td>var</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>9.2 Warnings — Save'i kapatmaz</h3>
+  <div class="tw">
+  <table>
+    <thead><tr><th>#</th><th>Kaynak metot</th><th>Koşul</th><th>UI dok.</th></tr></thead>
+    <tbody>
+      <tr><td class="num">W1</td><td class="m">ValidateTicketRuntime</td><td><code>!(Impatient &lt; Normal &lt; Patient)</code>, ve Impatient&gt;0 &amp;&amp; Patient&gt;0 iken.</td><td>var</td></tr>
+      <tr><td class="num">W2</td><td class="m">ValidateBoardDistribution</td><td><code>LeakDepth &gt; UpcomingQueueSize</code></td><td>var</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="box unknown">
+    <span class="lbl">UI dökümanında olmayan üç kural</span>
+    <p><strong>E5, E6, E7</strong> — tutorial doğrulamaları. El kitabında "tutorial'ın editör arayüzü yok" denmişti ama bu üç kuralın Save'i kapattığı yazılmamıştı. Pratik sonucu: <code>day_00</code>'ın tutorial bloğunu elle bozarsan, gün <strong>editörde kaydedilemez hale gelir</strong> ve hata mesajı tutorial'dan bahseder — arayüzü olmayan bir şey için.</p>
+  </div>
+
+  <h3>9.3 Validator'ın göremedikleri</h3>
+  <p>Bu, simülatör için önemli bir sınırdır. <code>DayValidator</code> <strong>çözümlenmiş</strong> nesneleri inceler ve o nesnelerin ctor'ları değerleri zaten clamp'lemiştir. Dolayısıyla şu alanlar için "parser'ın reddettiğini reddet" şeklinde bir kural buraya yazılamaz:</p>
+  <ul>
+    <li><code>UpcomingQueueSize</code> — <code>Max(1, x)</code> ile clamp'lenmiş</li>
+    <li><code>GuaranteedTicketCount</code> — <code>Clamp(1,3)</code></li>
+    <li><code>LeakDepth</code>, <code>MaxLeakCount</code> — <code>Clamp(1,10)</code></li>
+  </ul>
+  <p>Bunların savunması başka yerdedir: <strong>Day Editor yükleme anında clamp'ler</strong>, böylece elle düzenlenmiş bozuk bir dosya olduğu gibi geri yazılamaz.</p>
+  <p>Süre limitleri istisnadır ve E4'ün var olma sebebidir: ctor <code>Max(0f, x)</code> kullanır, yani <code>0</code> geçer, validator görebilir.</p>
+
+  <h3>9.4 Runtime yükleme reddi — ayrı bir katman</h3>
+  <p>Bunlar <em>validator kuralı değildir</em>; elle düzenlenmiş bir dosya validator'a hiç uğramaz ve doğrudan bunlara çarpar. <span class="anchor">DayCatalogParser</span></p>
+  <div class="tw">
+  <table>
+    <thead><tr><th>Koşul</th><th>Sonuç</th></tr></thead>
+    <tbody>
+      <tr><td>Geçersiz JSON</td><td>Gün düşer, LogError</td></tr>
+      <tr><td><code>runtime</code> bloğu yok</td><td>Gün düşer</td></tr>
+      <tr><td>Bilinmeyen <code>mainItemId</code> / <code>sideItemId</code> / <code>drinkItemId</code> / <code>itemId</code> / <code>modificationId</code></td><td>Gün düşer</td></tr>
+      <tr><td>Parse edilemeyen <code>patienceType</code></td><td>Gün düşer</td></tr>
+      <tr><td><code>boardDistribution</code> yok veya <code>guaranteedTicketCountMode</code> boş</td><td>Gün düşer</td></tr>
+      <tr><td>Parse edilemeyen <code>guaranteedTicketCountMode</code></td><td>Gün düşer</td></tr>
+      <tr><td><code>guaranteedTicketCount &lt; 1</code> ‖ <code>leakDepth &lt; 1</code> ‖ <code>maxLeakCount &lt; 1</code></td><td>Gün düşer</td></tr>
+      <tr><td>Üç patience süresinden biri <code>&lt;= 0</code></td><td>Gün düşer</td></tr>
+      <tr><td><code>upcomingQueueSize &lt; 1</code></td><td>Gün düşer</td></tr>
+      <tr><td>Yinelenen <code>dayIndex</code></td><td><strong>Gün düşmez</strong>, sadece LogError</td></tr>
+      <tr><td><code>tutorial.steps[].kind</code> ≠ "ForcedMove" ve ≠ ""</td><td><strong>Gün düşmez</strong>, tutorial null olur</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>Simülatörün bu katmanı da uygulaması önerilir — harici editör, elle düzenlemenin mümkün olduğu bir dünyada validator'dan daha çok bunu taklit etmelidir.</p>
+</section>
+
+<section id="s10">
+  <div class="sh"><span class="sn">§10</span><h2>External simulator contract</h2></div>
+  <p class="sub">Unity'den bağımsız TypeScript simülatörü için minimum saf fonksiyon kümesi.</p>
+
+  <h3>10.1 Ortak modeller</h3>
+  <pre><span class="k">type</span> FoodId = string; <span class="k">type</span> ModId = string;
+
+<span class="k">interface</span> FoodItem {
+  id: FoodId; category: <span class="k">'Main'</span>|<span class="k">'Side'</span>|<span class="k">'Drink'</span>;
+  basePrice: number;
+  availableModifications: ModId[];      <span class="c">// yalnız Main için anlamlı</span>
+}
+<span class="k">interface</span> ModificationDef {
+  id: ModId; allowedDirection: <span class="k">'AdditionOnly'</span>|<span class="k">'RemovalOnly'</span>|<span class="k">'Both'</span>;
+}
+<span class="k">interface</span> Modification { modId: ModId; isAddition: boolean; }
+
+<span class="c">// RequiredItemKey karşılığı — sıra bağımsız olmalı</span>
+<span class="k">type</span> ItemKey = string;
+<span class="k">function</span> itemKey(foodId: FoodId, mods: Modification[]): ItemKey {
+  <span class="k">const</span> sig = mods.map(m =&gt; `${m.modId}:${m.isAddition ? 1 : 0}`).sort().join(<span class="k">','</span>);
+  <span class="k">return</span> `${foodId}|${sig}`;
+}
+
+<span class="k">interface</span> BoardItem { foodId: FoodId; mods: Modification[]; }
+
+<span class="k">interface</span> SimTicket {
+  arrivalSequence: number;              <span class="c">// = dizideki index</span>
+  mainItemId: FoodId;
+  sideItemId?: FoodId; drinkItemId?: FoodId;
+  modifications: Modification[];        <span class="c">// yalnız main'e uygulanır</span>
+  patienceType: <span class="k">'Impatient'</span>|<span class="k">'Normal'</span>|<span class="k">'Patient'</span>;
+  timeLimitSeconds: number;             <span class="c">// §8.1 ile çözülmüş</span>
+  remainingSeconds: number;
+  state: <span class="k">'Active'</span>|<span class="k">'Delivered'</span>|<span class="k">'Cancelled'</span>;
+}
+
+<span class="k">type</span> Rng = () =&gt; number;                <span class="c">// [0,1) — NextDouble karşılığı</span>
+<span class="k">function</span> nextInt(rng: Rng, minIncl: number, maxExcl: number): number {
+  <span class="k">return</span> minIncl + Math.floor(rng() * (maxExcl - minIncl));
+}</pre>
+
+  <hr class="rule">
+
+  <div class="fn">
+    <div class="sig"><span class="sig-k">generateTicketSequence</span>(day: DayEditorMeta, ticketsRequiredForDay: number, pool: FoodItem[], mods: Map&lt;ModId, ModificationDef&gt;, rng: Rng): TicketEntryJson[]</div>
+    <div class="body">
+      <p><strong>Unity karşılığı:</strong> <code>DayContentGenerator.Generate</code> → <code>GenerateCore</code> → <code>TicketFactory.Create</code></p>
+      <h4>Birebir eşleşmesi gerekenler</h4>
+      <ul>
+        <li><strong>Çekim sırası</strong> §2.2 tablosundaki gibi, adım adım. Özellikle: side/drink şans çekimi aday yokken de yapılır; <code>maxMods == 0</code> iken Poisson hiç çekim yapmaz; yön çekimi yalnız <code>Both</code> için.</li>
+        <li><strong>Patience plan</strong> §2.1'deki gibi — sıra <code>[Patient, Normal, Impatient]</code>, fazlalık kuyruktan kesilir, eksik <code>Normal</code> ile doldurulur, 0/0/0 = uniform roll.</li>
+        <li><strong>Ağırlık</strong> normalize edilmez; listede olmayan Main <code>1.0</code> alır; <code>total &lt;= 0</code> ise uniform.</li>
+        <li><strong>maxMods</strong> = <code>min(availableModifications.length, normalizeMax(entry.maxModificationCount))</code>.</li>
+        <li><strong>Modifikasyon seçimi</strong> kısmi Fisher-Yates, yerine koymadan.</li>
+        <li>Çıktıda <code>customerNameOverride = ""</code>, <code>timeLimitSecondsOverride = 0</code>.</li>
+      </ul>
+      <h4>Eşleşmesi gerekmeyenler</h4>
+      <ul>
+        <li>Müşteri adı ve portresi (üretim yolunda çekilmez / atılır).</li>
+        <li>Sayı-sayı aynı dizi — bkz. §2.3 RNG uyarısı. Dağılım eşitliği hedefle.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="fn">
+    <div class="sig"><span class="sig-k">getMissingItems</span>(tickets: SimTicket[], board: BoardState): Map&lt;ItemKey, number&gt;</div>
+    <div class="body">
+      <p><strong>Unity karşılığı:</strong> <code>BoardDistributor.SpawnMissingRequiredItems</code>'ın ilk iki adımı + <code>CountItemsOnBoard</code></p>
+      <h4>Sözleşme</h4>
+      <ul>
+        <li><strong>Girdi <code>tickets</code> = garantili biletler</strong>, aktif biletler değil. Bu fonksiyon seçim yapmaz, seçilmişleri alır.</li>
+        <li>Her biletin her <code>RequiredItems</code> girdisi için <code>needed[key] += 1</code> — <strong>toplanır</strong>.</li>
+        <li>Modifikasyonlar <strong>yalnız Main</strong> için anahtara girer; Side/Drink boş liste ile.</li>
+        <li>Tahta sayımı tüm hücreleri tarar (sıra önemsiz, sonuç bir sayım).</li>
+        <li>Çıktı: <code>max(0, needed - present)</code>. Sıfır olanlar çıktıdan düşürülebilir.</li>
+      </ul>
+      <div class="box unknown" style="margin:12px 0 0">
+        <span class="lbl">UNKNOWN — spawn sırası belirsiz</span>
+        <p>Unity tarafında <code>foreach (var (key, needed) in neededCounts)</code> bir <code>Dictionary</code> üzerinde döner. <strong>.NET'te Dictionary iterasyon sırası spesifikasyonla garanti edilmez.</strong> Spawn edilen <em>çokluk kümesi</em> deterministiktir, ama <strong>hangi item'ın hangi hücreye düştüğü</strong> sıraya bağlıdır (her <code>RequestSpawn</code> ayrı bir hücre çekimi yapar).</p>
+        <p><strong>NEEDS DECISION:</strong> Simülatörde anahtarları deterministik sırala (örn. <code>itemKey</code> string'ine göre) ve bunun Unity'yle <em>hücre düzeyinde</em> eşleşmeyeceğini kabul et. Balancing metrikleri (kaç item, hangi item) etkilenmez; yalnız görsel yerleşim etkilenir.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="fn">
+    <div class="sig"><span class="sig-k">selectGuaranteedTickets</span>(state: DistributorState, active: SimTicket[], upcoming: SimTicket[], settings: BoardDistributionSettings, rng: Rng): SimTicket[]</div>
+    <div class="body">
+      <p><strong>Unity karşılığı:</strong> <code>BoardDistributor.SelectGuaranteedTickets</code> + <code>WeightedSampleWithoutReplacement</code></p>
+      <div class="box err" style="margin:0 0 12px">
+        <span class="lbl">Saf değildir — durum taşır</span>
+        <p><code>state.guaranteedTickets</code> turlar arasında yaşar. İmzayı saf tutmak istersen <code>(state, ...) =&gt; [newState, result]</code> şeklinde yaz, ama <strong>durumu atma</strong> — sticky seçim bu sistemin bir özelliğidir, bug değil (bkz. §3.4).</p>
+      </div>
+      <h4>Birebir eşleşmesi gerekenler</h4>
+      <ul>
+        <li><strong>Adım sırası:</strong> havuz → budama → aciliyet → bütçe → aktif-önce doldurma → kuyruk doldurma.</li>
+        <li><strong>Aciliyet bütçeden önce</strong> eklenir ve <code>slotsToFill</code> negatif olabilir (o zaman ek seçim yok).</li>
+        <li><strong>Poisson bütçe:</strong> <code>truncatedPoissonSample(slotCount - 1, λ, rng) + 1</code>. <code>+1</code>'i unutma.</li>
+        <li><strong>Bütçe yalnız aktifleri sayar:</strong> <code>budget - count(guaranteed ∩ activeSet)</code>.</li>
+        <li><strong>Adaylar varış sırasında</strong> kalmalı; ağırlık <code>Math.pow(decay, indexInRemaining)</code> ve <strong>her çekimde yeniden hesaplanır</strong>.</li>
+        <li><strong>Strict <code>&lt;</code></strong> aciliyet karşılaştırmasında.</li>
+        <li>Yalnız <code>state === 'Active'</code> biletler acil olabilir.</li>
+      </ul>
+      <p><code>DistributorState</code> gün/retry değişiminde <strong>sıfırdan kurulmalıdır</strong>.</p>
+    </div>
+  </div>
+
+  <div class="fn">
+    <div class="sig"><span class="sig-k">generateNoise</span>(state: DistributorState, upcoming: SimTicket[], settings: BoardDistributionSettings, rng: Rng): BoardItem[]</div>
+    <div class="body">
+      <p><strong>Unity karşılığı:</strong> <code>BoardDistributor.LeakNoiseItems</code></p>
+      <h4>Birebir eşleşmesi gerekenler</h4>
+      <ul>
+        <li><strong>Budama önce:</strong> <code>state.leakedTickets</code> ∩ <code>upcoming</code>.</li>
+        <li><strong>Adaylar:</strong> <code>upcoming.slice(0, leakDepth).filter(not leaked)</code>. Boşsa <strong>hiç çekim yapmadan</strong> dön.</li>
+        <li><strong>Sayı:</strong> <code>min(truncatedPoissonSample(maxLeakCount, λ, rng), candidates.length)</code>.</li>
+        <li><strong>İki aşamalı seçim:</strong> önce uniform bilet (yerine koymadan, <code>splice</code>), sonra o biletin item'larından uniform bir tane.</li>
+        <li>Modifikasyonlar yalnız Main ise taşınır.</li>
+        <li>Sızdıran bilet <code>state.leakedTickets</code>'a eklenir.</li>
+      </ul>
+      <p>Çıktı <strong>sıralı bir liste</strong> olmalı — spawn sırası hücre seçimini etkiler.</p>
+    </div>
+  </div>
+
+  <div class="fn">
+    <div class="sig"><span class="sig-k">generateBoardSpawn</span>(state: SimState, rng: Rng): SpawnResult</div>
+    <div class="body">
+      <p><strong>Unity karşılığı:</strong> <code>BoardDistributor.OnOrderPlaced</code> + <code>BoardGrid.RequestSpawn</code></p>
+      <h4>Akış</h4>
+      <pre style="margin:8px 0"><span class="k">generateBoardSpawn</span>(state, rng):
+  <span class="c">// 1. Gerekli havuz — ÖNCE</span>
+  guaranteed = selectGuaranteedTickets(state.dist, state.active, state.upcoming, s, rng)
+  missing    = getMissingItems(guaranteed, state.board)
+  <span class="k">for</span> (key, n) <span class="k">of</span> sortedEntries(missing):        <span class="c">// §10.2 UNKNOWN</span>
+      <span class="k">for</span> i <span class="k">of</span> range(n): requestSpawn(state.board, itemFromKey(key), rng)
+
+  <span class="c">// 2. Gürültü — SONRA</span>
+  <span class="k">for</span> item <span class="k">of</span> generateNoise(state.dist, state.upcoming, s, rng):
+      requestSpawn(state.board, item, rng)</pre>
+      <h4>requestSpawn sözleşmesi</h4>
+      <ul>
+        <li><code>rng</code> verilirse: <strong>tüm boş hücreler toplanır</strong> (Y dış, X iç tarama) ve uniform seçilir.</li>
+        <li><code>rng</code> verilmezse: ilk boş hücre (aynı tarama sırası).</li>
+        <li>Boş hücre yoksa: <code>pendingSpawns</code> FIFO kuyruğuna eklenir, <code>false</code> döner.</li>
+        <li><code>removeItem(x,y)</code>: hücre boşalır, <strong>kuyrukta item varsa aynı hücreye anında backfill</strong> edilir.</li>
+      </ul>
+      <p><strong>Çağrılma koşulu:</strong> her <code>TicketAssigned</code>'da — bilet null olsa bile. Açılış bastırma sayacı (<code>openingAssignmentsWithoutDistribution</code>) modellenmeli, yoksa açılış tahtası yazan günler yanlış simüle edilir.</p>
+    </div>
+  </div>
+
+  <h3>10.2 Determinizm kontrol listesi</h3>
+  <p>Simülatörün Unity ile <strong>eşleşemeyeceği</strong> noktalar, en önemliden aza:</p>
+  <div class="tw">
+  <table>
+    <thead><tr><th>#</th><th>Kaynak</th><th>Etkisi</th><th>Öneri</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td><code>System.Random</code> algoritması</td><td><strong>Tam dizi eşleşmesi imkânsız</strong></td><td>RNG'yi enjekte et, dağılım karşılaştır</td></tr>
+      <tr><td class="num">2</td><td><code>Dictionary</code> iterasyon sırası (<code>neededCounts</code>)</td><td>Spawn <em>sırası</em>, dolayısıyla hücre yerleşimi</td><td>Deterministik sırala, hücre eşleşmesinden vazgeç</td></tr>
+      <tr><td class="num">3</td><td><code>HashSet.ToList()</code> sırası (<code>guaranteedTickets</code>)</td><td>Yok — sonuç bir sayım, sıra bağımsız</td><td>Endişelenme</td></tr>
+      <tr><td class="num">4</td><td><code>float</code> vs JS <code>number</code> (double)</td><td>Poisson terimlerinde son basamak</td><td>Pratikte ihmal edilebilir</td></tr>
+      <tr><td class="num">5</td><td><code>Time.deltaTime</code> değişkenliği</td><td>Timeout anları</td><td>Sabit adımlı tick kullan</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>10.3 Simülatörün ölçmesi gereken metrikler</h3>
+  <p>Kodun yapısından çıkan, balans için anlamlı ölçütler:</p>
+  <ul>
+    <li><strong>Sıfır-tamamlanabilir tur oranı</strong> — hiçbir aktif biletin tamamlanamadığı tur yüzdesi. Kod yorumlarında kayıtlı bir playtest bug'ında bu <strong>%18.7</strong>'ye çıkmış ve D-044 düzeltmesiyle sıfıra inmiş. Bu, sistemin sağlık göstergesidir.</li>
+    <li><strong>Kilitlenme oranı</strong> — üç slot da dolu ve hiçbiri tamamlanamıyor (eski ölçüm: %2.3).</li>
+    <li><strong>Zorunlu can kaybı / gün</strong> (eski ölçüm: ~0.3).</li>
+    <li><strong>Board doluluk eğrisi</strong> ve <code>pendingSpawns</code> uzunluğu — item'lar hiç eksilmediği için (§5.5) doygunluk kaçınılmazdır; soru ne zaman.</li>
+    <li><strong>Ortalama kalan süre oranı</strong> teslimat başına → bahşiş kademesi dağılımı → günün beklenen geliri.</li>
+  </ul>
+</section>
+
+<section id="s11">
+  <div class="sh"><span class="sn">§11</span><h2>UNKNOWN / NEEDS DECISION listesi</h2></div>
+  <p class="sub">Koddan kesin cevabını çıkaramadığım veya senin karar vermen gereken her nokta.</p>
+
+  <div class="tw">
+  <table>
+    <thead><tr><th>#</th><th>Konu</th><th>Tip</th><th>Bölüm</th></tr></thead>
+    <tbody>
+      <tr><td class="num">U1</td><td><strong>JsonUtility eksik-nesne semantiği.</strong> Kod yorumları "zeroed instance, asla null" diyor ama <code>ResolveDay</code> yine de null kontrolü yapıyor. Çalıştırarak doğrulamadım. TS'de normalizasyon katmanı gerekir.</td><td class="nw">UNKNOWN<br>+ DECISION</td><td>§1.1</td></tr>
+      <tr><td class="num">U2</td><td><strong><code>System.Random</code> taşınamaz.</strong> Unity seed'iyle aynı diziyi üretmek mümkün değil. Doğrulama stratejisi seçilmeli.</td><td class="nw">DECISION</td><td>§2.3</td></tr>
+      <tr><td class="num">U3</td><td><strong>Dictionary iterasyon sırası</strong> gerekli-havuz spawn sırasını, dolayısıyla hücre yerleşimini belirsiz bırakıyor.</td><td class="nw">UNKNOWN<br>+ DECISION</td><td>§10.1</td></tr>
+      <tr><td class="num">U4</td><td><strong><code>triggerStepIndex ≠ -1</code></strong> hiçbir yerden tetiklenmiyor. Kalıntı mı, gelecek özellik mi belli değil. Böyle bir entry sessizce hiç spawn edilmiyor.</td><td class="nw">UNKNOWN<br>+ DECISION</td><td>§7.5</td></tr>
+      <tr><td class="num">U5</td><td><strong><code>dayIndex</code> için üst sınır yok.</strong> Parser <code>dayIndex</code>'i doğrulamaz; negatif veya çok büyük değer kabul edilir ve yalnız sıralamayı etkiler. Yinelenen değer hata basar ama iki gün de listede kalır — hangisinin "kazandığı" <code>CurrentDayIndex</code> pozisyonuna göre değişir.</td><td class="nw">UNKNOWN</td><td>§1.3</td></tr>
+      <tr><td class="num">U6</td><td><strong><code>ticketsRequiredForDay</code> runtime'da hiç kontrol edilmiyor.</strong> Yalnız validator karşılaştırır. Elle düzenlenmiş, uyuşmayan bir dosya sorunsuz yüklenir ve gün dizi tükendiğinde biter.</td><td class="nw">UNKNOWN</td><td>§6.5</td></tr>
+      <tr><td class="num">U7</td><td><strong>Board boyutu Day JSON'da değil.</strong> Tüm günler <code>GameConfig</code>'ten gelen tek bir boyutu paylaşır. Harici editör bu değeri nereden okuyacak — elle mi girilecek, ayrı bir config dosyasına mı yazılacak?</td><td class="nw">DECISION</td><td>§5.1</td></tr>
+      <tr><td class="num">U8</td><td><strong><code>EconomyConfig</code> ve <code>FoodItemConfig.basePrice</code> ScriptableObject'te.</strong> Simülatörün bahşiş/gelir hesabı için bu değerleri dışa aktarman gerekir; JSON'da yoklar.</td><td class="nw">DECISION</td><td>§8.4</td></tr>
+      <tr><td class="num">U9</td><td><strong><code>FoodCatalog</code> da ScriptableObject.</strong> Yemek id'leri, kategoriler ve <code>availableModifications</code> listeleri harici editöre bir şekilde aktarılmalı (export adımı yazılmalı).</td><td class="nw">DECISION</td><td>§1.3</td></tr>
+      <tr><td class="num">U10</td><td><strong>Powerup'ların board üzerindeki etkisi</strong> (özellikle Noise Clear, <code>NoiseClearRunner</code>) bu dökümanın kapsamı dışında bırakıldı. Balancing simülatörü powerup kullanımını modelleyecekse ayrıca incelenmeli.</td><td class="nw">UNKNOWN</td><td>§5.5</td></tr>
+      <tr><td class="num">U11</td><td><strong>Tutorial'ın board üzerindeki kilitleri</strong> (<code>TutorialDirector</code>) incelenmedi. <code>day_00</code> simüle edilecekse gerekir; diğer günlerde tutorial yok.</td><td class="nw">UNKNOWN</td><td>§6.4</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="box">
+    <span class="lbl">Doğrulanmış sayılabilecekler</span>
+    <p>Aşağıdakileri kodda <strong>doğrudan okudum</strong>, çıkarım yapmadım: çekim sıraları (§2.2), Poisson implementasyonu (§2.2), <code>EarlyTicketWeightDecay</code> formülü (§3.4), <code>+1</code> bütçe kaydırması (§3.4), leak'in iki aşamalı seçimi (§4), hücre tarama sırası (§5.2), backfill davranışı (§5.3), gün bitiş koşulu (§6.5), süre çözümleme zinciri (§8.1), bahşiş formülü (§8.4) ve tüm validation kuralları (§9).</p>
+  </div>
+</section>
+
+<p class="end">Expo the Explorer · Day Runtime Specification · 2026-08-30<br>
+Kaynak: Assets/Scripts/{Systems/DaySystem, Systems/BoardDistribution, Systems/TicketSystem, Systems/TraySystem, Systems/EconomySystem, Core, Bootstrap} · Assets/Data/DataScripts · Assets/Editor</p>
+
+</main>
+</div>
