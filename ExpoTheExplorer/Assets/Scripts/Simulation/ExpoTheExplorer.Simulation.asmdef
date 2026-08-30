@@ -1,13 +1,16 @@
 {
-    "name": "ExpoTheExplorer.Editor",
-    "rootNamespace": "ExpoTheExplorer.Editor",
+    "name": "ExpoTheExplorer.Simulation",
+    "rootNamespace": "ExpoTheExplorer.Simulation",
     "references": [
-        "ExpoTheExplorer.Data",
         "ExpoTheExplorer.Core",
+        "ExpoTheExplorer.Data",
         "ExpoTheExplorer.Systems.DaySystem",
         "ExpoTheExplorer.Systems.TicketSystem",
-        "ExpoTheExplorer.Systems.ProgressionSystem",
-        "ExpoTheExplorer.Simulation"
+        "ExpoTheExplorer.Systems.BoardDistribution",
+        "ExpoTheExplorer.Systems.TraySystem",
+        "ExpoTheExplorer.Systems.EconomySystem",
+        "ExpoTheExplorer.Systems.DayLifecycle",
+        "ExpoTheExplorer.Systems.PowerupSystem"
     ],
     "includePlatforms": [
         "Editor"
