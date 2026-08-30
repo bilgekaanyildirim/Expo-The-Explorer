@@ -25,5 +25,33 @@ MonoBehaviour:
     modificationCountLambda: 2
     maxModificationCount: 10
   namesDatabase: {fileID: 4900000, guid: 1c64065cf806c4c5493057a797fe8dfb, type: 3}
-  customerPortraits: []
+  customerPortraits:
+  - {fileID: 21300000, guid: 789b7652cb9bb4681b697bfb4e889fce, type: 3}
+  - {fileID: 21300000, guid: c1483a6cb9f2943398504d8192329c14, type: 3}
+  - {fileID: 21300000, guid: aa055b0a4cfb149ddb73e46207e24c44, type: 3}
+  - {fileID: 21300000, guid: 267518540f52a4b3bb82eb9c1298692e, type: 3}
+  - {fileID: 21300000, guid: 5edea205ca7c44099874daf4fcac4904, type: 3}
+  - {fileID: 21300000, guid: 26d89af98f4b14dc9bdf70f0772d38ac, type: 3}
+  - {fileID: 21300000, guid: 7259ff9be6386408bbb97d7b3e6f8b4d, type: 3}
+  - {fileID: 21300000, guid: 44e4f231be4014eafb2f256cfd5fe223, type: 3}
+  - {fileID: 21300000, guid: 8aba70f90f8f04610908da7e8609fefb, type: 3}
+  - {fileID: 21300000, guid: 47c80a1744dc647e7acb4edbab7cae6c, type: 3}
+  - {fileID: 21300000, guid: e98bf356a8ccf4e0390a4c016c7a3db8, type: 3}
+  - {fileID: 21300000, guid: 8fcedb61318ec4b55b06b5107d48c90c, type: 3}
+  - {fileID: 21300000, guid: e48953e6e17534855bb53bb68547afe4, type: 3}
+  - {fileID: 21300000, guid: 924855103f49f46348d19cfa9bab4b9b, type: 3}
+  - {fileID: 21300000, guid: ed8ab90b45a1c4b538d9e7e7ba27b41a, type: 3}
+  - {fileID: 21300000, guid: d23b8962ccea74c3793dd78c8d91ad6a, type: 3}
+  - {fileID: 21300000, guid: fa873523515a747fdb3d22d0edc8379e, type: 3}
+  - {fileID: 21300000, guid: 884c8c16d1447455b909632d7b3c86e3, type: 3}
+  - {fileID: 21300000, guid: 1d8575ad2665e421fa5544fbf246265a, type: 3}
+  - {fileID: 21300000, guid: 1dad19be0b0fd481d998b3922d5e4e00, type: 3}
+  - {fileID: 21300000, guid: baf1dcbc8e5774bc48ea1e513ee868c2, type: 3}
+  - {fileID: 21300000, guid: 2a91676d3d9894b3eaf07a1403dfced7, type: 3}
+  - {fileID: 21300000, guid: b8a5e5fd72944496ea90a874408e546b, type: 3}
+  - {fileID: 21300000, guid: b17b8f5bdab284b899ab347d03c1e365, type: 3}
+  - {fileID: 21300000, guid: d720f469e4ece4f2d95296ef2f750e20, type: 3}
+  - {fileID: 21300000, guid: 3029f1cd85532413bbbdc75d92ea6cb7, type: 3}
+  - {fileID: 21300000, guid: 24bf8d21ef885481d8910eb913ef9b00, type: 3}
+  - {fileID: 21300000, guid: c51e24829336546d1a0701b824dcef60, type: 3}
   upcomingQueueSize: 10
