@@ -112,3 +112,13 @@ crashlytics-build.properties
 /ExpoTheExplorer/Assets/Plugins/tvOS.meta
 /ExpoTheExplorer/Assets/Editor Default Resources/Firebase/
 /ExpoTheExplorer/Assets/Editor Default Resources/Firebase.meta
+
+# Telemetry analysis (tools/telemetry_report.py).
+# The service account key is a REAL credential -- it bypasses Firestore's security
+# rules by design, which is exactly why the game client never gets one. Anyone
+# holding this file can read and delete every playtest run. It never goes in the
+# repo, and it does not belong on a shared drive either.
+*serviceaccount*.json
+*service-account*.json
+*-firebase-adminsdk-*.json
+/tools/telemetry-report.html
