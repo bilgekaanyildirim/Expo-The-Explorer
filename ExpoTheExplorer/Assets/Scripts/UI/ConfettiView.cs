@@ -125,6 +125,18 @@ namespace ExpoTheExplorer.UI
             // it runs, which is what keeps the scene's own camera from ever framing it.
             stage.position = new Vector3(StageOriginX, 0f, 0f);
 
+            // BLIND UNTIL IT HAS SOMETHING TO SHOW, and this is a bug fix rather than tidiness.
+            // MountScreen puts the full-screen RawImage into the canvas THIS frame, and its texture
+            // is only assigned a frame later (see FireOnceTheScreenIsReal) -- and a RawImage with no
+            // texture does not draw nothing, it draws Unity's default white one, at the tint the
+            // prefab carries, which is opaque white. That is one frame of solid white over the whole
+            // screen: the flash reported just before the day-complete receipt, absent on the fail
+            // popup only because nothing fires confetti there. Killed here rather than by authoring
+            // the prefab's RawImage disabled, so the guarantee survives someone ticking the box back
+            // on -- the same reason the stage camera's clear flags are set in code too.
+            // AllocateTexture turns it back on, in the same breath as giving it a texture.
+            screenImage.enabled = false;
+
             MountScreen(mount);
 
             // The two things set on the particles at runtime, both plumbing rather than look:
