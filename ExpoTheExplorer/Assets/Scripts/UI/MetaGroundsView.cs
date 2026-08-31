@@ -196,6 +196,14 @@ namespace ExpoTheExplorer.UI
         // teardown travel the map out from under the second one's drop.
         private int placementGeneration;
 
+        // The screen-wide tap eater a purchase runs behind, and the poll that takes it away
+        // again (D-151). Both are null whenever nothing has been bought, and they are always
+        // raised and dropped together -- a blocker with no routine watching it is the one
+        // failure this feature can produce that the player cannot get out of, so the pair is
+        // only ever touched through the three methods below.
+        private GameObject purchaseBlock;
+        private Coroutine purchaseBlockRoutine;
+
         // Deliberately NOT in spawnedProps. Clear() would then take it too, which is what
         // is wanted today -- but it would tie two different lifetimes to one list, and in
         // Ş4 "was the ghost destroyed, or the prop" becomes a question worth being able to
@@ -380,6 +388,19 @@ namespace ExpoTheExplorer.UI
             // is not the shop's to make.
             placing = true;
 
+            // AND THE SCREEN GOES DEAF (D-151, the user's ask: "animasyon bitene kadar input
+            // almasın, oyun hiç bir şeye dokunulmaz olsun"). Immediately after `placing`, not
+            // before it: the block comes down when IsSettlingPurchase goes false, and that
+            // property is only true once the line above has run -- raising it first would have
+            // the poll see a settled screen on its very first frame and drop the block in the
+            // same breath it was raised.
+            //
+            // Nothing between here and the end of this method can be tapped anyway -- it is one
+            // frame with no render in it -- so this could have gone at the top. It is here
+            // because the pair reads as one claim: the placement takes the framing and the
+            // screen at the same moment, and gives both back at the same moment.
+            HoldEveryTapUntilItSettles();
+
             // Claimed BEFORE Refresh, because Refresh is what stops any placement already
             // running (through Clear). Bumping first is what tells that one's finally it is no
             // longer the owner, so it tears down its prop without travelling the map out from
@@ -447,6 +468,102 @@ namespace ExpoTheExplorer.UI
         {
             placing = false;
             RestoreFocus();
+        }
+
+        // NOTHING ON THE SCREEN IS TAPPABLE WHILE A PURCHASE IS LANDING (D-151, the user's
+        // instruction). Not the market button, not Play, not the HUD's powerup buttons: the
+        // prop drops, the ground shakes, the confetti holds and the map travels back out, and
+        // only then does the game start listening again.
+        //
+        // NOT SKIPPABLE, and that is the difference from CelebrationSkip below rather than an
+        // oversight. That catcher exists to let a player hurry three unlock animations along;
+        // this one exists so the payoff they just paid for cannot be cut short by a stray tap
+        // -- or, worse, by the tap they were already making when they pressed BUY.
+        //
+        // THE WINDOW IS IsSettlingPurchase, the property the shop already waits on for its own
+        // reopen. Asking the same question means the block and the sheet come back in the same
+        // frame by construction, instead of two timings that agree until someone retunes one of
+        // the four numbers this animation is made of.
+        private void HoldEveryTapUntilItSettles()
+        {
+            // Stopped BEFORE the raise, so a second purchase during the first one's settle
+            // replaces the block rather than stacking a second one behind it. RaiseInputBlock
+            // drops whatever is standing anyway -- both halves are written so that neither
+            // depends on Unity disposing a stopped iterator, which is the one thing here that
+            // would be silent if it were ever untrue.
+            if (purchaseBlockRoutine != null)
+            {
+                StopCoroutine(purchaseBlockRoutine);
+                purchaseBlockRoutine = null;
+            }
+
+            RaiseInputBlock();
+            purchaseBlockRoutine = StartCoroutine(ReleaseInputWhenSettled());
+        }
+
+        // Polled rather than told, for the same reason MetaShopView.ReopenWhenTheGroundsSettle
+        // is: one bool and one tween query per frame, alive for the second or two a purchase
+        // lasts. The finally is what makes this safe to interrupt -- however this ends, the
+        // screen starts taking taps again.
+        private IEnumerator ReleaseInputWhenSettled()
+        {
+            try
+            {
+                while (IsSettlingPurchase) yield return null;
+            }
+            finally
+            {
+                purchaseBlockRoutine = null;
+                DropInputBlock();
+            }
+        }
+
+        // A transparent, full-screen, tap-eating Image on ITS OWN Canvas at the top of the
+        // sorting order -- and the own canvas is the whole point. CelebrationSkip is parented
+        // to the grounds' Canvas, which is enough for what it guards; MainScreen.unity also
+        // holds HUDCanvas, PowerupShop and NoKeysPopup as SEPARATE Canvases, so a blocker
+        // inside the grounds' one would leave the powerup buttons and their shop live while the
+        // prop was still in the air. "The meta screen is untouchable" and "the game is
+        // untouchable" are different promises, and the user asked for the second.
+        //
+        // Input-system agnostic, like the catcher below: a Graphic that swallows the raycast
+        // goes through whatever EventSystem is already raising this screen's clicks, while
+        // reading the Input class would depend on which backend the project is built with.
+        // Nothing is disabled and nothing is put into a mode -- there is no flag left behind if
+        // this object dies unexpectedly, only an object that is gone.
+        private void RaiseInputBlock()
+        {
+            DropInputBlock();
+
+            // Canvas first: GraphicRaycaster requires it, and AddComponent order is the order
+            // this constructor uses.
+            purchaseBlock = new GameObject(
+                "PurchaseInputBlock", typeof(Canvas), typeof(GraphicRaycaster), typeof(Image));
+
+            // A ROOT object, deliberately. Parenting it under this screen would put it back
+            // inside the one canvas it exists to escape, and it needs no help being cleaned up:
+            // OnDisable drops it, and a scene load would take a root object with it anyway.
+            var canvas = purchaseBlock.GetComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+
+            // Above everything this game draws. An overlay canvas drives its own RectTransform
+            // to the full screen, which is why there are no anchors set here -- the Image on the
+            // same object is already exactly screen-sized, and stays so if the device rotates.
+            canvas.sortingOrder = short.MaxValue;
+
+            var image = purchaseBlock.GetComponent<Image>();
+            // Fully transparent but still hit-testable: Image raycasts on its rect, not on pixel
+            // alpha, unless an alpha threshold is set -- and none is.
+            image.color = new Color(0f, 0f, 0f, 0f);
+            image.raycastTarget = true;
+        }
+
+        private void DropInputBlock()
+        {
+            if (purchaseBlock == null) return;
+
+            Destroy(purchaseBlock);
+            purchaseBlock = null;
         }
 
         // The purchase payoff: the prop falls the last stretch into its spot, fading in as it
@@ -1593,6 +1710,19 @@ namespace ExpoTheExplorer.UI
             // change. Both meta screens are torn down by a scene load, so this is reachable
             // in normal play, not just in the Editor.
             if (background != null) background.rectTransform.DOKill();
+
+            // The purchase block is a ROOT object (D-151), so nothing about this component
+            // going away takes it with it -- and the coroutine that would have removed it stops
+            // the moment this component is disabled. A screen that comes back with an invisible
+            // full-screen tap eater still standing on it is an unplayable game with no visible
+            // cause, so it is dropped here by hand rather than left to the routine's finally.
+            if (purchaseBlockRoutine != null)
+            {
+                StopCoroutine(purchaseBlockRoutine);
+                purchaseBlockRoutine = null;
+            }
+
+            DropInputBlock();
         }
 
         private void OnPrevious() => Step(-1);
