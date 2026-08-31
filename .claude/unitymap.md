@@ -1,4 +1,4 @@
-<!-- stamp: 2026-08-30T17:11Z source-sig:00fd9995d296 scenes:2 prefabs:15 generator:python-fallback status: DEGRADED 406 missing-script -->
+<!-- stamp: 2026-08-31T12:49Z source-sig:75fbd6e06872 scenes:2 prefabs:16 generator:python-fallback status: DEGRADED 419 missing-script -->
 # unitymap — scene and prefab structure
 
 Read this instead of opening a `.unity`/`.prefab` file. Tree indentation is
@@ -71,7 +71,7 @@ Unity menu item Tools > unity-dev > Export unitymap.
 - MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/MetaUnlockPopup.prefab | Label
 - MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/MetaUnlockPopup.prefab | MetaUnlockPopup
 - MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/MetaUnlockPopup.prefab | Panel
-- ... 246 more
+- ... 262 more
 
 ## PREFAB ExpoTheExplorer/Assets/Prefabs/Confetti.prefab   (1 object(s))
 - Confetti  [RectTransform, ParticleSystem, ParticleSystemRenderer]  refs: LightsModule=NULL, ShapeModule=NULL, SubModule=NULL, UVModule=NULL, moveWithCustomTransform=NULL
@@ -187,6 +187,19 @@ Unity menu item Tools > unity-dev > Export unitymap.
     - Body  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
     - GotItButton  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1), MISSING SCRIPT (guid:4e29b1a8)]
       - Label  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
+
+## PREFAB ExpoTheExplorer/Assets/Prefabs/UI/NewItemIntroPopup.prefab   (11 object(s))
+- NewItemIntroPopup  [RectTransform, Canvas, MISSING SCRIPT (guid:0cd44c10), MISSING SCRIPT (guid:dc42784c), NewItemIntroPopup]  refs: directionBadge=set, dismissButton=set, itemHeader=set, itemImage=set, itemNameText=set, messageText=set, modificationHeader=set, visualsConfig=set
+  - Backdrop  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
+  - Panel  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
+    - Header  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
+    - HeaderModification [inactive]  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
+    - Image  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
+    - Title  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
+    - Body  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
+    - GotItButton  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1), MISSING SCRIPT (guid:4e29b1a8)]
+      - Label  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
+    - DirectionBadge  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
 
 ## PREFAB ExpoTheExplorer/Assets/Prefabs/UI/NoKeysPopup.prefab   (11 object(s))
 - NoKeysPopup [inactive]  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
@@ -398,7 +411,7 @@ Unity menu item Tools > unity-dev > Export unitymap.
         - Star3  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
           - Star3Filled  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
 - Global Light 2D  [MISSING SCRIPT (guid:073797af), Transform]
-- GameManager  [GameManager, Transform, HapticsBinder, DebugMenuBinder]  refs: autoCollectRunner=set, economyConfig=set, foodCatalog=set, gameConfig=set, haptics=set, keyConfig=set, lifeLostHeartView=set, livesConfig=set, metaCatalog=set, noiseClearRunner=set, powerupConfig=set, starScoreConfig=set, ticketGenerationConfig=set, config=set, gameManager=set, sessionHost=set, host=set, metaCatalog=set
+- GameManager  [GameManager, Transform, HapticsBinder, DebugMenuBinder]  refs: autoCollectRunner=set, economyConfig=set, foodCatalog=set, gameConfig=set, haptics=set, keyConfig=set, lifeLostHeartView=set, livesConfig=set, metaCatalog=set, newItemIntroPopupPrefab=set, noiseClearRunner=set, powerupConfig=set, starScoreConfig=set, ticketGenerationConfig=set, config=set, gameManager=set, sessionHost=set, host=set, metaCatalog=set
 - TicketCardsView  [TicketCardsView, Transform]  refs: animConfig=set, cardPrefab=set, cardsParent=set, gameManager=set, visualsConfig=set
 - EventSystem  [MISSING SCRIPT (guid:01614664), MISSING SCRIPT (guid:76c392e4), Transform]
 - StartingPoint  [Transform]
@@ -487,6 +500,7 @@ Unity menu item Tools > unity-dev > Export unitymap.
 - MetaShopView | ExpoTheExplorer/Assets/Scripts/UI/MetaShopView.cs
 - MetaUnlockPopup | ExpoTheExplorer/Assets/Scripts/UI/MetaUnlockPopup.cs
 - ModificationSlotView | ExpoTheExplorer/Assets/Scripts/UI/ModificationSlotView.cs
+- NewItemIntroPopup | ExpoTheExplorer/Assets/Scripts/UI/NewItemIntroPopup.cs
 - NoKeysPopupView | ExpoTheExplorer/Assets/Scripts/UI/NoKeysPopupView.cs
 - PowerupBarView | ExpoTheExplorer/Assets/Scripts/UI/PowerupBarView.cs
 - PowerupShopView | ExpoTheExplorer/Assets/Scripts/UI/PowerupShopView.cs

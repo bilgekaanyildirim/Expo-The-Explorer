@@ -25,7 +25,17 @@
      was reverted (D-077), because the arrow was never the receipt's: GameManager still builds and
      calls EconomyCalculator on every delivery. -->
 
-- DaySystem — Day content authoring/parsing/playback (ticket-sequence rolling, Day Start board replay, JSON schema, validation) — depends on: TicketSystem
+- DaySystem — Day content authoring/parsing/playback (ticket-sequence rolling, Day Start board replay, JSON schema, validation, and since D-142 what the Day INTRODUCES — the foods and modifications it opens with a popup) — depends on: TicketSystem
+<!-- The introductions, added 2026-08-31 (decisions.md D-142). Filed here rather than as a system of their own for the reason
+     abstraction-level.md gives: it is an array on the Day file and one popup component, with no rules of its own. It adds NO
+     arrow. The Day names a food or a modification by ID, which is how a Day file already names both, and the popup's +/- badge
+     reads TicketCardVisualsConfig -- data, held by the PREFAB, so DaySystem takes no reference to TicketSystem's views.
+
+     THE PICTURE IS THE REASON THE SCHEMA LOOKS LIKE THIS. A Day file cannot name a Sprite: sprites do not live under
+     Resources, so an id resolved against FoodCatalog is the only thing a Day can say about art -- and it is also the better
+     thing, because the config it resolves to already owns the picture AND the display name. The popup therefore shows the very
+     asset the player picks up off the board a minute later, by construction rather than by an author keeping two copies in
+     step. It is the same trade D-115 made when it refused to let a Day file name a powerup. -->
 - BoardDistribution — live required-pool + noise-pool board food spawning (probabilistic guaranteed-ticket selection) — depends on: -
 - TicketSystem — active-slot ticket lifecycle (assignment/delivery/cancellation) + ticket generation — depends on: EconomySystem
 <!-- TicketSystem -> EconomySystem, added 2026-08-18: the ticket card's timer bar
@@ -458,6 +468,22 @@
      A missing Confetti.prefab is fatal to the seeding step rather than substituted, which is the
      honest failure: the step builds plumbing, and plumbing with nothing flowing through it is not
      a celebration. -->
+- NewItemIntroPopup — DaySystem — variant-of: - — spawned by GameManager at Day Start
+<!-- Added 2026-08-31 (decisions.md D-142). What a Day says about the new thing it brings: a picture, a name, an
+     optional line, and -- for a modification -- the +/- badge saying which direction is being taught.
+
+     A COPY of MetaUnlockPopup.prefab rather than a reuse of it, on the user's own reference ('tasarım olarak
+     mainscreendeki yeni bi şey açılmayı kullanabilirz'). The two say similar things and are deliberately separate
+     assets: one belongs to the meta grounds on the main screen and the other to the start of a day, and restyling
+     either must not move the other. Its root is its Canvas, for the reason every popup prefab here is (D-126).
+
+     IT CARRIES TWO HEADERS AND SHOWS ONE. 'NEW ITEM!' and 'NEW MODIFICATION!' are both authored objects; Bind
+     switches one on. Two objects rather than one header and two strings in code, because the words belong in the
+     prefab like every other player-facing string here, and the longer of the two needs its own font size.
+
+     IT HOLDS A CONFIG ASSET, which is the one reference shape a prefab can have: TicketCardVisualsConfig, read for
+     the +/- sprites only. That is the same asset the ticket cards read, so the badge on this popup and the badge on
+     a card cannot disagree -- and it is why no new sprite fields were added anywhere. -->
 - MetaUnlockPopup — MetaSystem — variant-of: - — spawned by MetaGroundsView
 <!-- Added 2026-08-28 (decisions.md D-128). What a DAY-UNLOCKED prop says when it opens: a
      picture of what it brought and a line naming it, both authored per prop on MetaCatalog.

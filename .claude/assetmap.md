@@ -1,4 +1,4 @@
-<!-- stamp: 2026-08-30T19:25Z source-sig:97759d792dba assets:49 prefabs:15 scenes:2 asmdefs:19 -->
+<!-- stamp: 2026-08-31T12:49Z source-sig:9e93a673efaf assets:49 prefabs:16 scenes:2 asmdefs:18 -->
 # assetmap — asset inventory (data, prefabs, load surface, assemblies)
 
 Regenerate with `python3 .claude/hooks/build_assetmap.py`. `data-source.md`
@@ -11,7 +11,6 @@ the cost model reads the load-surface section before pricing a load.
 - ExpoTheExplorer/Assets/Editor/ExpoTheExplorer.Editor.asmdef | name: ExpoTheExplorer.Editor | refs: ExpoTheExplorer.Data,ExpoTheExplorer.Core,ExpoTheExplorer.Systems.DaySystem,ExpoTheExplorer.Systems.TicketSystem,ExpoTheExplorer.Systems.ProgressionSystem,ExpoTheExplorer.Systems.EconomySystem | platforms: Editor | covers: ExpoTheExplorer/Assets/Editor/**
 - ExpoTheExplorer/Assets/Scripts/Core/ExpoTheExplorer.Core.asmdef | name: ExpoTheExplorer.Core | refs: ExpoTheExplorer.Data | platforms: all | covers: ExpoTheExplorer/Assets/Scripts/Core/**
 - ExpoTheExplorer/Assets/Scripts/Session/ExpoTheExplorer.Session.asmdef | name: ExpoTheExplorer.Session | refs: ExpoTheExplorer.Core,ExpoTheExplorer.Data,ExpoTheExplorer.Systems.ProgressionSystem,ExpoTheExplorer.Systems.LivesSystem,ExpoTheExplorer.Systems.KeySystem,ExpoTheExplorer.Systems.PowerupSystem | platforms: all | covers: ExpoTheExplorer/Assets/Scripts/Session/**
-- ExpoTheExplorer/Assets/Scripts/Simulation/ExpoTheExplorer.Simulation.asmdef | name: ExpoTheExplorer.Simulation | refs: ExpoTheExplorer.Core,ExpoTheExplorer.Data,ExpoTheExplorer.Systems.DaySystem,ExpoTheExplorer.Systems.TicketSystem,ExpoTheExplorer.Systems.BoardDistribution,ExpoTheExplorer.Systems.TraySystem | platforms: Editor | covers: ExpoTheExplorer/Assets/Scripts/Simulation/**
 - ExpoTheExplorer/Assets/Scripts/Systems/BoardDistribution/ExpoTheExplorer.Systems.BoardDistribution.asmdef | name: ExpoTheExplorer.Systems.BoardDistribution | refs: ExpoTheExplorer.Core,ExpoTheExplorer.Data | platforms: all | covers: ExpoTheExplorer/Assets/Scripts/Systems/BoardDistribution/**
 - ExpoTheExplorer/Assets/Scripts/Systems/DayLifecycle/ExpoTheExplorer.Systems.DayLifecycle.asmdef | name: ExpoTheExplorer.Systems.DayLifecycle | refs: ExpoTheExplorer.Core,ExpoTheExplorer.Data,ExpoTheExplorer.Systems.EconomySystem | platforms: all | covers: ExpoTheExplorer/Assets/Scripts/Systems/DayLifecycle/**
 - ExpoTheExplorer/Assets/Scripts/Systems/DaySystem/ExpoTheExplorer.Systems.DaySystem.asmdef | name: ExpoTheExplorer.Systems.DaySystem | refs: ExpoTheExplorer.Core,ExpoTheExplorer.Data,ExpoTheExplorer.Systems.TicketSystem,ExpoTheExplorer.Systems.BoardDistribution | platforms: all | covers: ExpoTheExplorer/Assets/Scripts/Systems/DaySystem/**
@@ -89,6 +88,7 @@ the cost model reads the load-surface section before pricing a load.
 - ExpoTheExplorer/Assets/Prefabs/UI/MainScreenTutorialStoreHint.prefab | variant-of: - | scripts: MainScreenStoreHintPopup
 - ExpoTheExplorer/Assets/Prefabs/UI/MainScreenTutorialWelcome.prefab | variant-of: - | scripts: MainScreenWelcomePopup
 - ExpoTheExplorer/Assets/Prefabs/UI/MetaUnlockPopup.prefab | variant-of: - | scripts: MetaUnlockPopup
+- ExpoTheExplorer/Assets/Prefabs/UI/NewItemIntroPopup.prefab | variant-of: - | scripts: NewItemIntroPopup
 - ExpoTheExplorer/Assets/Prefabs/UI/NoKeysPopup.prefab | variant-of: - | scripts: HapticButton
 - ExpoTheExplorer/Assets/Prefabs/UI/PowerupShop.prefab | variant-of: - | scripts: PowerupShopView
 - ExpoTheExplorer/Assets/Prefabs/UI/TutorialPowerupIntro.prefab | variant-of: - | scripts: TutorialPowerupIntroView
@@ -104,7 +104,7 @@ the cost model reads the load-surface section before pricing a load.
 
 ## Runtime load surface
 
-- ExpoTheExplorer/Assets/Resources | 47 file(s) | loaded by string at runtime; ships in every build
+- ExpoTheExplorer/Assets/Resources | 33 file(s) | loaded by string at runtime; ships in every build
 - ExpoTheExplorer/Assets/StompyRobot/SRDebugger/Resources | 41 file(s) | loaded by string at runtime; ships in every build
 - ExpoTheExplorer/Assets/StompyRobot/SRDebugger/usr/Resources | 3 file(s) | loaded by string at runtime; ships in every build
 - ExpoTheExplorer/Assets/TextMesh Pro/Resources | 21 file(s) | loaded by string at runtime; ships in every build
