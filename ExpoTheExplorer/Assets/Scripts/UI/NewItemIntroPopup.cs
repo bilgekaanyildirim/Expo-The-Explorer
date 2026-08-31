@@ -53,6 +53,9 @@ namespace ExpoTheExplorer.UI
         [Tooltip("REQUIRED. The button that closes this popup and lets the day begin.")]
         [SerializeField] private Button dismissButton;
 
+        [Tooltip("Optional. Assets/Data/BoardAnimationConfig.asset — read for Popup Fade In Duration only. Held HERE rather than by GameManager, because the fade is this popup's own presentation and the day-start sequence needs to know nothing about it. Dragged into the PREFAB, so every instance carries it.")]
+        [SerializeField] private BoardAnimationConfig animConfig;
+
         // Read by the day-start coroutine, which cannot use a callback: it is a coroutine
         // waiting frame by frame while holding the day paused, not an event handler. Starts
         // true for a popup that could not present itself, so a broken prefab never holds the
@@ -131,6 +134,13 @@ namespace ExpoTheExplorer.UI
 
             dismissButton.onClick.RemoveAllListeners();
             dismissButton.onClick.AddListener(Dismiss);
+
+            // LAST, once every field above is filled: this popup is instantiated and bound in
+            // the same frame, so fading earlier would fade up a panel still carrying the
+            // prefab's authored placeholder item. Skipped entirely on the no-button path
+            // above, which returns before reaching here -- a popup that is being abandoned
+            // should not spend a fifth of a second arriving.
+            if (animConfig != null) PopupFade.In(gameObject, animConfig.PopupFadeInDuration);
         }
 
         // Public so the day-start sequence can close it on a path the player did not take --

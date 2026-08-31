@@ -89,6 +89,9 @@ namespace ExpoTheExplorer.UI
         [Tooltip("GDD 5.2 #3 — Noise Clear. The day scene calls the same powerup's button LeakCleanerButton; same thing.")]
         [SerializeField] private PowerupShopRow noiseClear;
 
+        [Tooltip("Optional. Assets/Data/BoardAnimationConfig.asset — read for Popup Fade In Duration only. This view lives on a PREFAB, so dragging it in there covers every instance. Unwired, the shop appears instantly, exactly as it did before the fade existed.")]
+        [SerializeField] private BoardAnimationConfig animConfig;
+
         // Cached for the reason LivesView caches GameState: EventBus removes by delegate
         // equality on a specific instance, so what OnDestroy unsubscribes from must be the
         // object Start subscribed to. GameSession is built once in MainScreenRoot.Awake
@@ -197,8 +200,12 @@ namespace ExpoTheExplorer.UI
         {
             if (panel == null) return false;
 
+            // RefreshAll BEFORE the fade starts, so the rows are already showing the right
+            // prices and owned counts as they come up. Fading in a panel and then correcting
+            // its numbers would be visible at this duration.
             RefreshAll();
             panel.SetActive(true);
+            if (animConfig != null) PopupFade.In(panel, animConfig.PopupFadeInDuration);
             return true;
         }
 

@@ -126,6 +126,9 @@ namespace ExpoTheExplorer.UI
         [Tooltip("Optional. Shown INSTEAD of the list when the location being shopped has no props authored yet — the same state the Meta window warns about. Built by ExpoTheExplorer > Meta > Build Meta Shop; the words on it are yours to retype.")]
         [SerializeField] private GameObject comingSoonLabel;
 
+        [Tooltip("Optional. Assets/Data/BoardAnimationConfig.asset — read for Popup Fade In Duration only. It covers the shop sheet AND the confirm popup. Unwired, both appear instantly, exactly as they did before the fade existed.")]
+        [SerializeField] private BoardAnimationConfig animConfig;
+
         [Header("Confirm popup")]
         [Tooltip("The confirm popup's root. Active only while a purchase is being previewed.")]
         [SerializeField] private GameObject confirmPopup;
@@ -353,8 +356,26 @@ namespace ExpoTheExplorer.UI
         private void ApplyVisibility()
         {
             var previewing = pendingItem != null;
+
+            // Read BEFORE the SetActive calls, because "did this just come on?" is the whole
+            // question and afterwards it is unanswerable. ApplyVisibility is called from three
+            // places and re-runs while the shop is already open -- without this the sheet
+            // would restart its fade from zero every time a row changed, which reads as the
+            // shop flickering. Only a genuine off-to-on transition fades.
+            var panelOpening = !panel.activeSelf && isOpen && !previewing;
+            var confirmOpening = !confirmPopup.activeSelf && previewing;
+
             panel.SetActive(isOpen && !previewing);
             confirmPopup.SetActive(previewing);
+
+            // Exactly one of these can be true, since the two are never on together (see
+            // above). That matters: fading BOTH sides of the swap would cross-dissolve the
+            // sheet into the confirm box and let the map show through the gap between them.
+            if (animConfig != null)
+            {
+                if (panelOpening) PopupFade.In(panel, animConfig.PopupFadeInDuration);
+                if (confirmOpening) PopupFade.In(confirmPopup, animConfig.PopupFadeInDuration);
+            }
 
             // The badge rides along on the same door, which is what makes "returning to the
             // screen" and "a purchase just went through" cost no call sites of their own:

@@ -50,6 +50,9 @@ namespace ExpoTheExplorer.UI
         [Tooltip("The store hint: the arrow that lands on the store button, and the plate that explains it.")]
         [SerializeField] private MainScreenStoreHintPopup storeHintPrefab;
 
+        [Tooltip("Optional. Assets/Data/BoardAnimationConfig.asset — read for Popup Fade In Duration only, so these two plates arrive at the same speed as every other popup in the game. Unwired, they appear instantly.")]
+        [SerializeField] private BoardAnimationConfig animConfig;
+
         // THE ONE TUNING NUMBER THAT SURVIVED, and it survived for a reason rather than by
         // omission: the arrow is reparented onto a button whose size only the running layout
         // knows, so sizing it from that button is what keeps a restyled button's arrow in
@@ -255,13 +258,15 @@ namespace ExpoTheExplorer.UI
             welcome = null;
         }
 
-        private static void FadeIn(GameObject target)
+        // These two plates fade in the same way and at the same SPEED as every other popup in
+        // the game. They were the first things here to fade at all, and they did it with a
+        // 0.25 written into this method -- a tuning number in code, which this project does
+        // not allow (CLAUDE.md's first invariant) and which meant the main screen's popups
+        // could silently drift away from the day scene's. Both halves now come from the one
+        // place: the fade from PopupFade, the number from BoardAnimationConfig.
+        private void FadeIn(GameObject target)
         {
-            var group = target.GetComponent<CanvasGroup>();
-            if (group == null) group = target.AddComponent<CanvasGroup>();
-
-            group.alpha = 0f;
-            group.DOFade(1f, 0.25f).SetLink(target);
+            if (animConfig != null) PopupFade.In(target, animConfig.PopupFadeInDuration);
         }
     }
 }

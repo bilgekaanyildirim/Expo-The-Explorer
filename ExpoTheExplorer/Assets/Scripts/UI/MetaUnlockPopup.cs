@@ -1,3 +1,4 @@
+using ExpoTheExplorer.Data;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -34,6 +35,9 @@ namespace ExpoTheExplorer.UI
         [Tooltip("REQUIRED. The button that closes this popup and lets the celebration move on.")]
         [SerializeField] private Button dismissButton;
 
+        [Tooltip("Optional. Assets/Data/BoardAnimationConfig.asset — read for Popup Fade In Duration only. Held HERE rather than by the view that spawns this popup, because the fade is this popup's own presentation and this way MetaGroundsView needs to know nothing about it. Dragged into the PREFAB, so every instance carries it.")]
+        [SerializeField] private BoardAnimationConfig animConfig;
+
         // Read by the celebration coroutine, which cannot use a callback: it is a coroutine
         // waiting frame by frame, not an event handler. Starts true for a popup that could not
         // present itself, so a broken prefab never holds the map hostage.
@@ -65,6 +69,13 @@ namespace ExpoTheExplorer.UI
 
             dismissButton.onClick.RemoveAllListeners();
             dismissButton.onClick.AddListener(Dismiss);
+
+            // LAST, once every field above is filled: this popup is instantiated and bound in
+            // the same frame, so fading earlier would fade up a panel still carrying the
+            // prefab's authored placeholder text. Skipped entirely on the no-button path
+            // above, which returns before reaching here -- a popup that is being abandoned
+            // should not spend a fifth of a second arriving.
+            if (animConfig != null) PopupFade.In(gameObject, animConfig.PopupFadeInDuration);
         }
 
         // Public so the celebration can close it on a path the player did not take -- the
