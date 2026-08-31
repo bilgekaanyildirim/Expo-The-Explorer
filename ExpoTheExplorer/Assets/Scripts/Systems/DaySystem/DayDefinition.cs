@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using ExpoTheExplorer.Core;
 using ExpoTheExplorer.Data;
+using UnityEngine;
 
 namespace ExpoTheExplorer.Systems.DaySystem
 {
@@ -65,6 +66,16 @@ namespace ExpoTheExplorer.Systems.DaySystem
         // DayCatalogParser produces one only for a block that says enabled.
         public ResolvedTutorial Tutorial { get; }
 
+        // The food this Day introduces, shown at Day Start before the clock runs. NULL when
+        // the Day introduces nothing, which is the normal case -- the same "absence is
+        // unrepresentable-as-half-configured" choice Tutorial makes above, so every reader's
+        // check is a null check rather than a convention it could forget.
+        //
+        // Never empty when it is non-null: DayCatalogParser produces one only for an enabled
+        // block that resolved at least one item, so "there is a list" means "there is at
+        // least one popup to show".
+        public IReadOnlyList<ResolvedItemIntro> ItemIntros { get; }
+
         public DayDefinition(
             int dayIndex,
             int ticketsRequiredForDay,
@@ -72,7 +83,8 @@ namespace ExpoTheExplorer.Systems.DaySystem
             IReadOnlyList<ResolvedBoardSpawnEntry> boardTimeline,
             BoardDistributionSettings boardDistribution = null,
             TicketRuntimeSettings ticketRuntime = null,
-            ResolvedTutorial tutorial = null)
+            ResolvedTutorial tutorial = null,
+            IReadOnlyList<ResolvedItemIntro> itemIntros = null)
         {
             DayIndex = dayIndex;
             TicketsRequiredForDay = ticketsRequiredForDay;
@@ -81,6 +93,77 @@ namespace ExpoTheExplorer.Systems.DaySystem
             BoardDistribution = boardDistribution;
             TicketRuntime = ticketRuntime;
             Tutorial = tutorial;
+            ItemIntros = itemIntros;
+        }
+    }
+
+    // One "here is something new" popup: the item it is about, plus the words to put on it.
+    //
+    // It carries the FoodItemConfig rather than a copied name and sprite, which is the whole
+    // point of resolving through the catalog: the picture on the popup and the item that
+    // then lands on the board are the same asset by construction, so restyling the food
+    // restyles its introduction and nothing has to be kept in step.
+    public class ResolvedItemIntro
+    {
+        // The food being introduced, or NULL when this introduction is about a modification.
+        public FoodItemConfig Item { get; }
+
+        // The modification being introduced, or NULL when this is a food. Exactly one of the
+        // two is set: the parser produces nothing at all for an entry that resolved neither,
+        // so no reader has to handle an introduction about nothing.
+        public ModificationConfig Modification { get; }
+
+        // Which direction is being taught, or NULL when this is not a modification at all.
+        // A nullable bool rather than a bool beside a flag, because "no direction" is a real
+        // third state here and a plain false would be indistinguishable from a removal --
+        // which is the mistake that would put a "-" badge on a burger.
+        public bool? ModificationIsAddition { get; }
+
+        // What the popup calls it: the Day's override when one is authored, else the config's
+        // own DisplayName, else the id -- so a popup is never blank, even for a catalog entry
+        // nobody has named. Resolved HERE rather than in the view, so the Day Editor's preview
+        // and the running game cannot word it differently.
+        public string DisplayName { get; }
+
+        // Empty rather than null for an unauthored line, so every reader can ask
+        // string.IsNullOrEmpty and none of them can dereference it -- same contract
+        // ResolvedTutorialStep.Message carries.
+        public string Message { get; }
+
+        // The picture, asked of whichever config this is about rather than stored: a food's
+        // is its Sprite and a modification's is its Icon, and each has exactly one.
+        public Sprite Sprite => Item != null ? Item.Sprite : Modification == null ? null : Modification.Icon;
+
+        // A food introduction. Kept as its own constructor rather than one taking both configs
+        // and a null: two constructors make "exactly one of the two" a thing the compiler helps
+        // with at every call site, instead of a rule stated in a comment.
+        public ResolvedItemIntro(FoodItemConfig item, string nameOverride, string message)
+        {
+            Item = item;
+            Modification = null;
+            ModificationIsAddition = null;
+            DisplayName = ResolveName(nameOverride, item?.DisplayName, item?.Id);
+            Message = message ?? string.Empty;
+        }
+
+        // A modification introduction, with the direction it is being taught in.
+        public ResolvedItemIntro(ModificationConfig modification, bool isAddition, string nameOverride, string message)
+        {
+            Item = null;
+            Modification = modification;
+            ModificationIsAddition = isAddition;
+            DisplayName = ResolveName(nameOverride, modification?.DisplayName, modification?.Id);
+            Message = message ?? string.Empty;
+        }
+
+        // One fallback chain for both kinds, spelled once: an authored override wins, then the
+        // config's display name, then the id. Two copies of it would be two ways for the same
+        // popup to be blank.
+        private static string ResolveName(string nameOverride, string displayName, string id)
+        {
+            if (!string.IsNullOrEmpty(nameOverride)) return nameOverride;
+            if (!string.IsNullOrEmpty(displayName)) return displayName;
+            return id ?? string.Empty;
         }
     }
 

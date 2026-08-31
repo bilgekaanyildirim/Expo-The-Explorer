@@ -350,6 +350,185 @@ namespace ExpoTheExplorer.Tests.EditMode
             Assert.AreEqual(5, result[1].DayIndex);
         }
 
+        // --- item introductions (D-142) -------------------------------------------------
+        //
+        // The block's contract in four tests: absence is the FLAG, not the content; the
+        // name falls back through override -> DisplayName -> id; a bad entry costs its own
+        // popup and nothing else; and an enabled block that resolved nothing is the same as
+        // no block, so no reader has to handle an empty list.
+
+        [Test]
+        public void ParseAll_ItemIntroDisabled_ResolvesToNoIntros()
+        {
+            var runtime = BuildMinimalRuntime(dayIndex: 1);
+
+            // Entries present and the flag off: the authored rows survive in the file (that
+            // is what makes unticking the Day Editor's box non-destructive) and the runtime
+            // shows none of them.
+            runtime.itemIntro = new ItemIntroJson
+            {
+                enabled = false,
+                items = new[] { new ItemIntroEntryJson { itemId = "burger" } }
+            };
+
+            var result = ParseSingle(new DayJson { runtime = runtime }, "day_01");
+
+            Assert.AreEqual(1, result.Count);
+            Assert.IsNull(result[0].ItemIntros);
+        }
+
+        [Test]
+        public void ParseAll_ItemIntroEnabled_ResolvesItemAndWords()
+        {
+            var runtime = BuildMinimalRuntime(dayIndex: 1);
+            runtime.itemIntro = new ItemIntroJson
+            {
+                enabled = true,
+                items = new[]
+                {
+                    new ItemIntroEntryJson { itemId = "burger", nameOverride = "Bacon Deluxe", message = "Now serving!" },
+                    new ItemIntroEntryJson { itemId = "cola" }
+                }
+            };
+
+            var result = ParseSingle(new DayJson { runtime = runtime }, "day_01");
+
+            var intros = result[0].ItemIntros;
+            Assert.AreEqual(2, intros.Count);
+
+            Assert.AreSame(burger, intros[0].Item);
+            Assert.AreEqual("Bacon Deluxe", intros[0].DisplayName);
+            Assert.AreEqual("Now serving!", intros[0].Message);
+
+            // No override and no authored DisplayName on the test item, so the name falls
+            // all the way through to the id -- a popup is never blank.
+            Assert.AreSame(cola, intros[1].Item);
+            Assert.AreEqual("cola", intros[1].DisplayName);
+            Assert.AreEqual(string.Empty, intros[1].Message);
+        }
+
+        [Test]
+        public void ParseAll_ItemIntroWithUnknownId_DropsThatEntryAndKeepsTheDay()
+        {
+            var runtime = BuildMinimalRuntime(dayIndex: 1);
+            runtime.itemIntro = new ItemIntroJson
+            {
+                enabled = true,
+                items = new[]
+                {
+                    new ItemIntroEntryJson { itemId = "ghost_item" },
+                    new ItemIntroEntryJson { itemId = "burger" }
+                }
+            };
+
+            LogAssert.Expect(LogType.Error, new System.Text.RegularExpressions.Regex("ghost_item"));
+
+            var result = ParseSingle(new DayJson { runtime = runtime }, "day_01");
+
+            // The Day SURVIVES, unlike a bad ticket or board id: an introduction is a
+            // greeting, and dropping the day would punish the content for the decoration.
+            Assert.AreEqual(1, result.Count);
+            Assert.AreEqual(1, result[0].ItemIntros.Count);
+            Assert.AreSame(burger, result[0].ItemIntros[0].Item);
+        }
+
+        [Test]
+        public void ParseAll_ItemIntroNamingAModification_ResolvesIconAndDirection()
+        {
+            var runtime = BuildMinimalRuntime(dayIndex: 1);
+            runtime.itemIntro = new ItemIntroJson
+            {
+                enabled = true,
+                items = new[]
+                {
+                    new ItemIntroEntryJson { modificationId = "no_pickles", isAddition = false, message = "Hold the pickles." }
+                }
+            };
+
+            var result = ParseSingle(new DayJson { runtime = runtime }, "day_01");
+
+            var intro = result[0].ItemIntros[0];
+            Assert.IsNull(intro.Item);
+            Assert.AreSame(noPickles, intro.Modification);
+
+            // The direction survives as a VALUE, not as a flag beside a bool: false here means
+            // "a removal", and null would have meant "not a modification at all".
+            Assert.AreEqual(false, intro.ModificationIsAddition);
+            Assert.AreEqual("no_pickles", intro.DisplayName);
+            Assert.AreEqual("Hold the pickles.", intro.Message);
+        }
+
+        [Test]
+        public void ParseAll_ItemIntroNamingBothIds_ReadsTheModification()
+        {
+            var runtime = BuildMinimalRuntime(dayIndex: 1);
+
+            // Not reachable through the Day Editor, which writes exactly one id -- this is the
+            // hand-edited Day file. It resolves to the more specific of the two things named
+            // rather than being dropped, and DayValidator is what says so out loud.
+            runtime.itemIntro = new ItemIntroJson
+            {
+                enabled = true,
+                items = new[]
+                {
+                    new ItemIntroEntryJson { itemId = "burger", modificationId = "no_pickles", isAddition = true }
+                }
+            };
+
+            var result = ParseSingle(new DayJson { runtime = runtime }, "day_01");
+
+            var intro = result[0].ItemIntros[0];
+            Assert.IsNull(intro.Item);
+            Assert.AreSame(noPickles, intro.Modification);
+            Assert.AreEqual(true, intro.ModificationIsAddition);
+        }
+
+        [Test]
+        public void ParseAll_ItemIntroWithUnknownModificationId_DropsThatEntryAndKeepsTheDay()
+        {
+            var runtime = BuildMinimalRuntime(dayIndex: 1);
+            runtime.itemIntro = new ItemIntroJson
+            {
+                enabled = true,
+                items = new[]
+                {
+                    new ItemIntroEntryJson { modificationId = "ghost_mod" },
+                    new ItemIntroEntryJson { itemId = "burger" }
+                }
+            };
+
+            LogAssert.Expect(LogType.Error, new System.Text.RegularExpressions.Regex("ghost_mod"));
+
+            var result = ParseSingle(new DayJson { runtime = runtime }, "day_01");
+
+            Assert.AreEqual(1, result.Count);
+            Assert.AreEqual(1, result[0].ItemIntros.Count);
+            Assert.AreSame(burger, result[0].ItemIntros[0].Item);
+
+            // A food introduction carries NO direction, which is what keeps a "-" badge off a
+            // burger: the popup asks HasValue, not the bool.
+            Assert.IsFalse(result[0].ItemIntros[0].ModificationIsAddition.HasValue);
+        }
+
+        [Test]
+        public void ParseAll_ItemIntroEnabledButEmpty_ResolvesToNoIntros()
+        {
+            var runtime = BuildMinimalRuntime(dayIndex: 1);
+
+            // A half-authored row -- the box ticked, the food not yet picked -- is the Day
+            // Editor's ordinary mid-edit state, so it is skipped in silence rather than
+            // logged, and an enabled block that resolved nothing reads as no block at all.
+            runtime.itemIntro = new ItemIntroJson
+            {
+                enabled = true,
+                items = new[] { new ItemIntroEntryJson { itemId = string.Empty } }
+            };
+
+            var result = ParseSingle(new DayJson { runtime = runtime }, "day_01");
+
+            Assert.IsNull(result[0].ItemIntros);
+        }
+
         private List<DayDefinition> ParseSingle(DayJson dayJson, string fileName)
         {
             return DayCatalogParser.ParseAll(new[] { ToFile(dayJson, fileName) }, catalog);

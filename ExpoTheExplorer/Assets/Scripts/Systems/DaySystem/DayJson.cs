@@ -44,6 +44,84 @@ namespace ExpoTheExplorer.Systems.DaySystem
         // false (the default for every Day file that has never heard of this block) means
         // no tutorial, and it has to be typed on purpose to turn one on.
         public TutorialJson tutorial;
+
+        // What this Day INTRODUCES: the food the player has not seen before, shown as a
+        // popup at Day Start before the clock starts. Under runtime for the reason the two
+        // blocks above are -- it is read while the Day is PLAYED, and DayCatalogParser is
+        // contractually blind to editorMeta.
+        //
+        // Same `enabled`-as-absence-marker shape as `tutorial`, and for the same two
+        // reasons: JsonUtility hands back a zeroed instance for a missing object rather
+        // than null, and unchecking the box in the Day Editor must not delete what was
+        // already authored.
+        public ItemIntroJson itemIntro;
+    }
+
+    // The items this Day introduces, in the order they are shown. A LIST from the start,
+    // unlike TutorialJson which earned its list on the second authored step (D-083): the
+    // user asked for one ("bunu bi liste içinde tutup"), and a Day that adds a burger and
+    // its drink in the same morning is the ordinary case rather than a generalisation
+    // waiting for a second example.
+    [Serializable]
+    public class ItemIntroJson
+    {
+        // The whole-block absence marker -- see the `itemIntro` field comment above. It is
+        // also the Day Editor's "Introduce New Item" checkbox, which is why unchecking it
+        // keeps the entries: the authored items survive being switched off.
+        public bool enabled;
+
+        public ItemIntroEntryJson[] items;
+    }
+
+    // One introduction: WHICH new thing, and what to say about it. It is EITHER a food OR a
+    // modification (the user's ask, 2026-08-31: "bu new item muhabbetine modificasyonları da
+    // eklesek ya addition remove işaretiyle beraber") -- one row is one thing the player has
+    // not seen before, and a row naming both would be a popup that has to choose.
+    //
+    // Two id fields rather than a `kind` string plus one id, which is the shape TutorialStepJson
+    // uses: there, the kind selects between step SHAPES that share no fields, and a typo had to
+    // fail loudly rather than degrade. Here the two ids ARE the discriminator, they resolve
+    // against different catalogs, and an empty one is simply not that kind -- so a third field
+    // saying which of two obvious things this is would be a second authority over the same
+    // answer, free to disagree with the ids beside it.
+    //
+    // The picture is deliberately NOT here. A Day file can only ever name art by id -- sprites
+    // do not live under Resources, so there is nothing for a path to point at -- and the id
+    // already resolves to a config that owns both the sprite and the display name. A second
+    // copy of either would be free to disagree with the thing the player then sees on the
+    // board or on a ticket card.
+    [Serializable]
+    public class ItemIntroEntryJson
+    {
+        // Food id, like every other food reference in Day JSON, resolved against
+        // FoodCatalog. Supplies both the popup's picture (FoodItemConfig.Sprite) and its
+        // default name (DisplayName). Ignored when modificationId is set.
+        public string itemId;
+
+        // Modification id, resolved against FoodCatalog.GetModificationById -- the same
+        // lookup every ticket and board entry already uses, so a Day names a modification
+        // exactly one way. NON-EMPTY MAKES THIS A MODIFICATION INTRODUCTION: the picture is
+        // ModificationConfig.Icon and the popup carries the +/- badge.
+        public string modificationId;
+
+        // Which direction is being taught -- "extra cheese" and "no cheese" are two different
+        // lessons about one ModificationConfig, exactly as they are two different things on a
+        // ticket card. Meaningless for a food introduction, and false is a real value here
+        // (a removal) rather than an absence marker, which is why absence is carried by the
+        // empty modificationId instead.
+        //
+        // Whether the direction is LEGAL is not decided here: ModificationConfig.AllowedDirection
+        // is the single authority for that, read by the Day Editor's flip and by DayValidator.
+        public bool isAddition;
+
+        // Empty means "use the item's own DisplayName", which is the normal case. It
+        // exists because an introduction is marketing copy and the catalog name is a
+        // content key -- "Bacon Deluxe" on the popup, "burger_bacon" in the data.
+        public string nameOverride;
+
+        // The line under the name, or empty for an item whose picture says enough. Text is
+        // content and belongs here rather than in a string literal in code.
+        public string message;
     }
 
     // This Day's forced opening: a SEQUENCE of moves the player is walked through, each

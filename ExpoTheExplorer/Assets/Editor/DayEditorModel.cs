@@ -39,6 +39,309 @@ namespace ExpoTheExplorer.Editor
         [BoxGroup("Board Distribution"), HideLabel, PropertyOrder(-0.2f)]
         public DayEditorBoardDistribution BoardDistribution = new();
 
+        // THE BOTTOM OF THE INSPECTOR, below Board Distribution and right above
+        // Save/Duplicate/Delete (the user's ask: "en altta bi seçenek olsun introduce new
+        // item gibi"). Those three buttons carry no PropertyOrder and so sit at the default
+        // 0, which makes anything between Board Distribution's previews (-0.15) and 0 the
+        // last authored block on the page.
+        //
+        // A BOOL rather than "the list is non-empty", which is the cheaper thing it could
+        // have been: unchecking must not delete what was already authored. That is the same
+        // call TutorialJson.enabled makes, and the JSON carries the flag for the same reason
+        // -- so the two sides need no translation between "off" and "empty".
+        [BoxGroup("Introduce New Item"), LabelText("Introduce New Item"), PropertyOrder(-0.1f)]
+        [UnityEngine.Tooltip("Tick this to open the Day with a popup for each new food it brings — the item's own picture and name, plus a line if you want one. Unticking keeps what you authored.")]
+        public bool IntroduceNewItem;
+
+        // Hand-drawn rather than an Odin table, for the reason the Start Board cell picker
+        // is: the thing being chosen is a PICTURE. A list of ObjectFields would make the
+        // author match ids to art in their head, which is exactly the mistake this popup
+        // exists to spare the player.
+        [BoxGroup("Introduce New Item"), ShowIf(nameof(IntroduceNewItem)), OnInspectorGUI, PropertyOrder(-0.09f)]
+        private void DrawItemIntroEditor()
+        {
+            var pool = AllowedFoodPool;
+            if (pool == null)
+            {
+                EditorGUILayout.HelpBox("Food Catalog not assigned (toolbar above).", UnityEditor.MessageType.Info);
+                return;
+            }
+
+            var options = pool.Where(item => item != null).ToList();
+            if (options.Count == 0)
+            {
+                EditorGUILayout.HelpBox(
+                    "No food is in this Day yet -- pick some under Food Selection first.", UnityEditor.MessageType.Info);
+                return;
+            }
+
+            if (ItemIntros.Count == 0)
+            {
+                EditorGUILayout.HelpBox(
+                    "Nothing is introduced yet. Add an item below, then click its picture to choose which food it is.",
+                    UnityEditor.MessageType.Info);
+            }
+
+            // Index-based and removal is deferred to after the loop: removing inside it would
+            // shift every later index mid-draw, and IMGUI draws the same list twice per event
+            // (layout, then repaint) -- a mismatch between those two passes is the classic
+            // "control count changed" exception.
+            var removeAt = -1;
+            for (var i = 0; i < ItemIntros.Count; i++)
+            {
+                var intro = ItemIntros[i];
+                if (intro == null) continue;
+
+                EditorGUILayout.Space();
+                EditorGUILayout.BeginVertical(UnityEditor.EditorStyles.helpBox);
+
+                EditorGUILayout.BeginHorizontal();
+                EditorGUILayout.LabelField($"Item {i + 1}", UnityEditor.EditorStyles.boldLabel);
+                if (UnityEngine.GUILayout.Button("Remove", UnityEngine.GUILayout.Width(70))) removeAt = i;
+                EditorGUILayout.EndHorizontal();
+
+                // The kind switch, drawn as a toolbar rather than inferred from which picker
+                // was last used: an author has to be able to say "this row is about a
+                // modification" BEFORE there is anything picked to infer it from. Switching
+                // kinds clears the other side's pick, so a row can never carry both -- which
+                // is the ambiguity the runtime would otherwise have to resolve for it.
+                // UnityEngine.GUILayout.Toolbar, not EditorGUILayout: there is no Toolbar on
+                // EditorGUILayout at all, which is a mistake worth leaving a line about
+                // because the two are otherwise interchangeable all over this file.
+                var wasModification = intro.IsModification;
+                intro.IsModification = UnityEngine.GUILayout.Toolbar(
+                    intro.IsModification ? 1 : 0, IntroKindLabels) == 1;
+                if (intro.IsModification != wasModification)
+                {
+                    intro.Item = null;
+                    intro.Modification = null;
+                }
+
+                if (intro.IsModification)
+                {
+                    DrawModificationIntroRow(intro, options);
+                }
+                else
+                {
+                    intro.Item = DrawItemIntroPicker(intro.Item, options);
+                }
+
+                var subject = intro.IsModification ? (UnityEngine.Object)intro.Modification : intro.Item;
+                if (subject != null)
+                {
+                    // Shown as a placeholder rather than pre-filled, so an author who types
+                    // nothing keeps the thing's own name and the two can never drift apart.
+                    // The runtime resolves the same way (ResolvedItemIntro.DisplayName).
+                    var fallback = intro.IsModification
+                        ? (string.IsNullOrEmpty(intro.Modification.DisplayName) ? intro.Modification.Id : intro.Modification.DisplayName)
+                        : (string.IsNullOrEmpty(intro.Item.DisplayName) ? intro.Item.Id : intro.Item.DisplayName);
+
+                    intro.NameOverride = EditorGUILayout.TextField(
+                        new UnityEngine.GUIContent("Name", $"Leave empty to use its own name: {fallback}"),
+                        intro.NameOverride);
+
+                    EditorGUILayout.LabelField("Message", UnityEditor.EditorStyles.miniBoldLabel);
+                    intro.Message = EditorGUILayout.TextArea(
+                        intro.Message ?? string.Empty, UnityEngine.GUILayout.MinHeight(38));
+
+                    // The same warnings DayValidator raises, said HERE too because this is
+                    // where they can be acted on with one click. Duplicating the sentence is
+                    // deliberate; duplicating the RULE is not -- both read the one pool and
+                    // the one AllowedDirection.
+                    if (!intro.IsModification && !options.Contains(intro.Item))
+                    {
+                        EditorGUILayout.HelpBox(
+                            "This item is not in this Day's food selection, so the player is introduced to something "
+                            + "this Day never serves.", UnityEditor.MessageType.Warning);
+                    }
+                }
+
+                EditorGUILayout.EndVertical();
+            }
+
+            if (removeAt >= 0) ItemIntros.RemoveAt(removeAt);
+
+            EditorGUILayout.Space();
+            if (UnityEngine.GUILayout.Button("Add Item")) ItemIntros.Add(new DayEditorItemIntro());
+        }
+
+        private static readonly string[] IntroKindLabels = { "Food", "Modification" };
+
+        // The modification half of a row: the same tile grid, fed by every modification the
+        // Day's own foods offer, with the same left-pick / right-flip split the ticket
+        // editor's grid uses -- so the two grids read the same way and the direction is READ
+        // off the tile rather than off a checkbox.
+        private void DrawModificationIntroRow(DayEditorItemIntro intro, List<FoodItemConfig> options)
+        {
+            // What a ticket on this Day could actually ask for. Derived from the food pool
+            // rather than from the whole catalog, which is the same restriction the food
+            // picker above works under and the same one DayValidator checks against.
+            var available = options
+                .SelectMany(item => item.AvailableModifications)
+                .Where(modification => modification != null)
+                .Distinct()
+                .ToList();
+
+            if (available.Count == 0)
+            {
+                EditorGUILayout.HelpBox(
+                    "No food in this Day offers any modification, so there is nothing to introduce. Add "
+                    + "modifications to a FoodItemConfig this Day serves first.", UnityEditor.MessageType.Info);
+                return;
+            }
+
+            if (intro.Modification != null)
+            {
+                EditorGUILayout.LabelField(
+                    "Click it again to pick a different modification. Right-click a two-way one to flip +/-.",
+                    UnityEditor.EditorStyles.miniLabel);
+
+                var chosen = intro.Modification;
+                DrawTileGrid(1, ref lastItemIntroGridWidth, (tileRect, _) =>
+                {
+                    var click = DrawIntroModificationTile(tileRect, chosen, intro, isSelected: true);
+                    if (click == IntroTileClick.Pick) intro.Modification = null;
+                });
+
+                // Said here rather than left to Save: the flip is one right-click away, and a
+                // direction no ticket can ask for is the one authoring mistake on this row
+                // that changes what the popup MEANS.
+                var allowed = chosen.AllowedDirection;
+                if ((intro.IsAddition && allowed == ModificationDirection.RemovalOnly)
+                    || (!intro.IsAddition && allowed == ModificationDirection.AdditionOnly))
+                {
+                    EditorGUILayout.HelpBox(
+                        $"This modification is {allowed}, but the popup would teach it as "
+                        + $"{(intro.IsAddition ? "an addition" : "a removal")}.", UnityEditor.MessageType.Warning);
+                }
+
+                if (!available.Contains(chosen))
+                {
+                    EditorGUILayout.HelpBox(
+                        "No food in this Day's selection offers this modification, so no ticket this Day can "
+                        + "ever ask for it.", UnityEditor.MessageType.Warning);
+                }
+
+                return;
+            }
+
+            EditorGUILayout.LabelField(
+                "Click the modification this Day introduces", UnityEditor.EditorStyles.miniLabel);
+            DrawTileGrid(available.Count, ref lastItemIntroGridWidth, (tileRect, i) =>
+            {
+                if (DrawIntroModificationTile(tileRect, available[i], intro, isSelected: false) == IntroTileClick.Pick)
+                {
+                    intro.Modification = available[i];
+
+                    // Seeded from what the modification ALLOWS rather than left at the field's
+                    // default, so a RemovalOnly modification is never picked up as an addition
+                    // -- the same seeding DayEditorModification.ForConfig does for a ticket.
+                    intro.IsAddition = available[i].AllowedDirection != ModificationDirection.RemovalOnly;
+                }
+            });
+        }
+
+        private enum IntroTileClick { None, Pick, Flip }
+
+        // Single-select, so "selected" is identity against the row's own pick rather than
+        // membership in a list -- which is the one thing that stops this reusing
+        // DrawModificationTile, whose whole contract is toggling membership of a List.
+        private IntroTileClick DrawIntroModificationTile(
+            UnityEngine.Rect tileRect, ModificationConfig config, DayEditorItemIntro intro, bool isSelected)
+        {
+            if (isSelected)
+            {
+                EditorGUI.DrawRect(
+                    new UnityEngine.Rect(
+                        tileRect.x - FoodTileHighlightMargin, tileRect.y - FoodTileHighlightMargin,
+                        tileRect.width + FoodTileHighlightMargin * 2f, tileRect.height + FoodTileHighlightMargin * 2f),
+                    FoodTileSelectedColor);
+            }
+            EditorGUI.DrawRect(tileRect, FoodTileBackgroundColor);
+
+            var previousColor = UnityEngine.GUI.color;
+            if (!isSelected) UnityEngine.GUI.color = new UnityEngine.Color(1f, 1f, 1f, 0.3f) * previousColor;
+            DayEditorSpriteGUI.DrawSpriteFit(tileRect, config.Icon);
+            UnityEngine.GUI.color = previousColor;
+
+            // The badge is drawn for the CHOSEN one only, which is what makes the direction
+            // visible at a glance on the row exactly as it is on a ticket card.
+            if (isSelected) DrawDirectionBadge(tileRect, intro.IsAddition);
+
+            var name = string.IsNullOrEmpty(config.DisplayName) ? config.Id : config.DisplayName;
+            var tip = DayEditorModification.CanFlipDirection(config)
+                ? $"{name} (two-way -- right-click to flip +/-)"
+                : $"{name} ({config.AllowedDirection})";
+            UnityEngine.GUI.Label(tileRect, new UnityEngine.GUIContent(string.Empty, tip));
+
+            if (UnityEngine.Event.current.type != UnityEngine.EventType.MouseDown
+                || !tileRect.Contains(UnityEngine.Event.current.mousePosition))
+            {
+                return IntroTileClick.None;
+            }
+
+            if (UnityEngine.Event.current.button == 0)
+            {
+                UnityEngine.GUI.changed = true;
+                UnityEngine.Event.current.Use();
+                return IntroTileClick.Pick;
+            }
+
+            if (UnityEngine.Event.current.button == 1 && isSelected && DayEditorModification.CanFlipDirection(config))
+            {
+                intro.IsAddition = !intro.IsAddition;
+                UnityEngine.GUI.changed = true;
+                UnityEngine.Event.current.Use();
+                return IntroTileClick.Flip;
+            }
+
+            return IntroTileClick.None;
+        }
+
+        // The two states the Start Board picker has, for the identical reason: a CHOSEN item
+        // shows only itself so the fields under it get the room, and clicking it again puts
+        // the whole larder back. There is no "clear" button because the tile is one.
+        private FoodItemConfig DrawItemIntroPicker(FoodItemConfig current, List<FoodItemConfig> options)
+        {
+            var picked = current;
+
+            if (current != null)
+            {
+                EditorGUILayout.LabelField("Click it again to pick a different food", UnityEditor.EditorStyles.miniLabel);
+                DrawTileGrid(1, ref lastItemIntroGridWidth, (tileRect, _) =>
+                {
+                    if (DrawCellItemTile(tileRect, current, current)) picked = null;
+                });
+                return picked;
+            }
+
+            EditorGUILayout.LabelField("Click the food this Day introduces", UnityEditor.EditorStyles.miniLabel);
+            foreach (var category in CellPickerCategories)
+            {
+                var inCategory = options.Where(item => item.Category == category).ToList();
+                if (inCategory.Count == 0) continue;
+
+                EditorGUILayout.LabelField(category.ToString(), UnityEditor.EditorStyles.miniBoldLabel);
+                DrawTileGrid(inCategory.Count, ref lastItemIntroGridWidth, (tileRect, i) =>
+                {
+                    if (DrawCellItemTile(tileRect, inCategory[i], null)) picked = inCategory[i];
+                });
+            }
+
+            return picked;
+        }
+
+        // Its own width measurement rather than sharing the cell picker's: this grid gets the
+        // full inspector width while that one is boxed into a 220px column, so one shared
+        // field would make each of them re-flow whenever the other drew.
+        private float lastItemIntroGridWidth = 400f;
+
+        // HideInInspector for the reason BoardTimeline is: the list is authored entirely
+        // through the picker above, and a raw serializable list beside it would be a second,
+        // unvalidated way to edit the same data.
+        [UnityEngine.HideInInspector]
+        public List<DayEditorItemIntro> ItemIntros = new();
+
         // Drawn from THIS Day's values, which is the whole point: these two distributions
         // are what the balance knobs above actually mean, and before this they could only be
         // seen on the shared config asset's inspector -- i.e. never for the Day being tuned.
@@ -1218,6 +1521,7 @@ namespace ExpoTheExplorer.Editor
                     ticketSequence = TicketSequence.Select(e => e.ToJson()).ToArray(),
                     boardTimeline = BoardTimeline.Select(e => e.ToJson()).ToArray(),
                     tutorial = Tutorial,
+                    itemIntro = ToItemIntroJson(),
                 },
                 editorMeta = EditorMeta.ToJson(),
             };
@@ -1233,8 +1537,23 @@ namespace ExpoTheExplorer.Editor
             // on the Save button instead of only at runtime.
             return new DayDefinition(DayIndex, TicketsRequiredForDay, ticketSequence, boardTimeline,
                 BoardDistribution.ToResolved(), TicketRuntime.ToResolved(),
-                DayCatalogParser.ResolveTutorial(Tutorial));
+                DayCatalogParser.ResolveTutorial(Tutorial),
+                // Through the runtime parser for the reason the tutorial is: one rule with one
+                // implementation, so the Day Editor's warnings cannot disagree with what the
+                // game will actually show. The file name it logs under is this window, since
+                // that is where an unresolvable id would be looked at.
+                DayCatalogParser.ResolveItemIntros(ToItemIntroJson(), sharedCatalog, "Day Editor"));
         }
+
+        // Written even when the box is unticked, and that is the point of the flag: the
+        // entries survive being switched off, exactly as an authored tutorial does. An EMPTY
+        // list still writes an (enabled, no items) block rather than null, because JsonUtility
+        // cannot express null for a nested object anyway -- see ItemIntroJson.
+        private ItemIntroJson ToItemIntroJson() => new()
+        {
+            enabled = IntroduceNewItem,
+            items = ItemIntros.Where(intro => intro != null).Select(intro => intro.ToJson()).ToArray(),
+        };
 
         public static DayEditorModel FromDayJson(DayJson json, FoodCatalog catalog)
         {
@@ -1250,6 +1569,9 @@ namespace ExpoTheExplorer.Editor
                 BoardTimeline = (runtime?.boardTimeline ?? Array.Empty<BoardSpawnEntryJson>())
                     .Select(e => DayEditorBoardSpawnEntry.FromJson(e, catalog)).ToList(),
                 Tutorial = runtime?.tutorial,
+                IntroduceNewItem = runtime?.itemIntro?.enabled ?? false,
+                ItemIntros = (runtime?.itemIntro?.items ?? Array.Empty<ItemIntroEntryJson>())
+                    .Select(e => DayEditorItemIntro.FromJson(e, catalog)).ToList(),
                 EditorMeta = DayEditorMetaModel.FromJson(json?.editorMeta, catalog),
             };
 
@@ -1277,6 +1599,8 @@ namespace ExpoTheExplorer.Editor
             TicketSequence = restored.TicketSequence;
             BoardTimeline = restored.BoardTimeline;
             Tutorial = restored.Tutorial;
+            IntroduceNewItem = restored.IntroduceNewItem;
+            ItemIntros = restored.ItemIntros;
             EditorMeta = restored.EditorMeta;
 
             // Both selections are indices into lists that were just replaced wholesale.
@@ -1296,6 +1620,76 @@ namespace ExpoTheExplorer.Editor
             EditorMeta.TicketGeneration = DayEditorTicketGeneration.FromJson(
                 source.EditorMeta.TicketGeneration.ToJson(), sharedCatalog);
         }
+    }
+
+    // One "this Day brings a burger" row. It holds the FoodItemConfig itself rather than an
+    // id, like every other authoring model in this file: the picker draws the item's sprite,
+    // and a picture cannot be drawn from a string without resolving it on every repaint.
+    //
+    // No ToResolved of its own, deliberately. DayEditorModel.ToDayDefinition goes through
+    // DayCatalogParser.ResolveItemIntros instead, so the editor's validation preview and the
+    // running game read the block with the same code -- a second resolver here would be free
+    // to disagree with the one the player's copy of the game runs.
+    [Serializable]
+    public class DayEditorItemIntro
+    {
+        // WHICH KIND this row is, held as its own flag rather than inferred from which of the
+        // two references is set. An author has to be able to say "this row is a modification"
+        // BEFORE there is anything picked to infer it from, and the kind toolbar clears the
+        // other side whenever it changes -- so the flag and the references cannot disagree,
+        // and ToJson writes exactly one id.
+        public bool IsModification;
+
+        public FoodItemConfig Item;
+
+        public ModificationConfig Modification;
+
+        // Seeded from the modification's AllowedDirection when one is picked, and flipped by
+        // right-clicking its tile -- the same two-way rule DayEditorModification follows for a
+        // ticket, read off the one authority (ModificationConfig.AllowedDirection).
+        public bool IsAddition = true;
+
+        // Empty means "use its own Display Name", which is the normal case and the reason this
+        // is not pre-filled: a copied name would go stale the moment the food or modification
+        // is renamed, and it could no longer be told apart from a deliberate override.
+        public string NameOverride = string.Empty;
+
+        public string Message = string.Empty;
+
+        // An unresolvable id degrades to a row with nothing picked rather than being dropped,
+        // so an author who deletes a config sees an empty picker to re-pick instead of a
+        // silently shorter list. Same tolerance DayEditorBoardSpawnEntry.FromJson has.
+        //
+        // The KIND is read off which id the file carries, which is the one place that
+        // inference is right: the file has no flag, and a non-empty modificationId is what
+        // makes an entry a modification for the runtime parser too.
+        public static DayEditorItemIntro FromJson(ItemIntroEntryJson json, FoodCatalog catalog)
+        {
+            var isModification = !string.IsNullOrEmpty(json?.modificationId);
+
+            return new DayEditorItemIntro
+            {
+                IsModification = isModification,
+                Item = isModification || json == null || catalog == null ? null : catalog.GetById(json.itemId),
+                Modification = !isModification || catalog == null ? null : catalog.GetModificationById(json.modificationId),
+                IsAddition = json?.isAddition ?? true,
+                NameOverride = json?.nameOverride ?? string.Empty,
+                Message = json?.message ?? string.Empty,
+            };
+        }
+
+        // Writes exactly ONE id, so a saved Day can never carry the ambiguity the runtime
+        // would have to resolve for it. The direction is written either way -- it is
+        // meaningless for a food and costs one bool, where suppressing it would mean a row
+        // that loses its +/- on a round trip through the Food tab and back.
+        public ItemIntroEntryJson ToJson() => new()
+        {
+            itemId = IsModification || Item == null ? string.Empty : Item.Id,
+            modificationId = !IsModification || Modification == null ? string.Empty : Modification.Id,
+            isAddition = IsAddition,
+            nameOverride = NameOverride ?? string.Empty,
+            message = Message ?? string.Empty,
+        };
     }
 
     [Serializable]

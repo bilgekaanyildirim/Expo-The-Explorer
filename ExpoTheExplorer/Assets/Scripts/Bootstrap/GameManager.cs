@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using ExpoTheExplorer.Core;
@@ -92,6 +93,21 @@ namespace ExpoTheExplorer.Bootstrap
         // before. A forgotten drag costs the animation, not the powerup.
         [Tooltip("Optional. The scene's NoiseClearRunner, which drops cleared items off the board. Without it Noise Clear still works, the items just vanish instantly.")]
         [SerializeField] private NoiseClearRunner noiseClearRunner;
+
+        // The popup a Day shows for each food it introduces, before the clock starts. A
+        // PREFAB rather than a scene object, because there is one per introduced item and
+        // they are shown one after another -- the same shape MetaGroundsView's unlock popup
+        // has, and for the same reason.
+        //
+        // OPTIONAL, and the degraded mode is the day exactly as it played yesterday: an
+        // unwired field means the introductions are skipped, never that the day refuses to
+        // start. That is the trade every optional reference in this class documents -- a
+        // forgotten drag must not be the thing that makes the game unplayable -- and it
+        // matters more here than most, because this one holds the clock while it is up.
+        // It is still LOUD when a Day actually authored an introduction, since an empty
+        // field and a Day that introduces nothing look identical on screen.
+        [Tooltip("Optional. Assets/Prefabs/UI/NewItemIntroPopup.prefab — shown at Day Start for each item this Day introduces. Unwired, the introductions are simply skipped.")]
+        [SerializeField] private NewItemIntroPopup newItemIntroPopupPrefab;
 
         // The four numbers behind the day's star rating (decisions.md D-060). Required,
         // unlike metaCatalog below: without it every completed day scores 0 stars and pays
@@ -508,6 +524,13 @@ namespace ExpoTheExplorer.Bootstrap
 
         private void OnDestroy()
         {
+            // The rule D-105 set for every pause holder: release from OnDestroy as well as
+            // from the close path, so a torn-down scene cannot leave a hold behind. It also
+            // takes the popup with it -- a parentless instance outlives its owner until the
+            // scene unloads, and during a domain reload in the editor that is long enough to
+            // see.
+            StopItemIntros();
+
             State.TicketAssigned.Unsubscribe(OnTicketAssigned);
             State.TicketDelivered.Unsubscribe(OnTicketDelivered);
             State.DayRetried.Unsubscribe(OnDayRetried);
@@ -1216,6 +1239,125 @@ namespace ExpoTheExplorer.Bootstrap
                     : 0;
 
             ArmTutorial();
+
+            // After the tutorial is armed, not before, and the order is only about what the
+            // player READS: the introduction says "this is a burger", the lesson says "put it
+            // there", and a lesson explained before its subject is introduced is backwards.
+            // Nothing depends on the order mechanically -- both freeze the clock through
+            // different gates and the popup draws on its own canvas above everything.
+            ShowItemIntrosForCurrentDay();
+        }
+
+        // The popup sequence's pause holder. A dedicated token rather than `this`, because
+        // GameManager is the WRITER of the pause set (see HoldPause) and a holder that is
+        // also the writer reads as though the day were holding itself still. Its identity is
+        // all that matters -- the set is keyed on the object, not on what it is.
+        private readonly object itemIntroPauseHolder = new();
+
+        private Coroutine itemIntroRoutine;
+        private NewItemIntroPopup activeItemIntroPopup;
+
+        // What this Day introduces, shown before its clock starts. Driven from here rather
+        // than from a view for the reason every system-to-system join in this class is: this
+        // is the day's composition root, and it is the one object holding both the Day's
+        // content and the pause the popup needs.
+        //
+        // It runs on EVERY day-start path, retries included, which is the same call
+        // ArmTutorial makes one line above -- and deliberately so: a retried Day is the Day
+        // being played from the top, and an introduction that appears only on the first
+        // attempt would be missing precisely for the player who is struggling with it.
+        private void ShowItemIntrosForCurrentDay()
+        {
+            // A previous day's sequence must not survive into this one. All four day-start
+            // paths can fire while a popup is still up -- SRDebugger's day jump, a retry
+            // taken from the settings menu -- and a leaked hold would freeze the new day
+            // behind a popup belonging to the old one. Stopping the coroutine is not enough:
+            // the popup is a parentless instance and would sit on screen with nothing left
+            // to dismiss it.
+            StopItemIntros();
+
+            var intros = CurrentDay?.ItemIntros;
+            if (intros == null || intros.Count == 0) return;
+
+            if (newItemIntroPopupPrefab == null)
+            {
+                // LOUD, because an unwired field and a Day that introduces nothing look
+                // identical on screen -- the same reason MetaGroundsView warns about its own
+                // unlock popup rather than failing silently.
+                Debug.LogWarning(
+                    $"{nameof(GameManager)} on '{name}': Day {CurrentDay.DayIndex} introduces {intros.Count} item(s) " +
+                    $"but no {nameof(NewItemIntroPopup)} prefab is wired, so the player is shown nothing. Drag " +
+                    "Assets/Prefabs/UI/NewItemIntroPopup.prefab into the New Item Intro Popup Prefab field.", this);
+                return;
+            }
+
+            itemIntroRoutine = StartCoroutine(RunItemIntros(intros));
+        }
+
+        // The hold is taken on the FIRST line, which runs synchronously inside StartCoroutine
+        // -- before Update can tick even once. Taking it after a yield would let the day run
+        // for a frame behind a popup that is about to appear.
+        private IEnumerator RunItemIntros(IReadOnlyList<ResolvedItemIntro> intros)
+        {
+            HoldPause(itemIntroPauseHolder);
+
+            // try/finally, not a release at the end: the release has to survive the sequence
+            // being stopped mid-popup, and a stopped coroutine's iterator is disposed, which
+            // runs this. StopItemIntros releases as well, and that duplication is deliberate
+            // -- ReleasePause is idempotent (a HashSet remove of something absent), so the
+            // belt and the braces cost nothing and neither one is load-bearing alone.
+            try
+            {
+                foreach (var intro in intros)
+                {
+                    if (intro == null) continue;
+
+                    // Parentless: the prefab carries its own Screen Space - Overlay canvas,
+                    // and a Canvas nested inside another inherits its parent's RectTransform
+                    // rather than the screen's (D-126, the same trap the meta unlock popup
+                    // documents).
+                    activeItemIntroPopup = Instantiate(newItemIntroPopupPrefab);
+                    activeItemIntroPopup.Bind(
+                        intro.DisplayName, intro.Message, intro.Sprite, intro.ModificationIsAddition);
+
+                    // Frame by frame rather than on a callback, because this is a coroutine
+                    // holding the day still: the wait IS the feature. The null check ends it
+                    // if the popup is destroyed under us (the scene unloading mid-sequence),
+                    // so the day cannot be frozen by something outside this method's control.
+                    while (activeItemIntroPopup != null && !activeItemIntroPopup.IsDismissed)
+                    {
+                        yield return null;
+                    }
+
+                    if (activeItemIntroPopup != null) Destroy(activeItemIntroPopup.gameObject);
+                    activeItemIntroPopup = null;
+                }
+            }
+            finally
+            {
+                ReleasePause(itemIntroPauseHolder);
+                itemIntroRoutine = null;
+            }
+        }
+
+        // Public-shaped cleanup kept private: every caller is inside this class, and the two
+        // that exist -- a new day starting, and this object being destroyed -- are the only
+        // moments a sequence should end without the player pressing anything.
+        private void StopItemIntros()
+        {
+            if (itemIntroRoutine != null)
+            {
+                StopCoroutine(itemIntroRoutine);
+                itemIntroRoutine = null;
+            }
+
+            if (activeItemIntroPopup != null)
+            {
+                Destroy(activeItemIntroPopup.gameObject);
+                activeItemIntroPopup = null;
+            }
+
+            ReleasePause(itemIntroPauseHolder);
         }
 
         // This Day's forced first move, if it authored one. Armed from inside the pre-seed

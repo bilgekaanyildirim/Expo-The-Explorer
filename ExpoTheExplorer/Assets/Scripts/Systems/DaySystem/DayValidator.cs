@@ -74,8 +74,108 @@ namespace ExpoTheExplorer.Systems.DaySystem
             ValidateBoardDistribution(day.BoardDistribution, day.TicketRuntime, warnings);
             ValidateDayStartBoard(day, errors);
             ValidateTutorial(day, errors);
+            ValidateItemIntros(day, allowedFoods, warnings);
 
             return new DayValidationResult(errors, warnings);
+        }
+
+        // WARNINGS ONLY, and that is the whole design of this check rather than a soft
+        // option. An introduction is a greeting: every way of getting it wrong still leaves
+        // a Day that plays exactly as it would have, so refusing the Save would be this
+        // tool making a design call it is not entitled to (see DayValidationResult's own
+        // note). Compare ValidateTutorial and ValidateDayStartBoard, which DO error --
+        // those describe moves and boards the player is locked into.
+        private static void ValidateItemIntros(
+            DayDefinition day, IReadOnlyList<FoodItemConfig> allowedFoods, List<string> warnings)
+        {
+            var intros = day.ItemIntros;
+            if (intros == null) return;
+
+            // One set for both kinds: a FoodItemConfig and a ModificationConfig are different
+            // objects, so a burger and a "no pickles" can never collide here, and the "said
+            // twice" rule needs no second copy per kind.
+            // System.Object, deliberately, not UnityEngine.Object: this set only ever asks
+            // "is this the same reference", and going through UnityEngine.Object would drag
+            // in its overloaded == and its destroyed-object "fake null", neither of which
+            // means anything for two live configs read out of a catalog.
+            var seen = new HashSet<object>();
+
+            // The modifications this Day can actually put on a ticket -- every one offered by
+            // a food in its selection. Built once rather than per intro, and only when there
+            // is a pool to build it from: a null allowedFoods means the caller has no catalog
+            // yet, which is the unconfigured-toolbar case, not an empty Day.
+            var offeredModifications = allowedFoods == null
+                ? null
+                : new HashSet<ModificationConfig>(allowedFoods
+                    .Where(food => food != null)
+                    .SelectMany(food => food.AvailableModifications)
+                    .Where(modification => modification != null));
+
+            for (var i = 0; i < intros.Count; i++)
+            {
+                var intro = intros[i];
+                if (intro == null) continue;
+
+                object subject = intro.Item != null ? intro.Item : (object)intro.Modification;
+                if (subject == null) continue;
+
+                var id = intro.Item != null ? intro.Item.Id : intro.Modification.Id;
+
+                // Introducing something the Day never uses is the mistake worth naming: the
+                // popup promises a food the board will not hand out, or a modification no
+                // ticket can ask for, for the rest of the morning. Both are checked against
+                // the same food pool the ticket rule uses, so nothing here can disagree with
+                // it about what "this Day serves" means.
+                if (intro.Item != null && allowedFoods != null && !allowedFoods.Contains(intro.Item))
+                {
+                    warnings.Add(
+                        $"Item intro {i + 1}: '{id}' is introduced but is not in this Day's food selection, "
+                        + "so the player is shown something this Day never serves.");
+                }
+                else if (intro.Modification != null && offeredModifications != null
+                                                    && !offeredModifications.Contains(intro.Modification))
+                {
+                    warnings.Add(
+                        $"Item intro {i + 1}: modification '{id}' is introduced but no food in this Day's selection "
+                        + "offers it, so no ticket this Day can ever ask for it.");
+                }
+
+                // A direction the modification does not allow. Checked against
+                // ModificationConfig.AllowedDirection, which is the single authority for it --
+                // the same one the Day Editor's right-click flip reads, so an intro authored
+                // through the window cannot reach this and a hand-edited Day file can.
+                if (intro.Modification != null && intro.ModificationIsAddition.HasValue)
+                {
+                    var wantsAddition = intro.ModificationIsAddition.Value;
+                    var allowed = intro.Modification.AllowedDirection;
+                    if ((wantsAddition && allowed == ModificationDirection.RemovalOnly)
+                        || (!wantsAddition && allowed == ModificationDirection.AdditionOnly))
+                    {
+                        warnings.Add(
+                            $"Item intro {i + 1}: modification '{id}' is introduced as "
+                            + $"{(wantsAddition ? "an addition" : "a removal")}, but it is {allowed} -- "
+                            + "the popup would teach a direction no ticket can ask for.");
+                    }
+                }
+
+                // The same thing twice is two popups saying the same thing, one after the
+                // other -- reachable by duplicating a row and forgetting to change it.
+                if (!seen.Add(subject))
+                {
+                    warnings.Add($"Item intro {i + 1}: '{id}' is introduced more than once on this Day.");
+                }
+
+                // A popup with no picture is a frame with a name in it. Not an error -- it
+                // still reads -- but the picture is the thing the player is supposed to
+                // recognise on the board or on a ticket card a moment later.
+                if (intro.Sprite == null)
+                {
+                    warnings.Add(
+                        $"Item intro {i + 1}: '{id}' has no "
+                        + (intro.Item != null ? "sprite on its FoodItemConfig" : "icon on its ModificationConfig")
+                        + ", so its introduction popup will show no picture.");
+                }
+            }
         }
 
         // THE OPENING BOARD IS THE WHOLE OPENING. A Day that authors items at Day Start

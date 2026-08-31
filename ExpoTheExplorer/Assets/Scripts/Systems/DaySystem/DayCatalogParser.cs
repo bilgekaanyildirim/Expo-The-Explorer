@@ -91,7 +91,77 @@ namespace ExpoTheExplorer.Systems.DaySystem
             }
 
             return new DayDefinition(runtime.dayIndex, runtime.ticketsRequiredForDay, ticketSequence, boardTimeline,
-                boardDistribution, ticketRuntime, ResolveTutorial(runtime.tutorial));
+                boardDistribution, ticketRuntime, ResolveTutorial(runtime.tutorial),
+                ResolveItemIntros(runtime.itemIntro, catalog, fileName));
+        }
+
+        // The Day's "here is something new" popups. Like ResolveTutorial and unlike every
+        // other Resolve* here, a bad block is NOT fatal to the Day: an introduction is a
+        // greeting, and taking a playable day off the calendar because its greeting names a
+        // deleted food would punish the content for the decoration.
+        //
+        // It goes further than the tutorial does, and drops a bad ENTRY rather than the whole
+        // block: the entries are independent of each other -- three items introduced on one
+        // morning are three popups, not one sequence with a shared meaning -- so an unknown
+        // id costs its own popup and the others still play. The tutorial cannot do that,
+        // because its steps are a path through one board and a hole in the middle is a step
+        // the player is then locked on.
+        //
+        // Public for the reason ResolveTutorial is: the Day Editor resolves the same block
+        // for its validation preview (DayEditorModel.ToDayDefinition), and one rule with one
+        // implementation is what stops a Day validating in the editor and behaving
+        // differently at runtime.
+        public static IReadOnlyList<ResolvedItemIntro> ResolveItemIntros(
+            ItemIntroJson itemIntro, FoodCatalog catalog, string fileName)
+        {
+            if (itemIntro == null || !itemIntro.enabled) return null;
+
+            var intros = new List<ResolvedItemIntro>();
+            foreach (var entry in itemIntro.items ?? Array.Empty<ItemIntroEntryJson>())
+            {
+                if (entry == null) continue;
+
+                // A NON-EMPTY modificationId is what makes this a modification introduction,
+                // and it is checked FIRST so the two ids can never both be honoured. An entry
+                // carrying both is authored ambiguously, which the Day Editor cannot produce
+                // and DayValidator warns about -- reading the modification is the choice that
+                // keeps the popup showing the more specific of the two things named.
+                if (!string.IsNullOrEmpty(entry.modificationId))
+                {
+                    var modification = catalog == null ? null : catalog.GetModificationById(entry.modificationId);
+                    if (modification == null)
+                    {
+                        Debug.LogError(
+                            $"Day file '{fileName}': item intro names unknown modificationId '{entry.modificationId}'. " +
+                            "Skipping this introduction; the rest of the Day is unaffected.");
+                        continue;
+                    }
+
+                    intros.Add(new ResolvedItemIntro(modification, entry.isAddition, entry.nameOverride, entry.message));
+                    continue;
+                }
+
+                // A half-authored row -- the box is ticked, nothing picked yet -- is the
+                // ordinary mid-edit state of the Day Editor, so it is skipped in silence.
+                // Only a NAMED id that does not resolve is worth a sentence.
+                if (string.IsNullOrEmpty(entry.itemId)) continue;
+
+                var item = catalog == null ? null : catalog.GetById(entry.itemId);
+                if (item == null)
+                {
+                    Debug.LogError(
+                        $"Day file '{fileName}': item intro names unknown itemId '{entry.itemId}'. " +
+                        "Skipping this introduction; the rest of the Day is unaffected.");
+                    continue;
+                }
+
+                intros.Add(new ResolvedItemIntro(item, entry.nameOverride, entry.message));
+            }
+
+            // An enabled block that resolved nothing is treated as no introductions rather
+            // than as an empty list, which is what lets every reader take "there is a list"
+            // as "there is at least one popup to show".
+            return intros.Count > 0 ? intros : null;
         }
 
         // Unlike every other Resolve* here, a bad block is NOT fatal to the Day: null means

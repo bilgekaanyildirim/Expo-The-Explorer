@@ -94,6 +94,14 @@ namespace ExpoTheExplorer.Tests.EditMode
                     },
                     ticketSequence = new[] { ticketEntry },
                     boardTimeline = new[] { boardSpawnEntry },
+                    itemIntro = new ItemIntroJson
+                    {
+                        enabled = true,
+                        items = new[]
+                        {
+                            new ItemIntroEntryJson { itemId = drink.Id, nameOverride = "Fizzy", message = "Ice cold." },
+                        },
+                    },
                 },
                 editorMeta = new DayEditorMetaJson
                 {
@@ -132,6 +140,102 @@ namespace ExpoTheExplorer.Tests.EditMode
             Assert.AreEqual(11f, runtime.ticketRuntime.impatientTimeLimitSeconds);
             Assert.AreEqual(33f, runtime.ticketRuntime.patientTimeLimitSeconds);
             Assert.AreEqual(7, runtime.ticketRuntime.upcomingQueueSize);
+        }
+
+        // The item-introduction block is the SECOND place in a Day file where a food is held
+        // by id and edited as an object, so it has mainDishWeights' failure mode: an identity
+        // that can be lost on the way through (id -> FoodItemConfig -> id). It also carries
+        // the flag whose whole purpose is surviving a round trip -- unticking the box in the
+        // Day Editor must not delete the authored rows.
+        [Test]
+        public void FromDayJson_ThenToDayJson_KeepsItemIntros()
+        {
+            var model = DayEditorModel.FromDayJson(CreateFullDayJson(), catalog);
+
+            Assert.IsTrue(model.IntroduceNewItem);
+            Assert.AreEqual(1, model.ItemIntros.Count);
+            Assert.AreSame(drink, model.ItemIntros[0].Item);
+
+            var itemIntro = model.ToDayJson().runtime.itemIntro;
+
+            Assert.IsTrue(itemIntro.enabled);
+            Assert.AreEqual(1, itemIntro.items.Length);
+            Assert.AreEqual(drink.Id, itemIntro.items[0].itemId);
+            Assert.AreEqual("Fizzy", itemIntro.items[0].nameOverride);
+            Assert.AreEqual("Ice cold.", itemIntro.items[0].message);
+        }
+
+        // The modification half of a row, and the property that makes the either/or safe:
+        // ToJson writes exactly ONE id, so a saved Day can never carry the ambiguity the
+        // runtime parser would otherwise have to resolve for it.
+        [Test]
+        public void ToDayJson_ModificationIntro_WritesOnlyTheModificationId()
+        {
+            var model = DayEditorModel.FromDayJson(CreateFullDayJson(), catalog);
+
+            model.ItemIntros[0].IsModification = true;
+            model.ItemIntros[0].Modification = modification;
+            model.ItemIntros[0].IsAddition = false;
+
+            var entry = model.ToDayJson().runtime.itemIntro.items[0];
+
+            Assert.AreEqual(modification.Id, entry.modificationId);
+            Assert.AreEqual(string.Empty, entry.itemId);
+            Assert.IsFalse(entry.isAddition);
+        }
+
+        // The kind is read off WHICH id the file carries -- the file has no flag of its own,
+        // and a non-empty modificationId is what makes an entry a modification for the runtime
+        // parser too, so the editor and the game agree on what an authored row means.
+        [Test]
+        public void FromDayJson_ModificationIntro_OpensOnTheModificationTab()
+        {
+            var dayJson = CreateFullDayJson();
+            dayJson.runtime.itemIntro.items[0] = new ItemIntroEntryJson
+            {
+                modificationId = modification.Id,
+                isAddition = true,
+                message = "Extra, if you like.",
+            };
+
+            var model = DayEditorModel.FromDayJson(dayJson, catalog);
+
+            Assert.IsTrue(model.ItemIntros[0].IsModification);
+            Assert.AreSame(modification, model.ItemIntros[0].Modification);
+            Assert.IsNull(model.ItemIntros[0].Item);
+            Assert.IsTrue(model.ItemIntros[0].IsAddition);
+        }
+
+        // Unticking is not deleting. The rows stay in the file so the author can tick the box
+        // again and get their work back -- the same contract TutorialJson.enabled carries, and
+        // the reason the flag exists instead of "the list is non-empty".
+        [Test]
+        public void ToDayJson_IntroduceNewItemUnticked_KeepsTheAuthoredRows()
+        {
+            var model = DayEditorModel.FromDayJson(CreateFullDayJson(), catalog);
+
+            model.IntroduceNewItem = false;
+
+            var itemIntro = model.ToDayJson().runtime.itemIntro;
+
+            Assert.IsFalse(itemIntro.enabled);
+            Assert.AreEqual(1, itemIntro.items.Length);
+            Assert.AreEqual(drink.Id, itemIntro.items[0].itemId);
+        }
+
+        // A Day file written before this block existed has no itemIntro at all -- which
+        // JsonUtility hands back as a zeroed instance, never null. The editor must open it as
+        // "introduces nothing" rather than as an enabled block with no rows.
+        [Test]
+        public void FromDayJson_NoItemIntroBlock_IntroducesNothing()
+        {
+            var dayJson = CreateFullDayJson();
+            dayJson.runtime.itemIntro = null;
+
+            var model = DayEditorModel.FromDayJson(dayJson, catalog);
+
+            Assert.IsFalse(model.IntroduceNewItem);
+            Assert.AreEqual(0, model.ItemIntros.Count);
         }
 
         // mainDishWeights is the only editorMeta field holding a food reference, so it is
