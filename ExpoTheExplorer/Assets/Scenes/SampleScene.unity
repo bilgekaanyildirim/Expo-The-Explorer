@@ -3380,6 +3380,7 @@ MonoBehaviour:
   lifeLostHeartView: {fileID: 276944343}
   autoCollectRunner: {fileID: 527858029}
   noiseClearRunner: {fileID: 1509324420}
+  newItemIntroPopupPrefab: {fileID: 1357536641707736395, guid: 7d3e5a91c4b84f27b0e6c2d95af18e34, type: 3}
   starScoreConfig: {fileID: 11400000, guid: 3b5e655a4e48437e87494a2ff0689c11, type: 2}
   metaCatalog: {fileID: 11400000, guid: 4433558fc5f314cc2b5f173692b4e8ed, type: 2}
 --- !u!4 &800000003
@@ -8962,7 +8963,7 @@ MonoBehaviour:
   flightDuration: 0.5
   flightArcHeight: 120
   flightIconSize: 48
-  starIconSize: 120
+  starIconSize: 180
   flightEndScale: 0.55
   targetPunchScale: 0.25
   targetPunchDuration: 0.2
