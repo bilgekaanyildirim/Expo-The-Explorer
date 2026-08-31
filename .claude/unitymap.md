@@ -1,4 +1,4 @@
-<!-- stamp: 2026-08-31T15:25Z source-sig:345c251dbf5a scenes:2 prefabs:16 generator:python-fallback status: DEGRADED 415 missing-script -->
+<!-- stamp: 2026-08-31T19:57Z source-sig:2d502dc007ce scenes:2 prefabs:16 generator:python-fallback status: DEGRADED 415 missing-script -->
 # unitymap — scene and prefab structure
 
 Read this instead of opening a `.unity`/`.prefab` file. Tree indentation is
@@ -406,7 +406,7 @@ Unity menu item Tools > unity-dev > Export unitymap.
         - Star3  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
           - Star3Filled  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
 - Global Light 2D  [MISSING SCRIPT (guid:073797af), Transform]
-- GameManager  [GameManager, Transform, HapticsBinder, DebugMenuBinder]  refs: autoCollectRunner=set, economyConfig=set, foodCatalog=set, gameConfig=set, haptics=set, keyConfig=set, lifeLostHeartView=set, livesConfig=set, metaCatalog=set, newItemIntroPopupPrefab=set, noiseClearRunner=set, powerupConfig=set, starScoreConfig=set, ticketGenerationConfig=set, config=set, gameManager=set, sessionHost=set, host=set, metaCatalog=set
+- GameManager  [GameManager, Transform, HapticsBinder, DebugMenuBinder, TelemetryBinder]  refs: autoCollectRunner=set, economyConfig=set, foodCatalog=set, gameConfig=set, haptics=set, keyConfig=set, lifeLostHeartView=set, livesConfig=set, metaCatalog=set, newItemIntroPopupPrefab=set, noiseClearRunner=set, powerupConfig=set, starScoreConfig=set, ticketGenerationConfig=set, config=set, gameManager=set, sessionHost=set, host=set, metaCatalog=set, gameManager=set
 - TicketCardsView  [TicketCardsView, Transform]  refs: animConfig=set, cardPrefab=set, cardsParent=set, gameManager=set, visualsConfig=set
 - EventSystem  [MISSING SCRIPT (guid:01614664), MISSING SCRIPT (guid:76c392e4), Transform]
 - StartingPoint  [Transform]
@@ -502,6 +502,7 @@ Unity menu item Tools > unity-dev > Export unitymap.
 - SettingsPopupView | ExpoTheExplorer/Assets/Scripts/UI/SettingsPopupView.cs
 - SoftMoneyView | ExpoTheExplorer/Assets/Scripts/UI/SoftMoneyView.cs
 - StarScoreBarView | ExpoTheExplorer/Assets/Scripts/UI/StarScoreBarView.cs
+- TelemetryBinder | ExpoTheExplorer/Assets/Scripts/Telemetry/TelemetryBinder.cs
 - TicketCardView | ExpoTheExplorer/Assets/Scripts/UI/TicketCardView.cs
 - TicketCardsView | ExpoTheExplorer/Assets/Scripts/UI/TicketCardsView.cs
 - TrayFillCounterView | ExpoTheExplorer/Assets/Scripts/UI/TrayFillCounterView.cs

@@ -1,4 +1,4 @@
-<!-- stamp: 2026-08-31T17:49Z source-sig:8484faa33b55 assets:49 prefabs:16 scenes:2 asmdefs:19 -->
+<!-- stamp: 2026-08-31T19:57Z source-sig:462025027b7e assets:49 prefabs:16 scenes:2 asmdefs:20 -->
 # assetmap — asset inventory (data, prefabs, load surface, assemblies)
 
 Regenerate with `python3 .claude/hooks/build_assetmap.py`. `data-source.md`
@@ -9,6 +9,7 @@ the cost model reads the load-surface section before pricing a load.
 
 - ExpoTheExplorer/Assets/Data/ExpoTheExplorer.Data.asmdef | name: ExpoTheExplorer.Data | refs: - | platforms: all | covers: ExpoTheExplorer/Assets/Data/**
 - ExpoTheExplorer/Assets/Editor/ExpoTheExplorer.Editor.asmdef | name: ExpoTheExplorer.Editor | refs: ExpoTheExplorer.Data,ExpoTheExplorer.Core,ExpoTheExplorer.Systems.DaySystem,ExpoTheExplorer.Systems.TicketSystem,ExpoTheExplorer.Systems.ProgressionSystem,ExpoTheExplorer.Systems.EconomySystem | platforms: Editor | covers: ExpoTheExplorer/Assets/Editor/**
+- ExpoTheExplorer/Assets/Firebase/FirebaseApp/Internal/Firebase.App.Internal.asmdef | name: Firebase.App.Internal | refs: - | platforms: Editor,WindowsStandalone32,WindowsStandalone64,macOSStandalone,LinuxStandalone64,Android,iOS,tvOS | covers: ExpoTheExplorer/Assets/Firebase/FirebaseApp/Internal/**
 - ExpoTheExplorer/Assets/Scripts/Core/ExpoTheExplorer.Core.asmdef | name: ExpoTheExplorer.Core | refs: ExpoTheExplorer.Data | platforms: all | covers: ExpoTheExplorer/Assets/Scripts/Core/**
 - ExpoTheExplorer/Assets/Scripts/Session/ExpoTheExplorer.Session.asmdef | name: ExpoTheExplorer.Session | refs: ExpoTheExplorer.Core,ExpoTheExplorer.Data,ExpoTheExplorer.Systems.ProgressionSystem,ExpoTheExplorer.Systems.LivesSystem,ExpoTheExplorer.Systems.KeySystem,ExpoTheExplorer.Systems.PowerupSystem | platforms: all | covers: ExpoTheExplorer/Assets/Scripts/Session/**
 - ExpoTheExplorer/Assets/Scripts/Systems/BoardDistribution/ExpoTheExplorer.Systems.BoardDistribution.asmdef | name: ExpoTheExplorer.Systems.BoardDistribution | refs: ExpoTheExplorer.Core,ExpoTheExplorer.Data | platforms: all | covers: ExpoTheExplorer/Assets/Scripts/Systems/BoardDistribution/**
@@ -105,8 +106,9 @@ the cost model reads the load-surface section before pricing a load.
 
 ## Runtime load surface
 
-- ExpoTheExplorer/Assets/Resources | 33 file(s) | loaded by string at runtime; ships in every build
+- ExpoTheExplorer/Assets/Resources | 39 file(s) | loaded by string at runtime; ships in every build
 - ExpoTheExplorer/Assets/StompyRobot/SRDebugger/Resources | 41 file(s) | loaded by string at runtime; ships in every build
 - ExpoTheExplorer/Assets/StompyRobot/SRDebugger/usr/Resources | 3 file(s) | loaded by string at runtime; ships in every build
 - ExpoTheExplorer/Assets/TextMesh Pro/Resources | 21 file(s) | loaded by string at runtime; ships in every build
 - ExpoTheExplorer/Assets/ThirdParty/Feel/NiceVibrations/Scripts/Components/Resources | 6 file(s) | loaded by string at runtime; ships in every build
+- ExpoTheExplorer/Assets/StreamingAssets | 2 file(s) | loaded by string at runtime; ships in every build
