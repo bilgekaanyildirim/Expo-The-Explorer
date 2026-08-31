@@ -14,26 +14,29 @@ MonoBehaviour:
   m_EditorClassIdentifier: ExpoTheExplorer.Data::ExpoTheExplorer.Data.PowerupConfig
   autoCollect:
     displayName: Auto-Collect
-    description: Fills your trays with what the current orders still need.
+    description: Fills the trays for you, finishing whole orders first.
     startingCharges: 2
     gemCost: 20
-    tutorialIntroDayIndex: 5
+    tutorialIntroDayIndex: 6
     tutorialUseTrigger: 0
+    tutorialUseMessage: 
     tutorialCharges: 2
   timeReset:
     displayName: Time Reset
-    description: Gives every waiting customer their full time back.
+    description: Refills the clock on the order closest to running out.
     startingCharges: 1
     gemCost: 10
-    tutorialIntroDayIndex: 10
+    tutorialIntroDayIndex: 9
     tutorialUseTrigger: 1
+    tutorialUseMessage: Time is running out on this order. Use Time Reset.
     tutorialCharges: 2
   noiseClear:
     displayName: Noise Clear
-    description: Clears the board of every item no current order asks for.
+    description: Clears the board of everything the orders don't need.
     startingCharges: 2
     gemCost: 5
-    tutorialIntroDayIndex: 8
+    tutorialIntroDayIndex: 7
     tutorialUseTrigger: 0
+    tutorialUseMessage: 
     tutorialCharges: 2
   lockLabelFormat: Day {0}

@@ -383,12 +383,12 @@ namespace ExpoTheExplorer.Tests.EditMode
             var changes = 0;
             director.StepChanged += () => changes++;
 
-            director.NotifyTicketPatienceRatio(0.9f);
-            director.NotifyTicketPatienceRatio(TriggerRatio + 0.01f);
+            director.NotifyTicketPatienceRatio(0.9f, slotIndex: 0);
+            director.NotifyTicketPatienceRatio(TriggerRatio + 0.01f, slotIndex: 0);
             Assert.IsFalse(director.IsArmed, "Above the threshold is not at it.");
             Assert.AreEqual(0, changes, "A step that did not arm announces nothing.");
 
-            director.NotifyTicketPatienceRatio(TriggerRatio);
+            director.NotifyTicketPatienceRatio(TriggerRatio, slotIndex: 0);
 
             Assert.IsTrue(director.IsArmed, "At the threshold, the lesson takes over.");
             Assert.AreEqual(1, changes, "Arming is a change of what the tutorial is asking for, so it is announced.");
@@ -403,7 +403,7 @@ namespace ExpoTheExplorer.Tests.EditMode
         {
             var director = CreateDeferredPowerupDirector();
             director.NotifyReadingFinished();
-            director.NotifyTicketPatienceRatio(0.1f);
+            director.NotifyTicketPatienceRatio(0.1f, slotIndex: 0);
 
             Assert.IsFalse(director.IsPickupAllowed(4, 3));
             Assert.IsFalse(director.IsTrayDropAllowed(1));
@@ -418,7 +418,7 @@ namespace ExpoTheExplorer.Tests.EditMode
         {
             var director = CreateDeferredPowerupDirector();
             director.NotifyReadingFinished();
-            director.NotifyTicketPatienceRatio(0f);
+            director.NotifyTicketPatienceRatio(0f, slotIndex: 0);
 
             director.NotifyPowerupUsed(TutorialPowerup.TimeReset);
 
@@ -437,7 +437,7 @@ namespace ExpoTheExplorer.Tests.EditMode
         {
             var director = CreateDeferredPowerupDirector();
             director.NotifyReadingFinished();
-            director.NotifyTicketPatienceRatio(0f);
+            director.NotifyTicketPatienceRatio(0f, slotIndex: 0);
 
             director.NotifyPowerupUsed(TutorialPowerup.AutoCollect);
 
@@ -472,10 +472,33 @@ namespace ExpoTheExplorer.Tests.EditMode
             var changes = 0;
             director.StepChanged += () => changes++;
 
-            director.NotifyTicketPatienceRatio(0f);
+            director.NotifyTicketPatienceRatio(0f, slotIndex: 0);
 
             Assert.AreEqual(0, changes);
             Assert.AreEqual(TutorialPowerup.NoiseClear, director.IntroducedPowerup, "Still on the panel.");
+        }
+
+        // The slot that armed the step is remembered, and it is remembered AS OF THE ARMING.
+        // The lesson dims the screen down to that one card (D-146), so a later report from a
+        // ticket that has since become the most urgent must not move the spotlight -- by then
+        // the player is already looking at the card the lesson lit.
+        [Test]
+        public void ADeferredUseStep_RemembersTheSlotThatArmedIt()
+        {
+            var director = CreateDeferredPowerupDirector();
+            director.NotifyReadingFinished();
+
+            Assert.AreEqual(-1, director.TriggeringTicketSlotIndex, "Nothing has tripped the step yet.");
+
+            director.NotifyTicketPatienceRatio(TriggerRatio, slotIndex: 2);
+
+            Assert.IsTrue(director.IsArmed);
+            Assert.AreEqual(2, director.TriggeringTicketSlotIndex, "The slot handed over with the arming report is the one the lesson lights.");
+
+            director.NotifyTicketPatienceRatio(0f, slotIndex: 1);
+
+            Assert.AreEqual(2, director.TriggeringTicketSlotIndex,
+                "A ticket that becomes more urgent AFTER the step armed does not steal the spotlight.");
         }
 
         // Arming happens once. A second report below the threshold must not re-announce a step
@@ -486,13 +509,13 @@ namespace ExpoTheExplorer.Tests.EditMode
         {
             var director = CreateDeferredPowerupDirector();
             director.NotifyReadingFinished();
-            director.NotifyTicketPatienceRatio(0.2f);
+            director.NotifyTicketPatienceRatio(0.2f, slotIndex: 0);
 
             var changes = 0;
             director.StepChanged += () => changes++;
 
-            director.NotifyTicketPatienceRatio(0.1f);
-            director.NotifyTicketPatienceRatio(0f);
+            director.NotifyTicketPatienceRatio(0.1f, slotIndex: 0);
+            director.NotifyTicketPatienceRatio(0f, slotIndex: 0);
 
             Assert.AreEqual(0, changes);
         }
@@ -507,7 +530,7 @@ namespace ExpoTheExplorer.Tests.EditMode
 
             Assert.AreEqual(string.Empty, director.CurrentMessage, "A waiting step is not saying anything yet.");
 
-            director.NotifyTicketPatienceRatio(0f);
+            director.NotifyTicketPatienceRatio(0f, slotIndex: 0);
 
             Assert.AreEqual("Press Time Reset.", director.CurrentMessage);
         }

@@ -35,61 +35,32 @@ namespace ExpoTheExplorer.UI
     // renderers this class recolours are ones it created itself.
     public class TutorialSpotlightView : MonoBehaviour
     {
-        // Sits above the board (cells 0, item layers 1+) and above a tray's own sprites, but
-        // well below BoardItemDragHandler's +1000 drag boost -- so an item the player has
-        // actually picked up stays visible over the dim for free, with no cooperation needed
-        // between the two classes.
-        private const int DimSortingOrder = 500;
-
-        // What the lit pair is raised by. Above the dim, still under a dragged item.
-        private const int LitSortingBoost = 600;
-
-        // What the target ticket card is raised to while its step runs. Above the dim (500)
-        // and below a dragged item (+1000), so an item dragged across the card still passes
-        // in front of it.
-        //
-        // THE CARD NEEDS RAISING AT ALL because this scene's InGameCanvas is Screen Space -
-        // CAMERA at sortingOrder -1, not Overlay. Only an Overlay canvas composites above
-        // everything the camera renders unconditionally; a camera-space one sorts against
-        // sprites like any other renderer, so the dim at 500 covers it -- the cards, and
-        // anything parented to them. The original design assumed otherwise and the target
-        // card, its modification arrow and the step message were all being drawn correctly
-        // and then buried.
-        private const int LitCardSortingOrder = 800;
-
         // Three constants left with D-126: the message canvas's sorting order and the two
         // arrow length factors. All three are the prefab's business now -- the canvas is
         // authored in it (keep that order NEGATIVE, so a Game Over popup arriving mid-step
         // covers the tutorial line rather than the other way round), and each arrow's size is
         // whatever the author gave it.
+        //
+        // Three more left with D-146: the dim's sorting order and the two lift levels, which
+        // now live on TutorialDim beside the code that uses them, because the powerup lesson
+        // needs the same effect and two copies of a number that has to agree across files is
+        // how the numbers stop agreeing.
         private TutorialDirector director;
         private BoardAnimationConfig animConfig;
 
-        private GameObject dimObject;
         private GameObject ghostObject;
         private Sequence ghostLoop;
         private bool restored;
 
-        // Every renderer this view lifted, with the order it had before. Restored from this
-        // snapshot rather than by subtracting the boost again: an item destroyed mid-step
-        // then costs nothing, because a null entry is simply skipped instead of writing a
-        // wrong number back.
-        private readonly List<(SpriteRenderer Renderer, int OriginalOrder)> liftedRenderers = new();
+        // The dim sheet, the lifts over it, and the black curtains on the non-target cards --
+        // all of it, including putting every borrowed sorting order back (D-146).
+        private readonly TutorialDim dim = new();
 
         // Everything this view added to a Canvas or to another object's hierarchy, destroyed
-        // together on teardown. The black sheets over the non-target ticket cards are here
-        // because Canvas UI composites over everything the camera renders, so the
-        // world-space dim above can never cover a card -- these are the Canvas-side half of
-        // the same effect. One stretched Image per card, added as its child, so
-        // TicketCardView keeps sole ownership of the colours it paints and the
-        // HorizontalLayoutGroup that arranges the cards is left undisturbed.
+        // together on teardown: the step-hints instance and the arrows it reparents. The dim's
+        // own objects are NOT here -- TutorialDim owns those, so that one class is the only
+        // thing that has to be right about undoing them.
         private readonly List<GameObject> attachedObjects = new();
-
-        // Canvas components added to ticket cards to lift them over the dim, removed again on
-        // teardown. Components rather than objects, so they are tracked separately from
-        // attachedObjects -- destroying the card would be catastrophic; destroying the Canvas
-        // we added to it is exactly right.
-        private readonly List<Canvas> liftedCardCanvases = new();
 
         // Created by the target tray, with everything already resolved -- this view looks
         // nothing up. sourceItem is the live board container the player must grab (the ghost
@@ -125,17 +96,17 @@ namespace ExpoTheExplorer.UI
             IReadOnlyList<RectTransform> dimmedCards,
             TicketCardView targetCard)
         {
-            BuildDim();
-            Lift(sourceItem);
+            dim.Build(transform, animConfig.TutorialDimOpacity);
+            dim.LiftSprites(sourceItem);
 
             if (litExtras != null)
             {
-                foreach (var extra in litExtras) Lift(extra);
+                foreach (var extra in litExtras) dim.LiftSprites(extra);
             }
 
             if (dimmedCards != null)
             {
-                foreach (var card in dimmedCards) DimCard(card);
+                foreach (var card in dimmedCards) dim.Curtain(card, animConfig.TutorialDimOpacity);
             }
 
             BuildGhost(sourceItem, trayTarget);
@@ -143,7 +114,7 @@ namespace ExpoTheExplorer.UI
             // After the dim exists, so the lift is measured against something already there.
             // This is what keeps the one card the player must READ -- the order the forced
             // move is filling -- legible, along with the modification arrow parented to it.
-            LiftCardAboveDim(targetCard);
+            if (targetCard != null) dim.LiftElement(targetCard.gameObject);
 
             var step = director.Current;
             if (step != null) BuildStepHints(step, sourceItem, sourceBoardItem, targetCard);
@@ -292,81 +263,6 @@ namespace ExpoTheExplorer.UI
             FadeIn(arrow);
         }
 
-        // A single black quad scaled to the camera's whole view. Camera.main rather than a
-        // handed-down reference for the same reason GameManager.EnsurePhysics2DRaycaster
-        // uses it: this runs once per step, and the day scene has exactly one camera.
-        private void BuildDim()
-        {
-            var cam = Camera.main;
-            if (cam == null) return;
-
-            dimObject = new GameObject("Dim");
-            dimObject.transform.SetParent(transform, false);
-            dimObject.transform.position = new Vector3(cam.transform.position.x, cam.transform.position.y, 0f);
-
-            var renderer = dimObject.AddComponent<SpriteRenderer>();
-            renderer.sprite = CreateWhitePixelSprite();
-            renderer.color = new Color(0f, 0f, 0f, animConfig.TutorialDimOpacity);
-            renderer.sortingOrder = DimSortingOrder;
-
-            // Oversized on purpose: the sheet has to survive a camera that is not exactly
-            // where it was at Day Start, and covering more than the viewport costs nothing
-            // for one untextured quad.
-            var height = 2f * cam.orthographicSize;
-            dimObject.transform.localScale = new Vector3(height * cam.aspect * 1.5f, height * 1.5f, 1f);
-        }
-
-        // Raises one ticket card above the dim by giving it its own sorting scope. Adding a
-        // Canvas to a RectTransform is Unity's standard per-element sorting override; it does
-        // not disturb the HorizontalLayoutGroup arranging the cards, and no GraphicRaycaster
-        // is added because the card is display-only.
-        //
-        // A card that ALREADY has a Canvas is left alone rather than reconfigured: that would
-        // be someone else's sorting decision, and putting it back on teardown means storing
-        // and restoring their values, which is a lot of machinery for a case that does not
-        // exist in this project today.
-        private void LiftCardAboveDim(TicketCardView card)
-        {
-            if (card == null || card.TryGetComponent<Canvas>(out _)) return;
-
-            var cardCanvas = card.gameObject.AddComponent<Canvas>();
-            cardCanvas.overrideSorting = true;
-            cardCanvas.sortingOrder = LitCardSortingOrder;
-            liftedCardCanvases.Add(cardCanvas);
-        }
-
-        private void Lift(Transform target)
-        {
-            if (target == null) return;
-
-            foreach (var renderer in target.GetComponentsInChildren<SpriteRenderer>(true))
-            {
-                liftedRenderers.Add((renderer, renderer.sortingOrder));
-                renderer.sortingOrder += LitSortingBoost;
-            }
-        }
-
-        // A stretched black Image parented to the card and pushed to the front of its own
-        // children, so it covers that card and nothing else. raycastTarget is off: this is a
-        // curtain, and leaving it on would be a silent input blocker for whatever ends up
-        // behind these cards later.
-        private void DimCard(RectTransform card)
-        {
-            if (card == null) return;
-
-            var dim = new GameObject("TutorialDim", typeof(RectTransform));
-            var rect = (RectTransform)dim.transform;
-            rect.SetParent(card, false);
-            Stretch(rect);
-            rect.SetAsLastSibling();
-
-            var image = dim.AddComponent<Image>();
-            image.color = new Color(0f, 0f, 0f, animConfig.TutorialDimOpacity);
-            image.raycastTarget = false;
-
-            attachedObjects.Add(dim);
-        }
-
         // The ghost is a CLONE of the real item, which is why this effect needs no art: it is
         // guaranteed to show the exact food, with the exact modifications, that the player is
         // being asked to move. Everything that would make the copy behave like a real board
@@ -394,7 +290,7 @@ namespace ExpoTheExplorer.UI
             {
                 var color = renderer.color;
                 renderer.color = new Color(color.r, color.g, color.b, color.a * animConfig.TutorialGhostOpacity);
-                renderer.sortingOrder += LitSortingBoost;
+                renderer.sortingOrder += TutorialDim.LitSortingBoost;
             }
 
             var end = trayTarget.position;
@@ -463,14 +359,6 @@ namespace ExpoTheExplorer.UI
             renderer.DOFade(targetAlpha, animConfig.TutorialHintFadeDuration).SetLink(gameObject);
         }
 
-        private static void Stretch(RectTransform rect)
-        {
-            rect.anchorMin = Vector2.zero;
-            rect.anchorMax = Vector2.one;
-            rect.offsetMin = Vector2.zero;
-            rect.offsetMax = Vector2.zero;
-        }
-
         // Called by the tray that built this, BEFORE the director is told the step is done.
         // The restore has to happen synchronously here rather than being left to OnDestroy,
         // because Unity defers Destroy to the end of the frame while the NEXT step's
@@ -495,36 +383,14 @@ namespace ExpoTheExplorer.UI
 
             ghostLoop?.Kill();
 
-            foreach (var (renderer, originalOrder) in liftedRenderers)
-            {
-                if (renderer != null) renderer.sortingOrder = originalOrder;
-            }
-            liftedRenderers.Clear();
+            // The sheet, the curtains and every sorting order this step borrowed.
+            dim.Restore();
 
             foreach (var attached in attachedObjects)
             {
                 if (attached != null) Destroy(attached);
             }
             attachedObjects.Clear();
-
-            // The CARD is not ours to destroy -- only the Canvas we added to it, which puts
-            // its sorting back under the scene's own rules.
-            foreach (var cardCanvas in liftedCardCanvases)
-            {
-                if (cardCanvas != null) Destroy(cardCanvas);
-            }
-            liftedCardCanvases.Clear();
         }
-
-        // Same one-pixel trick BoardView uses for its cells and frame -- a solid sprite the
-        // project can scale to any size, so the dim needs no imported texture.
-        private static Sprite CreateWhitePixelSprite()
-        {
-            var texture = new Texture2D(1, 1);
-            texture.SetPixel(0, 0, Color.white);
-            texture.Apply();
-            return Sprite.Create(texture, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f), 1);
-        }
-
     }
 }

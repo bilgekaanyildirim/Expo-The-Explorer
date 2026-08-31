@@ -419,7 +419,7 @@ namespace ExpoTheExplorer.Bootstrap
             // was the effect behind it that re-asked the wrong question.
             powerups.RegisterEffect(
                 PowerupType.TimeReset,
-                () => CanUsePowerup(PowerupType.TimeReset) && PowerupEffects.ResetActiveTicketTimers(State));
+                () => CanUsePowerup(PowerupType.TimeReset) && PowerupEffects.ResetMostUrgentTicketTimer(State));
 
             // Noise Clear takes the tray contents since D-118, because it now clears down to
             // what the tickets STILL need rather than to what they need in principle -- a cola
@@ -606,7 +606,13 @@ namespace ExpoTheExplorer.Bootstrap
         // The deferred trigger's only feed. It hands over the LOWEST remaining fraction among
         // the active tickets, so a step arms on the first ticket to reach its threshold rather
         // than on some particular slot -- which is what "whenever a ticket drops to a third"
-        // means, and it needs no memory of which ticket it was.
+        // means.
+        //
+        // It also hands over WHOSE fraction that was (D-146). The rule above is unchanged --
+        // any ticket can arm the step -- but the lesson that follows dims the screen down to
+        // the ticket that did it, so the arming moment is the only moment that answer exists:
+        // by the time the player reaches for the powerup, a different ticket may well be the
+        // one closest to running out. The director stores it and never consults it.
         //
         // Polled rather than event-driven because RemainingSeconds is mutated directly every
         // frame and publishes nothing; TicketCardView's timer bar reads it the same way for
@@ -616,23 +622,23 @@ namespace ExpoTheExplorer.Bootstrap
         {
             if (Tutorial == null || !Tutorial.IsAwaitingTrigger) return;
 
-            var lowestRatio = float.MaxValue;
-            foreach (var ticket in State.TicketSlots)
-            {
-                // A ticket with no authored limit has no fraction to compute -- dividing by it
-                // would hand the director an infinity or a NaN, and NaN compares false against
-                // every threshold, which would look like a trigger that simply never fires.
-                if (ticket == null || ticket.TimeLimitSeconds <= 0f) continue;
-
-                var ratio = ticket.RemainingSeconds / ticket.TimeLimitSeconds;
-                if (ratio < lowestRatio) lowestRatio = ratio;
-            }
+            // THE SAME QUESTION TIME RESET ITSELF ASKS, asked through the same method
+            // (D-147). That sharing is the point rather than a tidy-up: the lesson arms on a
+            // ticket, dims the screen down to it, and the powerup then refills "the most
+            // urgent" -- if these were two loops agreeing by coincidence, one edit would make
+            // the lesson point at a ticket the powerup does not save.
+            //
+            // This loop used to live here and skipped resolved tickets only by way of a null
+            // check; the shared helper skips delivered and cancelled ones too, which is a
+            // quiet fix rather than a change of intent -- a resolved ticket sitting in the
+            // array mid-cascade was never a thing the tutorial should have armed on.
+            var slotIndex = PowerupEffects.MostUrgentActiveTicketSlot(State, out var lowestRatio);
 
             // No active ticket with a clock: nothing to say, and saying float.MaxValue would
             // be a lie the director would (correctly) ignore anyway.
-            if (lowestRatio == float.MaxValue) return;
+            if (slotIndex < 0) return;
 
-            Tutorial.NotifyTicketPatienceRatio(lowestRatio);
+            Tutorial.NotifyTicketPatienceRatio(lowestRatio, slotIndex);
         }
 
         // Production is order-triggered (GDD Section 4), not a continuous poll --
@@ -1453,22 +1459,26 @@ namespace ExpoTheExplorer.Bootstrap
                 // zero rather than throwing -- and it is already an error this day reports for
                 // its own reasons, since nothing could be paid out without it.
                 //
-                // NO SENTENCE ON THE PRESS, deliberately, and empty rather than removed so a
-                // step that wants its own line is one argument away (D-121).
+                // THE SENTENCE IS AUTHORED PER POWERUP AND USUALLY EMPTY. This is the argument
+                // D-121 said was "one argument away", and D-146 is the step that wanted it:
+                // the two AtDayStart lessons still author nothing and are taught by the arrow
+                // alone, while the DEFERRED one has to say what changed on screen, because it
+                // fires minutes after its panel was read and the player is looking at a board,
+                // not at a tutorial.
                 //
                 // It carried the powerup's Description until 2026-08-28, which meant the panel
                 // said it and then the spotlight said the very same thing again seconds later.
                 // That was a duplicate this project had already deleted once: D-117 removed the
                 // authored `tutorialUseInstruction` because it was a reworded copy of
                 // Description, and pointing the spotlight at Description simply re-created the
-                // repetition in the FLOW instead of the DATA. The panel and the frame are not
-                // two explanations -- one says what the powerup does, the other says which
-                // button to press, and a pointer does not need a paragraph.
+                // repetition in the FLOW instead of the DATA. `tutorialUseMessage` avoids both
+                // by describing the MOMENT rather than the powerup -- the panel says what Time
+                // Reset does, this says that an order is running out of time.
                 steps.Add(TutorialStep.PowerupUse(
                     powerup,
                     ToTutorialTrigger(schedule.TutorialUseTrigger),
                     economyConfig != null ? economyConfig.CriticalRatio : 0f,
-                    string.Empty));
+                    schedule.TutorialUseMessage));
             }
         }
 

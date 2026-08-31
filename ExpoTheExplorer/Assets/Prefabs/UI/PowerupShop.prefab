@@ -2814,14 +2814,21 @@ MonoBehaviour:
     buyButton: {fileID: 55424621017547483}
     ownedLabel: {fileID: 1161866152818400817}
     priceLabel: {fileID: 3071223440331708469}
+    lockOverlay: {fileID: 0}
+    lockLabel: {fileID: 0}
   timeReset:
     buyButton: {fileID: 7805873129082199082}
     ownedLabel: {fileID: 8029096431742880644}
     priceLabel: {fileID: 7006049826065637803}
+    lockOverlay: {fileID: 0}
+    lockLabel: {fileID: 0}
   noiseClear:
     buyButton: {fileID: 3428376392303765627}
     ownedLabel: {fileID: 1896366731411079789}
     priceLabel: {fileID: 8217772571140064736}
+    lockOverlay: {fileID: 0}
+    lockLabel: {fileID: 0}
+  animConfig: {fileID: 11400000, guid: 836ace345c29845f1b25f60bb6a89488, type: 2}
 --- !u!1 &6600719927308761230
 GameObject:
   m_ObjectHideFlags: 0

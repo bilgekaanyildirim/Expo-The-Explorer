@@ -89,6 +89,28 @@ namespace ExpoTheExplorer.UI
                 ? (RectTransform)modificationRows[0].transform
                 : null;
 
+        // The timer bar's TRACK -- the outline, the fill inside it and the segment ticks over
+        // it -- read-only and, like the row above, for the tutorial to point at (D-146: the
+        // deferred powerup lesson dims the whole screen except the three timers, because that
+        // lesson's entire argument is "look how little time this order has left").
+        //
+        // Derived rather than a fourth serialized field, and derived from the DIVIDER
+        // TEMPLATE's parent specifically, because that is the expression RebuildTimerDividers
+        // already treats as the track: two ways of naming the same object could disagree, and
+        // this way an author who re-parents the bar moves both at once. The fill's own parent
+        // is the fallback for a card that authors no dividers, and the fill itself is the last
+        // resort -- lighting the bar without its outline is a worse spotlight than none only if
+        // you never tried the alternative, which is lighting nothing.
+        public RectTransform TimerTrack
+        {
+            get
+            {
+                if (timerDividerTemplate != null && timerDividerTemplate.parent is RectTransform track) return track;
+                if (timerFillImage == null) return null;
+                return timerFillImage.rectTransform.parent as RectTransform ?? timerFillImage.rectTransform;
+            }
+        }
+
         // Called by WorldTrayView at the start/end of its own tray
         // animations (delivery grow/lift/reentry, wrong-order shake/scatter,
         // timeout scatter) — this card has no way to observe those on its

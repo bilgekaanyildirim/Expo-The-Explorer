@@ -62,58 +62,78 @@ namespace ExpoTheExplorer.Tests.EditMode
             return ticket;
         }
 
-        // --- the ordinary case -----------------------------------------------------------
+        // --- who gets the refill ---------------------------------------------------------
 
-        // Every ticket goes back to ITS OWN limit, not to a shared number. This is the test
-        // that would fail if the effect ever grew a flat "+N seconds": the two tickets here
-        // have deliberately different limits, which is exactly what per-Day patience
-        // authoring produces.
+        // THE CHOICE IS THE FEATURE, so it is the first thing tested: one charge refills the
+        // order closest to running out and leaves the others exactly where they were.
         [Test]
-        public void ResetActiveTicketTimers_RestoresEachTicketToItsOwnAuthoredLimit()
+        public void ResetMostUrgentTicketTimer_RefillsOnlyTheEmptiestBar()
         {
-            state.TicketSlots[0] = NewTicket(timeLimit: 45f, remaining: 3f);
-            state.TicketSlots[1] = NewTicket(timeLimit: 150f, remaining: 90f);
+            var comfortable = NewTicket(timeLimit: 60f, remaining: 48f);
+            var urgent = NewTicket(timeLimit: 60f, remaining: 6f);
+            var middling = NewTicket(timeLimit: 60f, remaining: 25f);
+            state.TicketSlots[0] = comfortable;
+            state.TicketSlots[1] = urgent;
+            state.TicketSlots[2] = middling;
 
-            Assert.IsTrue(PowerupEffects.ResetActiveTicketTimers(state));
+            Assert.IsTrue(PowerupEffects.ResetMostUrgentTicketTimer(state));
 
-            Assert.AreEqual(45f, state.TicketSlots[0].RemainingSeconds);
-            Assert.AreEqual(150f, state.TicketSlots[1].RemainingSeconds);
+            Assert.AreEqual(60f, urgent.RemainingSeconds, "the order closest to running out is the one rescued");
+            Assert.AreEqual(48f, comfortable.RemainingSeconds, "everything else is untouched");
+            Assert.AreEqual(25f, middling.RemainingSeconds, "everything else is untouched");
+        }
+
+        // THE FRACTION, NOT THE SECONDS, and this pins the user's decision of 2026-08-31.
+        // The Patient ticket holds twice the seconds and is still the one in trouble, because
+        // its BAR is emptier -- which is what the player sees, what turns the bar red, and
+        // what drops the tip tier. A "fewest seconds" rule would rescue the Impatient one and
+        // leave the red bar to die.
+        [Test]
+        public void ResetMostUrgentTicketTimer_MeasuresUrgencyAsAFractionOfEachTicketsOwnLimit()
+        {
+            var impatient = NewTicket(timeLimit: 45f, remaining: 20f);   // 0.44 of its limit
+            var patient = NewTicket(timeLimit: 150f, remaining: 40f);    // 0.27 of its limit
+            state.TicketSlots[0] = impatient;
+            state.TicketSlots[1] = patient;
+
+            Assert.IsTrue(PowerupEffects.ResetMostUrgentTicketTimer(state));
+
+            Assert.AreEqual(150f, patient.RemainingSeconds, "the emptier BAR wins, even holding twice the seconds");
+            Assert.AreEqual(20f, impatient.RemainingSeconds, "more seconds left does not mean less urgent");
+        }
+
+        // Back to ITS OWN limit, not to a shared number. This is the test that would fail if
+        // the effect ever grew a flat "+N seconds", which would rewrite per-Day patience
+        // authoring from a powerup.
+        [Test]
+        public void ResetMostUrgentTicketTimer_RestoresTheTicketToItsOwnAuthoredLimit()
+        {
+            var ticket = NewTicket(timeLimit: 150f, remaining: 9f);
+            state.TicketSlots[0] = ticket;
+
+            Assert.IsTrue(PowerupEffects.ResetMostUrgentTicketTimer(state));
+
+            Assert.AreEqual(150f, ticket.RemainingSeconds);
         }
 
         // --- the "no wasted press" rule --------------------------------------------------
 
-        // The whole reason the effect returns a bool. Three fresh tickets have nothing to
-        // restore, and a player who taps then must keep their charge.
+        // The whole reason the effect returns a bool. Nothing is in trouble, so the player
+        // keeps their charge -- and note the shape the check takes under the new rule: the
+        // most urgent ticket is simply already full.
         [Test]
-        public void ResetActiveTicketTimers_WhenEveryTicketIsAlreadyFull_ReportsNoWork()
+        public void ResetMostUrgentTicketTimer_WhenEveryTicketIsAlreadyFull_ReportsNoWork()
         {
             state.TicketSlots[0] = NewTicket(timeLimit: 60f, remaining: 60f);
             state.TicketSlots[1] = NewTicket(timeLimit: 60f, remaining: 60f);
 
-            Assert.IsFalse(PowerupEffects.ResetActiveTicketTimers(state));
+            Assert.IsFalse(PowerupEffects.ResetMostUrgentTicketTimer(state));
         }
 
         [Test]
-        public void ResetActiveTicketTimers_WithNoTicketsAtAll_ReportsNoWork()
+        public void ResetMostUrgentTicketTimer_WithNoTicketsAtAll_ReportsNoWork()
         {
-            Assert.IsFalse(PowerupEffects.ResetActiveTicketTimers(state), "an empty board of slots is nothing to reset");
-        }
-
-        // Partial counts as work, and the full ticket beside it is left exactly where it
-        // was rather than being rewritten to the same value -- so "did anything change"
-        // stays an honest question.
-        [Test]
-        public void ResetActiveTicketTimers_WithOnePartialTicket_DoesTheWorkAndLeavesFullOnesAlone()
-        {
-            var full = NewTicket(timeLimit: 60f, remaining: 60f);
-            var partial = NewTicket(timeLimit: 60f, remaining: 12f);
-            state.TicketSlots[0] = full;
-            state.TicketSlots[1] = partial;
-
-            Assert.IsTrue(PowerupEffects.ResetActiveTicketTimers(state));
-
-            Assert.AreEqual(60f, full.RemainingSeconds);
-            Assert.AreEqual(60f, partial.RemainingSeconds);
+            Assert.IsFalse(PowerupEffects.ResetMostUrgentTicketTimer(state), "an empty board of slots is nothing to reset");
         }
 
         // --- what it refuses to touch ----------------------------------------------------
@@ -123,28 +143,44 @@ namespace ExpoTheExplorer.Tests.EditMode
         // then the slot is refilled -- all inside one call). Putting time back on an order
         // nobody is waiting for would be wrong, and it would also make the return value lie.
         [Test]
-        public void ResetActiveTicketTimers_IgnoresDeliveredAndCancelledTickets()
+        public void ResetMostUrgentTicketTimer_IgnoresDeliveredAndCancelledTickets()
         {
             var delivered = NewTicket(timeLimit: 60f, remaining: 5f, TicketState.Delivered);
             var cancelled = NewTicket(timeLimit: 60f, remaining: 0f, TicketState.Cancelled);
             state.TicketSlots[0] = delivered;
             state.TicketSlots[1] = cancelled;
 
-            Assert.IsFalse(PowerupEffects.ResetActiveTicketTimers(state), "no ACTIVE ticket means no work");
+            Assert.IsFalse(PowerupEffects.ResetMostUrgentTicketTimer(state), "no ACTIVE ticket means no work");
 
             Assert.AreEqual(5f, delivered.RemainingSeconds);
             Assert.AreEqual(0f, cancelled.RemainingSeconds);
         }
 
-        // A resolved ticket must not make the effect skip the live one beside it either.
+        // A resolved ticket sitting at 0 must not read as MORE urgent than the live one
+        // beside it -- under the new rule that is the difference between rescuing the right
+        // order and spending a charge on a corpse.
         [Test]
-        public void ResetActiveTicketTimers_ResetsTheActiveTicketBesideAResolvedOne()
+        public void ResetMostUrgentTicketTimer_ResetsTheActiveTicketBesideAResolvedOne()
         {
             state.TicketSlots[0] = NewTicket(timeLimit: 60f, remaining: 1f, TicketState.Delivered);
             var active = NewTicket(timeLimit: 60f, remaining: 8f);
             state.TicketSlots[1] = active;
 
-            Assert.IsTrue(PowerupEffects.ResetActiveTicketTimers(state));
+            Assert.IsTrue(PowerupEffects.ResetMostUrgentTicketTimer(state));
+            Assert.AreEqual(60f, active.RemainingSeconds);
+        }
+
+        // A ticket with no authored limit has no fraction to compute, so it is skipped rather
+        // than divided by zero -- NaN compares false against everything and would look like a
+        // powerup that had simply stopped working.
+        [Test]
+        public void ResetMostUrgentTicketTimer_IgnoresATicketWithNoAuthoredLimit()
+        {
+            state.TicketSlots[0] = NewTicket(timeLimit: 0f, remaining: 0f);
+            var active = NewTicket(timeLimit: 60f, remaining: 30f);
+            state.TicketSlots[1] = active;
+
+            Assert.IsTrue(PowerupEffects.ResetMostUrgentTicketTimer(state));
             Assert.AreEqual(60f, active.RemainingSeconds);
         }
 
@@ -152,9 +188,34 @@ namespace ExpoTheExplorer.Tests.EditMode
         // GameManager.State, and every path that could hand it a null one is a path where
         // refusing quietly is right and throwing inside a button press is not.
         [Test]
-        public void ResetActiveTicketTimers_WithNoState_ReportsNoWorkInsteadOfThrowing()
+        public void ResetMostUrgentTicketTimer_WithNoState_ReportsNoWorkInsteadOfThrowing()
         {
-            Assert.IsFalse(PowerupEffects.ResetActiveTicketTimers(null));
+            Assert.IsFalse(PowerupEffects.ResetMostUrgentTicketTimer(null));
+        }
+
+        // --- the selection rule, shared with the tutorial --------------------------------
+
+        // MostUrgentActiveTicketSlot is public because GameManager asks it when to arm the
+        // deferred lesson and which card to leave lit, while the effect asks it what to
+        // refill. Pinned here so the two cannot drift: the lesson must never dim the screen
+        // down to a ticket this powerup will not save.
+        [Test]
+        public void MostUrgentActiveTicketSlot_AnswersTheSlotAndItsRemainingFraction()
+        {
+            state.TicketSlots[0] = NewTicket(timeLimit: 60f, remaining: 30f);
+            state.TicketSlots[1] = NewTicket(timeLimit: 60f, remaining: 15f);
+
+            var slot = PowerupEffects.MostUrgentActiveTicketSlot(state, out var ratio);
+
+            Assert.AreEqual(1, slot);
+            Assert.AreEqual(0.25f, ratio, 0.0001f);
+        }
+
+        [Test]
+        public void MostUrgentActiveTicketSlot_WithNothingActive_AnswersMinusOne()
+        {
+            Assert.AreEqual(-1, PowerupEffects.MostUrgentActiveTicketSlot(state, out _));
+            Assert.AreEqual(-1, PowerupEffects.MostUrgentActiveTicketSlot(null, out _));
         }
 
         // --- the boundary this effect deliberately crosses -------------------------------
@@ -170,7 +231,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             var ticket = NewTicket(timeLimit: 60f, remaining: 2f);
             state.TicketSlots[0] = ticket;
 
-            PowerupEffects.ResetActiveTicketTimers(state);
+            PowerupEffects.ResetMostUrgentTicketTimer(state);
             ticket.RemainingSeconds = Math.Max(0f, ticket.RemainingSeconds - 1.5f);
 
             Assert.AreEqual(58.5f, ticket.RemainingSeconds, 0.0001f);

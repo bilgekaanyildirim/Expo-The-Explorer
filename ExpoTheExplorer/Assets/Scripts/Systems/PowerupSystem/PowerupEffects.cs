@@ -22,11 +22,70 @@ namespace ExpoTheExplorer.Systems.PowerupSystem
     // it; whether the player was allowed to ask is settled before these are ever called.
     public static class PowerupEffects
     {
-        // GDD 5.2 #2 -- pulls every active ticket's countdown back to its OWN authored
-        // limit, not to a shared number. Two tickets with different patience types get
-        // different amounts of time back, which is correct: the limit is per-ticket Day
-        // content (TicketRuntimeSettings), and a flat "+30 seconds" would quietly rewrite
-        // that balancing from a powerup.
+        // Which active ticket is CLOSEST TO RUNNING OUT, as a slot index, or -1 when no
+        // active ticket has a clock. "Closest" is the emptiest BAR -- the smallest fraction
+        // of its own limit still left -- and that definition is the single most important
+        // thing in this file (the user's decision, 2026-08-31, asked explicitly).
+        //
+        // FRACTION, NOT SECONDS, and the two genuinely disagree: an Impatient ticket with
+        // 20 of its 45 seconds left (0.44) is in less trouble than a Patient one with 40 of
+        // its 150 (0.27), even though the Patient one has twice the seconds. The fraction is
+        // what this project ALREADY means by urgency everywhere the player can see it -- it
+        // turns the timer bar orange and red, it drops the tip tier (CLAUDE.md, Tip Tiers),
+        // and it fires the tutorial's deferred trigger. Picking by raw seconds would have
+        // made Time Reset save a ticket other than the one the player is watching go red.
+        //
+        // It lives here, public, so the powerup and the tutorial's trigger feed cannot drift
+        // apart: GameManager asks this to decide when the lesson arms and which card it
+        // lights, and the effect below asks it to decide what to refill. One rule, two
+        // readers, no chance of the lesson pointing at a ticket the powerup will not save.
+        //
+        // Ties go to the lowest slot index -- arbitrary, but stable, which is what matters
+        // when three fresh tickets all sit at 1.0.
+        public static int MostUrgentActiveTicketSlot(GameState state, out float remainingRatio)
+        {
+            remainingRatio = 0f;
+            if (state == null) return -1;
+
+            var bestSlot = -1;
+            var bestRatio = float.MaxValue;
+
+            for (var i = 0; i < GameState.TicketSlotCount; i++)
+            {
+                var ticket = state.TicketSlots[i];
+
+                // Delivered and cancelled tickets are skipped, not just null ones. A
+                // resolved ticket can still be sitting in the array for the rest of the
+                // synchronous cascade that resolved it, and it is not an order anybody is
+                // waiting on.
+                if (ticket == null || ticket.State != TicketState.Active) continue;
+
+                // A ticket with no authored limit has no fraction to compute -- dividing by
+                // it would produce an infinity or a NaN, and NaN compares false against
+                // everything, which would look like a rule that simply never fires.
+                if (ticket.TimeLimitSeconds <= 0f) continue;
+
+                var ratio = ticket.RemainingSeconds / ticket.TimeLimitSeconds;
+                if (ratio >= bestRatio) continue;
+
+                bestRatio = ratio;
+                bestSlot = i;
+            }
+
+            if (bestSlot >= 0) remainingRatio = bestRatio;
+            return bestSlot;
+        }
+
+        // GDD 5.2 #2 -- pulls ONE ticket's countdown back to its OWN authored limit: the
+        // order closest to running out. Not to a shared number, because the limit is
+        // per-ticket Day content (TicketRuntimeSettings) and a flat "+30 seconds" would
+        // quietly rewrite that balancing from a powerup.
+        //
+        // IT USED TO REFILL ALL THREE (the user's change, 2026-08-31). That made it the
+        // powerup with no wrong moment to press -- three clocks for one charge, best value
+        // when the board happened to be busy, and never a decision. One clock makes it a
+        // rescue: you spend it on the order you are about to lose. The lesson that teaches it
+        // now dims everything except that order, which is the same claim made visually.
         //
         // THIS IS A THIRD WRITER of Ticket.RemainingSeconds, and the boundary is worth
         // stating rather than leaving for the next reader to trip over. The other two are
@@ -37,33 +96,20 @@ namespace ExpoTheExplorer.Systems.PowerupSystem
         // teach the ticket lifecycle what a powerup is, and that class has no other reason
         // ever to know.
         //
-        // A ticket already sitting at its limit is skipped rather than rewritten, which is
-        // what makes a press with three fresh tickets on screen cost nothing. Partial
-        // counts as work: if one of three has lost a second, the charge is spent and all
-        // three end up full.
-        public static bool ResetActiveTicketTimers(GameState state)
+        // A ticket already sitting at its limit is not rewritten, which is what makes a press
+        // with nothing to rescue cost nothing. Note what that now means: with three FULL
+        // tickets the most urgent one is still full, so the press is refused -- the same
+        // outcome as before, reached by asking about one ticket instead of three.
+        public static bool ResetMostUrgentTicketTimer(GameState state)
         {
-            if (state == null) return false;
+            var slot = MostUrgentActiveTicketSlot(state, out _);
+            if (slot < 0) return false;
 
-            var restoredAny = false;
+            var ticket = state.TicketSlots[slot];
+            if (ticket.RemainingSeconds >= ticket.TimeLimitSeconds) return false;
 
-            for (var i = 0; i < GameState.TicketSlotCount; i++)
-            {
-                var ticket = state.TicketSlots[i];
-
-                // Delivered and cancelled tickets are skipped, not just null ones. A
-                // resolved ticket can still be sitting in the array for the rest of the
-                // synchronous cascade that resolved it, and refilling its clock would put
-                // time back on an order nobody is waiting for.
-                if (ticket == null || ticket.State != TicketState.Active) continue;
-
-                if (ticket.RemainingSeconds >= ticket.TimeLimitSeconds) continue;
-
-                ticket.RemainingSeconds = ticket.TimeLimitSeconds;
-                restoredAny = true;
-            }
-
-            return restoredAny;
+            ticket.RemainingSeconds = ticket.TimeLimitSeconds;
+            return true;
         }
 
         // GDD 5.2 #3 -- removes every board item no ACTIVE ticket wants. Instant and

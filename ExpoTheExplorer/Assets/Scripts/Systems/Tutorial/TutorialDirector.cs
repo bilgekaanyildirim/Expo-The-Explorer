@@ -35,6 +35,12 @@ namespace ExpoTheExplorer.Systems.Tutorial
         // step is current -- the bug a second bool set by hand at each call site would be.
         private bool armed;
 
+        // Which ticket slot tripped the current step's deferred trigger, or -1. Written in
+        // exactly one place -- the moment the step arms -- and cleared with `armed` at every
+        // index change, for the same reason that flag is: two fields that describe one step
+        // must move together or a later step inherits an earlier one's answer.
+        private int triggeringTicketSlotIndex = -1;
+
         // The step the player is being held on, or null once they are all done (and for a
         // tutorial that was aborted). Every gate below is derived from this one field, so
         // there is no second place that can disagree about which step is running.
@@ -119,6 +125,23 @@ namespace ExpoTheExplorer.Systems.Tutorial
         // and DayValidator already refuses an authored index outside that range.
         public int SpotlightTraySlotIndex =>
             IsArmed && Current.Kind == TutorialStepKind.ForcedMove ? Current.TargetTraySlotIndex : -1;
+
+        // The ticket slot whose clock tripped the current step's deferred trigger, or -1 for
+        // every other step -- the same sentinel and the same reasoning as the tray index
+        // above, including why it is answered here rather than by a Trigger comparison at the
+        // call site.
+        //
+        // IT IS THE ONE THING THIS CLASS REMEMBERS ABOUT A TICKET, and it remembers it as a
+        // number it was handed rather than by looking at anything: the caller decides what
+        // "closest to running out" means, exactly as it decides what a board cell is. That is
+        // the property the comment on NotifyTicketPatienceRatio protects, and an int index is
+        // no more a ticket than TargetTraySlotIndex is a tray.
+        //
+        // Its consumer is the lesson's own staging (D-146): the deferred press dims the screen
+        // and this says which card must stay lit, because that card -- its clock, its
+        // exclamation, its bar -- IS the reason the powerup is being pressed.
+        public int TriggeringTicketSlotIndex =>
+            IsArmed && Current.Trigger == TutorialTrigger.TicketPatienceBelow ? triggeringTicketSlotIndex : -1;
 
         // The powerup whose panel is on screen, or null. Nullable rather than a sentinel
         // value for the reason the tray index is NOT: an enum has no spare member to spend
@@ -216,12 +239,24 @@ namespace ExpoTheExplorer.Systems.Tutorial
         // the first ticket to reach the threshold rather than on some particular one. Cheap
         // enough to poll: a comparison against a float, refused on the first line for every
         // step that is already armed, which is all of them but one.
-        public void NotifyTicketPatienceRatio(float lowestRemainingRatio)
+        //
+        // `slotIndex` is WHOSE ratio that was, and it is required rather than defaulted
+        // (D-146). A default would compile at every call site and cost the lesson its
+        // highlight the first time somebody added a caller and forgot -- the same trap D-135
+        // refused when it made `givingUpOnAttempt` mandatory. It is stored, never consulted:
+        // this class still decides nothing about tickets.
+        public void NotifyTicketPatienceRatio(float lowestRemainingRatio, int slotIndex)
         {
             var step = Current;
             if (step == null || armed) return;
             if (step.Trigger != TutorialTrigger.TicketPatienceBelow) return;
             if (lowestRemainingRatio > step.TriggerPatienceRatio) return;
+
+            // Recorded with the arming rather than on every tick, so it is the slot that
+            // ACTUALLY tripped the step and not whichever one happens to be lowest later --
+            // by the time the player presses the powerup, a different ticket may well be
+            // closest to running out.
+            triggeringTicketSlotIndex = slotIndex;
 
             // Not an index change, but a change of exactly the kind every listener cares
             // about: what the tutorial is asking for right now is different from a moment
@@ -250,6 +285,12 @@ namespace ExpoTheExplorer.Systems.Tutorial
         {
             index++;
             armed = ArmsImmediately(Current);
+
+            // Cleared here rather than left to the property's Trigger check, which would also
+            // hide it: two deferred steps in a row would otherwise let the second one inherit
+            // the first one's ticket for the whole of its wait.
+            triggeringTicketSlotIndex = -1;
+
             StepChanged?.Invoke();
         }
 

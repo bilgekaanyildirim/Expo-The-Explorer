@@ -75,8 +75,19 @@ namespace ExpoTheExplorer.UI
         [Tooltip("Optional. Assets/Prefabs/UI/TutorialPowerupIntro.prefab — the panel that introduces one powerup. Unwired, that lesson is skipped.")]
         [SerializeField] private TutorialPowerupIntroView introPrefab;
 
-        [Tooltip("Optional. Assets/Prefabs/UI/TutorialPowerupSpotlight.prefab — the frame and sentence shown while a powerup must be pressed. Unwired, the press is still required but unmarked.")]
+        [Tooltip("Optional. Assets/Prefabs/UI/TutorialPowerupSpotlight.prefab — the arrow shown over a powerup while it must be pressed. Unwired, the press is still required but unmarked.")]
         [SerializeField] private TutorialPowerupSpotlightView spotlightPrefab;
+
+        // OPTIONAL, and unwired it costs exactly one thing: the DEFERRED lesson stops dimming.
+        // That is the right failure rather than a dim with dark timers, which would hide the
+        // one thing that lesson is about (D-146).
+        //
+        // A scene reference on a component that lives in the HUDCanvas PREFAB, so it can only
+        // ever be a per-scene override -- the same constraint gameManager above records, and
+        // the same warning applies: never Apply All from the day scene, or the override is
+        // dropped and this quietly goes back to null.
+        [Tooltip("Optional. The day scene's TicketCardsView, so the deferred powerup lesson can keep the three timer bars lit while it dims everything else. Unwired, that lesson simply does not dim.")]
+        [SerializeField] private TicketCardsView ticketCardsView;
 
         // Cached rather than re-read from gameManager on every refresh, for the reason
         // LivesView caches GameState: EventBus removes by delegate equality on a specific
@@ -89,9 +100,9 @@ namespace ExpoTheExplorer.UI
         // is not a dismissal (a retry, an abort) can take it down.
         private TutorialPowerupIntroView introView;
 
-        // The frame drawn around the one powerup the tutorial is asking the player to press,
+        // The arrow pointing at the one powerup the tutorial is asking the player to press,
         // or null. Held for the same reason the panel is, and torn down through its own
-        // Dismiss because it puts objects on the BUTTON's hierarchy, not only on itself.
+        // Dismiss, which is where that view keeps its own teardown rules.
         private TutorialPowerupSpotlightView spotlight;
 
         // Paired with the fields above once, so every loop below reads one list instead
@@ -196,7 +207,10 @@ namespace ExpoTheExplorer.UI
             }
 
             if (introduced != null && introView == null) BuildIntro(GameManager.ToPowerupType(introduced.Value));
-            if (required != null && spotlight == null) BuildSpotlight(GameManager.ToPowerupType(required.Value), tutorial.CurrentMessage);
+            if (required != null && spotlight == null)
+            {
+                BuildSpotlight(GameManager.ToPowerupType(required.Value), tutorial.CurrentMessage);
+            }
         }
 
         // Every failure here SKIPS the step rather than leaving it blocking the day. That is
@@ -267,7 +281,55 @@ namespace ExpoTheExplorer.UI
             spotlight = TutorialPowerupSpotlightView.Create(
                 Instantiate(spotlightPrefab),
                 (RectTransform)button.transform,
+                LitTargetsFor(type),
                 message);
+        }
+
+        // What a dimming lesson keeps bright: the ONE ticket that tripped it, whole -- and
+        // NULL for every other lesson, which is how one spotlight view serves both kinds of
+        // press step without being told which kind it is: no lit list, no dim.
+        //
+        // ONE CARD, because since D-147 Time Reset refills one clock: the order closest to
+        // running out, which is exactly the ticket that armed this step. The other two slots
+        // kept their timer bars lit for a day, on the reasoning that a lit clock with nothing
+        // to compare it against teaches a colour rather than a scale -- but that argument
+        // belonged to a powerup that refilled all three. Lighting a bar this press will not
+        // touch now promises something the charge does not deliver, and the lesson has to say
+        // the same thing the powerup does.
+        //
+        // Lighting the CARD rather than its parts is what keeps this one line: DangerImage,
+        // Clock and TicketTimerBar are all direct children of it, so the exclamation and the
+        // clock ride along and neither needs a reference of its own.
+        //
+        // THE RULE IS THE AUTHORED TRIGGER, not the powerup's name. A deferred press fires
+        // minutes after its panel was read, against a board the player is busy with, and the
+        // thing that changed is a ticket going red -- so that is the lesson that has to point
+        // at the clocks. An AtDayStart press is asked for while the day is still frozen and
+        // nothing has moved, so it needs no stage-dressing. Naming Time Reset here instead
+        // would put a content decision in a UI file and leave the next scheduled powerup
+        // silently out.
+        //
+        // Returns null rather than an empty list when it cannot answer, because the two mean
+        // the same thing to the view and null costs no allocation on the common path.
+        private IReadOnlyList<RectTransform> LitTargetsFor(PowerupType type)
+        {
+            if (ticketCardsView == null) return null;
+
+            var config = gameManager != null ? gameManager.PowerupConfig : null;
+            if (config == null) return null;
+            if (config.For(type).TutorialUseTrigger != PowerupTutorialTrigger.TicketPatienceBelow) return null;
+
+            // The slot recorded when the step armed, which is by construction the one that was
+            // closest to running out at that moment -- the same question PowerupEffects asks
+            // when the press finally comes. -1 means the step armed some other way, and then
+            // there is nothing to single out and so nothing to dim.
+            var triggeringSlot = gameManager.Tutorial?.TriggeringTicketSlotIndex ?? -1;
+            if (triggeringSlot < 0) return null;
+
+            var card = ticketCardsView.GetCard(triggeringSlot);
+            if (card == null) return null;
+
+            return new[] { (RectTransform)card.transform };
         }
 
         private void OnIntroDismissed()
@@ -291,7 +353,7 @@ namespace ExpoTheExplorer.UI
         }
 
         // The live button for one powerup, and it stays PRIVATE like the icon above: this is
-        // for the tutorial's own spotlight, which needs somewhere to draw a frame. A caller
+        // for the tutorial's own spotlight, which needs something to point at. A caller
         // outside this class has no business reaching the Button itself, which is what spends
         // a charge.
         private Button ButtonFor(PowerupType type)
@@ -321,9 +383,10 @@ namespace ExpoTheExplorer.UI
             if (gameManager != null) gameManager.TutorialStepChanged -= OnTutorialStepChanged;
             if (shop != null) shop.Closed -= OnShopClosed;
 
-            // Through Dismiss rather than Destroy: this one put a frame on the BUTTON's
-            // hierarchy, which is not necessarily going away with this view -- an object that
-            // is merely disabled and re-enabled would come back to a frame from last time.
+            // Through Dismiss rather than Destroy, which is that view's own contract: it
+            // kills the arrow's looping tween before the object goes, and it used to have a
+            // piece parked on the BUTTON's hierarchy to take down as well (D-145 ended that).
+            // An object merely disabled and re-enabled must not come back to last step's arrow.
             if (spotlight != null) spotlight.Dismiss();
             spotlight = null;
 

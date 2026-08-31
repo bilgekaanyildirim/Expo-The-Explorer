@@ -174,6 +174,9 @@ namespace ExpoTheExplorer.Data
         [Tooltip("When the forced use is asked for, once the panel has been read.")]
         [SerializeField] private PowerupTutorialTrigger tutorialUseTrigger = PowerupTutorialTrigger.AtDayStart;
 
+        [Tooltip("OPTIONAL. The line shown while this powerup's forced press is waiting. It names the MOMENT, not the powerup — Description already says what the powerup does. Left empty, the arrow teaches on its own, which is what the two AtDayStart lessons do. Meant for a DEFERRED press, where something changed on screen and the player has to be told what to look at.")]
+        [SerializeField, TextArea] private string tutorialUseMessage;
+
         // THERE IS NO PATIENCE-RATIO FIELD HERE, and its removal (2026-08-28, the user's
         // observation) fixed a dual authority rather than trimming clutter. It held 1/3 --
         // which is EconomyConfig.CriticalRatio, the single authority for where a ticket's
@@ -184,11 +187,21 @@ namespace ExpoTheExplorer.Data
         // one number in one place. It also answered the field's other problem: it was drawn
         // on all three powerups while meaning something on only one.
         //
-        // THERE IS NO USE-INSTRUCTION FIELD EITHER (same pass, same reason in miniature). It
-        // held "Try it now - it drops what the orders still need into the trays" beside a
+        // THE USE-INSTRUCTION FIELD ABOVE IS A SECOND ATTEMPT, and the first one's grave is
+        // worth keeping open beside it. D-117 (2026-08-28) deleted a `tutorialUseInstruction`
+        // that held "Try it now - it drops what the orders still need into the trays" beside a
         // Description reading "Fills your trays with what the current orders still need" --
-        // one sentence authored twice. The spotlight prints the Description now, so a powerup
-        // has one sentence, shown at the two moments it matters.
+        // one sentence authored twice, and the fix was to author it once. What followed was
+        // that the press said NOTHING for three days (D-121 passed an empty string
+        // deliberately), because a pointer does not need a paragraph.
+        //
+        // `tutorialUseMessage` (D-146, the user's ask) is not that field returning. The
+        // deleted one described the POWERUP, which Description already did. This one describes
+        // the MOMENT -- "Time is running out on this order" -- which Description cannot,
+        // because Description is true all day and this is only true while a ticket is red.
+        // The test for whether it has drifted back into a duplicate is exactly that: if a
+        // line here would still read correctly at any other moment of the day, it belongs in
+        // Description or nowhere.
 
         // A FLOOR, not an addition, and that is the whole reason the call site reads "ensure":
         // the introduction is re-armed on every day-start path, retries included, so a grant
@@ -222,6 +235,7 @@ namespace ExpoTheExplorer.Data
         // asset has already cost four Editor crashes in one evening.
         public int TutorialIntroDayIndex => tutorialIntroDayIndex;
         public PowerupTutorialTrigger TutorialUseTrigger => tutorialUseTrigger;
+        public string TutorialUseMessage => tutorialUseMessage;
         public int TutorialCharges => tutorialCharges;
 
         // The one question every reader actually asks, kept here rather than spelled out as
