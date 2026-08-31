@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using ExpoTheExplorer.Bootstrap;
 using ExpoTheExplorer.Core;
+using ExpoTheExplorer.Data;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -108,6 +109,9 @@ namespace ExpoTheExplorer.UI
 
         [Tooltip("OPTIONAL. The filled halves of the three stars, in order. Switched on to match the score so far.")]
         [SerializeField] private GameObject[] filledStars = new GameObject[0];
+
+        [Tooltip("OPTIONAL. Assets/Data/BoardAnimationConfig.asset — read for Popup Fade In Duration only. It covers this menu AND its two confirmation boxes. Unwired, all three appear instantly, exactly as they did before the fade existed.")]
+        [SerializeField] private BoardAnimationConfig animConfig;
 
         private GameState state;
 
@@ -223,6 +227,7 @@ namespace ExpoTheExplorer.UI
             RefreshHapticsIndicator();
 
             popupRoot.SetActive(true);
+            FadeIn(popupRoot);
         }
 
         // The single place THIS view lets go of the pause, so there is exactly one way back
@@ -274,13 +279,33 @@ namespace ExpoTheExplorer.UI
             openButton.interactable = !state.IsAwaitingContinue && !dayIsOver;
         }
 
-        private void ShowRetryConfirmation() => retryConfirmRoot.SetActive(true);
+        // The two confirmations fade up like everything else. They open ON TOP of a menu
+        // that is already lit, which is exactly the case a hard cut serves worst: with no
+        // movement between the two states, "are you sure?" looks like the menu redrawing
+        // itself rather than like a question being asked. CANCELLING is instant, matching
+        // every other close in the project.
+        private void ShowRetryConfirmation()
+        {
+            retryConfirmRoot.SetActive(true);
+            FadeIn(retryConfirmRoot);
+        }
 
         private void CancelRetry() => retryConfirmRoot.SetActive(false);
 
-        private void ShowMainMenuConfirmation() => mainMenuConfirmRoot.SetActive(true);
+        private void ShowMainMenuConfirmation()
+        {
+            mainMenuConfirmRoot.SetActive(true);
+            FadeIn(mainMenuConfirmRoot);
+        }
 
         private void CancelMainMenu() => mainMenuConfirmRoot.SetActive(false);
+
+        // One wrapper for three call sites, purely so the null check on an optional config
+        // is written once. The fade itself belongs to PopupFade, which every popup shares.
+        private void FadeIn(GameObject target)
+        {
+            if (animConfig != null) PopupFade.In(target, animConfig.PopupFadeInDuration);
+        }
 
         // THE KEY CHECK HAPPENS ON THIS YES, and no button is ever disabled for it (the
         // user's rule, key-plan step 5): a greyed control leaves the player staring at a

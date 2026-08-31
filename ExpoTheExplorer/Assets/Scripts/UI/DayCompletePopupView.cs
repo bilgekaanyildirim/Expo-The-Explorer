@@ -151,6 +151,12 @@ namespace ExpoTheExplorer.UI
 
             popupRoot.SetActive(true);
 
+            // The receipt fades up rather than snapping in. It arrives after a deliberate
+            // wait (DayCompletePopupDelay above) with the last delivery still settling
+            // behind it, and a hard cut there reads as an interruption of the thing the
+            // wait exists to let you watch.
+            if (animConfig != null) PopupFade.In(popupRoot, animConfig.PopupFadeInDuration);
+
             // UNDER THIS POPUP AND OVER EVERYTHING ELSE, which is the user's requirement and
             // the reason this is BurstBelow rather than BurstOnTop: the receipt has to stay
             // readable, and the rest of the day scene is what the paper is celebrating over.

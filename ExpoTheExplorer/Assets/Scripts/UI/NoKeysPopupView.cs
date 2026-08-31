@@ -56,6 +56,9 @@ namespace ExpoTheExplorer.UI
         [Tooltip("Optional: shown when the player cannot afford the refill.")]
         [SerializeField] private TMP_Text notEnoughGemsLabel;
 
+        [Tooltip("Optional. Assets/Data/BoardAnimationConfig.asset — read for Popup Fade In Duration only. Unwired, this popup appears instantly, exactly as it did before the fade existed. THIS VIEW EXISTS TWICE (day scene and main screen), so both instances want it.")]
+        [SerializeField] private BoardAnimationConfig animConfig;
+
         private KeyManager keys;
         private float secondsSinceRedraw;
         private bool subscribed;
@@ -115,6 +118,7 @@ namespace ExpoTheExplorer.UI
         private void Show()
         {
             popupRoot.SetActive(true);
+            if (animConfig != null) PopupFade.In(popupRoot, animConfig.PopupFadeInDuration);
 
             // In Show rather than in HasKeyOrShow's refusing branch, so that every route
             // that opens this window buzzes and none has to remember to. It lands in the

@@ -113,6 +113,12 @@ namespace ExpoTheExplorer.UI
             var config = gameManager.LivesManager.Config;
 
             popupRoot.SetActive(true);
+
+            // Fades up for the same reason the day-complete receipt does: this popup is
+            // scheduled GameOverPopupDelay seconds out precisely so the broken heart and the
+            // scatter are seen, and a hard cut cuts off the shot it waited for.
+            if (animConfig != null) PopupFade.In(popupRoot, animConfig.PopupFadeInDuration);
+
             livesRefillText.text = state.MaxLives.ToString();
             gemButton.interactable = state.Gems >= config.ContinueGemCost;
             retryButton.interactable = true;
