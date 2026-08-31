@@ -299,7 +299,24 @@
      Both one-directional -- neither system references MainScreen. The day scene's
      exits back to here go through GameManager, which owns what must survive the
      scene: the persisted day index, and settling an abandoned attempt. -->
-- MetaSystem — the expo grounds the player decorates between days: a per-location catalog of props (bought with SoftMoney, or appearing at an authored Day), which of them the player owns, and the purchase rules — depends on: -
+- MetaSystem — the expo grounds the player decorates between days: a per-location catalog of props (bought with SoftMoney, or appearing at an authored Day), which of them the player owns, and the purchase rules — depends on: DaySystem, EconomySystem (editor only)
+<!-- Those two arrows were added 2026-08-30 and are EDITOR-ONLY: the runtime
+     ExpoTheExplorer.Systems.MetaSystem asmdef still references nothing, and the meta
+     side of a build still depends on no other system. What gained them is the authoring
+     tool — MetaEconomyProjection reads the authored Day files and replays EconomySystem's
+     payout over them, so a prop's price can be set against the coins the Days are
+     guaranteed to pay by the day it opens. Both are one-directional and cheaply so:
+     DaySystem depends on TicketSystem, EconomySystem on nothing, and neither knows the
+     meta side exists or would compile differently if it were deleted. Filed under
+     MetaSystem rather than as a new MetaEditor/MetaBalancing system for the reason
+     MetaEditorWindow's codemap note already gives — a handful of editor files do not
+     earn a system, and splitting one out now would put MetaSystem and it in a cycle
+     (the window would point at it, and it back at the catalog). Split when the window
+     grows, and re-file the window with it. -->
+<!-- NOT to be confused with DayEditorSimulationPanel/SimulationRunner, which also costs
+     a Day in coins: that plays ONE day stochastically with a bot policy and reports what
+     a typical run yields, while this is a deterministic floor across the whole catalog.
+     Two different questions, deliberately not merged. -->
 - DebugMenu — development-only cheat and inspection surface on SRDebugger's Options tab: grants currency/keys/powerups, refills lives, jumps to any authored Day, forces a save — depends on: Bootstrap, ProgressionSystem, KeySystem, PowerupSystem, LivesSystem, TicketSystem, MetaSystem
 <!-- DebugMenu, added 2026-08-26 (decisions.md D-092). It is a READER-AND-COMMANDER, never
      an owner: every arrow above exists because it CALLS that system's public API, and it

@@ -1,4 +1,4 @@
-<!-- stamp: 2026-08-30T19:08Z source-sig:74d8d50a9a81 assets:49 prefabs:15 scenes:2 asmdefs:19 -->
+<!-- stamp: 2026-08-30T19:25Z source-sig:97759d792dba assets:49 prefabs:15 scenes:2 asmdefs:19 -->
 # assetmap — asset inventory (data, prefabs, load surface, assemblies)
 
 Regenerate with `python3 .claude/hooks/build_assetmap.py`. `data-source.md`
@@ -8,7 +8,7 @@ the cost model reads the load-surface section before pricing a load.
 ## Assemblies (.asmdef) — the real compile boundary
 
 - ExpoTheExplorer/Assets/Data/ExpoTheExplorer.Data.asmdef | name: ExpoTheExplorer.Data | refs: - | platforms: all | covers: ExpoTheExplorer/Assets/Data/**
-- ExpoTheExplorer/Assets/Editor/ExpoTheExplorer.Editor.asmdef | name: ExpoTheExplorer.Editor | refs: ExpoTheExplorer.Data,ExpoTheExplorer.Core,ExpoTheExplorer.Systems.DaySystem,ExpoTheExplorer.Systems.TicketSystem,ExpoTheExplorer.Systems.ProgressionSystem,ExpoTheExplorer.Simulation | platforms: Editor | covers: ExpoTheExplorer/Assets/Editor/**
+- ExpoTheExplorer/Assets/Editor/ExpoTheExplorer.Editor.asmdef | name: ExpoTheExplorer.Editor | refs: ExpoTheExplorer.Data,ExpoTheExplorer.Core,ExpoTheExplorer.Systems.DaySystem,ExpoTheExplorer.Systems.TicketSystem,ExpoTheExplorer.Systems.ProgressionSystem,ExpoTheExplorer.Systems.EconomySystem | platforms: Editor | covers: ExpoTheExplorer/Assets/Editor/**
 - ExpoTheExplorer/Assets/Scripts/Core/ExpoTheExplorer.Core.asmdef | name: ExpoTheExplorer.Core | refs: ExpoTheExplorer.Data | platforms: all | covers: ExpoTheExplorer/Assets/Scripts/Core/**
 - ExpoTheExplorer/Assets/Scripts/Session/ExpoTheExplorer.Session.asmdef | name: ExpoTheExplorer.Session | refs: ExpoTheExplorer.Core,ExpoTheExplorer.Data,ExpoTheExplorer.Systems.ProgressionSystem,ExpoTheExplorer.Systems.LivesSystem,ExpoTheExplorer.Systems.KeySystem,ExpoTheExplorer.Systems.PowerupSystem | platforms: all | covers: ExpoTheExplorer/Assets/Scripts/Session/**
 - ExpoTheExplorer/Assets/Scripts/Simulation/ExpoTheExplorer.Simulation.asmdef | name: ExpoTheExplorer.Simulation | refs: ExpoTheExplorer.Core,ExpoTheExplorer.Data,ExpoTheExplorer.Systems.DaySystem,ExpoTheExplorer.Systems.TicketSystem,ExpoTheExplorer.Systems.BoardDistribution,ExpoTheExplorer.Systems.TraySystem | platforms: Editor | covers: ExpoTheExplorer/Assets/Scripts/Simulation/**

@@ -7,7 +7,7 @@
         "ExpoTheExplorer.Systems.DaySystem",
         "ExpoTheExplorer.Systems.TicketSystem",
         "ExpoTheExplorer.Systems.ProgressionSystem",
-        "ExpoTheExplorer.Simulation"
+        "ExpoTheExplorer.Systems.EconomySystem"
     ],
     "includePlatforms": [
         "Editor"

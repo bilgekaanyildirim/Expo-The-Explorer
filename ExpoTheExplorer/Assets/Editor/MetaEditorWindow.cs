@@ -312,6 +312,18 @@ namespace ExpoTheExplorer.Editor
 
             DrawMessages();
 
+            // LAST on the page, under the validation messages. The prices authored above,
+            // measured against what the authored Days are guaranteed to pay by the time
+            // this location opens.
+            //
+            // Bottom rather than beside the prop fields, because it reads the WHOLE
+            // location (and every location before it) rather than the one prop selected:
+            // putting a per-catalog readout in the middle of per-prop editing interrupts
+            // the thing this window is actually for. It also answers a question that only
+            // arises after the prices are in front of you -- "can the player afford this?"
+            // -- so it belongs after them, not above them.
+            MetaEconomyGUI.Draw(catalog, locationIndex);
+
             // One ApplyModifiedProperties for the whole page: it records a single undo
             // step per repaint that changed something, which is what makes a drag undo as
             // one gesture instead of one step per mouse-move event.
