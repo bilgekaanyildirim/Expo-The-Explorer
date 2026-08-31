@@ -44,6 +44,38 @@ namespace ExpoTheExplorer.Systems.TelemetrySystem
 
         private static TelemetryIdentityStore Store => store ??= new TelemetryIdentityStore();
 
+        // ---- runs (Step 3) -----------------------------------------------------------
+
+        // Where snapshots go. Defaults to the Console so that everything downstream of
+        // here works, and is watchable, with no Firebase in the project at all -- which
+        // is exactly how Step 3 was built and tested.
+        //
+        // ONE WRITER, and it is FirebaseBootstrap (Step 4), which swaps in the Firestore
+        // sink once the SDK reports itself healthy and leaves this default in place when
+        // it does not. A settable static is the kind of thing that grows second writers,
+        // so: nothing else assigns this. If a second assignment ever appears, the
+        // question it is really asking is "which sink is authoritative", and the answer
+        // belongs in one place rather than in whichever line ran last.
+        public static ITelemetrySink Sink { get; set; } = new LogTelemetrySink();
+
+        // The attempt being played right now, or null between attempts and on the main
+        // screen. Published here rather than kept private to the binder so the SRDebugger
+        // panel can show it, and so Step 4 has somewhere to look.
+        //
+        // ITS SINGLE WRITER IS TelemetryBinder, which is also its lifetime: the binder
+        // dies with the day scene and clears this on the way out. That is why this class
+        // holds a REFERENCE and not the logic -- a static that owned run lifetime would
+        // outlive the scene that gave it meaning and hand the next scene a stale run.
+        public static RunTelemetryState CurrentRun { get; private set; }
+
+        public static void SetCurrentRun(RunTelemetryState run) => CurrentRun = run;
+
+        // Which bucket this data belongs in (plan §M.4). DERIVED, never authored: a
+        // toggle someone can forget to flip is how editor noise ends up averaged into
+        // playtest results. Editor play-mode runs are still recorded -- they are useful
+        // while building this -- they are just filterable in one `where` clause.
+        public static string Environment => Application.isEditor ? "editor" : "playtest";
+
         // Hands the device to the next playtester: a new playerId, the SAME
         // installationId, and not one byte of Firestore touched.
         //

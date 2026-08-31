@@ -996,6 +996,17 @@ namespace ExpoTheExplorer.Bootstrap
         // never money earned, so it cannot bank a failed day's income.
         public void ReturnToMainScreenAbandoningDay()
         {
+            // FIRST LINE, AND THAT IS THE CONTRACT (decisions.md D-149). IsAwaitingContinue
+            // is the only thing that can still say whether this attempt was LOST or merely
+            // given up on, and LivesManager.RefillForNewDay below clears it before
+            // refilling (D-103). Read it any lower and every lost day reports itself as a
+            // voluntary quit -- silently, and in every single case.
+            //
+            // Nothing in gameplay listens; this is telemetry's only way to tell a player
+            // who died from a player who walked out of a day that was going fine.
+            State.DayAttemptEnded.Publish(
+                State.IsAwaitingContinue ? DayAttemptEnd.Lost : DayAttemptEnd.GivenUp);
+
             // Defensive rather than load-bearing: every route here comes from a day that
             // never completed -- the Game Over popup, or the settings menu, which refuses
             // to open once the day is over -- so there is no debt to void. It is here so
@@ -1057,6 +1068,18 @@ namespace ExpoTheExplorer.Bootstrap
         // economy, and it must stay able to replay a day that was going fine).
         public void RetryDay(bool givingUpOnAttempt)
         {
+            // FIRST LINE, for the reason spelled out on the identical call in
+            // ReturnToMainScreenAbandoningDay: LivesManager.RefillForNewDay further down
+            // clears IsAwaitingContinue before refilling (D-103), so this is the last
+            // moment the flag still answers "was this attempt lost?".
+            //
+            // It deliberately does NOT read givingUpOnAttempt. That parameter answers a
+            // different question -- "does this cost a key?" -- and both the Game Over
+            // popup and the settings menu pass true for it, because both are surrenders.
+            // Only one of them is a loss (decisions.md D-149).
+            State.DayAttemptEnded.Publish(
+                State.IsAwaitingContinue ? DayAttemptEnd.Lost : DayAttemptEnd.GivenUp);
+
             var ticketsBeforeRetry = State.TicketsDeliveredToday;
 
             RefreshDayTicketSequenceProvider();

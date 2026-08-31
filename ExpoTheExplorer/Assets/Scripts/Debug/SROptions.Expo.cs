@@ -7,6 +7,7 @@ using ExpoTheExplorer.DebugMenu;
 using ExpoTheExplorer.Session;
 using ExpoTheExplorer.Systems.ProgressionSystem;
 using ExpoTheExplorer.Systems.TelemetrySystem;
+using ExpoTheExplorer.Telemetry;
 using UnityEngine;
 
 // The cheat and inspection surface on SRDebugger's Options tab (decisions.md D-092).
@@ -462,6 +463,67 @@ public partial class SROptions
 
     [Category("Telemetry"), Sort(7), DisplayName("Identity File Path")]
     public string TelemetryIdentityFilePath => PlaytestTelemetry.IdentityFilePath;
+
+    // ---- the live run, and whether it is reaching Firestore (D-150) ------------------
+    // These four readouts exist because a telemetry failure is SILENT by design: the
+    // game keeps playing, the Console sink keeps working, and the only symptom of a
+    // rejected write is one red line nobody is watching mid-playtest. On a device
+    // there is no Console at all, so without these the honest answer to "is this
+    // recording?" would be "find out tomorrow, from whether the data is there".
+
+    [Category("Telemetry"), Sort(8), DisplayName("Current Run")]
+    public string TelemetryCurrentRun => PlaytestTelemetry.CurrentRun?.RunId ?? "-";
+
+    [Category("Telemetry"), Sort(9), DisplayName("Run Status")]
+    public string TelemetryRunStatus =>
+        PlaytestTelemetry.CurrentRun == null ? "-" : PlaytestTelemetry.CurrentRun.Status.ToWireValue();
+
+    [Category("Telemetry"), Sort(10), DisplayName("Backend")]
+    public string TelemetryBackend => FirebaseBootstrap.StatusText;
+
+    // "142 / 0" is the shape to look for. A climbing failure count with Backend still
+    // reading Ready means the rules are rejecting the document rather than the
+    // connection being down -- the two need opposite fixes.
+    [Category("Telemetry"), Sort(11), DisplayName("Writes OK / Failed")]
+    public string TelemetryWrites
+    {
+        get
+        {
+            var sink = FirebaseBootstrap.Sink;
+            return sink == null ? "- / -" : $"{sink.WritesOk} / {sink.WritesFailed}";
+        }
+    }
+
+    // Sends the live run now instead of waiting out the heartbeat. Worth the five lines
+    // during setup: it turns "did that write land?" from a 15-second wait into a
+    // button, and on a device it is the only way to ask at all.
+    //
+    // ONE LIMITATION, STATED RATHER THAN HIDDEN: this ships the run as the last
+    // heartbeat left it, so the counters can be up to one interval stale. Refreshing
+    // them first is TelemetryBinder's job and the panel has no reference to it -- and
+    // giving the panel one would mean a scene lookup this project does not do (D-013).
+    // For what this button is for -- proving the write path works -- the payload's age
+    // does not matter.
+    [Category("Telemetry"), Sort(12), DisplayName("Force Telemetry Snapshot")]
+    public void ForceTelemetrySnapshot()
+    {
+        var run = PlaytestTelemetry.CurrentRun;
+        if (run == null)
+        {
+            Debug.LogWarning("[DebugMenu] No run is open. Enter a Day first.");
+            return;
+        }
+
+        var sink = PlaytestTelemetry.Sink;
+        if (sink == null || !sink.IsReady)
+        {
+            Debug.LogWarning("[DebugMenu] Telemetry has no ready sink; nothing was sent.");
+            return;
+        }
+
+        sink.WriteRun(run.RunId, run.ToFieldMap());
+        Debug.Log($"[DebugMenu] Forced a snapshot of {run.RunId}.");
+    }
 
     // Main screen only, for all three commands, and this is stricter than Delete Save
     // File next door on purpose (the user's call, plan §D.3). That one deletes the

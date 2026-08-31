@@ -33,9 +33,21 @@ namespace ExpoTheExplorer.Systems.TelemetrySystem
         // in the output -- silently, because both look identical in a table.
         private const int MaxTesterIdLength = 32;
 
+        // As wide as an installation id, and for the opposite reason: nobody reads a run
+        // id aloud, but it is a Firestore DOCUMENT ID, so two of them colliding would
+        // silently merge two attempts into one row -- the one failure this whole scheme
+        // exists to prevent (plan §16). 8 hex against a playtest's few thousand runs is
+        // not a risk worth shortening.
+        private const int RunIdHexLength = 8;
+
         public static string NewInstallationId() => "I_" + RandomHex(InstallationIdHexLength);
 
         public static string NewPlayerId() => "P_" + RandomHex(PlayerIdHexLength);
+
+        // One Day attempt. Minted when a run opens and never persisted -- a run lives in
+        // RAM and dies with the scene, so unlike the other two there is no file for this
+        // to survive in and nothing to reconcile on the next launch.
+        public static string NewRunId() => "R_" + RandomHex(RunIdHexLength);
 
         // Cleans up what a human typed into the debug panel, or refuses it.
         //

@@ -3351,6 +3351,7 @@ GameObject:
   - component: {fileID: 800000002}
   - component: {fileID: 800000005}
   - component: {fileID: 800000006}
+  - component: {fileID: 800000007}
   m_Layer: 0
   m_Name: GameManager
   m_TagString: Untagged
@@ -3430,6 +3431,20 @@ MonoBehaviour:
   metaCatalog: {fileID: 11400000, guid: 4433558fc5f314cc2b5f173692b4e8ed, type: 2}
   fingersToOpen: 3
   openKey: 94
+--- !u!114 &800000007
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 800000001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d9c9108b3e17c4c4883f6c4897054347, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ExpoTheExplorer.Telemetry.TelemetryBinder
+  gameManager: {fileID: 800000002}
+  heartbeatSeconds: 15
 --- !u!1 &800702991 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 2236912369659141518, guid: 2019b0e2daba84b45bb8ccf5c3c3253d, type: 3}
@@ -12126,6 +12141,10 @@ PrefabInstance:
       propertyPath: spotlightPrefab
       value: 
       objectReference: {fileID: 3026567666402727561, guid: c25c23cd2ea2d4b55bcdfed4149e976c, type: 3}
+    - target: {fileID: 2481600630863060272, guid: 2019b0e2daba84b45bb8ccf5c3c3253d, type: 3}
+      propertyPath: ticketCardsView
+      value: 
+      objectReference: {fileID: 842217397}
     - target: {fileID: 2481600630863060272, guid: 2019b0e2daba84b45bb8ccf5c3c3253d, type: 3}
       propertyPath: timeReset.lockLabel
       value: 

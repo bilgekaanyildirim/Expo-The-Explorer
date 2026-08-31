@@ -315,7 +315,7 @@
      each scene, and Nice Vibrations additionally wants exactly one HapticReceiver per
      scene, the way a scene wants one AudioListener. -->
 
-- TelemetrySystem — who is playing, for playtest analytics: the installation this game sits in, the logical playtester holding the phone, and the second save file that keeps them — depends on: -
+- TelemetrySystem — who is playing and how each Day attempt went, for playtest analytics: the installation, the logical playtester, the second save file that keeps them, and the in-RAM run that a Day attempt becomes — depends on: -
 <!-- TelemetrySystem, added 2026-08-31 (decisions.md D-144, plan in
      .claude/telemetry-plan.md). The arrow is `-` and stays `-` for Step 2: this
      assembly's `references` array is EMPTY, the same shape Tutorial has. It reads no
@@ -342,9 +342,48 @@
      No scene presence at all, which is unusual enough to state: SRDebugger builds
      SROptions from a [RuntimeInitializeOnLoadMethod] with no GameObject, so there is
      nothing to serialize a reference onto and D-013's "never search the scene" is
-     satisfied by a static facade instead. Step 3 adds the run layer and a
-     TelemetryBinder MonoBehaviour in Assembly-CSharp, which is where the arrows to
-     Core will appear if they ever do. -->
+     satisfied by a static facade instead.
+
+     STEP 3 (D-149) ADDED THE RUN LAYER AND THE ARROW STILL DID NOT APPEAR, which is
+     the part worth recording. `RunTelemetryState`, `RunStatus`, `ITelemetrySink` and
+     `LogTelemetrySink` joined the assembly and none of them knows what a GameState is
+     -- the assembly's `references` array is still empty. The gameplay side lives
+     entirely in `TelemetryBinder`, a MonoBehaviour in Assembly-CSharp, for the
+     constraint that also places HapticsBinder and SROptions.Expo there: it needs
+     GameManager, which has no asmdef, and an asmdef assembly cannot reference a
+     predefined one. So the split is the same one HapticsSystem made -- the half worth
+     testing is the half that can be, and the wiring half carries the scene reference
+     a human drags in.
+
+     It DOES now have scene presence, in exactly one place: `TelemetryBinder` on the
+     day scene's GameManager object in SampleScene, with that same GameManager dragged
+     into its slot. An empty slot logs once and disables the component; telemetry going
+     quiet must never be able to stop a Day being played.
+
+     STEP 4 (D-150) SENT THE RUNS TO FIRESTORE AND THE ARROW STILL DID NOT APPEAR, for
+     the third time and by the same mechanism: `FirebaseBootstrap` and
+     `FirestoreTelemetrySink` are in Assembly-CSharp, because the SDK's DLLs under
+     `Assets/Firebase/Plugins` are auto-referenced by the predefined assembly and by no
+     asmdef. Referencing them from an asmdef would mean `overrideReferences: true` plus
+     naming every Firebase DLL in `precompiledReferences`, re-done on each SDK update.
+     So the whole vendor dependency sits on the far side of `ITelemetrySink`, and
+     `FirestoreTelemetrySink` is the ONLY file in the project that names
+     `FirebaseFirestore`. Swapping backends replaces that one class.
+
+     The assembly's `references` array is STILL empty after four steps, which is the
+     clearest statement of what this system is: identity, run bookkeeping and a sink
+     interface, none of which knows what a GameState or a Firestore document is. -->
+<!-- Firebase itself (SDK, config, EDM4U) is vendor and is NOT committed -- see D-148
+     and the .gitignore comments, which carry the re-import recipe. -->
+
+<!-- Gameplay's entire surface toward this system is THREE published lines, added by
+     D-149 and subscribed to by nothing else: GameState gained DaySessionStarted and
+     DayAttemptEnded, DayLifecycleManager.ResetForNewDay publishes the first as its
+     last statement, and GameManager.RetryDay / ReturnToMainScreenAbandoningDay publish
+     the second as their FIRST. That last position is a contract rather than a
+     preference -- LivesManager.RefillForNewDay clears IsAwaitingContinue a few lines
+     below (D-103), so a publish placed any lower would report every lost day as a
+     voluntary quit, silently and in every case. -->
 
 - MainScreen — the main-screen presentation (day + wallet readout, Play) and the scene it lives in — depends on: ProgressionSystem, Bootstrap, MetaSystem
 <!-- MainScreen, added 2026-08-19 (decisions.md D-012): the meta side's navigation
@@ -728,6 +767,17 @@ Assets/
   Prefabs/<System>/    ← prefabs, grouped by owning system (assetmap + unitymap)
   Scenes/              ← .unity files (mirrors the scene inventory)
   Art/  Audio/         ← imported assets, by type
+  Firebase/            ← VENDOR, do not hand-edit: the Firebase Unity SDK (D-148).
+                           Plugins/ carries the managed DLLs and the macOS .bundle
+                           natives; the two config files the console generated live
+                           here too. Re-importing the SDK overwrites this folder
+  ExternalDependencyManager/ ← VENDOR: EDM4U, shipped inside the Firebase SDK and
+                           owned by it. Resolves iOS pods / Android deps
+  StreamingAssets/     ← ONE generated file, and the only reason this folder exists:
+                           google-services-desktop.json, which the SDK derives from
+                           google-services.json so Firebase can run in the EDITOR.
+                           See D-148 — this is the exception to the note below, and
+                           it is written by the SDK, never by hand
 ```
 
 <!-- `Scripts/<Area>/Editor/` exists for one hard constraint, not as a second home
@@ -743,4 +793,16 @@ Assets/
      not by a codemap shard. `Resources/` and `StreamingAssets/` are absent
      on purpose: everything in them ships in every build and is loaded by
      string. Adding one is an architectural decision — it goes to
-     decisions.md with its `affects:` field, not into this tree quietly. -->
+     decisions.md with its `affects:` field, not into this tree quietly.
+
+     THAT RULE HAS NOW BEEN EXERCISED ONCE, which is the point of writing it down:
+     the Firebase SDK created `StreamingAssets/` on import and put exactly one file
+     in it, `google-services-desktop.json`, generated from `google-services.json`.
+     It is the file that lets Firebase initialise in the EDITOR, and the Editor
+     smoke test would have failed at step 1 without it — which is also the concrete
+     reason the Android app was registered in the console even though this project
+     has no Android Build Support installed: the desktop config is derived from the
+     ANDROID config, and an iOS-only registration leaves the SDK nothing to derive
+     it from. So the folder is accepted rather than avoided, under D-148, with two
+     conditions: nothing hand-written ever goes in it, and it stays a single
+     generated file. `Resources/` remains present for Day JSON only, as before. -->

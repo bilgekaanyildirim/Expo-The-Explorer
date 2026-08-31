@@ -195,6 +195,20 @@ namespace ExpoTheExplorer.Systems.DayLifecycle
             timeoutsToday = 0;
             savedSecondsToday = 0f;
             totalTicketSecondsToday = totalTicketSecondsForDay > 0f ? totalTicketSecondsForDay : 0f;
+
+            // ANNOUNCED LAST, ON PURPOSE. Everything above is already zeroed by the time
+            // this goes out, so a subscriber that reads this class here sees the new
+            // attempt's blank slate rather than the finished one's totals.
+            //
+            // This is the only place in the project that says "a fresh day attempt has
+            // begun", and it can be, because its four callers ARE the four day-start
+            // paths -- GameManager's Awake, RetryDay, RetryCompletedDay and
+            // AdvanceToNextDay. They agree on nothing else: two of them publish
+            // different events and RetryCompletedDay publishes none, so anyone wanting
+            // this fact from outside had to guess at it. Telemetry needs it to know when
+            // one run ends and the next begins (decisions.md D-149); no gameplay
+            // subscribes, and nothing here changes if nobody does.
+            state.DaySessionStarted.Publish(state.CurrentDayIndex);
         }
     }
 }

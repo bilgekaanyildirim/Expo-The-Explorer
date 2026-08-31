@@ -185,6 +185,39 @@ namespace ExpoTheExplorer.Core
         // Payload is TicketsDeliveredToday as it stood right before the reset.
         public EventBus<int> DayRetried { get; } = new();
 
+        // Fires once at the START of every day attempt, from the end of
+        // DayLifecycleManager.ResetForNewDay -- which is the one place all four
+        // day-start paths already pass through (GameManager's Awake, RetryDay,
+        // RetryCompletedDay and AdvanceToNextDay). Payload is the day index.
+        //
+        // IT EXISTS BECAUSE THE FOUR PATHS DO NOT AGREE ON ANYTHING ELSE: RetryDay
+        // publishes DayRetried, AdvanceToNextDay publishes only CurrentDayIndexChanged,
+        // and RetryCompletedDay publishes NOTHING at all. Anything wanting to know "a
+        // fresh attempt just began" had to either subscribe to three events and hope,
+        // or infer it from lives returning to 3 -- a guess, not a contract. Added for
+        // telemetry (decisions.md D-149); nothing in gameplay subscribes.
+        //
+        // Note the moment: it fires AFTER ResetForNewDay has zeroed the day's
+        // counters, so a subscriber reading DayLifecycleManager here sees the new
+        // attempt's blank slate, never the old one's totals.
+        public EventBus<int> DaySessionStarted { get; } = new();
+
+        // The other half of the pair: fires once when an attempt STOPS without being
+        // completed, from the FIRST line of GameManager.RetryDay and
+        // ReturnToMainScreenAbandoningDay. Payload says whether it was lost or
+        // given up -- see DayAttemptEnd, which explains why that fact cannot be
+        // recovered afterwards.
+        //
+        // THE PUBLISH POSITION IS PART OF THE CONTRACT, not a style choice. Both
+        // methods call LivesManager.RefillForNewDay a few lines down, which clears
+        // IsAwaitingContinue before refilling (D-103) -- so this must be read while
+        // it is still true. Move either publish below that call and every lost day
+        // starts reporting itself as a voluntary quit, silently.
+        //
+        // A completed day does NOT publish this: DayCompleted already says the
+        // attempt ended, and it says so with a better word.
+        public EventBus<DayAttemptEnd> DayAttemptEnded { get; } = new();
+
         public BoardGrid Board { get; }
 
         // GDD Section 6 fixes the starting life count at 3; it is a locked design
