@@ -76,7 +76,7 @@
                 "drinkItemId": "",
                 "modifications": [
                     {
-                        "modificationId": "extraketchup",
+                        "modificationId": "extramayonnaise",
                         "isAddition": true
                     }
                 ],
@@ -127,19 +127,6 @@
                 "itemId": "hotdog",
                 "modifications": [
                     {
-                        "modificationId": "extraketchup",
-                        "isAddition": true
-                    }
-                ],
-                "useExactCell": true,
-                "x": 2,
-                "y": 2
-            },
-            {
-                "triggerStepIndex": -1,
-                "itemId": "hotdog",
-                "modifications": [
-                    {
                         "modificationId": "extramayonnaise",
                         "isAddition": true
                     }
@@ -181,11 +168,31 @@
                 "useExactCell": true,
                 "x": 2,
                 "y": 1
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "hotdog",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 2,
+                "y": 2
             }
         ],
         "tutorial": {
             "enabled": false,
             "steps": []
+        },
+        "itemIntro": {
+            "enabled": true,
+            "items": [
+                {
+                    "itemId": "",
+                    "modificationId": "extramayonnaise",
+                    "isAddition": true,
+                    "nameOverride": "",
+                    "message": ""
+                }
+            ]
         }
     },
     "editorMeta": {

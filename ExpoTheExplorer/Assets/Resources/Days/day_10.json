@@ -3,14 +3,14 @@
         "dayIndex": 10,
         "ticketsRequiredForDay": 10,
         "boardDistribution": {
-            "noiseLeakCountLambda": 1.5,
+            "noiseLeakCountLambda": 2.0,
             "guaranteedTicketCountMode": "Manual",
             "guaranteedTicketCount": 2,
             "guaranteedTicketCountLambda": 1.8589999675750733,
             "earlyTicketWeightDecay": 0.5,
             "urgentTimeThresholdSeconds": 10.0,
             "leakDepth": 8,
-            "maxLeakCount": 1
+            "maxLeakCount": 2
         },
         "ticketRuntime": {
             "impatientTimeLimitSeconds": 15.0,
@@ -44,7 +44,7 @@
             },
             {
                 "mainItemId": "hotdog",
-                "sideItemId": "fries",
+                "sideItemId": "crispyonion",
                 "drinkItemId": "fanta",
                 "modifications": [],
                 "patienceType": "Patient",
@@ -67,7 +67,7 @@
             },
             {
                 "mainItemId": "hotdog",
-                "sideItemId": "fries",
+                "sideItemId": "crispyonion",
                 "drinkItemId": "sprite",
                 "modifications": [],
                 "patienceType": "Patient",
@@ -94,7 +94,7 @@
             },
             {
                 "mainItemId": "hotdog",
-                "sideItemId": "",
+                "sideItemId": "crispyonion",
                 "drinkItemId": "cola",
                 "modifications": [
                     {
@@ -130,10 +130,95 @@
                 "timeLimitSecondsOverride": 0.0
             }
         ],
-        "boardTimeline": [],
+        "boardTimeline": [
+            {
+                "triggerStepIndex": -1,
+                "itemId": "fries",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 1,
+                "y": 2
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "crispyonion",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 2,
+                "y": 2
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "fries",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 3,
+                "y": 2
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "hotdog",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 2,
+                "y": 1
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "hotdog",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 1,
+                "y": 1
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "hotdog",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 3,
+                "y": 1
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "cola",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 1,
+                "y": 0
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "fanta",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 2,
+                "y": 0
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "cola",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 3,
+                "y": 0
+            }
+        ],
         "tutorial": {
             "enabled": false,
             "steps": []
+        },
+        "itemIntro": {
+            "enabled": true,
+            "items": [
+                {
+                    "itemId": "crispyonion",
+                    "modificationId": "",
+                    "isAddition": true,
+                    "nameOverride": "",
+                    "message": ""
+                }
+            ]
         }
     },
     "editorMeta": {
@@ -142,7 +227,8 @@
             "fanta",
             "cola",
             "sprite",
-            "fries"
+            "fries",
+            "crispyonion"
         ],
         "ticketGeneration": {
             "sideInclusionChance": 0.8999999761581421,

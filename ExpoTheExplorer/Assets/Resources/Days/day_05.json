@@ -44,7 +44,7 @@
             },
             {
                 "mainItemId": "hotdog",
-                "sideItemId": "",
+                "sideItemId": "fries",
                 "drinkItemId": "cola",
                 "modifications": [
                     {
@@ -82,7 +82,7 @@
             {
                 "mainItemId": "hotdog",
                 "sideItemId": "fries",
-                "drinkItemId": "sprite",
+                "drinkItemId": "cola",
                 "modifications": [
                     {
                         "modificationId": "extramayonnaise",
@@ -150,10 +150,95 @@
                 "timeLimitSecondsOverride": 0.0
             }
         ],
-        "boardTimeline": [],
+        "boardTimeline": [
+            {
+                "triggerStepIndex": -1,
+                "itemId": "hotdog",
+                "modifications": [
+                    {
+                        "modificationId": "extraketchup",
+                        "isAddition": true
+                    }
+                ],
+                "useExactCell": true,
+                "x": 1,
+                "y": 3
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "fries",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 1,
+                "y": 2
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "fanta",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 1,
+                "y": 1
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "hotdog",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 2,
+                "y": 2
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "fries",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 2,
+                "y": 1
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "hotdog",
+                "modifications": [
+                    {
+                        "modificationId": "extramustard",
+                        "isAddition": true
+                    }
+                ],
+                "useExactCell": true,
+                "x": 3,
+                "y": 3
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "fries",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 3,
+                "y": 2
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "cola",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 3,
+                "y": 1
+            }
+        ],
         "tutorial": {
             "enabled": false,
             "steps": []
+        },
+        "itemIntro": {
+            "enabled": true,
+            "items": [
+                {
+                    "itemId": "fries",
+                    "nameOverride": "",
+                    "message": ""
+                }
+            ]
         }
     },
     "editorMeta": {
@@ -161,8 +246,7 @@
             "hotdog",
             "fanta",
             "cola",
-            "fries",
-            "sprite"
+            "fries"
         ],
         "ticketGeneration": {
             "sideInclusionChance": 0.8999999761581421,

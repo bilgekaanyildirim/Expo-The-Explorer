@@ -3,14 +3,14 @@
         "dayIndex": 13,
         "ticketsRequiredForDay": 12,
         "boardDistribution": {
-            "noiseLeakCountLambda": 1.0,
+            "noiseLeakCountLambda": 2.0,
             "guaranteedTicketCountMode": "Manual",
             "guaranteedTicketCount": 2,
             "guaranteedTicketCountLambda": 1.8589999675750733,
             "earlyTicketWeightDecay": 0.5,
             "urgentTimeThresholdSeconds": 10.0,
             "leakDepth": 8,
-            "maxLeakCount": 2
+            "maxLeakCount": 3
         },
         "ticketRuntime": {
             "impatientTimeLimitSeconds": 15.0,
@@ -49,7 +49,7 @@
             },
             {
                 "mainItemId": "hotdog",
-                "sideItemId": "",
+                "sideItemId": "crispyonion",
                 "drinkItemId": "sprite",
                 "modifications": [
                     {
@@ -63,7 +63,7 @@
             },
             {
                 "mainItemId": "hotdog",
-                "sideItemId": "fries",
+                "sideItemId": "mozerellasticks",
                 "drinkItemId": "fanta",
                 "modifications": [],
                 "patienceType": "Normal",
@@ -72,7 +72,7 @@
             },
             {
                 "mainItemId": "hotdog",
-                "sideItemId": "fries",
+                "sideItemId": "mozerellasticks",
                 "drinkItemId": "fanta",
                 "modifications": [
                     {
@@ -95,7 +95,7 @@
             },
             {
                 "mainItemId": "hotdog",
-                "sideItemId": "fries",
+                "sideItemId": "crispyonion",
                 "drinkItemId": "fanta",
                 "modifications": [
                     {
@@ -132,7 +132,7 @@
             },
             {
                 "mainItemId": "hotdog",
-                "sideItemId": "fries",
+                "sideItemId": "crispyonion",
                 "drinkItemId": "cola",
                 "modifications": [],
                 "patienceType": "Impatient",
@@ -141,7 +141,7 @@
             },
             {
                 "mainItemId": "hotdog",
-                "sideItemId": "fries",
+                "sideItemId": "mozerellasticks",
                 "drinkItemId": "fanta",
                 "modifications": [
                     {
@@ -175,7 +175,9 @@
             "fanta",
             "cola",
             "sprite",
-            "fries"
+            "fries",
+            "crispyonion",
+            "mozerellasticks"
         ],
         "ticketGeneration": {
             "sideInclusionChance": 0.8999999761581421,

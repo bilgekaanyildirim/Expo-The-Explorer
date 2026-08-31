@@ -3,14 +3,14 @@
         "dayIndex": 4,
         "ticketsRequiredForDay": 10,
         "boardDistribution": {
-            "noiseLeakCountLambda": 1.0,
+            "noiseLeakCountLambda": 2.0,
             "guaranteedTicketCountMode": "Manual",
             "guaranteedTicketCount": 1,
             "guaranteedTicketCountLambda": 1.0,
             "earlyTicketWeightDecay": 0.5,
             "urgentTimeThresholdSeconds": 10.0,
             "leakDepth": 8,
-            "maxLeakCount": 1
+            "maxLeakCount": 2
         },
         "ticketRuntime": {
             "impatientTimeLimitSeconds": 15.0,
@@ -49,7 +49,7 @@
             {
                 "mainItemId": "hotdog",
                 "sideItemId": "",
-                "drinkItemId": "",
+                "drinkItemId": "cola",
                 "modifications": [
                     {
                         "modificationId": "extramayonnaise",
@@ -109,7 +109,7 @@
             {
                 "mainItemId": "hotdog",
                 "sideItemId": "",
-                "drinkItemId": "",
+                "drinkItemId": "fanta",
                 "modifications": [],
                 "patienceType": "Patient",
                 "customerNameOverride": "",
@@ -125,10 +125,69 @@
                 "timeLimitSecondsOverride": 0.0
             }
         ],
-        "boardTimeline": [],
+        "boardTimeline": [
+            {
+                "triggerStepIndex": -1,
+                "itemId": "hotdog",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 2,
+                "y": 2
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "cola",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 2,
+                "y": 1
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "fanta",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 3,
+                "y": 2
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "hotdog",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 3,
+                "y": 1
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "fanta",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 1,
+                "y": 2
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "fanta",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 1,
+                "y": 1
+            }
+        ],
         "tutorial": {
             "enabled": false,
             "steps": []
+        },
+        "itemIntro": {
+            "enabled": true,
+            "items": [
+                {
+                    "itemId": "fanta",
+                    "nameOverride": "",
+                    "message": ""
+                }
+            ]
         }
     },
     "editorMeta": {

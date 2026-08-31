@@ -3,14 +3,14 @@
         "dayIndex": 7,
         "ticketsRequiredForDay": 10,
         "boardDistribution": {
-            "noiseLeakCountLambda": 1.8350000381469727,
+            "noiseLeakCountLambda": 2.0,
             "guaranteedTicketCountMode": "Manual",
             "guaranteedTicketCount": 2,
             "guaranteedTicketCountLambda": 1.8589999675750733,
             "earlyTicketWeightDecay": 0.5,
             "urgentTimeThresholdSeconds": 10.0,
             "leakDepth": 8,
-            "maxLeakCount": 1
+            "maxLeakCount": 2
         },
         "ticketRuntime": {
             "impatientTimeLimitSeconds": 15.0,
@@ -124,7 +124,7 @@
             {
                 "mainItemId": "hotdog",
                 "sideItemId": "fries",
-                "drinkItemId": "sprite",
+                "drinkItemId": "cola",
                 "modifications": [
                     {
                         "modificationId": "extramayonnaise",
@@ -161,22 +161,6 @@
             },
             {
                 "triggerStepIndex": -1,
-                "itemId": "sprite",
-                "modifications": [],
-                "useExactCell": true,
-                "x": 1,
-                "y": 3
-            },
-            {
-                "triggerStepIndex": -1,
-                "itemId": "sprite",
-                "modifications": [],
-                "useExactCell": true,
-                "x": 3,
-                "y": 3
-            },
-            {
-                "triggerStepIndex": -1,
                 "itemId": "hotdog",
                 "modifications": [
                     {
@@ -321,11 +305,31 @@
                 "useExactCell": true,
                 "x": 0,
                 "y": 1
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "fanta",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 1,
+                "y": 3
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "fanta",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 3,
+                "y": 3
             }
         ],
         "tutorial": {
             "enabled": false,
             "steps": []
+        },
+        "itemIntro": {
+            "enabled": false,
+            "items": []
         }
     },
     "editorMeta": {
@@ -333,7 +337,6 @@
             "hotdog",
             "fanta",
             "cola",
-            "sprite",
             "fries"
         ],
         "ticketGeneration": {

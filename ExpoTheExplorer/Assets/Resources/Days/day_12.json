@@ -3,14 +3,14 @@
         "dayIndex": 12,
         "ticketsRequiredForDay": 12,
         "boardDistribution": {
-            "noiseLeakCountLambda": 1.600000023841858,
+            "noiseLeakCountLambda": 2.5,
             "guaranteedTicketCountMode": "Manual",
             "guaranteedTicketCount": 2,
             "guaranteedTicketCountLambda": 1.8589999675750733,
             "earlyTicketWeightDecay": 0.5,
             "urgentTimeThresholdSeconds": 10.0,
             "leakDepth": 8,
-            "maxLeakCount": 1
+            "maxLeakCount": 2
         },
         "ticketRuntime": {
             "impatientTimeLimitSeconds": 15.0,
@@ -35,7 +35,7 @@
             },
             {
                 "mainItemId": "hotdog",
-                "sideItemId": "fries",
+                "sideItemId": "crispyonion",
                 "drinkItemId": "cola",
                 "modifications": [
                     {
@@ -72,7 +72,7 @@
             },
             {
                 "mainItemId": "hotdog",
-                "sideItemId": "fries",
+                "sideItemId": "mozerellasticks",
                 "drinkItemId": "fanta",
                 "modifications": [],
                 "patienceType": "Normal",
@@ -90,7 +90,7 @@
             },
             {
                 "mainItemId": "hotdog",
-                "sideItemId": "fries",
+                "sideItemId": "crispyonion",
                 "drinkItemId": "fanta",
                 "modifications": [
                     {
@@ -131,7 +131,7 @@
             },
             {
                 "mainItemId": "hotdog",
-                "sideItemId": "fries",
+                "sideItemId": "mozerellasticks",
                 "drinkItemId": "fanta",
                 "modifications": [
                     {
@@ -145,7 +145,7 @@
             },
             {
                 "mainItemId": "hotdog",
-                "sideItemId": "fries",
+                "sideItemId": "crispyonion",
                 "drinkItemId": "cola",
                 "modifications": [],
                 "patienceType": "Impatient",
@@ -165,7 +165,9 @@
             "fanta",
             "cola",
             "sprite",
-            "fries"
+            "fries",
+            "crispyonion",
+            "mozerellasticks"
         ],
         "ticketGeneration": {
             "sideInclusionChance": 0.8999999761581421,
