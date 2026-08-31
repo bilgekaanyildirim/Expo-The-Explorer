@@ -51,6 +51,11 @@ namespace ExpoTheExplorer.UI
         [Tooltip("The HUD coin counter's icon. Coins released by the receipt total fly here.")]
         [SerializeField] private RectTransform coinFlightTarget;
 
+        // WHAT THE PLAYER SEES HERE IS A STAR, not a gem: the scene wires this to
+        // Art/UI/Popup/DayCompleteUI/Star.png and gemFlightTarget to the HUD's star
+        // counter. The code's "gem" is the LEDGER's word -- the pending purse pays gems per
+        // star -- and the sprite is the costume it wears. Worth knowing before sizing or
+        // moving anything on this path; the two names have already been read as two things.
         [SerializeField] private Sprite gemSprite;
         [SerializeField] private Sprite coinSprite;
 
@@ -98,7 +103,15 @@ namespace ExpoTheExplorer.UI
         [Tooltip("How high the flight arcs above the straight line to its target. 0 flies straight.")]
         [SerializeField] private float flightArcHeight = 120f;
 
+        [Tooltip("Size of one COIN icon. Up to coinCount of these leave the receipt at once, so they stay small — the ring has to read as a spray of change rather than as ten separate prizes.")]
         [SerializeField, Min(1f)] private float flightIconSize = 48f;
+
+        // Its own number rather than the coin's, and the asymmetry is the point: there are
+        // at most THREE of these and each one is a whole star, where a coin is one tenth of
+        // a total. Sized off flightIconSize, the star the player had just earned arrived
+        // looking like pocket change.
+        [Tooltip("Size of the star icon that leaves each seated star for the HUD star counter. Deliberately larger than a coin — there are at most three and each is a whole star, not a share of one total.")]
+        [SerializeField, Min(1f)] private float starIconSize = 180f;
 
         [Tooltip("Scale the icon shrinks to as it reaches the counter, so it reads as being absorbed.")]
         [SerializeField, Min(0f)] private float flightEndScale = 0.55f;
@@ -268,7 +281,7 @@ namespace ExpoTheExplorer.UI
                 // all -- it is the coordinate space the icons live in, not where they
                 // start from.
                 var share = DayRewardPurse.ShareOf(gemsOwed, i, starCount);
-                Launch(gemSprite, ToFlightLocal(star.transform), gemFlightTarget, () =>
+                Launch(gemSprite, starIconSize, ToFlightLocal(star.transform), gemFlightTarget, () =>
                 {
                     gameManager.ClaimRewardGems(share);
 
@@ -316,7 +329,7 @@ namespace ExpoTheExplorer.UI
                     // it had reached by the time the flight lands.
                     var buzzOnArrival = j == 0 || j == coins - 1;
 
-                    Launch(coinSprite, spawn, coinFlightTarget, () =>
+                    Launch(coinSprite, flightIconSize, spawn, coinFlightTarget, () =>
                     {
                         gameManager.ClaimRewardSoftMoney(share);
                         if (buzzOnArrival) haptics?.Request(HapticMoment.CoinLanded);
@@ -340,9 +353,12 @@ namespace ExpoTheExplorer.UI
         // Pops the icon into existence, arcs it to the counter, and credits on arrival.
         // The credit is the OnComplete rather than a timer, so it can only ever fire for
         // an icon that actually got there.
-        private void Launch(Sprite sprite, Vector2 fromLocal, RectTransform target, Action onArrive)
+        // `size` is passed rather than read from a field: the two callers deliberately fly
+        // different-sized icons (one whole star vs. one tenth of a total), and a single
+        // shared field is what made the star too small in the first place.
+        private void Launch(Sprite sprite, float size, Vector2 fromLocal, RectTransform target, Action onArrive)
         {
-            var icon = SpawnIcon(sprite, fromLocal);
+            var icon = SpawnIcon(sprite, size, fromLocal);
             var toLocal = ToFlightLocal(target);
 
             // One control point half way along and lifted: enough to read as a throw,
@@ -376,12 +392,12 @@ namespace ExpoTheExplorer.UI
         // the whole of it, so a prefab would be one more asset to author, wire and keep in
         // step for no gain. Thirteen of these are created once per completed day, which
         // is event frequency -- pooling would be cost with no measurable saving.
-        private RectTransform SpawnIcon(Sprite sprite, Vector2 localPosition)
+        private RectTransform SpawnIcon(Sprite sprite, float size, Vector2 localPosition)
         {
             var go = new GameObject("RewardFlightIcon", typeof(RectTransform), typeof(Image));
             var rect = (RectTransform)go.transform;
             rect.SetParent(flightRoot, false);
-            rect.sizeDelta = new Vector2(flightIconSize, flightIconSize);
+            rect.sizeDelta = new Vector2(size, size);
             rect.localPosition = localPosition;
             rect.localScale = Vector3.zero;
 

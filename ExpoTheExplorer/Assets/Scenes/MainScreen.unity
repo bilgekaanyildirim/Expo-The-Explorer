@@ -361,7 +361,7 @@ MonoBehaviour:
   upcomingSilhouetteAlpha: 0.25
   upcomingLabelSize: 30
   upcomingLabelColor: {r: 1, g: 1, b: 1, a: 1}
-  upcomingLabelOffset: 16
+  upcomingLabelOffset: 0
   previewTravelSeconds: 0.35
   previewTravelEase: 9
   celebrationRevealSeconds: 0.9

@@ -72,8 +72,8 @@ namespace ExpoTheExplorer.UI
 
         [SerializeField] private Color upcomingLabelColor = Color.white;
 
-        [Tooltip("How far above the prop that label sits, in canvas units.")]
-        [SerializeField] private float upcomingLabelOffset = 16f;
+        [Tooltip("Vertical nudge for that label away from the prop's centre, in canvas units. 0 sits dead centre on the art; positive raises it.")]
+        [SerializeField] private float upcomingLabelOffset;
 
         [Tooltip("How long the map takes to travel to the previewed prop, and back. The feel of this screen is settled here, not in code.")]
         [SerializeField, Min(0f)] private float previewTravelSeconds = 0.35f;
@@ -1131,11 +1131,15 @@ namespace ExpoTheExplorer.UI
             var rect = (RectTransform)labelObject.transform;
             rect.SetParent(parent, worldPositionStays: false);
 
-            // Anchored to the TOP of the prop and pivoted at its own bottom, so the label
-            // sits above the art whatever height that art happens to be.
-            rect.anchorMin = new Vector2(0.5f, 1f);
-            rect.anchorMax = new Vector2(0.5f, 1f);
-            rect.pivot = new Vector2(0.5f, 0f);
+            // Centred ON the prop, not floating above it: the number belongs to the thing
+            // filling up, and a caption parked over the art it describes cannot drift into
+            // some other prop's airspace the way a tall stack of neighbours made the old
+            // top-anchored one do. Anchor and pivot both at the middle, so the label stays
+            // centred whatever height that art happens to be, and `upcomingLabelOffset`
+            // becomes a nudge from that centre rather than a gap above the head.
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
             rect.sizeDelta = new Vector2(220f, upcomingLabelSize * 1.6f);
             rect.anchoredPosition = new Vector2(0f, upcomingLabelOffset);
 
