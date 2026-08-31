@@ -6,6 +6,7 @@ using ExpoTheExplorer.Data;
 using ExpoTheExplorer.DebugMenu;
 using ExpoTheExplorer.Session;
 using ExpoTheExplorer.Systems.ProgressionSystem;
+using ExpoTheExplorer.Systems.TelemetrySystem;
 using UnityEngine;
 
 // The cheat and inspection surface on SRDebugger's Options tab (decisions.md D-092).
@@ -356,6 +357,126 @@ public partial class SROptions
 
     [Category("Save"), Sort(3), DisplayName("Save File Path")]
     public string SaveFilePath => Application.persistentDataPath;
+
+    // ---- Telemetry ---------------------------------------------------------------
+    // Who the analytics side thinks is holding this phone (.claude/telemetry-plan.md
+    // Step 2). Sits beside Save rather than in it because the two are deliberately
+    // SEPARATE operations on separate files: Delete Save File is a development reset
+    // and keeps the player, Reset Game + New Test Player hands the device to the next
+    // human. Merging them would take a workflow that works away.
+    //
+    // A PLAYER ID IS NEVER RENAMED, only minted. All three buttons below START a new
+    // player; none of them relabels the current one. A rename would look tidy and be
+    // silently wrong: runs already written to Firestore keep the id they were written
+    // with, so renaming splits one tester into two in the report while showing a
+    // single name in the panel. Minting splits them too, but says so -- the ordinal
+    // goes up and the log names both ids.
+    //
+    // NOTHING HERE TOUCHES FIRESTORE, and that is the plan's §4 requirement: a local
+    // reset must never delete a previous tester's runs. TelemetryIdentityStore has no
+    // Delete method at all, so this panel could not do it by mistake.
+
+    [Category("Telemetry"), Sort(0), DisplayName("Installation Id")]
+    public string TelemetryInstallationId => PlaytestTelemetry.Identity?.InstallationId ?? "-";
+
+    [Category("Telemetry"), Sort(1), DisplayName("Player Id")]
+    public string TelemetryPlayerId => PlaytestTelemetry.Identity?.PlayerId ?? "-";
+
+    [Category("Telemetry"), Sort(2), DisplayName("Player # On This Install")]
+    public int TelemetryPlayerOrdinal => PlaytestTelemetry.Identity?.PlayerOrdinal ?? -1;
+
+    private string _testerId = string.Empty;
+
+    // Free text, so it is validated rather than trusted: these strings become
+    // Firestore field values that reports group by, and a stray space or quote turns
+    // one tester into two rows that look identical.
+    [Category("Telemetry"), Sort(3), DisplayName("Tester Id")]
+    public string TesterId
+    {
+        get => _testerId;
+        set => _testerId = value;
+    }
+
+    [Category("Telemetry"), Sort(4), DisplayName("Set Tester Id (New Player)")]
+    public void SetTesterId()
+    {
+        if (TelemetryRefusesDuringDay()) return;
+
+        // Refuses on empty rather than falling back to a random id: that would make
+        // this button silently identical to the one below it, and a mis-press would
+        // rotate the tester for no reason the presser can see.
+        if (!TelemetryIds.TrySanitizeTesterId(_testerId, out var sanitized))
+        {
+            Debug.LogWarning(
+                "[DebugMenu] Tester Id must be 1-32 characters of letters, digits, _ or - " +
+                $"(got \"{_testerId}\"). Nothing changed.");
+            return;
+        }
+
+        PlaytestTelemetry.StartNewPlayer(sanitized);
+    }
+
+    [Category("Telemetry"), Sort(5), DisplayName("New Random Test Player")]
+    public void NewRandomTestPlayer()
+    {
+        if (TelemetryRefusesDuringDay()) return;
+
+        PlaytestTelemetry.StartNewPlayer();
+    }
+
+    // The tester hand-off: wipe what the last human earned, keep the device's
+    // identity, start a fresh player, and drop back to the main screen so every
+    // system rebuilds itself from the now-absent profile -- the same mechanism
+    // Delete Save File relies on.
+    //
+    // Deliberately does BOTH halves through their owners: the save goes through
+    // PlayerProfileStore.Delete and the identity through PlaytestTelemetry, so each
+    // file keeps exactly one writer. This method knows the ORDER, not the contents.
+    [Category("Telemetry"), Sort(6), DisplayName("Reset Game + New Test Player")]
+    public void ResetGameAndNewTestPlayer()
+    {
+        if (TelemetryRefusesDuringDay()) return;
+
+        // Validated first so a typo cannot cost the profile: if the id is bad the
+        // player is rotated randomly, which is recoverable, but wiping the save on
+        // the way to a refusal would not be.
+        string testerId = null;
+        if (!string.IsNullOrWhiteSpace(_testerId)
+            && !TelemetryIds.TrySanitizeTesterId(_testerId, out testerId))
+        {
+            Debug.LogWarning(
+                "[DebugMenu] Tester Id must be 1-32 characters of letters, digits, _ or - " +
+                $"(got \"{_testerId}\"). Nothing changed.");
+            return;
+        }
+
+        if (!new PlayerProfileStore().Delete())
+        {
+            Debug.LogWarning("[DebugMenu] Could not delete the save file; the player was NOT rotated.");
+            return;
+        }
+
+        PlaytestTelemetry.StartNewPlayer(testerId);
+        SceneFlow.LoadMainScreen();
+    }
+
+    [Category("Telemetry"), Sort(7), DisplayName("Identity File Path")]
+    public string TelemetryIdentityFilePath => PlaytestTelemetry.IdentityFilePath;
+
+    // Main screen only, for all three commands, and this is stricter than Delete Save
+    // File next door on purpose (the user's call, plan §D.3). That one deletes the
+    // file mid-day and simply declines to reload; changing WHO IS PLAYING mid-day is
+    // a different thing -- there is a live GameSession, a running attempt, and from
+    // Step 3 an open telemetry run, and rotating the identity underneath all of them
+    // would attribute half an attempt to each of two testers. Refusing costs one
+    // button press; the alternative costs a run that cannot be interpreted.
+    private static bool TelemetryRefusesDuringDay()
+    {
+        if (Day == null) return false;
+
+        Debug.LogWarning("[DebugMenu] Cannot reset the player while a Day is active. Return to Main Screen first.");
+        return true;
+    }
 
     // ---- Info (read-only) --------------------------------------------------------
     [Category("Info"), Sort(1), DisplayName("Coins")]

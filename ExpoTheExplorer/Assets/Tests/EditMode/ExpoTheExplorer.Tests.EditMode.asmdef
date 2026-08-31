@@ -17,6 +17,7 @@
         "ExpoTheExplorer.Systems.DaySystem",
         "ExpoTheExplorer.Systems.MetaSystem",
         "ExpoTheExplorer.Systems.HapticsSystem",
+        "ExpoTheExplorer.Systems.TelemetrySystem",
         "ExpoTheExplorer.Systems.Tutorial",
         "ExpoTheExplorer.Editor",
         "UnityEngine.TestRunner",
