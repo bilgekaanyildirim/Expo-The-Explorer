@@ -67,12 +67,6 @@ namespace ExpoTheExplorer.Editor
             EditorGUILayout.EndHorizontal();
         }
 
-        [FoldoutGroup("Simulation"), OnInspectorGUI, PropertyOrder(-0.1f)]
-        private void DrawSimulation() =>
-            DayEditorSimulationPanel.Draw(this, sharedGameConfig, sharedTicketConfig, Validate(), ref simulationUiState);
-
-        private DayEditorSimulationPanel.UiState simulationUiState;
-
         // Per-Day ticket play-time balancing (time limits + lookahead depth). Same story as
         // BoardDistribution above: plain nested box for now, proper grouping in a later
         // step of .claude/day-config-plan.md.

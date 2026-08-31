@@ -18,7 +18,6 @@
         "ExpoTheExplorer.Systems.MetaSystem",
         "ExpoTheExplorer.Systems.HapticsSystem",
         "ExpoTheExplorer.Systems.Tutorial",
-        "ExpoTheExplorer.Simulation",
         "ExpoTheExplorer.Editor",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
