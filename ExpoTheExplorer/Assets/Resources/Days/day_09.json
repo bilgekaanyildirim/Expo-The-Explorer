@@ -210,10 +210,73 @@
                 "timeLimitSecondsOverride": 0.0
             }
         ],
-        "boardTimeline": [],
+        "boardTimeline": [
+            {
+                "triggerStepIndex": -1,
+                "itemId": "hotdog",
+                "modifications": [
+                    {
+                        "modificationId": "extramustard",
+                        "isAddition": true
+                    }
+                ],
+                "useExactCell": true,
+                "x": 1,
+                "y": 2
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "fries",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 1,
+                "y": 1
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "hotdog",
+                "modifications": [
+                    {
+                        "modificationId": "extramustard",
+                        "isAddition": true
+                    }
+                ],
+                "useExactCell": true,
+                "x": 3,
+                "y": 2
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "fries",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 3,
+                "y": 1
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "cola",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 3,
+                "y": 0
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "fanta",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 1,
+                "y": 0
+            }
+        ],
         "tutorial": {
             "enabled": false,
             "steps": []
+        },
+        "itemIntro": {
+            "enabled": false,
+            "items": []
         }
     },
     "editorMeta": {

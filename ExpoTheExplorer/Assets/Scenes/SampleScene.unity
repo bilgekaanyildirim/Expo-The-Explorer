@@ -2421,6 +2421,7 @@ MonoBehaviour:
   closeButton: {fileID: 4931877762977586046}
   gemCostLabel: {fileID: 4931877762977586045}
   notEnoughGemsLabel: {fileID: 4931877762977586043}
+  animConfig: {fileID: 11400000, guid: 836ace345c29845f1b25f60bb6a89488, type: 2}
 --- !u!1 &609968309
 GameObject:
   m_ObjectHideFlags: 0
@@ -6713,7 +6714,7 @@ MonoBehaviour:
   mainMenuConfirmRoot: {fileID: 1757755799}
   mainMenuConfirmYesButton: {fileID: 818752161}
   mainMenuConfirmNoButton: {fileID: 352756468}
-  noKeysPopup: {fileID: 0}
+  noKeysPopup: {fileID: 595234155}
   hapticsToggleButton: {fileID: 1253482587}
   hapticsOnIndicator: {fileID: 640318906}
   hapticsOffIndicator: {fileID: 242841320}
@@ -6722,6 +6723,7 @@ MonoBehaviour:
   - {fileID: 1372048962}
   - {fileID: 661465481}
   - {fileID: 1038433518}
+  animConfig: {fileID: 11400000, guid: 836ace345c29845f1b25f60bb6a89488, type: 2}
 --- !u!114 &1099832408
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -336,6 +336,7 @@ MonoBehaviour:
   body: {fileID: 3585932905918785824}
   image: {fileID: 6625935051402086650}
   dismissButton: {fileID: 6083935681174421408}
+  animConfig: {fileID: 11400000, guid: 836ace345c29845f1b25f60bb6a89488, type: 2}
 --- !u!1 &4795918768118612973
 GameObject:
   m_ObjectHideFlags: 0

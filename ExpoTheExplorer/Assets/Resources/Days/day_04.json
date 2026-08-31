@@ -168,7 +168,7 @@
             },
             {
                 "triggerStepIndex": -1,
-                "itemId": "fanta",
+                "itemId": "hotdog",
                 "modifications": [],
                 "useExactCell": true,
                 "x": 1,
@@ -184,6 +184,8 @@
             "items": [
                 {
                     "itemId": "fanta",
+                    "modificationId": "",
+                    "isAddition": false,
                     "nameOverride": "",
                     "message": ""
                 }

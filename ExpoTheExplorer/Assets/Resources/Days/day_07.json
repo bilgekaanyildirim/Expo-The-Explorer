@@ -153,14 +153,6 @@
         "boardTimeline": [
             {
                 "triggerStepIndex": -1,
-                "itemId": "fanta",
-                "modifications": [],
-                "useExactCell": true,
-                "x": 2,
-                "y": 3
-            },
-            {
-                "triggerStepIndex": -1,
                 "itemId": "hotdog",
                 "modifications": [
                     {
@@ -250,38 +242,6 @@
             },
             {
                 "triggerStepIndex": -1,
-                "itemId": "fries",
-                "modifications": [],
-                "useExactCell": true,
-                "x": 4,
-                "y": 2
-            },
-            {
-                "triggerStepIndex": -1,
-                "itemId": "fries",
-                "modifications": [],
-                "useExactCell": true,
-                "x": 3,
-                "y": 0
-            },
-            {
-                "triggerStepIndex": -1,
-                "itemId": "fries",
-                "modifications": [],
-                "useExactCell": true,
-                "x": 1,
-                "y": 0
-            },
-            {
-                "triggerStepIndex": -1,
-                "itemId": "fries",
-                "modifications": [],
-                "useExactCell": true,
-                "x": 0,
-                "y": 2
-            },
-            {
-                "triggerStepIndex": -1,
                 "itemId": "hotdog",
                 "modifications": [
                     {
@@ -311,8 +271,24 @@
                 "itemId": "fanta",
                 "modifications": [],
                 "useExactCell": true,
+                "x": 0,
+                "y": 0
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "fanta",
+                "modifications": [],
+                "useExactCell": true,
                 "x": 1,
-                "y": 3
+                "y": 0
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "fanta",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 4,
+                "y": 0
             },
             {
                 "triggerStepIndex": -1,
@@ -320,7 +296,55 @@
                 "modifications": [],
                 "useExactCell": true,
                 "x": 3,
+                "y": 0
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "fries",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 1,
                 "y": 3
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "fries",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 2,
+                "y": 3
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "fries",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 3,
+                "y": 3
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "fanta",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 2,
+                "y": 1
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "fanta",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 0,
+                "y": 2
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "fanta",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 4,
+                "y": 2
             }
         ],
         "tutorial": {
