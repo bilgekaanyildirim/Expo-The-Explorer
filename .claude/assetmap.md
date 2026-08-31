@@ -1,4 +1,4 @@
-<!-- stamp: 2026-08-31T12:49Z source-sig:9e93a673efaf assets:49 prefabs:16 scenes:2 asmdefs:18 -->
+<!-- stamp: 2026-08-31T17:49Z source-sig:8484faa33b55 assets:49 prefabs:16 scenes:2 asmdefs:19 -->
 # assetmap — asset inventory (data, prefabs, load surface, assemblies)
 
 Regenerate with `python3 .claude/hooks/build_assetmap.py`. `data-source.md`
@@ -21,6 +21,7 @@ the cost model reads the load-surface section before pricing a load.
 - ExpoTheExplorer/Assets/Scripts/Systems/MetaSystem/ExpoTheExplorer.Systems.MetaSystem.asmdef | name: ExpoTheExplorer.Systems.MetaSystem | refs: ExpoTheExplorer.Data | platforms: all | covers: ExpoTheExplorer/Assets/Scripts/Systems/MetaSystem/**
 - ExpoTheExplorer/Assets/Scripts/Systems/PowerupSystem/ExpoTheExplorer.Systems.PowerupSystem.asmdef | name: ExpoTheExplorer.Systems.PowerupSystem | refs: ExpoTheExplorer.Core,ExpoTheExplorer.Data,ExpoTheExplorer.Systems.ProgressionSystem | platforms: all | covers: ExpoTheExplorer/Assets/Scripts/Systems/PowerupSystem/**
 - ExpoTheExplorer/Assets/Scripts/Systems/ProgressionSystem/ExpoTheExplorer.Systems.ProgressionSystem.asmdef | name: ExpoTheExplorer.Systems.ProgressionSystem | refs: ExpoTheExplorer.Core,ExpoTheExplorer.Data | platforms: all | covers: ExpoTheExplorer/Assets/Scripts/Systems/ProgressionSystem/**
+- ExpoTheExplorer/Assets/Scripts/Systems/TelemetrySystem/ExpoTheExplorer.Systems.TelemetrySystem.asmdef | name: ExpoTheExplorer.Systems.TelemetrySystem | refs: - | platforms: all | covers: ExpoTheExplorer/Assets/Scripts/Systems/TelemetrySystem/**
 - ExpoTheExplorer/Assets/Scripts/Systems/TicketSystem/ExpoTheExplorer.Systems.TicketSystem.asmdef | name: ExpoTheExplorer.Systems.TicketSystem | refs: ExpoTheExplorer.Core,ExpoTheExplorer.Data | platforms: all | covers: ExpoTheExplorer/Assets/Scripts/Systems/TicketSystem/**
 - ExpoTheExplorer/Assets/Scripts/Systems/TraySystem/ExpoTheExplorer.Systems.TraySystem.asmdef | name: ExpoTheExplorer.Systems.TraySystem | refs: ExpoTheExplorer.Core,ExpoTheExplorer.Data | platforms: all | covers: ExpoTheExplorer/Assets/Scripts/Systems/TraySystem/**
 - ExpoTheExplorer/Assets/Scripts/Systems/Tutorial/ExpoTheExplorer.Systems.Tutorial.asmdef | name: ExpoTheExplorer.Systems.Tutorial | refs: - | platforms: all | covers: ExpoTheExplorer/Assets/Scripts/Systems/Tutorial/**

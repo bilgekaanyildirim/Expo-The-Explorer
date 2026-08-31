@@ -165,6 +165,22 @@
 
 - TraySystem — per-slot tray contents, batched order validation, scatter-back-to-board — depends on: -
 - Tutorial — teaching the game: the day scene's forced opening (a Day's authored moves, plus a per-powerup introduction and forced press scheduled on PowerupConfig) AND the main screen's first-run welcome and store hint — depends on: -
+<!-- D-146 (2026-08-31) THE DIM IS ONE CLASS NOW, TutorialDim, and both spotlights use it: the
+     move steps' and the powerup lesson's. It is a plain class rather than a component or a
+     system of its own, so it adds NO arrow to this line -- it owns a black sheet, three
+     sorting constants and the bookkeeping that puts every borrowed sorting order back, and
+     it knows nothing about steps, powerups or tickets.
+
+     What DID cross a boundary is that PowerupBarView (PowerupSystem) now reads
+     TicketCardsView to light the three timer bars. That is the same shape TutorialSpotlightView
+     already had -- it reads TicketCardView for the card it lights -- so the tutorial's habit of
+     reaching for whatever it must point at is not new; it is worth knowing that BOTH spotlights
+     do it, and that the reference is optional on both, so a missing one costs a decoration.
+
+     WHICH LESSON DIMS IS READ OFF PowerupConfig's trigger, not off a powerup's name, which is
+     why this system's authoring split above still holds: the schedule says WHEN the press is
+     asked for, and "the one that waits for a red ticket is the one that dims" follows from
+     that alone. A UI file naming Time Reset would have been a second authority over content. -->
 <!-- D-115 (2026-08-27) split the step list's AUTHORING in two, and the split is what keeps
      this system's arrow list empty on both sides. The Day JSON owns the forced MOVES,
      because they describe THIS Day's board. PowerupConfig owns which Day introduces which
@@ -298,6 +314,37 @@
      It has no scene presence of its own: HapticsBinder is added to an existing object in
      each scene, and Nice Vibrations additionally wants exactly one HapticReceiver per
      scene, the way a scene wants one AudioListener. -->
+
+- TelemetrySystem — who is playing, for playtest analytics: the installation this game sits in, the logical playtester holding the phone, and the second save file that keeps them — depends on: -
+<!-- TelemetrySystem, added 2026-08-31 (decisions.md D-144, plan in
+     .claude/telemetry-plan.md). The arrow is `-` and stays `-` for Step 2: this
+     assembly's `references` array is EMPTY, the same shape Tutorial has. It reads no
+     GameState, no board, no session and no config asset -- an identity is generated
+     and persisted, full stop. Nothing depends on it in the arrow sense either: its
+     only consumer today is SROptions.Expo, which is Assembly-CSharp and therefore
+     creates no system-to-system arrow, exactly as HapticsSystem's four callers do not.
+
+     IT IS THE PROJECT'S SECOND PERSISTENCE BOUNDARY, and that is the decision worth
+     recording rather than the code. `telemetry_identity.json` sits beside
+     `player_profile.json` and outside it: PlayerProfileStore.Delete() throws the whole
+     save away, which is what makes "reset the player" exact, and that exactness is
+     only true while that class knows NOTHING about its payload. Two extra
+     PlayerProfile fields would have been cheaper and would have ended the property --
+     so the identity gets its own file, its own version number and its own store, and
+     the two stores must never learn about each other. It is also what makes `Delete
+     Save File` and `Reset Game + New Test Player` two genuinely different debug
+     operations instead of one with a flag.
+
+     NOTHING IN THE SHIPPING GAME READS IT. No progress, no balance, no unlock; a
+     player who deletes it loses nothing, and the analytics side loses only the link
+     between that device and its past runs.
+
+     No scene presence at all, which is unusual enough to state: SRDebugger builds
+     SROptions from a [RuntimeInitializeOnLoadMethod] with no GameObject, so there is
+     nothing to serialize a reference onto and D-013's "never search the scene" is
+     satisfied by a static facade instead. Step 3 adds the run layer and a
+     TelemetryBinder MonoBehaviour in Assembly-CSharp, which is where the arrows to
+     Core will appear if they ever do. -->
 
 - MainScreen — the main-screen presentation (day + wallet readout, Play) and the scene it lives in — depends on: ProgressionSystem, Bootstrap, MetaSystem
 <!-- MainScreen, added 2026-08-19 (decisions.md D-012): the meta side's navigation
@@ -533,7 +580,11 @@
      The store hint's ARROW is authored here but does not stay here: the view reparents it
      onto the store button and sizes it from that button, because only the running layout
      knows where the button ended up. It therefore outlives the hint object and the view
-     destroys it explicitly -- the same trap TutorialPowerupSpotlight's frame has. -->
+     destroys it explicitly -- and this is now the ONLY arrow in the project that carries that
+     trap. TutorialPowerupSpotlight's arrow is the same sprite pointing at a different button,
+     but it gave the reparenting up on 2026-08-31 (D-145) because the powerup bar's canvas
+     draws under the world; it is positioned over its button instead of parented to it. This
+     one can stay parented because the main screen has no world sprites to hide behind. -->
 <!-- Both added 2026-08-28 (decisions.md D-116). They are the FIRST tutorial assets in the
      project: every tutorial visual before them was built at runtime and authored nowhere,
      which the files argued for at length. The argument held only while nobody needed to
@@ -547,10 +598,18 @@
      THE INTRO PREFAB'S ROOT CARRIES A SCREEN SPACE - OVERLAY CANVAS and must keep it
      (D-086). This scene's InGameCanvas is Screen Space - CAMERA at sortingOrder -1, so a
      panel reparented under it is drawn beneath the world sprites and simply disappears,
-     with nothing reporting it. The spotlight prefab deliberately has NO canvas on its
-     root: its frame is reparented onto the live powerup button and inherits that button's
-     canvas, which is what puts it ON the button rather than over it; only its message
-     carries an Overlay canvas of its own.
+     with nothing reporting it. The spotlight prefab deliberately has no canvas on its
+     ROOT either, and since D-145 (2026-08-31) it is down to ONE piece: an arrow, on the
+     Screen Space - Overlay canvas inside it, positioned over the powerup button by measuring
+     that button through screen space. It replaced a pulsing four-bar frame, and the sentence
+     half went with the same decision -- the user deleted the Message object, so the canvas is
+     named OverlayCanvas for what it does rather than for what it used to hold. The arrow was reparented onto the live button first, the way the frame had been,
+     and it was invisible in play with nothing reporting it: HUDCanvas is Screen Space -
+     CAMERA at sortingOrder -1, so the board's bottom row drew straight over it. The frame had
+     escaped that only by hugging the button, down where the board never reaches -- which is
+     the second time this one prefab has paid for D-086, and the reason the rule is worth
+     stating as a canvas rule rather than a panel rule: on this scene, anything that must be
+     SEEN above the world belongs on an Overlay canvas, whatever its size.
 
      Spawned, not placed: PowerupBarView instantiates them, which is also why they are
      prefabs rather than scene objects (scene-structure.md -- runtime-spawned admits no

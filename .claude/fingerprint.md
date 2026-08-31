@@ -16,6 +16,15 @@
     `DayDefinition.BoardDistribution` → `GameManager` → `BoardDistributor`.
     `BoardDistributionConfig.asset` is NOT an authority — it is a Day-Editor
     seed for new Days. Established by decisions.md D-004 (2026-08-17).
+  - who is playing, for playtest telemetry (`installationId`, `playerId`,
+    `playerOrdinal`) → **`telemetry_identity.json`**, written only by
+    `TelemetryIdentityStore`. Readers: `PlaytestTelemetry` (cache + hand-off) and
+    `SROptions.Expo` (readouts). It is the project's SECOND persistence boundary
+    and sits deliberately outside `player_profile.json`, so a save wipe cannot
+    take it: `PlayerProfileStore.Delete()` must keep knowing nothing about its
+    payload. The two stores never reference each other. `runId` is NOT here — a
+    run lives only in RAM (Step 3). Established by decisions.md D-144
+    (2026-08-31); plan in `.claude/telemetry-plan.md`.
   - ticket-generation balancing (side/drink inclusion, modification count,
     main-dish weights) → OPEN, but currently split: authoring-time values live
     per Day in `editorMeta`, runtime values (time limits, upcoming-queue size)

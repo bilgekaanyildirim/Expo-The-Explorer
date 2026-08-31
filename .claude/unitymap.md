@@ -1,4 +1,4 @@
-<!-- stamp: 2026-08-31T12:49Z source-sig:75fbd6e06872 scenes:2 prefabs:16 generator:python-fallback status: DEGRADED 419 missing-script -->
+<!-- stamp: 2026-08-31T15:25Z source-sig:345c251dbf5a scenes:2 prefabs:16 generator:python-fallback status: DEGRADED 415 missing-script -->
 # unitymap — scene and prefab structure
 
 Read this instead of opening a `.unity`/`.prefab` file. Tree indentation is
@@ -71,7 +71,7 @@ Unity menu item Tools > unity-dev > Export unitymap.
 - MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/MetaUnlockPopup.prefab | Label
 - MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/MetaUnlockPopup.prefab | MetaUnlockPopup
 - MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/MetaUnlockPopup.prefab | Panel
-- ... 262 more
+- ... 256 more
 
 ## PREFAB ExpoTheExplorer/Assets/Prefabs/Confetti.prefab   (1 object(s))
 - Confetti  [RectTransform, ParticleSystem, ParticleSystemRenderer]  refs: LightsModule=NULL, ShapeModule=NULL, SubModule=NULL, UVModule=NULL, moveWithCustomTransform=NULL
@@ -179,7 +179,7 @@ Unity menu item Tools > unity-dev > Export unitymap.
       - Label  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
 
 ## PREFAB ExpoTheExplorer/Assets/Prefabs/UI/MetaUnlockPopup.prefab   (8 object(s))
-- MetaUnlockPopup  [RectTransform, Canvas, MISSING SCRIPT (guid:0cd44c10), MISSING SCRIPT (guid:dc42784c), MetaUnlockPopup]  refs: body=set, dismissButton=set, image=set, title=set
+- MetaUnlockPopup  [RectTransform, Canvas, MISSING SCRIPT (guid:0cd44c10), MISSING SCRIPT (guid:dc42784c), MetaUnlockPopup]  refs: animConfig=set, body=set, dismissButton=set, image=set, title=set
   - Backdrop  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
   - Panel  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
     - Image  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
@@ -189,7 +189,7 @@ Unity menu item Tools > unity-dev > Export unitymap.
       - Label  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
 
 ## PREFAB ExpoTheExplorer/Assets/Prefabs/UI/NewItemIntroPopup.prefab   (11 object(s))
-- NewItemIntroPopup  [RectTransform, Canvas, MISSING SCRIPT (guid:0cd44c10), MISSING SCRIPT (guid:dc42784c), NewItemIntroPopup]  refs: directionBadge=set, dismissButton=set, itemHeader=set, itemImage=set, itemNameText=set, messageText=set, modificationHeader=set, visualsConfig=set
+- NewItemIntroPopup  [RectTransform, Canvas, MISSING SCRIPT (guid:0cd44c10), MISSING SCRIPT (guid:dc42784c), NewItemIntroPopup]  refs: animConfig=set, directionBadge=set, dismissButton=set, itemHeader=set, itemImage=set, itemNameText=set, messageText=set, modificationHeader=set, visualsConfig=set
   - Backdrop  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
   - Panel  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
     - Header  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
@@ -215,7 +215,7 @@ Unity menu item Tools > unity-dev > Export unitymap.
     - Text  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
 
 ## PREFAB ExpoTheExplorer/Assets/Prefabs/UI/PowerupShop.prefab   (37 object(s))
-- PowerupShop  [RectTransform, PowerupShopView]  refs: autoCollect=set, backdropButton=set, closeButton=set, noiseClear=set, openButton=set, panel=set, sessionHost=NULL, timeReset=set
+- PowerupShop  [RectTransform, PowerupShopView]  refs: animConfig=set, autoCollect=set, backdropButton=set, closeButton=set, noiseClear=set, openButton=set, panel=set, sessionHost=NULL, timeReset=set
   - Image  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1), MISSING SCRIPT (guid:4e29b1a8)]
     - Panel  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
       - Title  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
@@ -297,15 +297,10 @@ Unity menu item Tools > unity-dev > Export unitymap.
     - GotItButton  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1), MISSING SCRIPT (guid:4e29b1a8)]
       - Label  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
 
-## PREFAB ExpoTheExplorer/Assets/Prefabs/UI/TutorialPowerupSpotlight.prefab   (8 object(s))
-- TutorialPowerupSpotlight  [RectTransform, TutorialPowerupSpotlightView]  refs: frame=set, frameGroup=set, messageCanvasRect=set, messageText=set
-  - Frame  [RectTransform, CanvasGroup]
-    - Top  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
-    - Bottom  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
-    - Left  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
-    - Right  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
-  - MessageCanvas  [RectTransform, Canvas, MISSING SCRIPT (guid:0cd44c10)]
-    - Message  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
+## PREFAB ExpoTheExplorer/Assets/Prefabs/UI/TutorialPowerupSpotlight.prefab   (3 object(s))
+- TutorialPowerupSpotlight  [RectTransform, TutorialPowerupSpotlightView]  refs: animConfig=set, arrow=set, overlayCanvasRect=set
+  - OverlayCanvas  [RectTransform, Canvas, MISSING SCRIPT (guid:0cd44c10)]
+    - Arrow  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
 
 ## PREFAB ExpoTheExplorer/Assets/Prefabs/UI/TutorialStepHints.prefab   (5 object(s))
 - TutorialStepHints  [RectTransform, Canvas, MISSING SCRIPT (guid:0cd44c10), TutorialStepHints]  refs: cardArrow=set, itemArrow=set, messageRoot=set, messageText=set
@@ -367,7 +362,7 @@ Unity menu item Tools > unity-dev > Export unitymap.
 ## SCENE ExpoTheExplorer/Assets/Scenes/SampleScene.unity   (120 object(s))
 - LifeLostHeart  [LifeLostHeartView, Transform]  refs: animConfig=set, slotHearts=set
 - Main Camera  [AudioListener, MISSING SCRIPT (guid:a79441f3), Camera, Transform]
-- Popup Canvas  [GameOverPopupView, MISSING SCRIPT (guid:dc42784c), MISSING SCRIPT (guid:0cd44c10), Canvas, RectTransform, NoKeysPopupView]  refs: animConfig=set, gameManager=set, gemButton=set, haptics=set, livesRefillText=set, mainMenuButton=set, noKeysPopup=set, popupRoot=set, retryButton=set, closeButton=set, countdownText=set, gemButton=set, gemCostLabel=set, haptics=set, notEnoughGemsLabel=set, popupRoot=set, sessionHost=set
+- Popup Canvas  [GameOverPopupView, MISSING SCRIPT (guid:dc42784c), MISSING SCRIPT (guid:0cd44c10), Canvas, RectTransform, NoKeysPopupView]  refs: animConfig=set, gameManager=set, gemButton=set, haptics=set, livesRefillText=set, mainMenuButton=set, noKeysPopup=set, popupRoot=set, retryButton=set, animConfig=set, closeButton=set, countdownText=set, gemButton=set, gemCostLabel=set, haptics=set, notEnoughGemsLabel=set, popupRoot=set, sessionHost=set
   - GameOverPopup [inactive]  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
     - ClipboardImage  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
       - TitleTextImage  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
@@ -416,7 +411,7 @@ Unity menu item Tools > unity-dev > Export unitymap.
 - EventSystem  [MISSING SCRIPT (guid:01614664), MISSING SCRIPT (guid:76c392e4), Transform]
 - StartingPoint  [Transform]
 - BoardView  [BoardView, Transform]  refs: animConfig=set, dragFeelConfig=set, gameManager=set, haptics=set, startingPoint=set, targetCamera=NULL, visualsConfig=set
-- SettingsCanvas  [SettingsPopupView, MISSING SCRIPT (guid:dc42784c), MISSING SCRIPT (guid:0cd44c10), Canvas, RectTransform]  refs: dayNumberText=set, filledStars=set, gameManager=set, hapticsOffIndicator=set, hapticsOnIndicator=set, hapticsToggleButton=set, mainMenuButton=set, mainMenuConfirmNoButton=set, mainMenuConfirmRoot=set, mainMenuConfirmYesButton=set, noKeysPopup=NULL, openButton=set, popupRoot=set, resumeButton=set, retryButton=set, retryConfirmNoButton=set, retryConfirmRoot=set, retryConfirmYesButton=set
+- SettingsCanvas  [SettingsPopupView, MISSING SCRIPT (guid:dc42784c), MISSING SCRIPT (guid:0cd44c10), Canvas, RectTransform]  refs: animConfig=set, dayNumberText=set, filledStars=set, gameManager=set, hapticsOffIndicator=set, hapticsOnIndicator=set, hapticsToggleButton=set, mainMenuButton=set, mainMenuConfirmNoButton=set, mainMenuConfirmRoot=set, mainMenuConfirmYesButton=set, noKeysPopup=set, openButton=set, popupRoot=set, resumeButton=set, retryButton=set, retryConfirmNoButton=set, retryConfirmRoot=set, retryConfirmYesButton=set
   - OpenButton  [MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:fe87c0e1), HapticButton, CanvasRenderer, RectTransform]  refs: haptics=set
   - PopupRoot [inactive]  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
     - Panel  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
