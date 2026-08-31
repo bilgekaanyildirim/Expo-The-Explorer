@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "483837410952",
+    "project_id": "expo-the-explorer",
+    "storage_bucket": "expo-the-explorer.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:483837410952:android:b6522edaaff047e3e4e93d",
+        "android_client_info": {
+          "package_name": "com.karanaka.expotheexplorer"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD6GEkQ-0IznaksetAg4C-ZQulFH0EUbeA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

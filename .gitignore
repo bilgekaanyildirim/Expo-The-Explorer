@@ -83,3 +83,32 @@ crashlytics-build.properties
 .claude/worktrees/
 .claude/**/__pycache__/
 *.slnx
+
+# Firebase Unity SDK — VENDOR, re-imported rather than committed (decisions.md D-148).
+# It is 250 MB across 148 files, and FirebaseCppApp-13_16_0.bundle alone is 106 MB --
+# past GitHub's 100 MB hard limit, so committing it would make the repo unpushable the
+# day a remote is added, and unpicking it from history afterwards means a rewrite.
+# A fresh clone re-imports the SDK (App is bundled inside Auth/Firestore; do NOT import
+# FirebaseAnalytics) and then clears the Gatekeeper quarantine on the .bundle natives:
+#   xattr -r -d com.apple.quarantine ExpoTheExplorer/Assets/Firebase/Plugins/x86_64
+/ExpoTheExplorer/Assets/Firebase/*
+/ExpoTheExplorer/Assets/ExternalDependencyManager/
+/ExpoTheExplorer/Assets/ExternalDependencyManager.meta
+
+# ...but the CONFIG is kept: tiny, and it is this project's Firebase identity. Without
+# these the SDK cannot initialise, and re-downloading them means going back to the
+# console. They are client config, not secrets -- Firestore security lives in the rules.
+!/ExpoTheExplorer/Assets/Firebase/google-services.json
+!/ExpoTheExplorer/Assets/Firebase/google-services.json.meta
+!/ExpoTheExplorer/Assets/Firebase/GoogleService-Info.plist
+!/ExpoTheExplorer/Assets/Firebase/GoogleService-Info.plist.meta
+
+# The SDK also scatters files OUTSIDE Assets/Firebase/, and they are ignored for the
+# same reason plus one more: half a committed SDK is worse than none, because a fresh
+# clone would then hold stale .meta files that a re-import has to fight.
+/ExpoTheExplorer/Assets/Plugins/iOS/Firebase/
+/ExpoTheExplorer/Assets/Plugins/iOS/Firebase.meta
+/ExpoTheExplorer/Assets/Plugins/tvOS/
+/ExpoTheExplorer/Assets/Plugins/tvOS.meta
+/ExpoTheExplorer/Assets/Editor Default Resources/Firebase/
+/ExpoTheExplorer/Assets/Editor Default Resources/Firebase.meta

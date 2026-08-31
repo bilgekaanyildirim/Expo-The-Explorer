@@ -103,3 +103,19 @@ MemoryCaptures/
 
 # Coverage reports
 Coverage/
+# Firebase SDK folder metas — the other half of the rule this file already states
+# above ("meta data should only be ignored when the corresponding asset is ignored").
+# The repo-root .gitignore drops the SDK itself (decisions.md D-148); without these
+# lines the `!/[Aa]ssets/**/*.meta` negation above would keep their folder metas, and
+# a fresh clone would open Unity holding metas for folders that are not there -- which
+# Unity then deletes on import, dirtying the working tree before anyone has done
+# anything. Assets/Firebase.meta is deliberately NOT here: that folder keeps its two
+# config files, so its own meta is real.
+/Assets/Firebase/Editor.meta
+/Assets/Firebase/FirebaseApp.meta
+/Assets/Firebase/Plugins.meta
+/Assets/Firebase/m2repository.meta
+/Assets/ExternalDependencyManager.meta
+/Assets/Plugins/iOS/Firebase.meta
+/Assets/Plugins/tvOS.meta
+/Assets/Editor Default Resources/Firebase.meta
