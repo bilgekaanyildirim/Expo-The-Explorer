@@ -173,6 +173,30 @@ def demo_runs() -> list[dict]:
     return runs
 
 
+def read_thresholds() -> dict:
+    """The star thresholds, read from the game's own config asset.
+
+    Hardcoding 0.55/0.30 here would work today and quietly lie the first time
+    somebody retunes the asset -- and retuning it is exactly what this report is
+    FOR, so the two would drift apart at the worst possible moment. The asset is
+    Unity YAML in text mode, so a two-key grep is enough; if it cannot be read
+    the chart just loses its threshold lines and says so.
+    """
+    here = os.path.dirname(os.path.abspath(__file__))
+    path = os.path.join(here, os.pardir, "ExpoTheExplorer", "Assets", "Data", "StarScoreConfig.asset")
+    out = {"three": None, "two": None}
+    try:
+        with open(path, encoding="utf-8", errors="ignore") as f:
+            for line in f:
+                if "threeStarScore:" in line:
+                    out["three"] = float(line.split(":", 1)[1].strip())
+                elif "twoStarScore:" in line:
+                    out["two"] = float(line.split(":", 1)[1].strip())
+    except OSError:
+        pass
+    return out
+
+
 def resolve_outcome(run: dict, stale_before: datetime) -> str:
     """The four buckets a finished-with run falls into.
 
@@ -244,24 +268,35 @@ def analyze(runs: list[dict], stale_minutes: int) -> dict:
             "mean_time": statistics.mean([r.get("elapsedSeconds", 0) for r in done]) if done else None,
             "mean_mistakes": statistics.mean([r.get("mistakeCount", 0) for r in rs]) if rs else 0.0,
             "mean_score": statistics.mean([r.get("score", 0) for r in done]) if done else None,
-            # STARS ONLY FROM COMPLETED RUNS. A failed or abandoned run carries
-            # stars=0, and folding those in would drag the curve down for a
-            # reason that has nothing to do with how well the Day plays.
-            "mean_stars": statistics.mean([r.get("stars", 0) for r in done]) if done else None,
+            # STAR SCORE, NOT THE STAR COUNT, and only from completed runs.
+            #
+            # The 0-3 star count is what the player sees, but it has already been
+            # through two thresholds by the time it exists -- every score from
+            # 0.55 to 1.00 collapses into "3". For balancing that is the wrong end
+            # of the pipe: a Day where everyone scrapes 0.56 and one where
+            # everyone cruises at 0.95 are the same chart in stars and completely
+            # different Days in score. So the curve is the continuous value and
+            # the star counts stay as a histogram beside it.
+            #
+            # Completed runs only, either way: a failed or abandoned run scores 0
+            # for reasons that have nothing to do with how well the Day plays.
+            "mean_star_score": statistics.mean([r.get("starScore", 0.0) for r in done]) if done else None,
+            "median_star_score": statistics.median([r.get("starScore", 0.0) for r in done]) if done else None,
             "star_hist": {s: sum(1 for r in done if r.get("stars") == s) for s in (1, 2, 3)},
             "retry_rate": retried / len(per_player) if per_player else 0.0,
             "first_completion": (sum(first_results) / len(first_results)) if first_results else 0.0,
         })
 
-    # Per-player star curve: one point per Day the player actually completed.
+    # Per-player star-score curve: one point per Day the player actually
+    # completed, carrying the continuous 0..1 score rather than the 0-3 count.
     curves: dict[str, dict[int, float]] = defaultdict(dict)
     for r in runs:
         if r["_outcome"] != "completed":
             continue
         d = r.get("dayContentIndex", -1)
-        s = r.get("stars", 0)
+        s = float(r.get("starScore", 0.0) or 0.0)
         # Best result on that Day, since a Day can be replayed for a better score.
-        curves[r.get("playerId")][d] = max(curves[r.get("playerId")].get(d, 0), s)
+        curves[r.get("playerId")][d] = max(curves[r.get("playerId")].get(d, 0.0), s)
 
     return {
         "days": days,
@@ -351,7 +386,7 @@ def chart_outcomes(days: list[dict]) -> str:
     return "".join(out)
 
 
-def chart_stars(days: list[dict], curves: dict[str, dict[int, float]]) -> str:
+def chart_stars(days: list[dict], curves: dict[str, dict[int, float]], thresholds: dict) -> str:
     """Star score across the campaign: every player faint, the mean on top.
 
     PLAYERS DELIBERATELY GET NO COLOUR. The categorical palette has eight slots
@@ -372,12 +407,24 @@ def chart_stars(days: list[dict], curves: dict[str, dict[int, float]]) -> str:
     def px(day):
         return x0 + (x1 - x0) * (day - lo) / span
 
-    def py(stars):
-        return y1 - (y1 - y0) * (stars / 3.0)
+    def py(score):
+        return y1 - (y1 - y0) * max(0.0, min(1.0, score))
 
-    ticks = [(s, py(s)) for s in (0, 1, 2, 3)]
-    out = svg_open(w, h, "Average stars for each Day, per player and overall")
-    out += axis_bits(x0, y0, x1, y1, ticks, lambda v: f"{v:g}★", w)
+    ticks = [(v, py(v)) for v in (0.0, 0.25, 0.5, 0.75, 1.0)]
+    out = svg_open(w, h, "Star score for each Day, per player and overall")
+    out += axis_bits(x0, y0, x1, y1, ticks, lambda v: f"{v:.2f}", w)
+
+    # The two thresholds the game actually awards on, read from
+    # StarScoreConfig.asset so this chart cannot drift from the rule. They turn
+    # the y-axis from an abstract 0..1 into the question that matters: is this
+    # Day landing above or below where a third star starts?
+    for value, label in ((thresholds.get("three"), "3★"), (thresholds.get("two"), "2★")):
+        if value is None:
+            continue
+        y = py(value)
+        out.append(f'<line class="thresh" x1="{x0}" y1="{y:.1f}" x2="{x1}" y2="{y:.1f}"/>')
+        out.append(f'<text class="threshlab" x="{x1 - 4}" y="{y - 5:.1f}" text-anchor="end">'
+                   f'{label} · {value:.2f}</text>')
 
     for pid, curve in sorted(curves.items()):
         pts = [(px(d), py(s)) for d, s in sorted(curve.items())]
@@ -386,17 +433,17 @@ def chart_stars(days: list[dict], curves: dict[str, dict[int, float]]) -> str:
         path = " ".join(f"{'M' if i == 0 else 'L'}{x:.1f},{y:.1f}" for i, (x, y) in enumerate(pts))
         out.append(f'<path class="trace" d="{path}"><title>{esc(pid)}</title></path>')
 
-    mean_pts = [(px(d["day"]), py(d["mean_stars"])) for d in days if d["mean_stars"] is not None]
+    mean_pts = [(px(d["day"]), py(d["mean_star_score"])) for d in days if d["mean_star_score"] is not None]
     if len(mean_pts) >= 2:
         path = " ".join(f"{'M' if i == 0 else 'L'}{x:.1f},{y:.1f}" for i, (x, y) in enumerate(mean_pts))
         out.append(f'<path class="mean" d="{path}"/>')
     for d in days:
-        if d["mean_stars"] is None:
+        if d["mean_star_score"] is None:
             continue
         out.append(
-            f'<circle class="meandot" cx="{px(d["day"]):.1f}" cy="{py(d["mean_stars"]):.1f}" r="4.5">'
-            f'<title>Day {d["day"]} — mean {d["mean_stars"]:.2f}★ '
-            f'from {d["counts"]["completed"]} completed run(s)</title></circle>'
+            f'<circle class="meandot" cx="{px(d["day"]):.1f}" cy="{py(d["mean_star_score"]):.1f}" r="4.5">'
+            f'<title>Day {d["day"]} — mean {d["mean_star_score"]:.2f}, '
+            f'median {d["median_star_score"]:.2f}, from {d["counts"]["completed"]} completed run(s)</title></circle>'
         )
 
     step = max(1, len(days) // 12)
@@ -456,7 +503,7 @@ def small_multiples(curves: dict[str, dict[int, float]], days) -> str:
 
     cards = []
     for pid, curve in sorted(curves.items()):
-        pts = [((x0 + (x1 - x0) * (d - lo) / span), (y1 - (y1 - y0) * (s / 3.0)))
+        pts = [((x0 + (x1 - x0) * (d - lo) / span), (y1 - (y1 - y0) * max(0.0, min(1.0, s))))
                for d, s in sorted(curve.items())]
         body = svg_open(w, h, f"{pid} star curve")
         body.append(f'<line class="baseline" x1="{x0}" y1="{y1}" x2="{x1}" y2="{y1}"/>')
@@ -465,7 +512,7 @@ def small_multiples(curves: dict[str, dict[int, float]], days) -> str:
             body.append(f'<path class="mean sm" d="{path}"/>')
         for (x, y), (d, s) in zip(pts, sorted(curve.items())):
             body.append(f'<circle class="meandot sm" cx="{x:.1f}" cy="{y:.1f}" r="2.6">'
-                        f'<title>Day {d}: {s:g}★</title></circle>')
+                        f'<title>Day {d}: {s:.2f}</title></circle>')
         body.append('</svg>')
         reached = max(curve) if curve else 0
         cards.append(
@@ -512,6 +559,8 @@ border-radius:6px;padding:12px 12px 4px}
 .mean.sm{stroke-width:1.8}
 .meandot{fill:var(--series1);stroke:var(--surface);stroke-width:2}
 .meandot.sm{stroke-width:1.2}
+.thresh{stroke:var(--ink2);stroke-width:1;stroke-dasharray:4 4;opacity:.55}
+.threshlab{fill:var(--ink2);font-size:10.5px;font-variant-numeric:tabular-nums}
 .legend{display:flex;flex-wrap:wrap;gap:14px;margin:8px 0 0;font-size:13px;color:var(--ink2)}
 .legend i{width:13px;height:13px;border-radius:3px;display:inline-block;vertical-align:-2px;margin-right:6px}
 .note{color:var(--muted);font-size:12.5px;margin:6px 0 0}
@@ -532,7 +581,7 @@ figcaption{font-size:12px;color:var(--ink2);padding:2px 4px 6px}
 """
 
 
-def render_html(a: dict, demo: bool, env: str, stale: int) -> str:
+def render_html(a: dict, demo: bool, env: str, stale: int, thresholds: dict) -> str:
     days = a["days"]
     total_players = a["players"]
 
@@ -568,7 +617,7 @@ def render_html(a: dict, demo: bool, env: str, stale: int) -> str:
             f'<td>{d["retry_rate"]*100:.0f}%</td>'
             f'<td>{("%.0fs" % d["median_time"]) if d["median_time"] else "—"}</td>'
             f'<td>{d["mean_mistakes"]:.1f}</td>'
-            f'<td>{("%.2f" % d["mean_stars"]) if d["mean_stars"] is not None else "—"}</td>'
+            f'<td>{("%.2f" % d["mean_star_score"]) if d["mean_star_score"] is not None else "—"}</td>'
             f'<td>{st[1]}/{st[2]}/{st[3]}</td></tr>'
         )
 
@@ -599,13 +648,15 @@ a Day whose bar leans away from green is doing something the others are not.</p>
 <figure>{chart_outcomes(days)}{legend}</figure>
 
 <h2>Star score across the campaign</h2>
-<p class="sub">Each faint line is one player; the blue line is the mean. Only
-<em>completed</em> runs count — a failed run scores zero stars for reasons that have
-nothing to do with how the Day plays.</p>
-<figure>{chart_stars(days, a["curves"])}</figure>
+<p class="sub">The continuous 0–1 score, not the 0–3 star count: every score from
+{esc("%.2f" % thresholds["three"]) if thresholds.get("three") else "the 3★ threshold"} upward collapses into “3 stars”, so a Day where everyone
+scrapes past and one where everyone cruises look identical in stars and completely
+different here. Each faint line is one player; the blue line is the mean; the dashed
+rules are the thresholds the game awards on. Only <em>completed</em> runs count.</p>
+<figure>{chart_stars(days, a["curves"], thresholds)}</figure>
 
 <h2>Each player, Day by Day</h2>
-<p class="sub">Same data, one panel per player. Shared scales, so the panels compare.</p>
+<p class="sub">Same star score, one panel per player, all on the same 0–1 scale so the panels compare.</p>
 {small_multiples(a["curves"], days)}
 
 <h2>How long a Day takes</h2>
@@ -619,9 +670,9 @@ nothing to do with how the Day plays.</p>
 <h2>Every number</h2>
 <table><thead><tr><th>Day</th><th>Runs</th><th>Players</th><th>Completed</th>
 <th>1st try</th><th>Left</th><th>Retried</th><th>Median</th><th>Mistakes</th>
-<th>Stars</th><th>1/2/3★</th></tr></thead><tbody>{"".join(rows)}</tbody></table>
+<th>Star score</th><th>1/2/3★</th></tr></thead><tbody>{"".join(rows)}</tbody></table>
 <p class="note">“Left” = quit + abandoned. “1st try” = players who completed on their
-first attempt at that Day. Stars are the mean over completed runs only.</p>
+first attempt at that Day. “Star score” is the mean 0–1 score over completed runs only; the 1/2/3★ column counts how many of those completed runs landed in each band.</p>
 </div></body></html>"""
 
 
@@ -634,11 +685,11 @@ def print_summary(a: dict, stale: int) -> None:
         print("  No finished runs yet.\n")
         return
 
-    print(f"  {'Day':>4}  {'runs':>5} {'done':>6} {'left':>6} {'median':>8} {'mist':>6} {'stars':>6}")
+    print(f"  {'Day':>4}  {'runs':>5} {'done':>6} {'left':>6} {'median':>8} {'mist':>6} {'score':>6}")
     print(f"  {'-'*4}  {'-'*5} {'-'*6} {'-'*6} {'-'*8} {'-'*6} {'-'*6}")
     for d in a["days"]:
         med = f"{d['median_time']:.0f}s" if d["median_time"] else "—"
-        st = f"{d['mean_stars']:.2f}" if d["mean_stars"] is not None else "—"
+        st = f"{d['mean_star_score']:.2f}" if d["mean_star_score"] is not None else "—"
         print(f"  {d['day']:>4}  {d['runs']:>5} {d['completion']*100:>5.0f}% "
               f"{d['abandon']*100:>5.0f}% {med:>8} {d['mean_mistakes']:>6.1f} {st:>6}")
 
@@ -665,6 +716,8 @@ def main() -> None:
     p.add_argument("--stale-minutes", type=int, default=STALE_MINUTES_DEFAULT,
                    help="an in_progress run older than this counts as abandoned")
     p.add_argument("--out", default=os.path.join(os.path.dirname(__file__), "telemetry-report.html"))
+    p.add_argument("--open", dest="open_after", action="store_true",
+                   help="open the report when it is written")
     args = p.parse_args()
 
     if args.demo:
@@ -675,11 +728,23 @@ def main() -> None:
         p.error("pass --key <service-account.json>, or --demo to see the report shape")
 
     a = analyze(runs, args.stale_minutes)
+    thresholds = read_thresholds()
     print_summary(a, args.stale_minutes)
 
     with open(args.out, "w", encoding="utf-8") as f:
-        f.write(render_html(a, args.demo, args.env, args.stale_minutes))
+        f.write(render_html(a, args.demo, args.env, args.stale_minutes, thresholds))
     print(f"  Wrote {args.out}\n")
+
+    # THE REPORT IS A SNAPSHOT, NOT A DASHBOARD. It holds whatever Firestore said
+    # at the moment this ran, and reloading the page in a browser re-reads the same
+    # file -- new runs need this script run again. It cannot be live: the security
+    # rules give no client read access, so a page that queried Firestore itself
+    # would need the service account key sitting in a browser, which is precisely
+    # the thing that key must never do.
+    if args.open_after:
+        import subprocess
+        opener = "open" if sys.platform == "darwin" else "xdg-open"
+        subprocess.run([opener, args.out], check=False)
 
 
 if __name__ == "__main__":
