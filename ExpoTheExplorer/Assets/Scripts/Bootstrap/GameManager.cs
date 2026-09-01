@@ -1234,8 +1234,15 @@ namespace ExpoTheExplorer.Bootstrap
             dayTicketSequenceProvider = CurrentDay != null
                 ? new DayTicketSequenceProvider(CurrentDay.TicketSequence, CurrentDay.TicketRuntime, ticketFactory)
                 : null;
+            // The tray reader is a lambda, not TrayManager itself: resolved at call
+            // time, so it survives being handed over before TrayManager exists and
+            // stays correct across a Day rebuild. Null-safe for the same reason
+            // TrayContentsSnapshot is — the main screen builds no trays (D-152).
             boardDistributor = CurrentDay != null
-                ? new BoardDistributor(State, CurrentDay.BoardDistribution)
+                ? new BoardDistributor(
+                    State,
+                    CurrentDay.BoardDistribution,
+                    trayContentsForSlot: slot => TrayManager?.GetContents(slot))
                 : null;
         }
 

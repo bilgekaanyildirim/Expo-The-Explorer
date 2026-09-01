@@ -289,6 +289,152 @@ namespace ExpoTheExplorer.Tests.EditMode
             Assert.AreEqual(1, CountMatchingItemsOnBoard(state.Board, main, ticket.Modifications));
         }
 
+        // Backs the trayContentsForSlot delegate BoardDistributor takes (D-152) with a
+        // plain per-slot array, indexed the way TrayManager indexes its own trays. Left
+        // null for a slot with nothing in it, which also exercises the reader's null
+        // branch — TrayManager's own snapshot helper hands out null the same way.
+        private static IReadOnlyList<BoardItem>[] EmptyTrays()
+        {
+            return new IReadOnlyList<BoardItem>[GameState.TicketSlotCount];
+        }
+
+        [Test]
+        public void OnOrderPlaced_RequiredItemAlreadyInThatTicketsTray_DoesNotSpawnDuplicate()
+        {
+            // The reason D-152 exists. The player dragged the burger into the tray, so it
+            // is no longer on the board; counting only the board reads the requirement as
+            // unmet and spawns a second burger on top of the one already banked.
+            var state = new GameState(gameConfig);
+            var main = CreateFoodItem();
+            var ticket = CreateTicket(new List<FoodItemConfig> { main });
+            state.TicketSlots[0] = ticket;
+
+            var trays = EmptyTrays();
+            trays[0] = new List<BoardItem> { new(main, ticket.Modifications) };
+            var distributor = new BoardDistributor(
+                state, CreateDistributionConfig(0f), trayContentsForSlot: slot => trays[slot]);
+
+            distributor.OnOrderPlaced(new[] { ticket }, Array.Empty<Ticket>());
+
+            Assert.AreEqual(0, CountMatchingItemsOnBoard(state.Board, main, ticket.Modifications));
+        }
+
+        [Test]
+        public void OnOrderPlaced_RequiredItemSitsInAnotherTicketsTray_StillSpawnsForThisTicket()
+        {
+            // The half that must NOT change, and the reason the credit is per-ticket
+            // rather than one board+all-trays pool: A's banked burger is committed to A
+            // and unavailable to B, so B still needs one spawned. Exactly one appears --
+            // A is covered by its own tray, B by the board. A global pool would spawn
+            // zero and leave B unable to ever complete (the road back to D-044).
+            var state = new GameState(gameConfig);
+            var main = CreateFoodItem();
+            var ticketA = CreateTicket(new List<FoodItemConfig> { main }, arrivalSequence: 0);
+            var ticketB = CreateTicket(new List<FoodItemConfig> { main }, arrivalSequence: 1);
+            state.TicketSlots[0] = ticketA;
+            state.TicketSlots[1] = ticketB;
+
+            var trays = EmptyTrays();
+            trays[0] = new List<BoardItem> { new(main, ticketA.Modifications) };
+            var distributor = new BoardDistributor(
+                state, CreateDistributionConfig(0f, guaranteedTicketCount: 2),
+                trayContentsForSlot: slot => trays[slot]);
+
+            distributor.OnOrderPlaced(new[] { ticketA, ticketB }, Array.Empty<Ticket>());
+
+            Assert.AreEqual(1, CountMatchingItemsOnBoard(state.Board, main, ticketA.Modifications));
+        }
+
+        [Test]
+        public void OnOrderPlaced_TicketNeedsTwoOfACombo_TrayCoversOnlyOneOfThem()
+        {
+            // The tray credit is consumed per requirement, not tested once: one banked
+            // burger cancels one of the two, never both.
+            var state = new GameState(gameConfig);
+            var main = CreateFoodItem();
+            var ticket = CreateTicket(new List<FoodItemConfig> { main, main });
+            state.TicketSlots[0] = ticket;
+
+            var trays = EmptyTrays();
+            trays[0] = new List<BoardItem> { new(main, ticket.Modifications) };
+            var distributor = new BoardDistributor(
+                state, CreateDistributionConfig(0f), trayContentsForSlot: slot => trays[slot]);
+
+            distributor.OnOrderPlaced(new[] { ticket }, Array.Empty<Ticket>());
+
+            Assert.AreEqual(1, CountMatchingItemsOnBoard(state.Board, main, ticket.Modifications));
+        }
+
+        [Test]
+        public void OnOrderPlaced_TrayHoldsAWrongItem_CreditsNothingAndTheRequirementStillSpawns()
+        {
+            // A player can drop anything into a tray, right or wrong. A wrong item keys
+            // to no requirement, so it must not silently absorb one.
+            var state = new GameState(gameConfig);
+            var main = CreateFoodItem(id: "burger");
+            var somethingElse = CreateFoodItem(id: "hotdog");
+            var ticket = CreateTicket(new List<FoodItemConfig> { main });
+            state.TicketSlots[0] = ticket;
+
+            var trays = EmptyTrays();
+            trays[0] = new List<BoardItem> { new(somethingElse, Array.Empty<Modification>()) };
+            var distributor = new BoardDistributor(
+                state, CreateDistributionConfig(0f), trayContentsForSlot: slot => trays[slot]);
+
+            distributor.OnOrderPlaced(new[] { ticket }, Array.Empty<Ticket>());
+
+            Assert.AreEqual(1, CountMatchingItemsOnBoard(state.Board, main, ticket.Modifications));
+        }
+
+        [Test]
+        public void OnOrderPlaced_TrayHoldsThePlainVersionOfAModifiedRequirement_StillSpawns()
+        {
+            // The tray is counted through RequiredItemKey, the same key the board is
+            // counted through, so a plain burger in the tray does not satisfy a ticket
+            // that ordered it with extra cheese.
+            var state = new GameState(gameConfig);
+            var main = CreateFoodItem();
+            var mod = CreateModification();
+            var ticket = CreateTicket(new List<FoodItemConfig> { main }, new List<Modification> { new(mod, true) });
+            state.TicketSlots[0] = ticket;
+
+            var trays = EmptyTrays();
+            trays[0] = new List<BoardItem> { new(main, Array.Empty<Modification>()) };
+            var distributor = new BoardDistributor(
+                state, CreateDistributionConfig(0f), trayContentsForSlot: slot => trays[slot]);
+
+            distributor.OnOrderPlaced(new[] { ticket }, Array.Empty<Ticket>());
+
+            Assert.AreEqual(1, CountMatchingItemsOnBoard(state.Board, main, ticket.Modifications));
+        }
+
+        [Test]
+        public void OnOrderPlaced_GuaranteedTicketIsStillQueued_TrayCreditNeverAppliesToIt()
+        {
+            // A queued ticket occupies no slot, so it has no tray -- whatever happens to
+            // sit in slot 0's tray must not be read as ITS banked item. The budget of 2
+            // covers the active ticket first and then reaches the queued one (D-044).
+            var state = new GameState(gameConfig);
+            var main = CreateFoodItem(id: "burger");
+            var queuedFood = CreateFoodItem(id: "hotdog");
+            var active = CreateTicket(new List<FoodItemConfig> { main }, arrivalSequence: 0);
+            var queued = CreateTicket(new List<FoodItemConfig> { queuedFood }, arrivalSequence: 1);
+            state.TicketSlots[0] = active;
+
+            var trays = EmptyTrays();
+            trays[0] = new List<BoardItem> { new(queuedFood, Array.Empty<Modification>()) };
+            var distributor = new BoardDistributor(
+                state, CreateDistributionConfig(0f, guaranteedTicketCount: 2),
+                trayContentsForSlot: slot => trays[slot]);
+
+            distributor.OnOrderPlaced(new[] { active }, new[] { queued });
+
+            Assert.AreEqual(1, CountMatchingItemsOnBoard(state.Board, main, active.Modifications),
+                "The active ticket's burger is not in its tray, so it still spawns.");
+            Assert.AreEqual(1, CountMatchingItemsOnBoard(state.Board, queuedFood, Array.Empty<Modification>()),
+                "The queued ticket has no tray; slot 0's hotdog belongs to nobody's requirement but the board's.");
+        }
+
         [Test]
         public void OnOrderPlaced_DefaultGuaranteedCount_OnlyGuaranteesEarliestArrivedTicket()
         {

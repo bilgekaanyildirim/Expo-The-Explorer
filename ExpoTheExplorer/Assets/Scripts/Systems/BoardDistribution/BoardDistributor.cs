@@ -22,14 +22,31 @@ namespace ExpoTheExplorer.Systems.BoardDistribution
         private readonly GameState state;
         private readonly BoardDistributionSettings settings;
         private readonly Random random;
+        private readonly Func<int, IReadOnlyList<BoardItem>> trayContentsForSlot;
         private readonly HashSet<Ticket> leakedTickets = new();
         private readonly HashSet<Ticket> guaranteedTickets = new();
 
-        public BoardDistributor(GameState state, BoardDistributionSettings settings, Random random = null)
+        // trayContentsForSlot reads one ticket slot's tray at the moment a round
+        // runs — a delegate rather than a TrayManager reference for the same
+        // reason the ticket lists are parameters: this class stays on Core + Data
+        // and never sees Systems.TraySystem (TrayManager itself takes
+        // deliverTicket/loseLife delegates for the mirror-image reason). It is
+        // read live, never snapshotted at construction: a tray's contents change
+        // constantly, and this distributor outlives many drags.
+        //
+        // Omitting it means "every tray is empty", which is exactly the behavior
+        // that existed before the tray was counted at all — the honest default
+        // for a caller with no trays (EditMode tests, the main screen).
+        public BoardDistributor(
+            GameState state,
+            BoardDistributionSettings settings,
+            Random random = null,
+            Func<int, IReadOnlyList<BoardItem>> trayContentsForSlot = null)
         {
             this.state = state;
             this.settings = settings;
             this.random = random ?? new Random();
+            this.trayContentsForSlot = trayContentsForSlot;
         }
 
         // Called whenever a new order (ticket) is assigned into an active slot —
@@ -55,10 +72,40 @@ namespace ExpoTheExplorer.Systems.BoardDistribution
             var neededCounts = new Dictionary<RequiredItemKey, int>();
             foreach (var ticket in guaranteedTickets)
             {
+                // An item the player already dragged into THIS ticket's tray is no
+                // longer on the board, so without this the requirement reads as
+                // unmet every round and a duplicate gets spawned on top of what the
+                // player already banked — the board fills with food nobody needs.
+                //
+                // The credit is strictly per-ticket, and that is the whole design:
+                // an item sitting in ticket A's tray is committed to A and
+                // unavailable to B, so counting all trays into one pool alongside
+                // the board would leave B permanently short. That is the exact
+                // failure TrayManager.TryAddItem's onAccepted ordering exists to
+                // prevent (see its comment), and it is how the D-044 stuck position
+                // reappears. So: a ticket's own tray reduces only its own needs, and
+                // the board below stays the only SHARED pool.
+                //
+                // A tray can never hold a ticket's complete correct set — TryAddItem
+                // runs the batch check the instant the tray fills and delivers — so
+                // this can never drive a guaranteed ticket's need to zero while it is
+                // still unfinished. "At least one active ticket is completable" holds
+                // by construction, now counting the tray as part of "completable".
+                var bankedInOwnTray = CountItemsInTrayOf(ticket);
+
                 foreach (var food in ticket.RequiredItems)
                 {
                     var mods = food.Category == FoodCategory.Main ? ticket.Modifications : Array.Empty<Modification>();
                     var key = new RequiredItemKey(food, mods);
+
+                    // Consumed, not just tested: a ticket wanting two of the same
+                    // combo with one in its tray still needs the second one.
+                    if (bankedInOwnTray.TryGetValue(key, out var banked) && banked > 0)
+                    {
+                        bankedInOwnTray[key] = banked - 1;
+                        continue;
+                    }
+
                     neededCounts.TryGetValue(key, out var count);
                     neededCounts[key] = count + 1;
                 }
@@ -246,6 +293,43 @@ namespace ExpoTheExplorer.Systems.BoardDistribution
                     counts.TryGetValue(key, out var count);
                     counts[key] = count + 1;
                 }
+            }
+
+            return counts;
+        }
+
+        // What this ticket's OWN tray already holds, keyed the same way the board
+        // is — so the two counts are comparable and a plain hotdog in the tray
+        // never credits a ketchup hotdog's requirement.
+        //
+        // A ticket's tray is found by its slot: TrayManager allocates
+        // GameState.TicketSlotCount trays and indexes them by the same slot index
+        // TicketSlots uses, so IndexOf here IS the mapping. A guaranteed ticket
+        // still sitting in the upcoming queue is in no slot, gets -1, and is
+        // credited nothing — correct, since it has no tray to have banked into.
+        //
+        // Items the player dropped in that the ticket does not want produce keys
+        // that appear in no requirement, so they credit nothing on their own. They
+        // are still counted here rather than filtered, because the caller consumes
+        // this per requirement and never asks about a key it doesn't need.
+        private Dictionary<RequiredItemKey, int> CountItemsInTrayOf(Ticket ticket)
+        {
+            var counts = new Dictionary<RequiredItemKey, int>();
+            if (trayContentsForSlot == null) return counts;
+
+            var slotIndex = Array.IndexOf(state.TicketSlots, ticket);
+            if (slotIndex < 0) return counts;
+
+            var contents = trayContentsForSlot(slotIndex);
+            if (contents == null) return counts;
+
+            foreach (var item in contents)
+            {
+                if (item == null) continue;
+
+                var key = new RequiredItemKey(item.Config, item.Modifications);
+                counts.TryGetValue(key, out var count);
+                counts[key] = count + 1;
             }
 
             return counts;
