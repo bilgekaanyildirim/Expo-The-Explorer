@@ -1,6 +1,6 @@
 {
     "runtime": {
-        "dayIndex": 17,
+        "dayIndex": 20,
         "ticketsRequiredForDay": 12,
         "boardDistribution": {
             "noiseLeakCountLambda": 1.5,
@@ -34,7 +34,7 @@
                 "drinkItemId": "cola",
                 "modifications": [
                     {
-                        "modificationId": "no_lettuce",
+                        "modificationId": "extra_cheese",
                         "isAddition": false
                     }
                 ],
@@ -71,7 +71,7 @@
                 "drinkItemId": "sprite",
                 "modifications": [
                     {
-                        "modificationId": "no_lettuce",
+                        "modificationId": "extra_cheese",
                         "isAddition": false
                     }
                 ],
@@ -112,7 +112,7 @@
                 "drinkItemId": "cola",
                 "modifications": [
                     {
-                        "modificationId": "no_lettuce",
+                        "modificationId": "extra_cheese",
                         "isAddition": false
                     }
                 ],
@@ -152,26 +152,18 @@
                 "mainItemId": "burger",
                 "sideItemId": "fries",
                 "drinkItemId": "sprite",
-                "modifications": [],
+                "modifications": [
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": false
+                    }
+                ],
                 "patienceType": "Normal",
                 "customerNameOverride": "",
                 "timeLimitSecondsOverride": 0.0
             }
         ],
         "boardTimeline": [
-            {
-                "triggerStepIndex": -1,
-                "itemId": "burger",
-                "modifications": [
-                    {
-                        "modificationId": "no_lettuce",
-                        "isAddition": false
-                    }
-                ],
-                "useExactCell": true,
-                "x": 2,
-                "y": 2
-            },
             {
                 "triggerStepIndex": -1,
                 "itemId": "burger",
@@ -198,6 +190,14 @@
             },
             {
                 "triggerStepIndex": -1,
+                "itemId": "fries",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 4,
+                "y": 2
+            },
+            {
+                "triggerStepIndex": -1,
                 "itemId": "crispyonion",
                 "modifications": [],
                 "useExactCell": true,
@@ -214,7 +214,7 @@
             },
             {
                 "triggerStepIndex": -1,
-                "itemId": "cola",
+                "itemId": "fanta",
                 "modifications": [],
                 "useExactCell": true,
                 "x": 1,
@@ -222,7 +222,7 @@
             },
             {
                 "triggerStepIndex": -1,
-                "itemId": "cola",
+                "itemId": "sprite",
                 "modifications": [],
                 "useExactCell": true,
                 "x": 2,
@@ -230,10 +230,15 @@
             },
             {
                 "triggerStepIndex": -1,
-                "itemId": "crispyonion",
-                "modifications": [],
+                "itemId": "burger",
+                "modifications": [
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": false
+                    }
+                ],
                 "useExactCell": true,
-                "x": 4,
+                "x": 2,
                 "y": 2
             }
         ],
@@ -246,7 +251,7 @@
             "items": [
                 {
                     "itemId": "",
-                    "modificationId": "no_lettuce",
+                    "modificationId": "extra_cheese",
                     "isAddition": false,
                     "nameOverride": "",
                     "message": ""
