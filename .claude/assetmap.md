@@ -1,4 +1,4 @@
-<!-- stamp: 2026-08-31T19:57Z source-sig:462025027b7e assets:49 prefabs:16 scenes:2 asmdefs:20 -->
+<!-- stamp: 2026-08-31T21:07Z source-sig:3c5b55ad09c3 assets:50 prefabs:16 scenes:2 asmdefs:20 -->
 # assetmap — asset inventory (data, prefabs, load surface, assemblies)
 
 Regenerate with `python3 .claude/hooks/build_assetmap.py`. `data-source.md`
@@ -51,6 +51,7 @@ the cost model reads the load-surface section before pricing a load.
 - ExpoTheExplorer/Assets/Data/FoodData/Beverages/Food_BluberryMilkshake.asset | type: FoodItemConfig | script: ExpoTheExplorer/Assets/Data/DataScripts/FoodItemConfig.cs
 - ExpoTheExplorer/Assets/Data/FoodData/Beverages/Food_Cola.asset | type: FoodItemConfig | script: ExpoTheExplorer/Assets/Data/DataScripts/FoodItemConfig.cs
 - ExpoTheExplorer/Assets/Data/FoodData/Beverages/Food_Fanta.asset | type: FoodItemConfig | script: ExpoTheExplorer/Assets/Data/DataScripts/FoodItemConfig.cs
+- ExpoTheExplorer/Assets/Data/FoodData/Beverages/Food_Matcha.asset | type: FoodItemConfig | script: ExpoTheExplorer/Assets/Data/DataScripts/FoodItemConfig.cs
 - ExpoTheExplorer/Assets/Data/FoodData/Beverages/Food_Sprite.asset | type: FoodItemConfig | script: ExpoTheExplorer/Assets/Data/DataScripts/FoodItemConfig.cs
 - ExpoTheExplorer/Assets/Data/FoodData/Beverages/Food_StawberryMilkshake.asset | type: FoodItemConfig | script: ExpoTheExplorer/Assets/Data/DataScripts/FoodItemConfig.cs
 - ExpoTheExplorer/Assets/Data/FoodData/Beverages/Food_StrawberryMatcha.asset | type: FoodItemConfig | script: ExpoTheExplorer/Assets/Data/DataScripts/FoodItemConfig.cs
@@ -106,7 +107,7 @@ the cost model reads the load-surface section before pricing a load.
 
 ## Runtime load surface
 
-- ExpoTheExplorer/Assets/Resources | 39 file(s) | loaded by string at runtime; ships in every build
+- ExpoTheExplorer/Assets/Resources | 63 file(s) | loaded by string at runtime; ships in every build
 - ExpoTheExplorer/Assets/StompyRobot/SRDebugger/Resources | 41 file(s) | loaded by string at runtime; ships in every build
 - ExpoTheExplorer/Assets/StompyRobot/SRDebugger/usr/Resources | 3 file(s) | loaded by string at runtime; ships in every build
 - ExpoTheExplorer/Assets/TextMesh Pro/Resources | 21 file(s) | loaded by string at runtime; ships in every build

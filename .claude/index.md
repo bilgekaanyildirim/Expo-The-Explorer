@@ -1,4 +1,4 @@
-<!-- stamp: 2026-08-31 systems:23 unmapped:1 unassigned-files:243 -->
+<!-- stamp: 2026-09-01 systems:23 unmapped:1 unassigned-files:243 -->
 # index — system to location, one screen
 
 Step 1 of `procedures/locate.md`: read this before anything else, and only
@@ -22,7 +22,7 @@ maps and never invents a name.
 | KeySystem | core, ui | ExpoTheExplorer/Assets/Scripts/Systems/KeySystem/ExpoTheExplorer.Systems.KeySystem.asmdef, ExpoTheExplorer/Assets/Scripts/Systems/KeySystem/KeyManager.cs (+4) | - | NoKeysPopup | ExpoTheExplorer/Assets/Data | OK |
 | LivesSystem | core, ui | ExpoTheExplorer/Assets/Scripts/Systems/LivesSystem/ExpoTheExplorer.Systems.LivesSystem.asmdef, ExpoTheExplorer/Assets/Scripts/Systems/LivesSystem/LivesManager.cs (+4) | - | - | ExpoTheExplorer/Assets/Data | OK |
 | MainScreen | ui | ExpoTheExplorer/Assets/Scripts/UI/MainScreenRoot.cs, ExpoTheExplorer/Assets/Scripts/UI/MainScreenView.cs | MainScreen | - | - | OK |
-| MetaSystem | core, editor, ui | ExpoTheExplorer/Assets/Scripts/Systems/MetaSystem/MetaLayout.cs, ExpoTheExplorer/Assets/Scripts/Systems/MetaSystem/MetaPurchase.cs (+8) | - | MetaUnlockPopup | ExpoTheExplorer/Assets/Data | OK |
+| MetaSystem | core, editor, ui | ExpoTheExplorer/Assets/Scripts/Systems/MetaSystem/MetaLayout.cs, ExpoTheExplorer/Assets/Scripts/Systems/MetaSystem/MetaPurchase.cs (+9) | - | MetaUnlockPopup | ExpoTheExplorer/Assets/Data | OK |
 | PlayTesting | editor | ExpoTheExplorer/Assets/Editor/DayJumpWindow.cs | - | - | - | OK |
 | PowerupSystem | core, ui | ExpoTheExplorer/Assets/Data/DataScripts/PowerupType.cs, ExpoTheExplorer/Assets/Scripts/Systems/PowerupSystem/ExpoTheExplorer.Systems.PowerupSystem.asmdef (+8) | - | PowerupShop | ExpoTheExplorer/Assets/Data | OK |
 | ProgressionSystem | core, ui | ExpoTheExplorer/Assets/Scripts/Systems/ProgressionSystem/Wallet.cs, ExpoTheExplorer/Assets/Scripts/Systems/ProgressionSystem/DayRewardPurse.cs (+10) | - | HUDCanvas | - | OK |
@@ -34,4 +34,4 @@ maps and never invents a name.
 
 ## Gaps
 - `sys: ?` on 243 codemap line(s) — first: ExpoTheExplorer/Assets/Data/DataScripts/FoodCatalog.cs, ExpoTheExplorer/Assets/Data/DataScripts/FoodItemConfig.cs, ExpoTheExplorer/Assets/Plugins/Demigiant/DOTween/Modules/DOTweenModuleAudio.cs
-- 40 flagged codemap line(s) excluded from this table (ORPHAN, STALE)
+- 39 flagged codemap line(s) excluded from this table (ORPHAN, STALE)
