@@ -69,22 +69,7 @@ STALE_MINUTES_DEFAULT = 10
 
 def fetch_runs(key_path: str, environment: str) -> list[dict]:
     """Every run document, as plain dicts."""
-    try:
-        from google.cloud import firestore  # noqa: F401
-        from google.oauth2 import service_account
-        from google.cloud.firestore import Client
-    except ImportError:
-        sys.exit(
-            "google-cloud-firestore is not installed.\n"
-            "    pip install google-cloud-firestore\n"
-            "Or run with --demo to see the report shape without Firebase."
-        )
-
-    creds = service_account.Credentials.from_service_account_file(key_path)
-    with open(key_path) as f:
-        project_id = json.load(f)["project_id"]
-
-    client = Client(project=project_id, credentials=creds)
+    client = _client(key_path)
 
     runs = []
     for doc in client.collection("runs").stream():
@@ -171,6 +156,115 @@ def demo_runs() -> list[dict]:
                 attempts += 1
 
     return runs
+
+
+def _client(key_path: str):
+    """One place that opens the Firestore connection, for read and for delete."""
+    try:
+        from google.oauth2 import service_account
+        from google.cloud.firestore import Client
+    except ImportError:
+        sys.exit(
+            "google-cloud-firestore is not installed.\n"
+            "    pip install google-cloud-firestore"
+        )
+
+    creds = service_account.Credentials.from_service_account_file(key_path)
+    with open(key_path) as f:
+        project_id = json.load(f)["project_id"]
+    return Client(project=project_id, credentials=creds)
+
+
+def list_players(key_path: str) -> None:
+    """Who is in the database, so a delete can be aimed at the right id."""
+    runs = []
+    for doc in _client(key_path).collection("runs").stream():
+        d = doc.to_dict() or {}
+        runs.append(d)
+
+    by_player: dict[str, list[dict]] = defaultdict(list)
+    for r in runs:
+        by_player[r.get("playerId", "—")].append(r)
+
+    if not by_player:
+        print("\n  No runs in the database.\n")
+        return
+
+    print(f"\n  {'player':<14} {'runs':>5} {'played':>10}  environments      days")
+    print(f"  {'-'*14} {'-'*5} {'-'*10}  {'-'*16}  {'-'*10}")
+    for pid, rs in sorted(by_player.items(), key=lambda kv: -len(kv[1])):
+        envs = ",".join(sorted({r.get("environment", "?") for r in rs}))
+        secs = sum(r.get("elapsedSeconds", 0) or 0 for r in rs)
+        days = {r.get("dayContentIndex", -1) for r in rs}
+        print(f"  {pid:<14} {len(rs):>5} {fmt_dur(secs):>10}  {envs:<16}  "
+              f"{min(days)}–{max(days)}")
+    print()
+
+
+def delete_player(key_path: str, player_id: str, assume_yes: bool, out_dir: str) -> None:
+    """Erase every run belonging to one playerId.
+
+    THIS IS THE ONE IRREVERSIBLE THING IN THIS TOOL. Firestore has no undo and
+    the security rules deny delete to every client precisely so that nothing but
+    a deliberate act like this can remove data. Three guards, in order:
+
+      1. it shows exactly what it is about to destroy, and from which
+         environments -- deleting `Ebu` because you meant the editor-only `Ebu`
+         is the mistake worth making impossible to make silently;
+      2. it writes a JSON backup FIRST, so a wrong delete is recoverable by
+         re-uploading rather than by apology;
+      3. it asks for the player id to be typed back. Not "y" -- the id. A
+         reflexive keypress cannot get past a prompt that requires the answer.
+    """
+    from google.cloud.firestore_v1.base_query import FieldFilter
+
+    client = _client(key_path)
+    docs = list(
+        client.collection("runs")
+        .where(filter=FieldFilter("playerId", "==", player_id))
+        .stream()
+    )
+
+    if not docs:
+        print(f"\n  No runs found for '{player_id}'. Nothing deleted.")
+        print("  Run with --list-players to see the ids that exist.\n")
+        return
+
+    payload = [dict(d.to_dict() or {}, _id=d.id) for d in docs]
+    envs = sorted({str(p.get("environment", "?")) for p in payload})
+    secs = sum(p.get("elapsedSeconds", 0) or 0 for p in payload)
+    days = sorted({p.get("dayContentIndex", -1) for p in payload})
+
+    print(f"\n  About to DELETE everything belonging to '{player_id}':")
+    print(f"    runs          {len(payload)}")
+    print(f"    play time     {fmt_dur(secs)}")
+    print(f"    environments  {', '.join(envs)}")
+    print(f"    days          {days[0]}–{days[-1]}")
+
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    backup = os.path.join(out_dir, f"deleted-{player_id}-{stamp}.json")
+    with open(backup, "w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=2, default=str, ensure_ascii=False)
+    print(f"\n  Backup written: {backup}")
+
+    if not assume_yes:
+        print(f"\n  This cannot be undone. Type the player id to confirm: ", end="")
+        if input().strip() != player_id:
+            print("  Did not match. Nothing deleted.\n")
+            return
+
+    # Batched, because a per-document round trip is slow and Firestore caps a
+    # batch at 500 writes.
+    deleted = 0
+    for start in range(0, len(docs), 400):
+        batch = client.batch()
+        for d in docs[start:start + 400]:
+            batch.delete(d.reference)
+        batch.commit()
+        deleted += len(docs[start:start + 400])
+
+    print(f"  Deleted {deleted} run(s) for '{player_id}'.")
+    print(f"  Recoverable from {os.path.basename(backup)} if this was a mistake.\n")
 
 
 def read_thresholds() -> dict:
@@ -298,17 +392,59 @@ def analyze(runs: list[dict], stale_minutes: int) -> dict:
         # Best result on that Day, since a Day can be replayed for a better score.
         curves[r.get("playerId")][d] = max(curves[r.get("playerId")].get(d, 0.0), s)
 
+    # Per-tester summary. Time is summed over EVERY run, not just completed ones:
+    # a Day someone failed three times is time they spent playing, and for "how
+    # much did this tester actually give us" that is the honest number.
+    #
+    # It is under-counted for abandoned runs by up to one heartbeat interval --
+    # the client stopped reporting and the last snapshot is all there is. That is
+    # a floor, never an over-count, which is the right direction for this figure.
+    by_player: dict[str, list[dict]] = defaultdict(list)
+    for r in runs:
+        by_player[r.get("playerId")].append(r)
+
+    testers = []
+    for pid, rs in by_player.items():
+        done = [r for r in rs if r["_outcome"] == "completed"]
+        reached = max((r.get("dayContentIndex", -1) for r in rs), default=-1)
+        testers.append({
+            "player": pid,
+            "installation": next((r.get("installationId") for r in rs if r.get("installationId")), "—"),
+            "runs": len(rs),
+            "seconds": sum(r.get("elapsedSeconds", 0) or 0 for r in rs),
+            "completed": len(done),
+            "days_done": len({r.get("dayContentIndex") for r in done}),
+            "reached": reached,
+            "mean_star_score": statistics.mean([r.get("starScore", 0.0) for r in done]) if done else None,
+        })
+    testers.sort(key=lambda t: -t["seconds"])
+
     return {
         "days": days,
         "curves": dict(curves),
+        "testers": testers,
+        "total_seconds": sum(t["seconds"] for t in testers),
         "total_runs": len(runs),
         "live_runs": len(live),
         "players": len({r.get("playerId") for r in runs}),
+        "installations": len({r.get("installationId") for r in runs if r.get("installationId")}),
         "builds": sorted({r.get("buildVersion", "?") for r in runs}),
     }
 
 
 # --- svg ---------------------------------------------------------------------
+
+def fmt_dur(seconds: float) -> str:
+    """Seconds are unreadable past a couple of minutes; hours and minutes are not."""
+    seconds = int(seconds or 0)
+    h, rem = divmod(seconds, 3600)
+    m, sec = divmod(rem, 60)
+    if h:
+        return f"{h}h {m:02d}m"
+    if m:
+        return f"{m}m {sec:02d}s"
+    return f"{sec}s"
+
 
 def esc(s) -> str:
     return html.escape(str(s), quote=True)
@@ -431,7 +567,8 @@ def chart_stars(days: list[dict], curves: dict[str, dict[int, float]], threshold
         if len(pts) < 2:
             continue
         path = " ".join(f"{'M' if i == 0 else 'L'}{x:.1f},{y:.1f}" for i, (x, y) in enumerate(pts))
-        out.append(f'<path class="trace" d="{path}"><title>{esc(pid)}</title></path>')
+        out.append(f'<path class="trace" data-player="{esc(pid)}" d="{path}">'
+                   f'<title>{esc(pid)} — click to isolate</title></path>')
 
     mean_pts = [(px(d["day"]), py(d["mean_star_score"])) for d in days if d["mean_star_score"] is not None]
     if len(mean_pts) >= 2:
@@ -516,7 +653,8 @@ def small_multiples(curves: dict[str, dict[int, float]], days) -> str:
         body.append('</svg>')
         reached = max(curve) if curve else 0
         cards.append(
-            f'<figure class="sm-card">{"".join(body)}'
+            f'<figure class="sm-card" data-player="{esc(pid)}" tabindex="0" role="button" '
+            f'aria-pressed="false" title="Click to isolate {esc(pid)} in the chart above">{"".join(body)}'
             f'<figcaption>{esc(pid)} <span class="muted">· {len(curve)} Days done, '
             f'reached {reached}</span></figcaption></figure>'
         )
@@ -527,9 +665,9 @@ def small_multiples(curves: dict[str, dict[int, float]], days) -> str:
 
 CSS = """
 :root{--surface:#fcfcfb;--page:#f9f9f7;--ink:#0b0b0b;--ink2:#52514e;--muted:#898781;
---grid:#e1e0d9;--base:#c3c2b7;--series1:#2a78d6;--border:rgba(11,11,11,.10)}
+--grid:#e1e0d9;--base:#c3c2b7;--series1:#2a78d6;--sel:#eb6834;--border:rgba(11,11,11,.10)}
 @media (prefers-color-scheme:dark){:root{--surface:#1a1a19;--page:#0d0d0d;--ink:#fff;
---ink2:#c3c2b7;--muted:#898781;--grid:#2c2c2a;--base:#383835;--series1:#3987e5;
+--ink2:#c3c2b7;--muted:#898781;--grid:#2c2c2a;--base:#383835;--series1:#3987e5;--sel:#d95926;
 --border:rgba(255,255,255,.10)}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--page);color:var(--ink);
@@ -554,7 +692,18 @@ border-radius:6px;padding:12px 12px 4px}
 .nlabel{fill:var(--muted);font-size:10px;font-variant-numeric:tabular-nums}
 .axis-title{fill:var(--muted);font-size:11px}
 .trace{fill:none;stroke:var(--muted);stroke-width:1.25;opacity:.34}
+.trace{cursor:pointer;transition:opacity .12s,stroke-width .12s}
 .trace:hover{stroke:var(--ink);opacity:1;stroke-width:2}
+.trace.sel{stroke:var(--sel);stroke-width:2.5;opacity:1}
+.trace.dim{opacity:.08}
+.sm-card{cursor:pointer;border:1px solid transparent;border-radius:6px;transition:border-color .12s}
+.sm-card:hover{border-color:var(--base)}
+.sm-card:focus-visible{outline:2px solid var(--sel);outline-offset:2px}
+.sm-card.sel{border-color:var(--sel)}
+.sm-card.sel .mean{stroke:var(--sel)}
+.sm-card.sel .meandot{fill:var(--sel)}
+.sel-note{font-size:13px;color:var(--ink2);padding:4px 2px 0}
+.sel-note b{color:var(--sel)}
 .mean{fill:none;stroke:var(--series1);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round}
 .mean.sm{stroke-width:1.8}
 .meandot{fill:var(--series1);stroke:var(--surface);stroke-width:2}
@@ -581,16 +730,71 @@ figcaption{font-size:12px;color:var(--ink2);padding:2px 4px 6px}
 """
 
 
+# Linked highlighting between the small multiples and the main chart. Kept as a
+# plain constant rather than inline in render_html's f-string: JavaScript is all
+# braces, and every one of them would have to be doubled to survive an f-string.
+SCRIPT = """
+<script>
+(function () {
+  // The small multiples and the main chart are the same players, so selecting in
+  // one place should answer the question in the other -- "where does this player
+  // sit against the mean and the 3-star line". Enlarging a panel instead would
+  // lose exactly those two references, which is why this links rather than zooms.
+  var selected = null;
+
+  function apply() {
+    document.querySelectorAll('.trace').forEach(function (p) {
+      var mine = p.dataset.player === selected;
+      p.classList.toggle('sel', !!selected && mine);
+      p.classList.toggle('dim', !!selected && !mine);
+    });
+    document.querySelectorAll('.sm-card').forEach(function (c) {
+      var mine = c.dataset.player === selected;
+      c.classList.toggle('sel', !!selected && mine);
+      c.setAttribute('aria-pressed', (!!selected && mine) ? 'true' : 'false');
+    });
+    var note = document.getElementById('selNote');
+    document.getElementById('selName').textContent = selected || '';
+    note.hidden = !selected;
+  }
+
+  function toggle(id) {
+    selected = (selected === id) ? null : id;   // a second click clears it
+    apply();
+  }
+
+  document.querySelectorAll('.sm-card').forEach(function (card) {
+    card.addEventListener('click', function () { toggle(card.dataset.player); });
+    card.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(card.dataset.player); }
+    });
+  });
+
+  // The faint lines are clickable too: spotting an outlier up there and wanting
+  // to know whose it is is the same question from the other end.
+  document.querySelectorAll('.trace').forEach(function (path) {
+    path.addEventListener('click', function () { toggle(path.dataset.player); });
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && selected) { selected = null; apply(); }
+  });
+})();
+</script>
+"""
+
+
 def render_html(a: dict, demo: bool, env: str, stale: int, thresholds: dict) -> str:
     days = a["days"]
     total_players = a["players"]
 
     tiles = [
         ("Players", total_players),
+        ("Devices", a["installations"]),
         ("Runs", a["total_runs"]),
+        ("Play time", fmt_dur(a["total_seconds"])),
         ("Days seen", len(days)),
         ("Live now", a["live_runs"]),
-        ("Builds", len(a["builds"])),
     ]
     tiles_html = "".join(
         f'<div class="tile"><div class="k">{esc(k)}</div><div class="v">{esc(v)}</div></div>'
@@ -619,6 +823,16 @@ def render_html(a: dict, demo: bool, env: str, stale: int, thresholds: dict) -> 
             f'<td>{d["mean_mistakes"]:.1f}</td>'
             f'<td>{("%.2f" % d["mean_star_score"]) if d["mean_star_score"] is not None else "—"}</td>'
             f'<td>{st[1]}/{st[2]}/{st[3]}</td></tr>'
+        )
+
+    tester_rows = []
+    for t in a["testers"]:
+        star = f"{t['mean_star_score']:.2f}" if t["mean_star_score"] is not None else "—"
+        tester_rows.append(
+            f'<tr><td>{esc(t["player"])}</td><td class="muted">{esc(t["installation"])}</td>'
+            f'<td>{fmt_dur(t["seconds"])}</td><td>{t["runs"]}</td><td>{t["completed"]}</td>'
+            f'<td>{t["days_done"]}</td><td>{t["reached"] + 1 if t["reached"] >= 0 else "—"}</td>'
+            f'<td>{star}</td></tr>'
         )
 
     banner = ('<p class="banner">DEMO DATA — this is generated, not your playtest. '
@@ -653,10 +867,10 @@ a Day whose bar leans away from green is doing something the others are not.</p>
 scrapes past and one where everyone cruises look identical in stars and completely
 different here. Each faint line is one player; the blue line is the mean; the dashed
 rules are the thresholds the game awards on. Only <em>completed</em> runs count.</p>
-<figure>{chart_stars(days, a["curves"], thresholds)}</figure>
+<figure>{chart_stars(days, a["curves"], thresholds)}<div class="legend"><span><i style="background:var(--series1)"></i>mean of all players</span><span><i style="background:var(--muted)"></i>one player</span></div><p class="sel-note" id="selNote" hidden>Isolated: <b id="selName"></b> — click again to show everyone.</p></figure>
 
 <h2>Each player, Day by Day</h2>
-<p class="sub">Same star score, one panel per player, all on the same 0–1 scale so the panels compare.</p>
+<p class="sub">Same star score, one panel per player, all on the same 0–1 scale so the panels compare. <strong>Click a panel</strong> to isolate that player in the chart above, against the mean and the star thresholds.</p>
 {small_multiples(a["curves"], days)}
 
 <h2>How long a Day takes</h2>
@@ -667,19 +881,28 @@ rules are the thresholds the game awards on. Only <em>completed</em> runs count.
 <figure>{chart_bars(days, "mean_mistakes", "Mean mistakes", lambda v: f"{v:.1f}", C["series1"],
 "A mistake is a wrong delivery or a ticket that timed out — the two things that cost a life.")}</figure>
 
+<h2>Who played, and for how long</h2>
+<p class="sub">Time is summed over <em>every</em> run, not just completed ones — a Day
+someone failed three times is still time they gave you. Two testers sharing a
+<em>device</em> is expected: that is what handing the phone on looks like.</p>
+<table><thead><tr><th>Tester</th><th>Device</th><th>Play time</th><th>Runs</th>
+<th>Completed</th><th>Days done</th><th>Reached Day</th><th>Star score</th></tr></thead>
+<tbody>{"".join(tester_rows)}</tbody></table>
+
 <h2>Every number</h2>
 <table><thead><tr><th>Day</th><th>Runs</th><th>Players</th><th>Completed</th>
 <th>1st try</th><th>Left</th><th>Retried</th><th>Median</th><th>Mistakes</th>
 <th>Star score</th><th>1/2/3★</th></tr></thead><tbody>{"".join(rows)}</tbody></table>
 <p class="note">“Left” = quit + abandoned. “1st try” = players who completed on their
 first attempt at that Day. “Star score” is the mean 0–1 score over completed runs only; the 1/2/3★ column counts how many of those completed runs landed in each band.</p>
-</div></body></html>"""
+</div>{SCRIPT}</body></html>"""
 
 
 # --- terminal ----------------------------------------------------------------
 
 def print_summary(a: dict, stale: int) -> None:
-    print(f"\n  {a['players']} players · {a['total_runs']} finished runs · "
+    print(f"\n  {a['players']} players on {a['installations']} device(s) · "
+          f"{a['total_runs']} finished runs · {fmt_dur(a['total_seconds'])} played · "
           f"{a['live_runs']} in progress right now\n")
     if not a["days"]:
         print("  No finished runs yet.\n")
@@ -718,7 +941,23 @@ def main() -> None:
     p.add_argument("--out", default=os.path.join(os.path.dirname(__file__), "telemetry-report.html"))
     p.add_argument("--open", dest="open_after", action="store_true",
                    help="open the report when it is written")
+    p.add_argument("--list-players", action="store_true",
+                   help="list the players in the database and exit")
+    p.add_argument("--delete-player", metavar="ID",
+                   help="delete EVERY run belonging to this playerId (backs up first)")
+    p.add_argument("--yes", action="store_true",
+                   help="skip the typed confirmation on --delete-player")
     args = p.parse_args()
+
+    if args.list_players or args.delete_player:
+        if not args.key:
+            p.error("--list-players and --delete-player need --key <service-account.json>")
+        if args.list_players:
+            list_players(args.key)
+        else:
+            delete_player(args.key, args.delete_player, args.yes,
+                          os.path.dirname(os.path.abspath(args.out)))
+        return
 
     if args.demo:
         runs = demo_runs()
@@ -733,7 +972,14 @@ def main() -> None:
 
     with open(args.out, "w", encoding="utf-8") as f:
         f.write(render_html(a, args.demo, args.env, args.stale_minutes, thresholds))
-    print(f"  Wrote {args.out}\n")
+    if a["testers"]:
+        print("\n  {:<12} {:>10} {:>6} {:>7} {:>8}".format("tester", "played", "runs", "done", "reached"))
+        print("  {:<12} {:>10} {:>6} {:>7} {:>8}".format("-"*12, "-"*10, "-"*6, "-"*7, "-"*8))
+        for t in a["testers"]:
+            print("  {:<12} {:>10} {:>6} {:>7} {:>8}".format(
+                t["player"][:12], fmt_dur(t["seconds"]), t["runs"], t["completed"],
+                (t["reached"] + 1) if t["reached"] >= 0 else "-"))
+    print(f"\n  Wrote {args.out}\n")
 
     # THE REPORT IS A SNAPSHOT, NOT A DASHBOARD. It holds whatever Firestore said
     # at the moment this ran, and reloading the page in a browser re-reads the same

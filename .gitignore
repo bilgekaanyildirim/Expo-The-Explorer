@@ -122,3 +122,10 @@ crashlytics-build.properties
 *service-account*.json
 *-firebase-adminsdk-*.json
 /tools/telemetry-report.html
+
+# Deleted-run backups written by --delete-player. Real playtest data; keep local.
+/tools/deleted-*.json
+
+# Python bytecode from tools/
+__pycache__/
+*.pyc
