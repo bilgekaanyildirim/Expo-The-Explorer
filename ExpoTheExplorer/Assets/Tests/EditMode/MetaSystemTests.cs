@@ -44,6 +44,12 @@ namespace ExpoTheExplorer.Tests.EditMode
         private MetaLocation Location(string id, int unlockAtDayIndex, params MetaItemDefinition[] items) =>
             new(id, unlockAtDayIndex, items, CreateSprite());
 
+        // Its own helper rather than an extra parameter on Location: `params items` has to stay
+        // last, so a message argument could only go before it and every existing call site would
+        // have to name it.
+        private MetaLocation LocationSaying(string id, int unlockAtDayIndex, string unlockMessage) =>
+            new(id, unlockAtDayIndex, null, CreateSprite(), unlockMessage: unlockMessage);
+
         // Seeded by reflection rather than through SerializedObject the way
         // EconomySystemTests does. The difference is what is being set: EconomyConfig's
         // knobs are floats, which SerializedObject writes in one line each, while this is a
@@ -97,6 +103,80 @@ namespace ExpoTheExplorer.Tests.EditMode
             Assert.IsFalse(MetaResolver.IsLocationUnlocked(location, 11));
             Assert.IsTrue(MetaResolver.IsLocationUnlocked(location, 12));
             Assert.IsTrue(MetaResolver.IsLocationUnlocked(location, 40));
+        }
+
+        // --- a location opening (D-153) ---------------------------------------------------
+
+        // The window is half-open, `(since, current]`, and these three days are the whole rule:
+        // the boundary is paid out exactly once, on the day it is crossed.
+        [Test]
+        public void OpenedBetween_IsTrueOnlyForTheWindowThatCrossesTheUnlockDay()
+        {
+            var meta2 = Location("Meta2", 15);
+
+            Assert.IsFalse(MetaResolver.OpenedBetween(meta2, sinceDayIndex: 13, currentDayIndex: 14));
+            Assert.IsTrue(MetaResolver.OpenedBetween(meta2, sinceDayIndex: 14, currentDayIndex: 15));
+            Assert.IsFalse(MetaResolver.OpenedBetween(meta2, sinceDayIndex: 15, currentDayIndex: 16));
+        }
+
+        // A player who was away for several days still gets the arrival: the marker, not the
+        // day number, decides what is owed -- the same property DayUnlocksBetween has.
+        [Test]
+        public void OpenedBetween_SpansAWiderWindowThanOneDay()
+        {
+            var meta2 = Location("Meta2", 15);
+
+            Assert.IsTrue(MetaResolver.OpenedBetween(meta2, sinceDayIndex: 12, currentDayIndex: 20));
+        }
+
+        // Day 0's location has no arrival to celebrate: there is no window before the game
+        // starts, so `since == current == 0` must not fire on the very first launch.
+        [Test]
+        public void OpenedBetween_TheStartingLocationNeverOpens()
+        {
+            var meta1 = Location("Meta1", 0);
+
+            Assert.IsFalse(MetaResolver.OpenedBetween(meta1, sinceDayIndex: 0, currentDayIndex: 0));
+            Assert.IsFalse(MetaResolver.OpenedBetween(meta1, sinceDayIndex: 0, currentDayIndex: 5));
+        }
+
+        [Test]
+        public void OpenedBetween_NullLocation_IsFalse()
+        {
+            Assert.IsFalse(MetaResolver.OpenedBetween(null, sinceDayIndex: 0, currentDayIndex: 99));
+        }
+
+        // A location that opens with NO props authored in it -- Meta2 as it stands today -- is
+        // the case the location celebration exists for. The prop query is empty and only
+        // OpenedBetween has anything to say, which is why the view has to ask both.
+        [Test]
+        public void ALocationWithNoProps_OpensWithNothingForTheDayUnlockQueryToFind()
+        {
+            var meta2 = Location("Meta2", 15);
+
+            Assert.IsTrue(MetaResolver.OpenedBetween(meta2, sinceDayIndex: 14, currentDayIndex: 15));
+            Assert.IsEmpty(MetaResolver.DayUnlocksBetween(meta2, Owned(), 14, 15));
+        }
+
+        // The opt-in, and it is the data's answer rather than the resolver's -- so the resolver
+        // says a message-less location opened, and the caller is the one that stays silent.
+        [Test]
+        public void HasUnlockPopup_IsTheMessage_NotTheUnlockDay()
+        {
+            Assert.IsFalse(Location("Meta2", 15).HasUnlockPopup);
+            Assert.IsFalse(LocationSaying("Meta2", 15, "   ").HasUnlockPopup);
+            Assert.IsTrue(LocationSaying("Meta2", 15, "Welcome to the seaside!").HasUnlockPopup);
+        }
+
+        // Empty falls back to the grounds, the one image every location is guaranteed to have,
+        // so an authored message can never open a popup with an empty frame in it.
+        [Test]
+        public void LocationUnlockImage_FallsBackToTheGrounds()
+        {
+            var meta2 = LocationSaying("Meta2", 15, "Welcome!");
+
+            Assert.IsNotNull(meta2.UnlockImage);
+            Assert.AreSame(meta2.BackgroundSprite, meta2.UnlockImage);
         }
 
         [Test]
@@ -616,6 +696,121 @@ namespace ExpoTheExplorer.Tests.EditMode
             // off because there is nothing LEFT, not because the player is broke.
             Assert.IsFalse(
                 MetaPurchase.HasAffordableOffer(location, Owned("Meta1.Bench"), 0, softMoney: 10_000));
+        }
+
+        // --- how far through buying a location the player is ------------------------------
+
+        [Test]
+        public void Progress_CountsOwnedPurchasablePropsOutOfAllOfThem()
+        {
+            var location = Location(
+                "Meta1", 0, Purchase("Bench"), Purchase("Fountain"), Purchase("Lamp"), Purchase("Sign"));
+
+            var progress = MetaPurchase.Progress(location, Owned("Meta1.Bench", "Meta1.Lamp"));
+
+            Assert.AreEqual(2, progress.Owned);
+            Assert.AreEqual(4, progress.Total);
+            Assert.AreEqual(0.5f, progress.Fraction, 0.0001f);
+            Assert.IsTrue(progress.HasOffers);
+            Assert.IsFalse(progress.IsComplete);
+        }
+
+        // THE test this measure exists for. An area-gated prop is invisible to ShopItems until
+        // its area is bought, so a denominator taken from that list would shrink by one the
+        // moment the Square went through -- and the bar would travel BACKWARDS on the frame the
+        // player did the most expensive right thing available to them.
+        [Test]
+        public void Progress_AreaLockedProp_IsCountedSoTheBarCannotGoBackwards()
+        {
+            var square = Purchase("Square", price: 500, unlocksArea: true);
+            var bench = Purchase("Bench", price: 50, requiresAreaId: "Square");
+            var location = Location("Meta1", 0, square, bench);
+
+            // Before: the bench is not on offer at all...
+            Assert.IsEmpty(MetaPurchase.ShopItems(location, Owned(), 0, softMoney: 10_000));
+
+            // ...but it is already part of what this location IS.
+            var before = MetaPurchase.Progress(location, Owned());
+            Assert.AreEqual(0, before.Owned);
+            Assert.AreEqual(2, before.Total);
+
+            var after = MetaPurchase.Progress(location, Owned("Meta1.Square"));
+            Assert.AreEqual(1, after.Owned);
+            Assert.AreEqual(2, after.Total, "the denominator must not move when an area opens");
+            Assert.Greater(after.Fraction, before.Fraction);
+        }
+
+        // Their keys never enter the save file, so a Day-unlocked prop could never be counted
+        // as owned -- leaving one in the denominator alone would put 100% out of reach for
+        // good, and a bar that cannot fill is worse than no bar.
+        [Test]
+        public void Progress_DayUnlockedProps_AreInNeitherHalf()
+        {
+            var location = Location(
+                "Meta1", 0, Purchase("Bench"), DayUnlocked("Fryer", 4), DayUnlocked("Fridge", 6));
+
+            var progress = MetaPurchase.Progress(location, Owned("Meta1.Bench"));
+
+            Assert.AreEqual(1, progress.Owned);
+            Assert.AreEqual(1, progress.Total);
+            Assert.IsTrue(progress.IsComplete);
+        }
+
+        [Test]
+        public void Progress_EverythingBought_IsComplete()
+        {
+            var location = Location("Meta1", 0, Purchase("Bench"), Purchase("Lamp"));
+
+            var progress = MetaPurchase.Progress(location, Owned("Meta1.Bench", "Meta1.Lamp"));
+
+            Assert.IsTrue(progress.IsComplete);
+            Assert.AreEqual(1f, progress.Fraction, 0.0001f);
+        }
+
+        // An unfinished location, which Meta2 is today. HasOffers is what lets the view hide
+        // the bar rather than draw a truthful, meaningless 0/0 -- and IsComplete must stay
+        // FALSE here, or "nothing authored yet" would read as "bought out".
+        [Test]
+        public void Progress_LocationWithNothingForSale_HasNoOffersAndIsNotComplete()
+        {
+            var empty = Location("Meta2", 0);
+            var dayUnlockedOnly = Location("Meta3", 0, DayUnlocked("Fryer", 4));
+
+            foreach (var location in new[] { empty, dayUnlockedOnly })
+            {
+                var progress = MetaPurchase.Progress(location, Owned());
+
+                Assert.AreEqual(0, progress.Total, location.Id);
+                Assert.IsFalse(progress.HasOffers, location.Id);
+                Assert.IsFalse(progress.IsComplete, location.Id);
+
+                // Not NaN: the view hands this straight to a fill amount.
+                Assert.AreEqual(0f, progress.Fraction, 0.0001f, location.Id);
+            }
+        }
+
+        // The day is NOT a parameter, and this pins that. Only a purchase moves this measure;
+        // a locked location's props are still props the player will own, and a bar that
+        // rewrote itself overnight would be measuring something else.
+        [Test]
+        public void Progress_IgnoresWhetherTheLocationIsOpenYet()
+        {
+            var locked = Location("Meta9", 12, Purchase("Bench"), Purchase("Lamp"));
+
+            var progress = MetaPurchase.Progress(locked, Owned("Meta9.Bench"));
+
+            Assert.AreEqual(1, progress.Owned);
+            Assert.AreEqual(2, progress.Total);
+        }
+
+        [Test]
+        public void Progress_NullLocation_IsEmptyRatherThanThrowing()
+        {
+            var progress = MetaPurchase.Progress(null, Owned());
+
+            Assert.AreEqual(0, progress.Owned);
+            Assert.AreEqual(0, progress.Total);
+            Assert.IsFalse(progress.HasOffers);
         }
 
         [Test]

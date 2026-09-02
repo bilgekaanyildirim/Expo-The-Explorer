@@ -30,6 +30,48 @@ namespace ExpoTheExplorer.Systems.MetaSystem
         NotEnoughMoney
     }
 
+    // How much of a location the player has BOUGHT: two counts that are only ever read
+    // together, which is why they are one struct rather than two out parameters -- the same
+    // call MetaDayUnlockPreview makes next door for the same reason.
+    //
+    // Deliberately NOT a fraction alone. "4/12" is the thing the player reads and the bar is
+    // the thing they feel, and deriving the counts back out of a float would be lossy; the
+    // fraction is offered here so the two cannot be computed differently by two callers.
+    public readonly struct MetaPurchaseProgress
+    {
+        // Purchase-unlock props in this location the player owns.
+        public readonly int Owned;
+
+        // Every purchase-unlock prop authored for this location, INCLUDING ones whose area is
+        // still locked. That inclusion is the whole shape of this measure: excluding them
+        // would shrink the denominator, so buying the paved square would send the bar
+        // BACKWARDS at the exact moment the player did something right. A completion bar that
+        // can fall reads as a bug, and no amount of correctness in the numbers fixes how that
+        // looks. The cost is real and worth naming: a fresh location shows a low fraction
+        // against props it cannot offer yet.
+        public readonly int Total;
+
+        // 0 when nothing is for sale, so a caller can hand this straight to a fill amount
+        // without dividing by zero. Note the pair (0, 0) and a location bought out both leave
+        // nothing to do -- HasOffers is what tells them apart, and the view hides the bar
+        // entirely for the first.
+        public float Fraction => Total <= 0 ? 0f : (float)Owned / Total;
+
+        // Whether this location has anything purchasable AT ALL. False for a location like
+        // Meta2 that is authored with no items yet -- the same emptiness MetaShopView answers
+        // with COMING SOON, and the reason the bar hides rather than showing a truthful but
+        // meaningless 0/0.
+        public bool HasOffers => Total > 0;
+
+        public bool IsComplete => Total > 0 && Owned >= Total;
+
+        public MetaPurchaseProgress(int owned, int total)
+        {
+            Owned = owned;
+            Total = total;
+        }
+    }
+
     // The purchase RULES, and nothing else: no wallet, no save file, no UI. It answers
     // "would this sale be legal", and the screen's composition root is what then spends
     // through Wallet and records the key through the profile writer.
@@ -108,6 +150,45 @@ namespace ExpoTheExplorer.Systems.MetaSystem
             }
 
             return false;
+        }
+
+        // How far through buying this location the player is. The counting question, where
+        // ShopItems is the listing one -- and they deliberately DISAGREE about which props
+        // count, which is the reason this is not derived from ShopItems.Count.
+        //
+        // ShopItems answers "what can I put in front of the player right now", so it drops
+        // area-locked props and props in a location that is not open yet. This answers "how
+        // much of this place is mine", so it counts every purchasable prop the location was
+        // authored with. Deriving one from the other would make the bar's denominator jump
+        // whenever an area opened -- see MetaPurchaseProgress.Total for why that is the one
+        // thing this measure must never do.
+        //
+        // Day index is NOT a parameter, and its absence is deliberate: the day gates whether a
+        // prop is OFFERED, never whether it is owned or authored. Taking one would invite a
+        // caller to think this answer changes overnight, and it does not -- only a purchase
+        // moves it.
+        //
+        // Ownership is asked of MetaResolver rather than by testing the key here, so the save
+        // file's "<location>.<item>" spelling stays in the one place that knows it.
+        public static MetaPurchaseProgress Progress(MetaLocation location, ISet<string> ownedKeys)
+        {
+            if (location?.Items == null) return new MetaPurchaseProgress(0, 0);
+
+            var owned = 0;
+            var total = 0;
+
+            foreach (var item in location.Items)
+            {
+                // Day-unlocked props are outside BOTH counts. Their keys never enter the save
+                // file, so one could never be owned -- leaving them in the denominator alone
+                // would put 100% permanently out of reach.
+                if (item == null || item.Unlock != MetaUnlockKind.Purchase) continue;
+
+                total++;
+                if (MetaResolver.IsOwned(location, item, ownedKeys)) owned++;
+            }
+
+            return new MetaPurchaseProgress(owned, total);
         }
 
         // Everything the shop should list for a location, IN THE ORDER it should list them.

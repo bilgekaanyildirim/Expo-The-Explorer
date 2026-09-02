@@ -47,8 +47,49 @@ namespace ExpoTheExplorer.UI
         [SerializeField] private Button previousButton;
         [SerializeField] private Button nextButton;
 
-        [Tooltip("Shown when a further location exists but is still locked, e.g. \"Unlocks on Day 12\". Hidden once nothing is left to unlock.")]
+        [Tooltip("Shown when a further location exists but is still locked — a COUNTDOWN to it, e.g. \"Next expo in 3 days\". Hidden once nothing is left to unlock. Sits above the purchase bar in the built screen.")]
         [SerializeField] private TMP_Text lockedHintLabel;
+
+        // The two sentences that label carries, as DATA rather than as literals, so retyping
+        // them -- into Turkish, or into anything shorter that fits the bar -- is an Inspector
+        // edit instead of a code change. The rest of Scripts/UI writes its strings inline
+        // ("Continue Day X"), and that is fine for a caption nobody is going to reword; this
+        // one the user has already reworded once, which is exactly the signal that it belongs
+        // in the Inspector.
+        [Tooltip("The countdown sentence. {0} is the number of days left. Used for 2 days and up.")]
+        [SerializeField] private string nextLocationFormat = "Next expo in {0} days";
+
+        [Tooltip("Shown INSTEAD of the format above when only one day is left, so the player never reads \"in 1 days\".")]
+        [SerializeField] private string nextLocationSoonText = "Next expo tomorrow!";
+
+        // OPTIONAL as a group, exactly like the location bar above it and for the same reason
+        // (D-025): a screen built before this existed has three nulls here and draws precisely
+        // what it drew before. Making them required would turn an ornament into two errors per
+        // scene load, which is the failure D-025 was cleaning up.
+        //
+        // There is no menu step that builds these. fe48bff deleted MetaGroundsSetup and
+        // MainScreenSceneBuilder as one-shot builders on purpose, so the objects are authored
+        // by hand and dragged in -- and the header says so rather than naming a menu item that
+        // no longer exists, which is the trap the "Bound by ..." header above this class still
+        // sets.
+        [Header("Purchase progress — optional, authored by hand")]
+        [Tooltip("Optional. Holds the fill and the label. Hidden outright for a location with nothing to sell (an unfinished one like Meta2), where a truthful 0/0 would still be meaningless. Leave empty to keep both parts always visible.")]
+        [SerializeField] private GameObject purchaseProgressRoot;
+
+        [Tooltip("Optional. Image Type must be Filled, Fill Method Horizontal, Fill Origin Left — fillAmount is the only thing this class writes on it, exactly as StarScoreBarView requires of its own fill.")]
+        [SerializeField] private Image purchaseProgressFill;
+
+        [Tooltip("Optional. Reads \"4/12\" — props owned here out of props for sale here. Area-locked props are COUNTED, so this total never shrinks.")]
+        [SerializeField] private TMP_Text purchaseProgressLabel;
+
+        [Tooltip("Shown instead of \"12/12\" once the location is bought out. Clear it to keep showing the numbers.")]
+        [SerializeField] private string purchaseProgressCompleteText = "COMPLETE";
+
+        [Tooltip("How long the fill takes to travel after a purchase. Only the purchase path animates — see DrawPurchaseProgress. 0 makes it instant.")]
+        [SerializeField, Min(0f)] private float purchaseProgressFillDuration = 0.5f;
+
+        [Tooltip("Ease of that travel.")]
+        [SerializeField] private Ease purchaseProgressFillEase = Ease.OutQuad;
 
         [Header("Purchase preview")]
         [Tooltip("How solid the ghost of a prop being previewed looks. Cosmetic — try numbers here rather than in code.")]
@@ -196,6 +237,10 @@ namespace ExpoTheExplorer.UI
         // teardown travel the map out from under the second one's drop.
         private int placementGeneration;
 
+        // The purchase bar's travel, held so a redraw can cut it short. Only ever non-null
+        // between a purchase and the moment its fill lands.
+        private Tween purchaseProgressFillTween;
+
         // The screen-wide tap eater a purchase runs behind, and the poll that takes it away
         // again (D-151). Both are null whenever nothing has been bought, and they are always
         // raised and dropped together -- a blocker with no routine watching it is the one
@@ -321,7 +366,7 @@ namespace ExpoTheExplorer.UI
 
             DrawBackground(location);
             DrawProps(location, session.OwnedMetaItemIds, currentDay);
-            DrawLocationBar(location, currentDay);
+            DrawLocationBar(location, session.OwnedMetaItemIds, currentDay);
 
             // LAST, and only on an actual change of location -- including the FIRST one,
             // where it changes from "nothing resolved yet" to whichever grounds the player
@@ -980,12 +1025,29 @@ namespace ExpoTheExplorer.UI
             var opened = MetaResolver.DayUnlocksBetween(
                 location, session.OwnedMetaItemIds, session.LastCelebratedDayIndex, session.State.CurrentDayIndex);
 
-            if (opened.Count == 0) return;
+            // THE LOCATION ITSELF IS A THING THAT OPENS (D-153). Same window, same marker as the
+            // props above -- and it has to be asked separately because a location that opens with
+            // no props authored in it yet (Meta2 today) produces an EMPTY `opened` list, which is
+            // exactly the case the early return below used to drop on the floor: the player
+            // reached day 15, the screen opened on brand-new grounds, and nothing happened.
+            //
+            // HasUnlockPopup is checked HERE rather than inside the coroutine, because a location
+            // with no message has nothing to play at all -- no reveal to fall back on, unlike a
+            // prop. Starting a celebration for it would raise the input block and hold the screen
+            // for a beat to show nothing.
+            var arrivedAt =
+                MetaResolver.OpenedBetween(location, session.LastCelebratedDayIndex, session.State.CurrentDayIndex)
+                && location.HasUnlockPopup
+                    ? location
+                    : null;
 
-            StartCoroutine(Celebrate(session, opened));
+            if (opened.Count == 0 && arrivedAt == null) return;
+
+            StartCoroutine(Celebrate(session, opened, arrivedAt));
         }
 
-        private IEnumerator Celebrate(GameSession session, List<MetaItemDefinition> opened)
+        private IEnumerator Celebrate(
+            GameSession session, List<MetaItemDefinition> opened, MetaLocation arrivedAt)
         {
             celebrating = true;
             var catcher = CreateSkipCatcher();
@@ -995,6 +1057,11 @@ namespace ExpoTheExplorer.UI
             // over it is unusable, and that is the one outcome worth protecting against.
             try
             {
+                // FIRST, and before any prop. "You have arrived somewhere new" is the frame the
+                // props that follow stand inside; announcing a fryer and only then mentioning that
+                // the whole location changed tells the story backwards.
+                yield return CelebrateLocation(arrivedAt);
+
                 foreach (var item in opened)
                 {
                     yield return CelebrateOne(item);
@@ -1129,10 +1196,48 @@ namespace ExpoTheExplorer.UI
         {
             if (item == null || !item.HasUnlockPopup) yield break;
 
+            yield return ShowUnlockPopup(item.DisplayName, item.UnlockMessage, item.UnlockImage, item.Id);
+        }
+
+        // What a LOCATION does when it opens (D-153). Deliberately NOT a second reveal: there is
+        // no silhouette to fill and nothing to zoom in on, because the subject is the whole
+        // grounds -- which Refresh has already drawn, at the default framing, which is exactly
+        // the shot this moment wants. So the beat is the two things a prop's reveal ENDS with,
+        // in the same order and reusing the same code: the Success buzz and the confetti, then
+        // the popup that explains where the player is.
+        //
+        // It shares HapticMoment.PropUnlocked rather than authoring a new moment. The haptic
+        // vocabulary answers "what did this feel like", not "what was it" -- a location opening
+        // feels like a prop opening (a gradual arrival, not the impact PropLanded describes), and
+        // a second enum entry mapped to the same Success preset would be a distinction the player
+        // cannot feel.
+        private IEnumerator CelebrateLocation(MetaLocation location)
+        {
+            if (location == null || !location.HasUnlockPopup) yield break;
+
+            skipRequested = false;
+
+            haptics?.Request(HapticMoment.PropUnlocked);
+            ConfettiView.BurstOnTop(confettiPrefab);
+
+            // The paper is given a moment on its own before the popup covers the grounds, for the
+            // reason CelebrateOne holds before its own popup: a message that opens on the same
+            // frame as the burst reads as one confused event instead of two clear ones.
+            yield return WaitOrSkip(celebrationHoldSeconds);
+
+            yield return ShowUnlockPopup(
+                location.DisplayName, location.UnlockMessage, location.UnlockImage, location.Id);
+        }
+
+        // The shared half, so a prop and a location cannot drift apart on how the popup is
+        // instantiated, bound, waited on and destroyed. Each caller owns only its own opt-in
+        // check and its own three authored fields.
+        private IEnumerator ShowUnlockPopup(string title, string message, Sprite picture, string subjectId)
+        {
             if (unlockPopupPrefab == null)
             {
                 Debug.LogWarning(
-                    $"{nameof(MetaGroundsView)} on '{name}': '{item.Id}' authors an unlock message but no Unlock Popup " +
+                    $"{nameof(MetaGroundsView)} on '{name}': '{subjectId}' authors an unlock message but no Unlock Popup " +
                     "Prefab is assigned, so it cannot be shown. Run ExpoTheExplorer > Meta > Build Meta Grounds.", this);
                 yield break;
             }
@@ -1141,7 +1246,7 @@ namespace ExpoTheExplorer.UI
             // view lives under the screen's canvas -- a Canvas nested inside another inherits
             // its parent's RectTransform rather than the screen's.
             var popup = Instantiate(unlockPopupPrefab);
-            popup.Bind(item.DisplayName, item.UnlockMessage, item.UnlockImage);
+            popup.Bind(title, message, picture);
 
             // Frame by frame rather than on a callback, because this is a coroutine holding a
             // zoomed-in map: the wait IS the feature. The null check ends it if the popup is
@@ -1617,7 +1722,7 @@ namespace ExpoTheExplorer.UI
             return prop;
         }
 
-        private void DrawLocationBar(MetaLocation location, int currentDayIndex)
+        private void DrawLocationBar(MetaLocation location, ISet<string> ownedKeys, int currentDayIndex)
         {
             if (locationLabel != null)
             {
@@ -1628,6 +1733,8 @@ namespace ExpoTheExplorer.UI
 
             if (previousButton != null) previousButton.interactable = viewedIndex > 0;
             if (nextButton != null) nextButton.interactable = viewedIndex < unlockedLocations.Count - 1;
+
+            DrawPurchaseProgress(location, ownedKeys);
 
             // The first location in catalog order that is still locked -- "what comes next"
             // rather than "the nearest by day", because catalog order is authored order.
@@ -1644,10 +1751,83 @@ namespace ExpoTheExplorer.UI
             lockedHintLabel.gameObject.SetActive(nextLocked != null);
             if (nextLocked != null)
             {
-                // +1 because the player-facing day number is the catalog position plus one,
-                // the same conversion MainScreenView makes.
-                lockedHintLabel.text = $"Unlocks on Day {nextLocked.UnlockAtDayIndex + 1}";
+                // A COUNTDOWN rather than the absolute "Unlocks on Day 12" this used to read
+                // (the user's ask: "sonraki mekana su kadar gun"). Both sentences describe the
+                // same moment, but the player knows what "3 more days" costs them without
+                // first having to remember which day they are on -- and the number now falls
+                // on its own as they play, which the fixed one never did.
+                //
+                // No +1 anywhere: this is a DIFFERENCE between two day indices, so the
+                // off-by-one the old line needed (catalog position -> player-facing day
+                // number, the conversion MainScreenView makes) cancels out. nextLocked is by
+                // definition still locked, so this is always 1 or more.
+                var daysLeft = nextLocked.UnlockAtDayIndex - currentDayIndex;
+
+                lockedHintLabel.text = daysLeft == 1
+                    ? nextLocationSoonText
+                    : string.Format(nextLocationFormat, daysLeft);
             }
+        }
+
+        // How much of this location the player has bought. Asks MetaPurchase and renders the
+        // answer; every rule about WHAT counts lives there with its tests, including the one
+        // that matters most here -- that area-locked props are in the denominator, so the bar
+        // cannot fall when an area opens.
+        private void DrawPurchaseProgress(MetaLocation location, ISet<string> ownedKeys)
+        {
+            var progress = MetaPurchase.Progress(location, ownedKeys);
+
+            // An unfinished location (Meta2 today) has nothing to be partway through, so the
+            // whole block goes rather than showing a truthful, useless 0/0. Bought-out is a
+            // different state and deliberately keeps the bar: a full bar is the reward.
+            if (purchaseProgressRoot != null) purchaseProgressRoot.SetActive(progress.HasOffers);
+            if (!progress.HasOffers) return;
+
+            if (purchaseProgressLabel != null)
+            {
+                purchaseProgressLabel.text = progress.IsComplete && !string.IsNullOrWhiteSpace(purchaseProgressCompleteText)
+                    ? purchaseProgressCompleteText
+                    : $"{progress.Owned}/{progress.Total}";
+            }
+
+            if (purchaseProgressFill == null) return;
+
+            // The tween is killed on EVERY path, including the ones that then snap, because a
+            // travel left running into a redraw would keep writing the OLD location's target
+            // over whatever this draw just set -- the same discipline StarScoreBarView.KillFill
+            // keeps, and for the same reason.
+            KillPurchaseProgressFill();
+
+            var target = progress.Fraction;
+
+            // ONLY a purchase animates. `placing` is claimed by RefreshAfterPurchase before it
+            // redraws, so it is the one flag that already distinguishes "a prop was just
+            // bought" from "the screen was opened" or "the player walked next door" -- no
+            // second piece of state to keep in step.
+            //
+            // Walking must NOT animate, and that is a design decision rather than an
+            // optimization: travelling from Meta1's 8/12 down to Meta2's 0/3 would show the
+            // player their progress draining away over half a second, which is the opposite of
+            // what happened. Opening the screen must not animate either -- a bar that fills
+            // itself every time the screen appears turns the payoff of an actual purchase into
+            // background noise.
+            if (!placing || purchaseProgressFillDuration <= 0f)
+            {
+                purchaseProgressFill.fillAmount = target;
+                return;
+            }
+
+            purchaseProgressFillTween = purchaseProgressFill
+                .DOFillAmount(target, purchaseProgressFillDuration)
+                .SetEase(purchaseProgressFillEase);
+        }
+
+        private void KillPurchaseProgressFill()
+        {
+            if (purchaseProgressFillTween == null) return;
+
+            if (purchaseProgressFillTween.IsActive()) purchaseProgressFillTween.Kill();
+            purchaseProgressFillTween = null;
         }
 
         // Only ever between UNLOCKED locations. Letting the player walk into a locked one
@@ -1710,6 +1890,10 @@ namespace ExpoTheExplorer.UI
             // change. Both meta screens are torn down by a scene load, so this is reachable
             // in normal play, not just in the Editor.
             if (background != null) background.rectTransform.DOKill();
+
+            // Same hazard, same fix, for the progress fill: it is driven by a tween rather than
+            // by the coroutine the props use, so nothing else here would stop it.
+            KillPurchaseProgressFill();
 
             // The purchase block is a ROOT object (D-151), so nothing about this component
             // going away takes it with it -- and the coroutine that would have removed it stops
