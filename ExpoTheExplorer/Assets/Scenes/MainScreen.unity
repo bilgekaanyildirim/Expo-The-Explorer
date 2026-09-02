@@ -297,6 +297,8 @@ RectTransform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1773118795}
+  - {fileID: 9000001}
+  - {fileID: 9000011}
   m_Father: {fileID: 1075530979}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -353,7 +355,15 @@ MonoBehaviour:
   locationLabel: {fileID: 0}
   previousButton: {fileID: 0}
   nextButton: {fileID: 0}
-  lockedHintLabel: {fileID: 0}
+  lockedHintLabel: {fileID: 9000013}
+  nextLocationFormat: Next expo in {0} days
+  nextLocationSoonText: Next expo tomorrow!
+  purchaseProgressRoot: {fileID: 9000000}
+  purchaseProgressFill: {fileID: 9000006}
+  purchaseProgressLabel: {fileID: 9000009}
+  purchaseProgressCompleteText: COMPLETE
+  purchaseProgressFillDuration: 0.5
+  purchaseProgressFillEase: 6
   ghostAlpha: 0.8
   previewFill: 0.45
   previewMaxZoom: 3
