@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 10330920edb414c9fa823bc90a1cf678
+guid: 0a385bc2d6b944b238be4be7dd63576d
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -3167341154623216253
-    second: PopUpBackground_0
+      213: 3298214498195071454
+    second: HUDui element green_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -52,7 +52,7 @@ TextureImporter:
   alignment: 0
   spritePivot: {x: 0.5, y: 0.5}
   spritePixelsToUnits: 100
-  spriteBorder: {x: 0, y: 200, z: 0, w: 250}
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spriteGenerateFallbackPhysicsShape: 1
   alphaUsage: 1
   alphaIsTransparency: 1
@@ -113,23 +113,23 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: PopUpBackground_0
+      name: HUDui element green_0
       rect:
         serializedVersion: 2
         x: 0
         y: 0
-        width: 1545
-        height: 1225
+        width: 456
+        height: 152
       alignment: 0
-      pivot: {x: 0.5, y: 0.5}
+      pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 385253c40085b04d0800000000000000
-      internalID: -3167341154623216253
+      spriteID: ed1e5f58c9c95cd20800000000000000
+      internalID: 3298214498195071454
       vertices: []
       indices: 
       edges: []
@@ -139,7 +139,7 @@ TextureImporter:
     physicsShape: []
     bones: []
     spriteID: 5e97eb03825dee720800000000000000
-    internalID: 1537655665
+    internalID: 0
     vertices: []
     indices: 
     edges: []
@@ -148,7 +148,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      PopUpBackground_0: -3167341154623216253
+      HUDui element green_0: 3298214498195071454
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

@@ -119,6 +119,25 @@ namespace ExpoTheExplorer.UI
         // to finalize the pickup or snap back to the board.
         public bool WasAcceptedByTray { get; set; }
 
+        // The refusal above, made readable by the DROP TARGET -- and it has to be, because
+        // refusing here cannot stop the tray from being offered this item. UGUI assigns
+        // eventData.pointerDrag AFTER it has dispatched pointerDown, so nothing this class
+        // does inside OnPointerDown can un-nominate it as the gesture's drag object; a tray
+        // the finger is released over then reads that same pointerDrag in its own OnDrop and
+        // finds a perfectly valid handler holding a perfectly valid item.
+        //
+        // That is how the first Day's tutorial could be walked straight past: pressing a
+        // hotdog the forced move did not name refused the pickup correctly -- the item never
+        // lifted and never followed the finger -- and releasing over the step's own target
+        // tray delivered it anyway. The wrong-order scatter that followed then emptied the
+        // cell the NEXT step pointed at, so the tutorial aborted itself on the way out.
+        //
+        // Read only on the finger's path (WorldTrayView's fromPlayerDrag), never Auto-
+        // Collect's: this flag describes the last GESTURE and outlives it, so a stale true
+        // from a press made under a popup would otherwise make an item permanently
+        // un-collectable by a powerup that never asked a finger for anything.
+        public bool WasPickupRefused => pickupRefused;
+
         public void Configure(BoardGrid board, Camera dragCamera, BoardView boardView, GameManager gameManager, DragFeelSettings dragFeel, BoardAnimationConfig animConfig, HapticsBinder haptics)
         {
             this.board = board;

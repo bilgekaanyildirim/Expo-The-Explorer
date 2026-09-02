@@ -169,7 +169,7 @@ PlayerSettings:
   androidMinAspectRatio: 1
   applicationIdentifier:
     Standalone: com.DefaultCompany.2D-URP
-    iPhone: com.karanaka.expotheexplorer
+    iPhone: com.magiclab.intern.expotheexplorer
   buildNumber:
     Standalone: 0
     VisionOS: 0

@@ -5,11 +5,11 @@
 	<key>API_KEY</key>
 	<string>AIzaSyC0i4yTIlAlcUcj5OnzrJtvOWqL3hbUoBA</string>
 	<key>BUNDLE_ID</key>
-	<string>com.karanaka.expotheexplorer</string>
+	<string>com.magiclab.intern.expotheexplorer</string>
 	<key>GCM_SENDER_ID</key>
 	<string>483837410952</string>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:483837410952:ios:34ce3130996ef895e4e93d</string>
+	<string>1:483837410952:ios:0bc9b7ba0f9389e0e4e93d</string>
 	<key>IS_ADS_ENABLED</key>
 	<false/>
 	<key>IS_ANALYTICS_ENABLED</key>

@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 10330920edb414c9fa823bc90a1cf678
+guid: 56d66271c1ce249dbaf8f30513f2716e
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -3167341154623216253
-    second: PopUpBackground_0
+      213: -7727557236511248765
+    second: Day box_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -52,7 +52,7 @@ TextureImporter:
   alignment: 0
   spritePivot: {x: 0.5, y: 0.5}
   spritePixelsToUnits: 100
-  spriteBorder: {x: 0, y: 200, z: 0, w: 250}
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spriteGenerateFallbackPhysicsShape: 1
   alphaUsage: 1
   alphaIsTransparency: 1
@@ -113,13 +113,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: PopUpBackground_0
+      name: Day box_0
       rect:
         serializedVersion: 2
         x: 0
         y: 0
-        width: 1545
-        height: 1225
+        width: 352
+        height: 364
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -128,8 +128,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 385253c40085b04d0800000000000000
-      internalID: -3167341154623216253
+      spriteID: 38e6f30c2a332c490800000000000000
+      internalID: -7727557236511248765
       vertices: []
       indices: 
       edges: []
@@ -148,7 +148,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      PopUpBackground_0: -3167341154623216253
+      Day box_0: -7727557236511248765
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

@@ -293,29 +293,57 @@ namespace ExpoTheExplorer.UI
                 renderer.sortingOrder += TutorialDim.LitSortingBoost;
             }
 
-            var end = trayTarget.position;
-
             // One restarting sequence rather than a per-frame lerp: the gesture is "travel,
             // land, wait, reappear at the start", and Append/AppendInterval say exactly that.
             // SetLink ties it to this object so a scene change cannot leave a tween running
             // against a destroyed transform.
             //
-            // Each lap re-reads the item's position instead of capturing it once, for the same
-            // reason the scale above is not copied: this sequence is built while the item may
-            // still be flying in from BoardView's Starting Point, and a captured start would
-            // have pinned the ghost's origin to a spot the item was merely passing through --
-            // for the rest of the step. Re-reading costs one property access per lap and is
-            // self-correcting.
+            // THE TRAVEL DRIVES THE POSITION ITSELF INSTEAD OF BEING A DOMove, AND THAT IS THE
+            // WHOLE POINT OF THIS BLOCK. The obvious spelling -- a callback that puts the ghost
+            // back on the item, then a DOMove to the tray -- was here and did not work, because
+            // DOTween reads a Tweener's START value exactly once, at its first update
+            // (Startup), and a Sequence loop rewinds a nested tween without re-running that. So
+            // the callback's reposition was overwritten by the cached start on the very next
+            // update, and every lap set out from that one stale point.
+            //
+            // The point it cached was a spot the item was PASSING THROUGH. This sequence is
+            // built one tween tick after BoardView's Start (see WorldTrayView, which defers the
+            // whole spotlight for exactly that reason), while the item is still arcing in from
+            // the Starting Point on a DOJump -- so the ghost set out from somewhere along that
+            // arc rather than from the cell.
+            //
+            // How wrong that looked depended on THE SHAPE OF THE SCREEN, which is what made it
+            // a phone-only report rather than an obvious bug: the Starting Point is a fixed
+            // scene transform, while a cell's world position is camera-derived (BoardView's
+            // cellSize and boardOrigin are both computed from cam.aspect), so the arc's length
+            // -- and therefore the absolute distance a given fraction of it represents --
+            // changes with the aspect ratio. Barely visible in a wide editor window, plainly
+            // "starting further back" at 9:16.
+            //
+            // Both endpoints are read live on every update, so nothing here can be captured
+            // mid-animation again. The destination is not stale today (a tray's entrance only
+            // scales and fades it, PlayTrayEntrance), but it costs nothing in the same
+            // expression and it stops a tray that ever learns to move from re-opening this.
+            var travelStart = sourceItem.position;
+
             ghostLoop = DOTween.Sequence();
             ghostLoop.AppendCallback(() =>
             {
                 // The item is destroyed by the very drop that ends the step, and this object's
                 // teardown does not necessarily run before the next tween tick -- so a lap can
-                // begin against an item that is already gone.
+                // begin against an item that is already gone. Leaving travelStart at the
+                // previous lap's value is the right failure: the ghost finishes its arc where
+                // it always did rather than snapping to the origin.
                 if (sourceItem == null || ghostObject == null) return;
-                ghostObject.transform.position = sourceItem.position;
+                travelStart = sourceItem.position;
+                ghostObject.transform.position = travelStart;
             });
-            ghostLoop.Append(ghostObject.transform.DOMove(end, animConfig.TutorialGhostTravelDuration).SetEase(Ease.InOutSine));
+            ghostLoop.Append(DOVirtual.Float(0f, 1f, animConfig.TutorialGhostTravelDuration, progress =>
+                {
+                    if (ghostObject == null || trayTarget == null) return;
+                    ghostObject.transform.position = Vector3.Lerp(travelStart, trayTarget.position, progress);
+                })
+                .SetEase(Ease.InOutSine));
             ghostLoop.AppendInterval(animConfig.TutorialGhostLoopPause);
             ghostLoop.SetLoops(-1).SetLink(gameObject);
         }

@@ -403,7 +403,7 @@ namespace ExpoTheExplorer.UI
         // collider — that fallback finds this tray from the item's own
         // displayed position instead and accepts the drop the same way.
         public bool TryAcceptDrop(BoardItemDragHandler dragHandler) =>
-            TryAcceptDrop(dragHandler, 1f, respectTutorialGate: true);
+            TryAcceptDrop(dragHandler, 1f, fromPlayerDrag: true);
 
         // Auto-Collect's way in (D-112). Identical to a finger's drop in every respect but
         // the tween's LENGTH -- same acceptance, same batch check, same delivery. The
@@ -423,9 +423,9 @@ namespace ExpoTheExplorer.UI
         // is no reachable state where this bypass lets Auto-Collect sweep the item a ghost is
         // pointing at.
         public bool TryAcceptAutoCollectDrop(BoardItemDragHandler dragHandler) =>
-            TryAcceptDrop(dragHandler, animConfig.AutoCollectTravelMultiplier, respectTutorialGate: false);
+            TryAcceptDrop(dragHandler, animConfig.AutoCollectTravelMultiplier, fromPlayerDrag: false);
 
-        private bool TryAcceptDrop(BoardItemDragHandler dragHandler, float travelMultiplier, bool respectTutorialGate)
+        private bool TryAcceptDrop(BoardItemDragHandler dragHandler, float travelMultiplier, bool fromPlayerDrag)
         {
             if (!isValid || dragHandler == null || dragHandler.CurrentItem == null) return false;
 
@@ -434,6 +434,19 @@ namespace ExpoTheExplorer.UI
             // simply snaps back to the board and can be dropped again a moment later.
             if (deliveryInProgress) return false;
 
+            // WAS THIS ITEM EVER PICKED UP? A refused press is not a pickup, and until this
+            // line a tray took that item anyway: OnDrop reads eventData.pointerDrag, which
+            // UGUI nominates AFTER pointerDown has already been refused, so the refusal
+            // reached every method on the handler and none of the ones here. The finger
+            // travelled with nothing visibly in it and the tray accepted a delivery at the
+            // end of it -- which is how a tutorial step that permits exactly one cell could
+            // be answered with any item on the board.
+            //
+            // It sits ABOVE the tray gate because it is the more basic question, and it is
+            // asked only of a finger for the reason on WasPickupRefused: the flag describes a
+            // gesture, and Auto-Collect makes none.
+            if (fromPlayerDrag && dragHandler.WasPickupRefused) return false;
+
             // The tutorial's second gate. Refusing HERE rather than inside TrayManager is
             // deliberate: a false return is already this method's "not accepted" answer, so
             // the item snaps back exactly as it does for any other rejected drop, and
@@ -441,7 +454,7 @@ namespace ExpoTheExplorer.UI
             //
             // Asked only of a FINGER since D-115 -- see TryAcceptAutoCollectDrop above for
             // why a powerup's own machinery is not what this gate is for.
-            if (respectTutorialGate && !gameManager.IsTrayDropAllowed(slotIndex)) return false;
+            if (fromPlayerDrag && !gameManager.IsTrayDropAllowed(slotIndex)) return false;
 
             var item = dragHandler.CurrentItem;
             justDelivered = false;
