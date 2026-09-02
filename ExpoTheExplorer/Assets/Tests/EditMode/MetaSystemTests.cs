@@ -36,10 +36,15 @@ namespace ExpoTheExplorer.Tests.EditMode
             new(id, MetaUnlockKind.Purchase, price: price, sprite: CreateSprite(),
                 requiresAreaId: requiresAreaId, unlocksArea: unlocksArea, sortOrder: sortOrder);
 
+        // unlocksArea is here as well as on Purchase because meta1 authors exactly that
+        // combination -- the fryer opens on a day AND opens an area -- and it is the shape
+        // D-155 was written for.
         private MetaItemDefinition DayUnlocked(
-            string id, int unlockAtDayIndex, int sortOrder = 0, string requiresAreaId = null) =>
+            string id, int unlockAtDayIndex, int sortOrder = 0, string requiresAreaId = null,
+            bool unlocksArea = false) =>
             new(id, MetaUnlockKind.DayUnlock, unlockAtDayIndex: unlockAtDayIndex,
-                sprite: CreateSprite(), sortOrder: sortOrder, requiresAreaId: requiresAreaId);
+                sprite: CreateSprite(), sortOrder: sortOrder, requiresAreaId: requiresAreaId,
+                unlocksArea: unlocksArea);
 
         private MetaLocation Location(string id, int unlockAtDayIndex, params MetaItemDefinition[] items) =>
             new(id, unlockAtDayIndex, items, CreateSprite());
@@ -270,7 +275,7 @@ namespace ExpoTheExplorer.Tests.EditMode
             var table = Purchase("Table1", requiresAreaId: "Nowhere");
             var location = Location("Meta1", 0, table);
 
-            Assert.IsFalse(MetaResolver.IsAreaSatisfied(location, table, Owned("Meta1.Nowhere")));
+            Assert.IsFalse(MetaResolver.IsAreaSatisfied(location, table, Owned("Meta1.Nowhere"), 0));
         }
 
         [Test]
@@ -280,7 +285,73 @@ namespace ExpoTheExplorer.Tests.EditMode
             var table = Purchase("Table1", requiresAreaId: "Fountain");
             var location = Location("Meta1", 0, fountain, table);
 
-            Assert.IsFalse(MetaResolver.IsAreaSatisfied(location, table, Owned("Meta1.Fountain")));
+            Assert.IsFalse(MetaResolver.IsAreaSatisfied(location, table, Owned("Meta1.Fountain"), 0));
+        }
+
+        // THE regression for D-155, and the shape meta1 actually authors: the fryer opens on a
+        // DAY with Unlocks Area ticked, and the tent stands behind it. A Day-unlocked prop's
+        // key never enters the save file, so the old IsOwned-based gate could never be
+        // satisfied and the tent was unbuyable forever -- the 14/15 the user could not clear.
+        [Test]
+        public void IsAreaSatisfied_AreaOpenedByADay_IsSatisfiedOnceThatDayArrives()
+        {
+            var fryer = DayUnlocked("Fryer", 5, unlocksArea: true);
+            var tent = Purchase("Tent", price: 100, requiresAreaId: "Fryer");
+            var location = Location("Meta1", 0, fryer, tent);
+
+            Assert.IsFalse(MetaResolver.IsAreaSatisfied(location, tent, Owned(), 4), "the day before");
+            Assert.IsTrue(MetaResolver.IsAreaSatisfied(location, tent, Owned(), 5), "the day it opens");
+
+            // And the whole point: it can now be BOUGHT, which is what 15/15 needs.
+            Assert.AreEqual(
+                MetaPurchaseVerdict.AreaLocked, MetaPurchase.Evaluate(location, tent, Owned(), 4, softMoney: 999));
+            Assert.AreEqual(
+                MetaPurchaseVerdict.Ok, MetaPurchase.Evaluate(location, tent, Owned(), 5, softMoney: 999));
+        }
+
+        // A bought area behaves exactly as it always did -- present and owned are the same
+        // thing for a Purchase prop, so D-155 must not have moved anything here.
+        [Test]
+        public void IsAreaSatisfied_AreaBoughtRatherThanOpened_StillNeedsBuying()
+        {
+            var square = Purchase("Square", price: 500, unlocksArea: true);
+            var table = Purchase("Table1", requiresAreaId: "Square");
+            var location = Location("Meta1", 0, square, table);
+
+            Assert.IsFalse(MetaResolver.IsAreaSatisfied(location, table, Owned(), 99));
+            Assert.IsTrue(MetaResolver.IsAreaSatisfied(location, table, Owned("Meta1.Square"), 0));
+        }
+
+        // The chain, which is what meta1 really is: tent -> fryer -> building. The fryer's day
+        // arriving is not enough while the building it stands on is unbought, or the player
+        // would be sold a tent to put next to a fryer that is not drawn.
+        [Test]
+        public void IsAreaSatisfied_WalksTheWholeChain_NotJustTheFirstLink()
+        {
+            var building = Purchase("Building", price: 1000, unlocksArea: true);
+            var fryer = DayUnlocked("Fryer", 5, unlocksArea: true, requiresAreaId: "Building");
+            var tent = Purchase("Tent", price: 100, requiresAreaId: "Fryer");
+            var location = Location("Meta1", 0, building, fryer, tent);
+
+            // The day has come, but the ground it all stands on was never bought.
+            Assert.IsFalse(MetaResolver.IsAreaSatisfied(location, tent, Owned(), 5));
+
+            Assert.IsTrue(MetaResolver.IsAreaSatisfied(location, tent, Owned("Meta1.Building"), 5));
+        }
+
+        // A cycle is a content bug MetaCatalogValidator does not catch -- it only rejects a prop
+        // requiring its OWN area. The recursive spelling of the walk would overflow the stack
+        // on it, which crashes the game rather than reporting anything, so the iterative one
+        // has to answer instead. If this test ever hangs or dies, the step cap is gone.
+        [Test]
+        public void IsAreaSatisfied_AreasRequiringEachOther_IsRefusedRatherThanOverflowing()
+        {
+            var a = Purchase("AreaA", unlocksArea: true, requiresAreaId: "AreaB");
+            var b = Purchase("AreaB", unlocksArea: true, requiresAreaId: "AreaA");
+            var table = Purchase("Table1", requiresAreaId: "AreaA");
+            var location = Location("Meta1", 0, a, b, table);
+
+            Assert.IsFalse(MetaResolver.IsAreaSatisfied(location, table, Owned("Meta1.AreaA", "Meta1.AreaB"), 0));
         }
 
         [Test]

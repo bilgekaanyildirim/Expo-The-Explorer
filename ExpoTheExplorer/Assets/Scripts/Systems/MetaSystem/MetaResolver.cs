@@ -130,35 +130,88 @@ namespace ExpoTheExplorer.Systems.MetaSystem
             // author can add requiresAreaId to a prop players already have, and then their
             // table would hang in mid-air over ungravelled grass. Tying visibility to the
             // area keeps the picture coherent whatever the catalog does next.
-            if (!IsAreaSatisfied(location, item, ownedKeys)) return false;
+            if (!IsAreaSatisfied(location, item, ownedKeys, currentDayIndex)) return false;
 
-            return item.Unlock switch
+            return StandsOnItsOwnTerms(item, location, ownedKeys, currentDayIndex);
+        }
+
+        // Whether the prop has arrived by ITS OWN rule, with its area left out of the question:
+        // a bought prop is here once bought, a Day-unlocked one once its day comes. Split out
+        // of IsActive so the area walk below can ask it of an AREA prop without re-entering
+        // IsActive and starting a recursion -- see IsAreaSatisfied for why that matters.
+        private static bool StandsOnItsOwnTerms(
+            MetaItemDefinition item, MetaLocation location, ISet<string> ownedKeys, int currentDayIndex) =>
+            item.Unlock switch
             {
                 MetaUnlockKind.Purchase => IsOwned(location, item, ownedKeys),
                 MetaUnlockKind.DayUnlock => currentDayIndex >= item.UnlockAtDayIndex,
                 _ => false
             };
-        }
 
-        // True when the prop needs no area, or when the area it names is owned. An area id
-        // that names nothing is treated as NOT satisfied: the validator reports it as an
+        // True when the prop needs no area, or when every area up its chain is STANDING THERE.
+        //
+        // "Standing there", not "bought", and that distinction is the whole of decisions.md
+        // D-155. This used to ask IsOwned of the area, which silently made a whole authoring
+        // shape dead: an area prop that opens on a DAY can never be owned, because a
+        // Day-unlocked prop's key never enters the save file. meta1 authors exactly that --
+        // the fryer opens on Day 6 with unlocksArea ticked and the tent sits behind it -- and
+        // the tent was therefore unbuyable forever, which is the 14/15 the user could not
+        // clear. Every tool called the catalog valid; only this predicate disagreed. Asking
+        // whether the area is PRESENT covers both kinds and changes nothing for a bought area,
+        // where present and owned are the same thing.
+        //
+        // THE WHOLE CHAIN, not one link, and that is stricter than what it replaced. The tent
+        // needs the fryer, and the fryer needs the building bought -- so a player who skipped
+        // the building must not be sold a tent to stand next to a fryer that is not drawn.
+        //
+        // Walked ITERATIVELY. The recursive spelling -- ask IsActive of the area, which asks
+        // this of ITS area -- reads better and is a stack overflow waiting for the first
+        // catalog that authors a cycle (A behind B's area, B behind A's). MetaCatalogValidator
+        // catches a prop requiring its OWN area and nothing longer, so the guard has to live
+        // here. The step cap is the item count: a chain that never repeats a prop cannot be
+        // longer than that, so exceeding it IS a cycle, and it costs a counter rather than the
+        // HashSet a visited-set would allocate on every prop of every redraw.
+        //
+        // An area id that names nothing is still NOT satisfied: the validator reports it as an
         // error, and silently letting the prop through would hide a content bug behind
         // correct-looking behaviour.
-        public static bool IsAreaSatisfied(MetaLocation location, MetaItemDefinition item, ISet<string> ownedKeys)
+        public static bool IsAreaSatisfied(
+            MetaLocation location, MetaItemDefinition item, ISet<string> ownedKeys, int currentDayIndex)
         {
             if (item == null) return false;
             if (string.IsNullOrWhiteSpace(item.RequiresAreaId)) return true;
             if (location?.Items == null) return false;
 
+            var requiredAreaId = item.RequiresAreaId;
+
+            for (var step = 0; !string.IsNullOrWhiteSpace(requiredAreaId); step++)
+            {
+                if (step >= location.Items.Count) return false;
+
+                var area = FindArea(location, requiredAreaId);
+                if (area == null) return false;
+                if (!StandsOnItsOwnTerms(area, location, ownedKeys, currentDayIndex)) return false;
+
+                requiredAreaId = area.RequiresAreaId;
+            }
+
+            return true;
+        }
+
+        // The item that OPENS the named area. UnlocksArea is part of the match, not a check
+        // afterwards: an id shared by a prop that does not open an area must not shadow the one
+        // that does.
+        private static MetaItemDefinition FindArea(MetaLocation location, string areaId)
+        {
             foreach (var candidate in location.Items)
             {
                 if (candidate == null || !candidate.UnlocksArea) continue;
-                if (candidate.Id != item.RequiresAreaId) continue;
+                if (candidate.Id != areaId) continue;
 
-                return IsOwned(location, candidate, ownedKeys);
+                return candidate;
             }
 
-            return false;
+            return null;
         }
 
         // The NEXT Day-unlocked prop and how far the wait has come. The view draws it as a
@@ -192,7 +245,7 @@ namespace ExpoTheExplorer.Systems.MetaSystem
                 // would promise "wait and it comes" when the honest answer is "buy the
                 // square". A prop whose day has passed but whose area is unowned therefore
                 // shows nothing at all, which is the same silence IsActive already gives it.
-                if (!IsAreaSatisfied(location, item, ownedKeys)) continue;
+                if (!IsAreaSatisfied(location, item, ownedKeys, currentDayIndex)) continue;
 
                 if (item.UnlockAtDayIndex <= currentDayIndex)
                 {
@@ -262,7 +315,7 @@ namespace ExpoTheExplorer.Systems.MetaSystem
                 // there is nothing to zoom in on and nothing to celebrate. Buying the area
                 // later makes it appear without a celebration, which is the honest outcome --
                 // the purchase already was the moment.
-                if (!IsAreaSatisfied(location, item, ownedKeys)) continue;
+                if (!IsAreaSatisfied(location, item, ownedKeys, currentDayIndex)) continue;
 
                 opened.Add(item);
             }

@@ -108,7 +108,10 @@ namespace ExpoTheExplorer.Systems.MetaSystem
             // Before affordability on purpose: an area-gated prop's price is irrelevant
             // until the area is owned, and "not enough money" would point the player at
             // the wrong problem.
-            if (!MetaResolver.IsAreaSatisfied(location, item, ownedKeys)) return MetaPurchaseVerdict.AreaLocked;
+            if (!MetaResolver.IsAreaSatisfied(location, item, ownedKeys, currentDayIndex))
+            {
+                return MetaPurchaseVerdict.AreaLocked;
+            }
 
             if (softMoney < item.Price) return MetaPurchaseVerdict.NotEnoughMoney;
 
@@ -222,7 +225,7 @@ namespace ExpoTheExplorer.Systems.MetaSystem
             {
                 if (item == null || item.Unlock != MetaUnlockKind.Purchase) continue;
                 if (MetaResolver.IsOwned(location, item, ownedKeys)) continue;
-                if (!MetaResolver.IsAreaSatisfied(location, item, ownedKeys)) continue;
+                if (!MetaResolver.IsAreaSatisfied(location, item, ownedKeys, currentDayIndex)) continue;
 
                 offers.Add(item);
             }
