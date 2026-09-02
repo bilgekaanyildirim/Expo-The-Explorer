@@ -187,6 +187,22 @@ namespace ExpoTheExplorer.Data
         [Tooltip("The Day index at which this location becomes visitable. 0 for the location the game starts on. Derived, never saved: the player's current Day already answers it, and storing it as well would be a second authority that lies as soon as Day content is re-authored.")]
         [SerializeField, Min(0)] private int unlockAtDayIndex;
 
+        // WHAT A LOCATION SAYS WHEN IT OPENS. The same pair MetaItemDefinition carries, and
+        // deliberately the same shape rather than a location-specific one: arriving somewhere
+        // new is the same kind of moment as a prop opening, so it reuses MetaUnlockPopup and
+        // the celebration reuses the reveal's confetti and haptic.
+        //
+        // THE MESSAGE IS THE OPT-IN here too. Empty means the location simply appears, exactly
+        // as every location did before this existed -- which is what lets this ship without
+        // touching authored content. A location's popup is otherwise unreachable: it has no
+        // prop to hang off, and a location with no items (Meta2 today) would celebrate nothing
+        // at all.
+        [Tooltip("Shown when this location first opens — a line saying where the player has arrived. Empty means no popup at all. A location with no Day-unlocked props has no other way to announce itself.")]
+        [SerializeField, TextArea(2, 4)] private string unlockMessage;
+
+        [Tooltip("Optional. The picture on that popup. Empty falls back to the grounds themselves (Background Sprite), which is the one image every location is guaranteed to have.")]
+        [SerializeField] private Sprite unlockImage;
+
         [SerializeField] private List<MetaItemDefinition> items = new();
 
         public string Id => id;
@@ -202,6 +218,17 @@ namespace ExpoTheExplorer.Data
         // stale the next time the art is re-exported.
         public Sprite BackgroundBgSprite => backgroundBgSprite;
         public int UnlockAtDayIndex => unlockAtDayIndex;
+        public string UnlockMessage => unlockMessage;
+
+        // Falls back to the grounds, for the reason MetaItemDefinition.UnlockImage falls back to
+        // the prop's sprite: "empty means use the art it already has" is one rule, and it lives
+        // here rather than in the view that would otherwise forget it and draw an empty frame.
+        public Sprite UnlockImage => unlockImage != null ? unlockImage : backgroundSprite;
+
+        // The one question the location celebration asks -- the same question, spelled the same
+        // way, as MetaItemDefinition.HasUnlockPopup. Whitespace counts as empty.
+        public bool HasUnlockPopup => !string.IsNullOrWhiteSpace(unlockMessage);
+
         public IReadOnlyList<MetaItemDefinition> Items => items;
 
         // A location nobody has authored anything into yet. ONE property with TWO readers,
@@ -226,12 +253,14 @@ namespace ExpoTheExplorer.Data
             int unlockAtDayIndex = 0,
             IEnumerable<MetaItemDefinition> items = null,
             Sprite backgroundSprite = null,
-            string displayName = null)
+            string displayName = null,
+            string unlockMessage = null)
         {
             this.id = id;
             this.displayName = displayName;
             this.backgroundSprite = backgroundSprite;
             this.unlockAtDayIndex = unlockAtDayIndex;
+            this.unlockMessage = unlockMessage;
             this.items = items == null ? new List<MetaItemDefinition>() : new List<MetaItemDefinition>(items);
         }
     }

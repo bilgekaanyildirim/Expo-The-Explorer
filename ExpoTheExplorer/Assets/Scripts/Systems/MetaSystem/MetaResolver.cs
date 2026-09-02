@@ -53,6 +53,23 @@ namespace ExpoTheExplorer.Systems.MetaSystem
         public static bool IsLocationUnlocked(MetaLocation location, int currentDayIndex) =>
             location != null && currentDayIndex >= location.UnlockAtDayIndex;
 
+        // Whether this location opened INSIDE the window the celebration is owed for -- the
+        // location-sized answer to the question DayUnlocksBetween asks about props, and it uses
+        // the same half-open window `(since, current]` and the same marker
+        // (GameSession.LastCelebratedDayIndex), so the two cannot come to disagree about which
+        // day boundary has already been paid out.
+        //
+        // Deliberately does NOT ask whether the location authors a message. HasUnlockPopup is
+        // the opt-in and it lives on the data, exactly as it does for a prop; a resolver that
+        // filtered on it would be a second place where "no message means no celebration" is
+        // spelled, and the first one to change would be the one nobody remembered.
+        public static bool OpenedBetween(MetaLocation location, int sinceDayIndex, int currentDayIndex)
+        {
+            if (location == null || currentDayIndex <= sinceDayIndex) return false;
+
+            return location.UnlockAtDayIndex > sinceDayIndex && location.UnlockAtDayIndex <= currentDayIndex;
+        }
+
         // In catalog order, so a caller rendering a switcher gets the same left-to-right
         // sequence the asset was authored in.
         //
