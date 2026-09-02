@@ -490,7 +490,12 @@
      all, so there is nothing there to read. Two things it deliberately does NOT persist: whether a
      Day-unlocked prop is open, and whether a location is unlocked. Both are DERIVED by
      comparing CurrentDayIndex against an authored index, so there is no second copy to
-     fall out of step with the catalog. -->
+     fall out of step with the catalog.
+
+     D-153 added the LOCATION celebration and persisted nothing new for it either: the single
+     LastCelebratedDayIndex marker that already gated the prop queue gates the arrival too, and
+     MetaResolver.OpenedBetween is the same day-window arithmetic as DayUnlocksBetween on the
+     same marker. One marker, one writer, one definition of "which day boundary is paid". -->
 
 ## Scene inventory
 
@@ -582,7 +587,14 @@
      That is why its dismiss button is the one part that is not optional: a popup with no way
      out would strand the map zoomed in behind a full-screen skip catcher.
 
-     Its ROOT is its Canvas, for the reason every popup prefab here now is (D-126). -->
+     Its ROOT is its Canvas, for the reason every popup prefab here now is (D-126).
+
+     SINCE D-153 IT ALSO SERVES A LOCATION, not just a prop -- MetaLocation carries the same
+     unlockMessage/unlockImage pair and spells HasUnlockPopup the same way, so arriving at new
+     grounds reuses this prefab rather than earning a second one. That reuse is the whole reason
+     the pair was copied in the same shape instead of a location-specific one. The location's
+     picture falls back to its backgroundSprite (the prop's falls back to its own sprite) --
+     each subject's guaranteed image, resolved on the data, not here. -->
 <!-- Renamed from TutorialStepMessage 2026-08-28 (decisions.md D-126) when it stopped being
      only a message: it now carries the step's sentence AND its two modification arrows, so
      an author can style all three. The step still decides which appear -- highlightModification
