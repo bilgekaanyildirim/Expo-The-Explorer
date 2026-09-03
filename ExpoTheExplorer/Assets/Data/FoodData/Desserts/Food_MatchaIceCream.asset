@@ -19,4 +19,4 @@ MonoBehaviour:
   basePrice: 5
   availableModifications: []
   spriteLayers: []
-  overallScale: 0.85
+  overallScale: 1
