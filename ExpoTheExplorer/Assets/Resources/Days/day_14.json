@@ -209,6 +209,14 @@
         "tutorial": {
             "enabled": false,
             "steps": []
+        },
+        "itemIntro": {
+            "enabled": false,
+            "items": []
+        },
+        "trayPreSeed": {
+            "enabled": false,
+            "entries": []
         }
     },
     "editorMeta": {

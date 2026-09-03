@@ -65,9 +65,17 @@ namespace ExpoTheExplorer.UI
         // Created by the target tray, with everything already resolved -- this view looks
         // nothing up. sourceItem is the live board container the player must grab (the ghost
         // is cloned from it); trayTarget is where the ghost flies to; litExtras stay bright
-        // alongside the item; dimmedCards go dark; targetCard is the lit card the
-        // modification arrow points into, and sourceBoardItem is the model behind sourceItem,
-        // which is what knows which of its sprite layers a modification put there.
+        // alongside the item; dimmedCards go dark; litCards stay legible; targetCard is the
+        // lit card the modification arrow points into, and sourceBoardItem is the model behind
+        // sourceItem, which is what knows which of its sprite layers a modification put there.
+        //
+        // WHY A CARD NEEDS LIFTING TO STAY BRIGHT, when a lit tray only needs its sprites'
+        // order raised: the ticket cards ride InGameCanvas, which is Screen Space - CAMERA at
+        // sortingOrder -1, NOT Overlay. The dim sheet is a SpriteRenderer at DimSortingOrder,
+        // so it covers those cards like anything else in the world. `Curtain` is therefore a
+        // SECOND layer of dark over a card that is already behind the sheet, and removing a
+        // curtain does not make a card readable -- only LiftElement does. That distinction cost
+        // a playtest round (D-165f): a tray move stopped curtaining cards and they stayed dark.
         public static TutorialSpotlightView Create(
             TutorialDirector director,
             BoardAnimationConfig animConfig,
@@ -76,7 +84,8 @@ namespace ExpoTheExplorer.UI
             Transform trayTarget,
             IReadOnlyList<Transform> litExtras,
             IReadOnlyList<RectTransform> dimmedCards,
-            TicketCardView targetCard)
+            TicketCardView targetCard,
+            IReadOnlyList<TicketCardView> litCards = null)
         {
             if (director == null || animConfig == null || sourceItem == null || trayTarget == null) return null;
 
@@ -84,7 +93,7 @@ namespace ExpoTheExplorer.UI
             var view = host.AddComponent<TutorialSpotlightView>();
             view.director = director;
             view.animConfig = animConfig;
-            view.Build(sourceItem, sourceBoardItem, trayTarget, litExtras, dimmedCards, targetCard);
+            view.Build(sourceItem, sourceBoardItem, trayTarget, litExtras, dimmedCards, targetCard, litCards);
             return view;
         }
 
@@ -94,7 +103,8 @@ namespace ExpoTheExplorer.UI
             Transform trayTarget,
             IReadOnlyList<Transform> litExtras,
             IReadOnlyList<RectTransform> dimmedCards,
-            TicketCardView targetCard)
+            TicketCardView targetCard,
+            IReadOnlyList<TicketCardView> litCards)
         {
             dim.Build(transform, animConfig.TutorialDimOpacity);
             dim.LiftSprites(sourceItem);
@@ -115,6 +125,18 @@ namespace ExpoTheExplorer.UI
             // This is what keeps the one card the player must READ -- the order the forced
             // move is filling -- legible, along with the modification arrow parented to it.
             if (targetCard != null) dim.LiftElement(targetCard.gameObject);
+
+            // Any OTHER card this step wants readable. A tray move passes all three, because
+            // it teaches that an item can leave one order for another and that is unreadable
+            // with the other orders behind the sheet. LiftElement no-ops on an object that
+            // already has a Canvas, so passing the target card again here is harmless.
+            if (litCards != null)
+            {
+                foreach (var card in litCards)
+                {
+                    if (card != null) dim.LiftElement(card.gameObject);
+                }
+            }
 
             var step = director.Current;
             if (step != null) BuildStepHints(step, sourceItem, sourceBoardItem, targetCard);

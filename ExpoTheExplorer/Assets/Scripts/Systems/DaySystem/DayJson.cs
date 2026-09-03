@@ -55,6 +55,56 @@ namespace ExpoTheExplorer.Systems.DaySystem
         // than null, and unchecking the box in the Day Editor must not delete what was
         // already authored.
         public ItemIntroJson itemIntro;
+
+        // What is ALREADY SITTING IN A TRAY when this Day opens, before the player has
+        // moved anything. Authored for one reason so far (day_03: a drink waiting in the
+        // second tray, which the tutorial then takes back out), and under runtime for the
+        // reason every block above it is -- it is read while the Day is PLAYED, and
+        // DayCatalogParser is contractually blind to editorMeta.
+        //
+        // Same `enabled`-as-absence-marker shape as `tutorial` and `itemIntro`, for the
+        // same two reasons: JsonUtility hands back a ZEROED instance for a missing object
+        // rather than null, and a zeroed entry would read as "tray 0, item id empty" --
+        // tray 0 is a real tray, so the absence marker cannot be a slot index.
+        //
+        // THE TRAY, NOT THE BOARD, is what makes this a separate block rather than a flag
+        // on boardTimeline: a boardTimeline entry names a CELL and is played by
+        // DayBoardTimelinePlayer into BoardGrid, while these never touch the grid at all.
+        // Folding them together would give BoardSpawnEntryJson a coordinate that means
+        // nothing for half its rows -- the same "kind selects between shapes that share no
+        // fields" trap TutorialStepJson.kind documents below.
+        public TrayPreSeedJson trayPreSeed;
+    }
+
+    // The tray contents a Day opens with. A LIST from the start, like ItemIntroJson and
+    // for the same reason: three trays exist, and a Day that seats something in two of
+    // them is an ordinary authoring choice rather than a generalisation waiting for its
+    // second example.
+    [Serializable]
+    public class TrayPreSeedJson
+    {
+        // The whole-block absence marker -- see the `trayPreSeed` field comment above, and
+        // note that switching it off KEEPS the entries, exactly as the other two blocks do.
+        public bool enabled;
+
+        public TrayPreSeedEntryJson[] entries;
+    }
+
+    // One item seated in one tray at Day Start. The item is named the way every food
+    // reference in Day JSON is -- by id, resolved against FoodCatalog -- so this block
+    // cannot name something the catalog does not have.
+    [Serializable]
+    public class TrayPreSeedEntryJson
+    {
+        // Which tray, 0..2. Nothing in the schema pairs this with the ticket that will be
+        // sitting there: a seeded item does NOT have to be something that tray's order
+        // wants (day_03 seats a drink the second order happens to want, and the tutorial
+        // moves it to the first order anyway). DayValidator only checks that the tray
+        // exists -- what belongs where is a design call, not a schema one.
+        public int traySlotIndex;
+
+        public string itemId;
+        public ModificationEntryJson[] modifications;
     }
 
     // The items this Day introduces, in the order they are shown. A LIST from the start,
@@ -148,13 +198,21 @@ namespace ExpoTheExplorer.Systems.DaySystem
     [Serializable]
     public class TutorialStepJson
     {
-        // What SHAPE of step this is, and since D-115 there is exactly one shape a Day may
-        // author: "ForcedMove", or empty, which means the same thing. It is kept as a field
-        // rather than deleted precisely BECAUSE the other value is gone -- "PowerupIntro"
-        // was legal here until D-115, and a Day file still carrying one must fail loudly.
-        // Delete this field and JsonUtility would silently ignore that key, quietly turning
-        // a powerup panel into a forced move on cell (0,0) into tray 0. DayCatalogParser
-        // refuses anything but the two accepted spellings.
+        // What SHAPE of step this is. Two are authorable: "ForcedMove", or empty, which
+        // means the same thing -- the board-cell-to-tray move every Day authored before
+        // D-165 -- and "TrayMove", which takes an item OUT of one tray and into another.
+        // It is kept as a field rather than deleted precisely BECAUSE a third value is
+        // gone -- "PowerupIntro" was legal here until D-115, and a Day file still carrying
+        // one must fail loudly. Delete this field and JsonUtility would silently ignore
+        // that key, quietly turning a powerup panel into a forced move on cell (0,0) into
+        // tray 0. DayCatalogParser refuses anything but the three accepted spellings.
+        //
+        // The two shapes SHARE NO SOURCE FIELDS, which is the whole reason the kind is
+        // read before anything else: a ForcedMove's source is (sourceX, sourceY) and its
+        // sourceTraySlotIndex is meaningless, a TrayMove's source is sourceTraySlotIndex
+        // and its cell is meaningless -- and an unset int is 0, which is a real cell AND a
+        // real tray. Nothing here can tell an authored 0 from an absent one, so only the
+        // kind can say which pair to trust.
         //
         // A string rather than the enum itself, for the reason BoardDistributionJson's mode
         // already gives: JsonUtility writes an enum as a bare ordinal, which is unreadable
@@ -171,6 +229,15 @@ namespace ExpoTheExplorer.Systems.DaySystem
         // against the live board rather than trusting the author.
         public int sourceX;
         public int sourceY;
+
+        // TrayMove only, and meaningless for a ForcedMove -- see the `kind` note above.
+        // The one tray an item may be taken OUT of while this step is unfinished. That
+        // tray has to be holding something when the step begins, which for now can only
+        // come from one of two places: the Day's own trayPreSeed block, or an earlier step
+        // that put it there. DayValidator checks that pairing at authoring time for the
+        // same reason it checks a ForcedMove's cell against boardTimeline -- both halves
+        // live in this one file, so they can be compared.
+        public int sourceTraySlotIndex;
 
         // The only tray that will accept that item, 0..2. Authoring this is what decides
         // whether the forced move DELIVERS or costs a life, and nothing checks it: the

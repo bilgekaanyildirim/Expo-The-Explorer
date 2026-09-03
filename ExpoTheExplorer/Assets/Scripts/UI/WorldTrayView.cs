@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using DG.Tweening;
 using ExpoTheExplorer.Bootstrap;
@@ -40,6 +41,12 @@ namespace ExpoTheExplorer.UI
         [SerializeField] private BoardView boardView;
         [Tooltip("Needed to look up this slot's TicketCardView so its own exit/entry animation can sync with a successful delivery's lift-off.")]
         [SerializeField] private TicketCardsView ticketCardsView;
+
+
+        // This tray's drop target. Taken from its own GameObject rather than serialized: it is
+        // the collider that makes OnDrop fire, so it is never anywhere else, and a slot nobody
+        // filled would silently disable the whole tray. See RefreshTutorialPressThrough.
+        private Collider2D dropCollider;
 
         private bool isValid;
         private int lastKnownCount = -1;
@@ -100,8 +107,17 @@ namespace ExpoTheExplorer.UI
         private void Awake()
         {
             isValid = ValidateReferences();
+            dropCollider = GetComponent<Collider2D>();
             if (highlightVisual != null) highlightVisual.SetActive(false);
             if (wrongVisual != null) wrongVisual.SetActive(false);
+
+            // In Awake rather than Start, and safe here even though the note below explains
+            // why most of this class is not: RegisterTray only writes into an array that is a
+            // FIELD INITIALIZER on GameManager, so it exists from the moment that object is
+            // constructed -- no Awake of its own has to have run. Registering this early is
+            // what makes a tray reachable by another tray's first spotlight, whatever order
+            // Unity starts the three of them in.
+            if (isValid) gameManager.RegisterTray(slotIndex, this);
         }
 
         // GameManager.Awake() builds TrayManager, but Unity doesn't guarantee
@@ -141,6 +157,13 @@ namespace ExpoTheExplorer.UI
             gameManager.State.TicketDelivered.Subscribe(OnTicketDelivered);
             gameManager.State.TraySlotScatterBegin.Subscribe(OnTraySlotScatterBegin);
             gameManager.State.TraySlotScatterEnd.Subscribe(OnTraySlotScatterEnd);
+
+            // Same subscribe-then-sync shape as the tutorial hook above, and the same two
+            // halves: a retry or a day advance re-publishes DaySessionStarted mid-scene, but
+            // the FIRST one fired inside GameManager.Awake before this Start could subscribe.
+            // TelemetryBinder documents the identical gap for the identical event.
+            gameManager.State.DaySessionStarted.Subscribe(OnDaySessionStarted);
+            ScheduleTrayPreSeed();
         }
 
         private void OnDestroy()
@@ -150,6 +173,123 @@ namespace ExpoTheExplorer.UI
             gameManager.State.TicketDelivered.Unsubscribe(OnTicketDelivered);
             gameManager.State.TraySlotScatterBegin.Unsubscribe(OnTraySlotScatterBegin);
             gameManager.State.TraySlotScatterEnd.Unsubscribe(OnTraySlotScatterEnd);
+            gameManager.State.DaySessionStarted.Unsubscribe(OnDaySessionStarted);
+        }
+
+        private void OnDaySessionStarted(int _) => ScheduleTrayPreSeed();
+
+        // Lets a press through to the item this tray is HOLDING, by standing out of its way
+        // (D-165d). The tray wins that press otherwise, and the reason is a mismatch nothing
+        // about either object makes visible:
+        //
+        // Physics2DRaycaster reads the sort key off the SpriteRenderer on the COLLIDER'S OWN
+        // GameObject. The tray root has one; a board item's container does NOT -- its sprites
+        // are children, one level down -- so the raycaster scores the item at a flat 0 no
+        // matter what its layers are set to. Normally that still wins, because the tray's own
+        // sprite is authored at -2. But the tutorial dim lifts a lit tray by +600, and 598
+        // beats 0, so every item inside a lit tray stops being pressable. Measured, not
+        // guessed: the press log reported TrayArea at 598 and Item_0_0 at 0, same distance.
+        //
+        // Only the SOURCE tray of an armed tray move stands aside, and only while that step
+        // runs. It costs nothing: a tray's collider exists to be a DROP target, and the step's
+        // own drop gate already refuses this tray -- the item is going to the OTHER one.
+        private void RefreshTutorialPressThrough()
+        {
+            if (dropCollider == null) return;
+
+            var tutorial = gameManager.Tutorial;
+            var standAside = tutorial != null && tutorial.SpotlightSourceTraySlotIndex == slotIndex;
+
+            dropCollider.enabled = !standAside;
+        }
+
+        // DEFERRED BY ONE TWEEN TICK, and both reasons are load-bearing -- this is not the
+        // "harmless delay" the spotlight's identical call can afford (D-165).
+        //
+        // 1. The day-start sequence CLEARS this tray after publishing the event that gets us
+        //    here: TicketSlotManager's opening fill publishes TicketAssigned three times and
+        //    GameManager.OnTicketAssigned answers each with TrayManager.OnTicketAssigned,
+        //    which empties that slot's tray. A seed placed synchronously would be wiped a
+        //    few statements later, by design rather than by accident.
+        // 2. BoardView builds its item containers in its OWN Start, which Unity does not
+        //    order against GameManager.Awake or against this Start. The seeding needs a
+        //    rendered drag handler, so it cannot run before that.
+        //
+        // The visible cost is one frame of an empty tray at Day Start, behind a held clock
+        // (the tutorial holds it for its whole run, and an item-intro popup holds it too), so
+        // there is no frame in which the player could see the tray fill.
+        private void ScheduleTrayPreSeed()
+        {
+            DOVirtual.DelayedCall(0f, ApplyTrayPreSeed).SetLink(gameObject);
+        }
+
+        // Seats whatever this Day authored into THIS tray. Each tray seeds only its own slot,
+        // which is what keeps this free of any cross-tray coordination -- the same reason
+        // OnTutorialStepChanged needs none.
+        private void ApplyTrayPreSeed()
+        {
+            if (this == null || !isValid) return;
+
+            var seeds = gameManager.TrayPreSeedForCurrentDay;
+            if (seeds == null) return;
+
+            // A tray that already holds something is NOT seeded on top of. This runs again on
+            // every retry and day advance, and a retry that arrived while the tray still held
+            // the previous attempt's items would otherwise stack a second copy -- and the
+            // count TrayManager keeps is what decides when an order is complete.
+            if (gameManager.TrayManager.GetContents(slotIndex).Count > 0) return;
+
+            foreach (var seed in seeds)
+            {
+                if (seed == null || seed.TraySlotIndex != slotIndex || seed.Item == null) continue;
+
+                SeatOneItem(new BoardItem(seed.Item, seed.Modifications));
+            }
+        }
+
+        // Goes onto the board and straight back off it, which looks like a detour and is the
+        // opposite: it is what lets this reuse the ONE path that puts an item in a tray. A
+        // drag handler is built by BoardView for a board cell and by nothing else, and the
+        // alternative -- writing into TrayManager directly -- gives a tray that counts an
+        // item it does not draw.
+        //
+        // NOTHING RENDERS BETWEEN THE TWO HALVES. BoardGrid publishes CellChanged
+        // synchronously (EventBus.Publish is a plain invoke), so the container exists by the
+        // time TryPlaceItem returns, and the seat happens before this method does -- all
+        // inside one frame, with no Update and no render in between. The fly-in is suppressed
+        // for the same reason: the item is not appearing on the board, it is passing through.
+        private void SeatOneItem(BoardItem item)
+        {
+            var board = gameManager.State.Board;
+            if (!board.TryGetFirstEmptyCell(out var x, out var y))
+            {
+                Debug.LogError(
+                    $"{nameof(WorldTrayView)} on '{name}': Day {gameManager.State.CurrentDayIndex} seeds an item into " +
+                    $"tray {slotIndex}, but the board has no free cell to build it through, so that tray opens " +
+                    "empty. A tutorial step that expects it will abort.", this);
+                return;
+            }
+
+            boardView.BeginFlyInOverride(null);
+            try
+            {
+                if (!board.TryPlaceItem(item, x, y)) return;
+                if (!boardView.TryGetDragHandler(x, y, out var handler)) return;
+
+                // The pickup half of a gesture no finger performs -- the same call
+                // AutoCollectRunner makes before handing an item to a tray, and for the same
+                // two reasons (D-113): it LANDS the fly-in this placement just started, so the
+                // board's tween and the tray's seat are never writing this transform at once,
+                // and it records the resting scale that the delivering-item path later reads.
+                // Skipping it was a straight omission from the established pointerless path.
+                handler.SettleForAutoCollect();
+
+                TryAcceptPreSeedDrop(handler);
+            }
+            finally
+            {
+                boardView.EndFlyInOverride();
+            }
         }
 
         // TrayManager.TryAddItem calls deliverTicket (-> TicketSlotManager.
@@ -200,13 +340,35 @@ namespace ExpoTheExplorer.UI
         {
             DismissTutorialSpotlight();
 
+            // BEFORE the target check, deliberately: the tray that has to stand aside is the
+            // step's SOURCE, which is by definition not its target, so anything after that
+            // early return would never run on the one tray this concerns.
+            RefreshTutorialPressThrough();
+
             if (!IsTutorialTarget()) return;
 
-            // Deferred by one tween tick: BoardView builds its item containers in its OWN
-            // Start, and Unity does not order Starts between root objects, so on a scene's
-            // first day the source item may genuinely not exist at this instant. Later steps
-            // and retries run long after that, where the delay is simply harmless.
-            DOVirtual.DelayedCall(0f, RaiseTutorialSpotlight).SetLink(gameObject);
+            // Deferred to the NEXT FRAME, and it used to be one tween tick. Two reasons now
+            // ride on it, and only the first was known when this was written:
+            //
+            // 1. BoardView builds its item containers in its OWN Start, and Unity does not
+            //    order Starts between root objects, so on a scene's first day the source item
+            //    may genuinely not exist at this instant.
+            // 2. THE STEP BEFORE THIS ONE IS STILL BEING TORN DOWN. DismissTutorialSpotlight
+            //    ran a line ago and TutorialDim.Restore removes a lifted card's Canvas with
+            //    Object.Destroy -- which Unity defers to the END OF THE FRAME. A raise in the
+            //    same frame therefore finds that Canvas still on the card, and TutorialDim.Lift
+            //    treats "already has a Canvas" as "already lifted" and does nothing. The stale
+            //    Canvas is then destroyed and the card drops behind the dim sheet: lit on the
+            //    first step, dark on every step after it. A tween tick could land in the same
+            //    frame (DOTween's update and the EventSystem's both run in Update, and the
+            //    order between them is fixed for a build, which is why this reproduced every
+            //    time); a frame boundary cannot.
+            //
+            // A coroutine rather than DOVirtual for exactly that reason -- "next frame" is the
+            // guarantee being bought, and yield return null is the one construct that spells
+            // it. Unity stops it if this object dies, which is what SetLink was doing.
+            if (spotlightRaiseRoutine != null) StopCoroutine(spotlightRaiseRoutine);
+            spotlightRaiseRoutine = StartCoroutine(RaiseTutorialSpotlightNextFrame());
         }
 
         // Torn down through Dismiss rather than plain Destroy so the sorting orders it lifted
@@ -232,6 +394,16 @@ namespace ExpoTheExplorer.UI
             return tutorial != null && tutorial.SpotlightTraySlotIndex == slotIndex;
         }
 
+        private Coroutine spotlightRaiseRoutine;
+
+        private IEnumerator RaiseTutorialSpotlightNextFrame()
+        {
+            yield return null;
+
+            spotlightRaiseRoutine = null;
+            RaiseTutorialSpotlight();
+        }
+
         private void RaiseTutorialSpotlight()
         {
             // Re-checked rather than trusted from OnTutorialStepChanged: a frame passed, and
@@ -240,31 +412,60 @@ namespace ExpoTheExplorer.UI
 
             var tutorial = gameManager.Tutorial;
             var step = tutorial.Current;
-            if (!boardView.TryGetDragHandler(step.SourceX, step.SourceY, out var sourceHandler))
-            {
-                // GameManager already refused to start a step whose cell is empty, so reaching
-                // here means the MODEL has an item the VIEW never built a container for. That
-                // is a BoardView problem rather than a content one, hence a different sentence
-                // than the step guard's.
-                Debug.LogError(
-                    $"{nameof(WorldTrayView)}: the tutorial step's source cell ({step.SourceX}, {step.SourceY}) " +
-                    "has an item in the board model but no rendered container, so no ghost can be shown. The step " +
-                    "is still enforced -- it just has nothing to point at.", this);
-                return;
-            }
 
+            // Which of the two sources this step has is asked of the DIRECTOR, not worked out
+            // from the step's fields, for the reason IsTutorialTarget already gives (D-098):
+            // an unset source is 0, which is a real tray and a real cell, so a reader that
+            // guesses is told a plausible lie. -1 means "this ghost starts on the board".
+            var sourceTraySlotIndex = tutorial.SpotlightSourceTraySlotIndex;
+            var sourceHandler = sourceTraySlotIndex >= 0
+                ? FindSeatedItem(sourceTraySlotIndex)
+                : ResolveBoardSourceHandler(step.SourceX, step.SourceY);
+
+            if (sourceHandler == null) return;
+
+            // A TRAY MOVE DIMS NO CARD AT ALL, and that is a rule about what the step teaches
+            // rather than a concession. A forced move points at ONE order and the dim's job is
+            // to say which -- every other card is noise. A tray move says the opposite thing:
+            // an item can leave one order and go to another, so the player has to be able to
+            // read the orders to see why this one is moving.
+            //
+            // A CARD IS NOT LIT BY BEING LEFT ALONE, which is what the first attempt at this
+            // assumed and why it did nothing (D-165f). The cards ride InGameCanvas, a Screen
+            // Space - CAMERA canvas at sortingOrder -1, so the dim sheet covers them; a curtain
+            // is a SECOND layer of dark on top of that. Being readable takes an explicit lift,
+            // so every card that must stay bright goes in litCards, and dimmedCards keeps
+            // meaning "darker still than the sheet".
             var dimmedCards = new List<RectTransform>();
+            var litCards = new List<TicketCardView>();
+
             for (var i = 0; i < GameState.TicketSlotCount; i++)
             {
-                // Every card BUT this tray's own: the target's ticket is what tells the
-                // player which order the forced move is filling, so it stays lit. It needs
-                // nothing done to it -- Canvas UI already composites above the world-space
-                // dim, so staying bright is the default and only the others are covered.
+                var card = ticketCardsView.GetCard(i);
+                if (card == null) continue;
+
+                // This tray's own card is lit by Build itself (the modification arrow points
+                // into it), so it needs no entry on either list.
                 if (i == slotIndex) continue;
 
-                var card = ticketCardsView.GetCard(i);
-                if (card != null && card.transform is RectTransform cardRect) dimmedCards.Add(cardRect);
+                // A TRAY MOVE LIGHTS BOTH ORDERS IT TOUCHES and dims the rest -- the source
+                // tray's card joins the target's, because the step teaches that an item can
+                // leave ONE order for ANOTHER and the player has to read both to see the
+                // trade. A third order is not part of that sentence, so it stays dark, exactly
+                // as it does under a forced move.
+                if (i == sourceTraySlotIndex) litCards.Add(card);
+                else if (card.transform is RectTransform cardRect) dimmedCards.Add(cardRect);
             }
+
+            // Both ENDS of a tray-to-tray move are lit, not just this one. A forced move's
+            // source is a board item, which the dim lifts on its own; a tray move's source is
+            // an item sitting INSIDE another tray, and lifting the item while leaving its tray
+            // dark leaves it floating over a hole. The player is being told "take it from
+            // there", so there has to be a there.
+            var sourceTray = sourceTraySlotIndex >= 0 ? gameManager.TrayForSlot(sourceTraySlotIndex) : null;
+            var litExtras = sourceTray != null && sourceTray != this
+                ? new[] { transform, sourceTray.transform }
+                : new[] { transform };
 
             tutorialSpotlight = TutorialSpotlightView.Create(
                 tutorial,
@@ -272,10 +473,93 @@ namespace ExpoTheExplorer.UI
                 sourceHandler.transform,
                 sourceHandler.CurrentItem,
                 transform,
-                new[] { transform },
+                litExtras,
                 dimmedCards,
-                ticketCardView);
+                ticketCardView,
+                litCards);
         }
+
+        // The board half of a step's source, kept as its own method only so the two halves
+        // read alike at the call site. Unchanged behaviour, including the error.
+        //
+        // Takes the two coordinates rather than the step, so this file still names no type
+        // from the Tutorial assembly -- it reaches that system only through GameManager,
+        // which is the one object holding both sides.
+        private BoardItemDragHandler ResolveBoardSourceHandler(int sourceX, int sourceY)
+        {
+            if (boardView.TryGetDragHandler(sourceX, sourceY, out var handler)) return handler;
+
+            // GameManager already refused to start a step whose cell is empty, so reaching
+            // here means the MODEL has an item the VIEW never built a container for. That
+            // is a BoardView problem rather than a content one, hence a different sentence
+            // than the step guard's.
+            Debug.LogError(
+                $"{nameof(WorldTrayView)}: the tutorial step's source cell ({sourceX}, {sourceY}) " +
+                "has an item in the board model but no rendered container, so no ghost can be shown. The step " +
+                "is still enforced -- it just has nothing to point at.", this);
+            return null;
+        }
+
+        // The tray half: the item currently seated in ANOTHER tray, which is where a tray-move
+        // step's ghost starts (D-165).
+        //
+        // It reads that tray's own children rather than TrayManager's contents, because what
+        // the ghost needs is a Transform to copy a sprite stack from, and a tray's contents
+        // ARE its children -- the same fact ClearSlot and ReturnItemsToBoard already walk.
+        // The `trays` array is what makes the other tray reachable at all; unwired, the step
+        // still runs and only the ghost is missing, which is the correct way for a missing
+        // Inspector reference to fail here.
+        private BoardItemDragHandler FindSeatedItem(int sourceTraySlotIndex)
+        {
+            var sourceTray = gameManager.TrayForSlot(sourceTraySlotIndex);
+            if (sourceTray != null) return sourceTray.FirstSeatedItem();
+
+            // Nothing to wire and nothing to fix in a scene: every tray registers itself, so
+            // reaching this means that tray has not started yet or this scene has none.
+            Debug.LogError(
+                $"{nameof(WorldTrayView)} on '{name}': this tray is the target of a tray-to-tray tutorial step " +
+                $"whose item sits in tray {sourceTraySlotIndex}, but no tray has registered for that slot, so " +
+                "no ghost can be shown. The step is still enforced -- it just has nothing to point at.", this);
+            return null;
+        }
+
+        // The item currently seated in THIS tray, or null when it holds none.
+        //
+        // Walks the three SLOTS rather than this object's own children, which is the whole
+        // correction: SeatInSlot parents an item to mainDishSlot/sideSlot/drinkSlot, one level
+        // below the tray, so a direct-children scan finds nothing at all -- and did, which is
+        // why the first build of the tray-to-tray ghost never appeared. ReturnItemsToBoard and
+        // ClearSlot walk the same three for the same reason.
+        public BoardItemDragHandler FirstSeatedItem()
+        {
+            return SeatedIn(mainDishSlot) ?? SeatedIn(sideSlot) ?? SeatedIn(drinkSlot);
+
+            static BoardItemDragHandler SeatedIn(Transform slot)
+            {
+                if (slot == null) return null;
+
+                foreach (Transform child in slot)
+                {
+                    var handler = child.GetComponent<BoardItemDragHandler>();
+
+                    // A child mid-drag has already been taken out of this tray's count by
+                    // OnBeginDrag, so it is not something the ghost should point at -- the
+                    // same check ClearSlot makes, for the same reason.
+                    if (handler == null || handler.IsDragging) continue;
+
+                    return handler;
+                }
+
+                return null;
+            }
+        }
+
+        // Puts an item BACK into this tray after a drop that had nowhere legal to go (D-165c).
+        // Not the pre-seed path even though both bypass the player-drag gates: this one
+        // travels, because the player DID move it and watching it fly home is what says the
+        // move was refused rather than silently undone.
+        public bool TryAcceptReturnDrop(BoardItemDragHandler dragHandler) =>
+            TryAcceptDrop(dragHandler, 1f, fromPlayerDrag: false);
 
         private bool ValidateReferences()
         {
@@ -424,6 +708,22 @@ namespace ExpoTheExplorer.UI
         // pointing at.
         public bool TryAcceptAutoCollectDrop(BoardItemDragHandler dragHandler) =>
             TryAcceptDrop(dragHandler, animConfig.AutoCollectTravelMultiplier, fromPlayerDrag: false);
+
+        // The Day-Start seeding path (D-165): an item this Day authored into a tray, seated
+        // through the SAME accept the other two go through, so TrayManager stays the single
+        // writer of what a tray holds and nothing writes into a tray's contents directly --
+        // the mistake BoardView.TryGetDragHandler's comment already warns about (a tray
+        // written straight into the model draws as empty).
+        //
+        // Travel multiplier ZERO is the whole difference, and it is the point: this item was
+        // never moved by anyone, it is simply already there when the player first looks. A
+        // flight, even a fast one, would say something happened.
+        //
+        // fromPlayerDrag: false for the reason Auto-Collect passes it -- the seeding happens
+        // while a tutorial step may already be armed, and the drop gate would (correctly)
+        // refuse a drop into a tray that step does not name.
+        public bool TryAcceptPreSeedDrop(BoardItemDragHandler dragHandler) =>
+            TryAcceptDrop(dragHandler, 0f, fromPlayerDrag: false);
 
         private bool TryAcceptDrop(BoardItemDragHandler dragHandler, float travelMultiplier, bool fromPlayerDrag)
         {
@@ -926,6 +1226,7 @@ namespace ExpoTheExplorer.UI
         private void Update()
         {
             if (!isValid) return;
+
 
             // The delivery's start signal rides on the delivering item's settle tween,
             // and that tween is killed rather than completed if the item is destroyed

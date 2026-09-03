@@ -85,6 +85,9 @@ namespace ExpoTheExplorer.Systems.Tutorial
         // tray fields: it is a panel to be read, and anything reachable behind it is a way
         // to lose a life while reading. A forced-use step refuses the board for the same
         // reason -- the player is being asked to press one button, not to play.
+        // A TrayMove refuses the whole BOARD for the same reason the powerup kinds do: the
+        // player is being asked to move something between two trays, and any board item they
+        // could pick up instead is a way to fill a tray the step is not about.
         public bool IsPickupAllowed(int x, int y)
         {
             if (!IsArmed) return true;
@@ -94,12 +97,31 @@ namespace ExpoTheExplorer.Systems.Tutorial
             return x == step.SourceX && y == step.SourceY;
         }
 
+        // The tray-side twin of IsPickupAllowed, and NEW rather than folded into it (D-165):
+        // "may this cell be picked up" and "may this tray be taken from" are different
+        // questions with different answers, and the cell one has no honest answer to give
+        // about an item that is not on the board at all.
+        //
+        // IT CLOSES A HOLE RATHER THAN ADDING A RULE. Before this existed the drag handler
+        // simply did not ask about a tray item, so during ANY armed step every tray could be
+        // emptied -- day_00's forced move included. The default here is therefore the strict
+        // one: while a step is armed, a tray may be taken from only if that step says so, and
+        // only a TrayMove ever says so.
+        public bool IsTrayPickupAllowed(int slotIndex)
+        {
+            if (!IsArmed) return true;
+
+            var step = Current;
+            if (step.Kind != TutorialStepKind.TrayMove) return false;
+            return slotIndex == step.SourceTraySlotIndex;
+        }
+
         public bool IsTrayDropAllowed(int slotIndex)
         {
             if (!IsArmed) return true;
 
             var step = Current;
-            if (step.Kind != TutorialStepKind.ForcedMove) return false;
+            if (step.Kind != TutorialStepKind.ForcedMove && step.Kind != TutorialStepKind.TrayMove) return false;
             return slotIndex == step.TargetTraySlotIndex;
         }
 
@@ -123,8 +145,22 @@ namespace ExpoTheExplorer.Systems.Tutorial
         // IsHoldingForReading is: which kinds have a tray is a property of the step list. The
         // sentinel cannot collide with a real answer -- slot indices are 0..TicketSlotCount-1,
         // and DayValidator already refuses an authored index outside that range.
+        // A TrayMove answers here too, and answers with its TARGET: the tray that builds the
+        // spotlight is the destination in both shapes, which is what keeps WorldTrayView's
+        // "am I the one" check a single comparison. Where the two differ is where the ghost
+        // STARTS, and that is SpotlightSourceTraySlotIndex's question, not this one.
         public int SpotlightTraySlotIndex =>
-            IsArmed && Current.Kind == TutorialStepKind.ForcedMove ? Current.TargetTraySlotIndex : -1;
+            IsArmed && (Current.Kind == TutorialStepKind.ForcedMove || Current.Kind == TutorialStepKind.TrayMove)
+                ? Current.TargetTraySlotIndex
+                : -1;
+
+        // Where the current step's ghost starts, when it starts in a TRAY rather than on the
+        // board: the source tray for a TrayMove, and -1 for every other step -- including a
+        // ForcedMove, whose ghost starts at a board cell instead. The target tray reads this
+        // to decide which of the two sources to resolve, so the sentinel is what tells it
+        // "this one comes off the board" without a second Kind comparison at that call site.
+        public int SpotlightSourceTraySlotIndex =>
+            IsArmed && Current.Kind == TutorialStepKind.TrayMove ? Current.SourceTraySlotIndex : -1;
 
         // The ticket slot whose clock tripped the current step's deferred trigger, or -1 for
         // every other step -- the same sentinel and the same reasoning as the tray index
@@ -196,7 +232,7 @@ namespace ExpoTheExplorer.Systems.Tutorial
             if (!IsArmed) return;
 
             var step = Current;
-            if (step.Kind != TutorialStepKind.ForcedMove) return;
+            if (step.Kind != TutorialStepKind.ForcedMove && step.Kind != TutorialStepKind.TrayMove) return;
             if (slotIndex != step.TargetTraySlotIndex) return;
 
             Advance();
@@ -320,6 +356,10 @@ namespace ExpoTheExplorer.Systems.Tutorial
         ForcedMove = 0,
         PowerupIntro = 1,
         PowerupUse = 2,
+
+        // Out of one tray, into another (D-165). The second kind a Day file can author, and
+        // the mirror of DaySystem's member of the same name.
+        TrayMove = 3,
     }
 
     // Mirrors Data's PowerupType, and mirrors it for the reason above rather than out of
@@ -348,6 +388,12 @@ namespace ExpoTheExplorer.Systems.Tutorial
         public TutorialStepKind Kind { get; }
         public int SourceX { get; }
         public int SourceY { get; }
+
+        // TrayMove only. -1 for every other kind, so a reader that skipped the Kind check is
+        // handed an obviously absent answer rather than the plausible "tray 0" that an unset
+        // int would give it -- the same trap SpotlightTraySlotIndex documents.
+        public int SourceTraySlotIndex { get; }
+
         public int TargetTraySlotIndex { get; }
 
         // Empty rather than null for an unauthored message, so every reader can ask
@@ -368,27 +414,39 @@ namespace ExpoTheExplorer.Systems.Tutorial
         // use for their own thresholds (CLAUDE.md, Tip Tiers).
         public float TriggerPatienceRatio { get; }
 
-        // The three named ways to build a step. Named factories rather than one constructor
-        // with nine arguments because the three shapes share almost no fields: a forced move
-        // has a cell and no powerup, a panel has a powerup and no cell, and passing zero for
-        // everything a shape does not use is how (0,0)/tray-0 became a real answer for a step
-        // that named neither.
+        // The four named ways to build a step. Named factories rather than one constructor
+        // with ten arguments because the shapes share almost no fields: a forced move has a
+        // cell and no powerup, a panel has a powerup and no cell, a tray move has neither a
+        // cell nor a powerup, and passing zero for everything a shape does not use is how
+        // (0,0)/tray-0 became a real answer for a step that named neither.
         public static TutorialStep ForcedMove(int sourceX, int sourceY, int targetTraySlotIndex, string message, bool highlightModification) =>
-            new(TutorialStepKind.ForcedMove, sourceX, sourceY, targetTraySlotIndex, message, highlightModification,
+            new(TutorialStepKind.ForcedMove, sourceX, sourceY, -1, targetTraySlotIndex, message, highlightModification,
+                default, TutorialTrigger.Immediate, 0f);
+
+        // Out of one tray and into another (D-165). Arms immediately like a forced move:
+        // what it waits for is the player's drag, not a clock.
+        //
+        // No highlightModification: the arrows that flag point at a modification on the
+        // SOURCE ITEM and its box on the target ticket card, and the item this step moves is
+        // already seated in a tray where those arrows have nothing to anchor to. A tray move
+        // that wanted to teach a modification would be teaching two things at once anyway.
+        public static TutorialStep TrayMove(int sourceTraySlotIndex, int targetTraySlotIndex, string message) =>
+            new(TutorialStepKind.TrayMove, -1, -1, sourceTraySlotIndex, targetTraySlotIndex, message, false,
                 default, TutorialTrigger.Immediate, 0f);
 
         // A panel always arms immediately: it is shown at the start of the Day that
         // introduces its powerup, and the whole point is that the day stops to say it.
         public static TutorialStep PowerupIntro(TutorialPowerup powerup, string message) =>
-            new(TutorialStepKind.PowerupIntro, 0, 0, 0, message, false, powerup, TutorialTrigger.Immediate, 0f);
+            new(TutorialStepKind.PowerupIntro, 0, 0, -1, 0, message, false, powerup, TutorialTrigger.Immediate, 0f);
 
         public static TutorialStep PowerupUse(TutorialPowerup powerup, TutorialTrigger trigger, float triggerPatienceRatio, string message) =>
-            new(TutorialStepKind.PowerupUse, 0, 0, 0, message, false, powerup, trigger, triggerPatienceRatio);
+            new(TutorialStepKind.PowerupUse, 0, 0, -1, 0, message, false, powerup, trigger, triggerPatienceRatio);
 
         private TutorialStep(
             TutorialStepKind kind,
             int sourceX,
             int sourceY,
+            int sourceTraySlotIndex,
             int targetTraySlotIndex,
             string message,
             bool highlightModification,
@@ -399,6 +457,7 @@ namespace ExpoTheExplorer.Systems.Tutorial
             Kind = kind;
             SourceX = sourceX;
             SourceY = sourceY;
+            SourceTraySlotIndex = sourceTraySlotIndex;
             TargetTraySlotIndex = targetTraySlotIndex;
             Message = message ?? string.Empty;
             HighlightModification = highlightModification;

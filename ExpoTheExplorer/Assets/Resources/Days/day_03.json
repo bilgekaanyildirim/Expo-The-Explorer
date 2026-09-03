@@ -140,10 +140,43 @@
                 "timeLimitSecondsOverride": 0.0
             }
         ],
-        "boardTimeline": [],
+        "boardTimeline": [
+            {
+                "triggerStepIndex": -1,
+                "itemId": "hotdog",
+                "modifications": [
+                    {
+                        "modificationId": "extramustard",
+                        "isAddition": true
+                    }
+                ],
+                "useExactCell": true,
+                "x": 1,
+                "y": 2
+            }
+        ],
         "tutorial": {
-            "enabled": false,
-            "steps": []
+            "enabled": true,
+            "steps": [
+                {
+                    "kind": "ForcedMove",
+                    "sourceX": 1,
+                    "sourceY": 2,
+                    "sourceTraySlotIndex": -1,
+                    "targetTraySlotIndex": 0,
+                    "message": "",
+                    "highlightModification": false
+                },
+                {
+                    "kind": "TrayMove",
+                    "sourceX": -1,
+                    "sourceY": -1,
+                    "sourceTraySlotIndex": 1,
+                    "targetTraySlotIndex": 0,
+                    "message": "You can use the drink from the other tray - drag it over here.",
+                    "highlightModification": false
+                }
+            ]
         },
         "itemIntro": {
             "enabled": true,
@@ -154,6 +187,16 @@
                     "isAddition": false,
                     "nameOverride": "",
                     "message": ""
+                }
+            ]
+        },
+        "trayPreSeed": {
+            "enabled": true,
+            "entries": [
+                {
+                    "traySlotIndex": 1,
+                    "itemId": "cola",
+                    "modifications": []
                 }
             ]
         }

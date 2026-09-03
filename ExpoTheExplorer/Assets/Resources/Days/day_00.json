@@ -113,6 +113,7 @@
                     "kind": "",
                     "sourceX": 1,
                     "sourceY": 2,
+                    "sourceTraySlotIndex": 0,
                     "targetTraySlotIndex": 0,
                     "message": "",
                     "highlightModification": false
@@ -121,11 +122,20 @@
                     "kind": "",
                     "sourceX": 2,
                     "sourceY": 0,
+                    "sourceTraySlotIndex": 0,
                     "targetTraySlotIndex": 2,
                     "message": "Modifications matter. This order wants extra mustard - bring the hotdog that already has it.",
                     "highlightModification": true
                 }
             ]
+        },
+        "itemIntro": {
+            "enabled": false,
+            "items": []
+        },
+        "trayPreSeed": {
+            "enabled": false,
+            "entries": []
         }
     },
     "editorMeta": {

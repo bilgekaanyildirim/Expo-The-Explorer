@@ -28,6 +28,18 @@ namespace ExpoTheExplorer.Tests.EditMode
             TutorialStep.ForcedMove(StepTwoX, StepTwoY, StepTwoTray, "Modifications matter.", true),
         });
 
+        // The tray a D-165 step takes an item OUT of, and the one it puts it into. Distinct
+        // from StepOneTray/StepTwoTray so a test cannot pass by coincidence.
+        private const int SourceTray = 1;
+        private const int DestinationTray = 0;
+
+        // Mirrors day_03: a plain move off the board, then a move out of another tray.
+        private static TutorialDirector CreateTrayMoveDirector() => new(new List<TutorialStep>
+        {
+            TutorialStep.ForcedMove(StepOneX, StepOneY, DestinationTray, string.Empty, false),
+            TutorialStep.TrayMove(SourceTray, DestinationTray, "You can use the drink from the other tray."),
+        });
+
         // Mirrors Day 0 as it is built at runtime: the Day file's two moves, then the powerup
         // steps GameManager appends from PowerupConfig's schedule.
         private static TutorialDirector CreateDirectorEndingInIntro() => new(new List<TutorialStep>
@@ -57,6 +69,95 @@ namespace ExpoTheExplorer.Tests.EditMode
             TutorialStep.PowerupIntro(TutorialPowerup.TimeReset, string.Empty),
             TutorialStep.PowerupUse(TutorialPowerup.TimeReset, TutorialTrigger.TicketPatienceBelow, TriggerRatio, "Press Time Reset."),
         });
+
+        [Test]
+        public void DuringAForcedMove_NoTrayCanBeTakenFrom()
+        {
+            var director = CreateTwoStepDirector();
+
+            // THE HOLE D-165 CLOSED, pinned as a test because it was invisible: before the
+            // tray gate existed the drag handler simply never asked about a seated item, so
+            // while this forced move ran the player could still empty any tray on screen --
+            // including the one the step was filling.
+            Assert.IsFalse(director.IsTrayPickupAllowed(0));
+            Assert.IsFalse(director.IsTrayPickupAllowed(1));
+            Assert.IsFalse(director.IsTrayPickupAllowed(2));
+        }
+
+        [Test]
+        public void DuringATrayMove_OnlyItsSourceTrayCanBeTakenFrom()
+        {
+            var director = CreateTrayMoveDirector();
+            director.NotifyTrayAccepted(DestinationTray);
+
+            Assert.IsTrue(director.IsTrayPickupAllowed(SourceTray));
+            Assert.IsFalse(director.IsTrayPickupAllowed(DestinationTray));
+            Assert.IsFalse(director.IsTrayPickupAllowed(2));
+        }
+
+        [Test]
+        public void ATrayMove_RefusesTheWholeBoard()
+        {
+            var director = CreateTrayMoveDirector();
+            director.NotifyTrayAccepted(DestinationTray);
+
+            // The item being moved is not on the board, so every cell is off limits -- the
+            // same stance the powerup kinds take, and for the same reason: anything else the
+            // player could pick up fills a tray this step is not about.
+            Assert.IsFalse(director.IsPickupAllowed(StepOneX, StepOneY));
+            Assert.IsFalse(director.IsPickupAllowed(StepTwoX, StepTwoY));
+            Assert.IsFalse(director.IsBoardRelocationAllowed());
+        }
+
+        [Test]
+        public void ATrayMove_OnlyItsTargetTrayAcceptsADrop_AndCompletingItEndsTheTutorial()
+        {
+            var director = CreateTrayMoveDirector();
+            director.NotifyTrayAccepted(DestinationTray);
+
+            Assert.IsFalse(director.IsTrayDropAllowed(SourceTray));
+            Assert.IsTrue(director.IsTrayDropAllowed(DestinationTray));
+
+            // Dropping back into the tray it came from must not finish it.
+            director.NotifyTrayAccepted(SourceTray);
+            Assert.IsTrue(director.IsActive);
+
+            director.NotifyTrayAccepted(DestinationTray);
+            Assert.IsFalse(director.IsActive);
+
+            // And every gate is open again, trays included.
+            Assert.IsTrue(director.IsTrayPickupAllowed(SourceTray));
+            Assert.IsTrue(director.IsBoardRelocationAllowed());
+        }
+
+        [Test]
+        public void ATrayMove_PointsItsGhostFromOneTrayToTheOther()
+        {
+            var director = CreateTrayMoveDirector();
+
+            // While the FORCED move runs the ghost still comes off the board, so the tray
+            // source answers the sentinel rather than a plausible "tray 0".
+            Assert.AreEqual(DestinationTray, director.SpotlightTraySlotIndex);
+            Assert.AreEqual(-1, director.SpotlightSourceTraySlotIndex);
+
+            director.NotifyTrayAccepted(DestinationTray);
+
+            Assert.AreEqual(DestinationTray, director.SpotlightTraySlotIndex);
+            Assert.AreEqual(SourceTray, director.SpotlightSourceTraySlotIndex);
+        }
+
+        [Test]
+        public void WhenNoTutorialStepIsArmed_EveryTrayCanBeTakenFrom()
+        {
+            var director = CreateTrayMoveDirector();
+            director.NotifyTrayAccepted(DestinationTray);
+            director.NotifyTrayAccepted(DestinationTray);
+
+            Assert.IsFalse(director.IsActive);
+            Assert.IsTrue(director.IsTrayPickupAllowed(0));
+            Assert.IsTrue(director.IsTrayPickupAllowed(1));
+            Assert.IsTrue(director.IsTrayPickupAllowed(2));
+        }
 
         [Test]
         public void WhileAStepRuns_OnlyItsCellCanBePickedUp()

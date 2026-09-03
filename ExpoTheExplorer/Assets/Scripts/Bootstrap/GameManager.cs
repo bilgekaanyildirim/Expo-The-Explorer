@@ -22,8 +22,22 @@ using ExpoTheExplorer.UI;
 // The Tutorial assembly mirrors three of Data's and DaySystem's types -- its own step kind,
 // its own powerup enum, its own trigger enum -- deliberately, so it can keep an empty
 // reference list (see blueprint.md). This class is the ONE place that holds both sides and
-// the translation between them; the alias that used to disambiguate TutorialStepKind is gone
-// with DaySystem's copy of it (D-115), which no longer exists.
+// the translation between them.
+//
+// THE ALIAS IS BACK, and its history is the point. D-115 deleted DaySystem's own step-kind
+// enum -- one authorable shape needs no enum -- and the alias went with it. D-165 authored a
+// second shape, so both namespaces declare a `TutorialStepKind` again and both are in scope
+// here. Unqualified, `TutorialStepKind` would silently resolve to the Tutorial system's copy,
+// whose members are numbered for ITS four kinds; comparing a DaySystem step against it is a
+// mistake the compiler cannot always catch. Naming the authored side explicitly is what makes
+// the translation below read as a translation.
+// BOTH sides are aliased, not just the new one. An alias for the authored kind alone would
+// leave the bare name ambiguous rather than resolved -- C# does not prefer one import over
+// another -- so every existing `TutorialStepKind` here would stop compiling. Aliasing the
+// runtime side to its own name is what keeps those call sites reading exactly as they did,
+// while making it explicit which of the two mirrors each one means.
+using ResolvedTutorialStepKind = ExpoTheExplorer.Systems.DaySystem.TutorialStepKind;
+using TutorialStepKind = ExpoTheExplorer.Systems.Tutorial.TutorialStepKind;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -200,6 +214,13 @@ namespace ExpoTheExplorer.Bootstrap
         // so "no tutorial" is answered in ONE place -- and both read as an ordinary
         // permission check rather than as a tutorial special case.
         public bool IsBoardPickupAllowed(int x, int y) => Tutorial == null || Tutorial.IsPickupAllowed(x, y);
+
+        // The tray-side twin of the line above (D-165), and it is asked by the drag handler
+        // for an item that is SEATED IN A TRAY rather than on the board -- a question that
+        // used not to be asked at all, which is why every tray was freely emptiable during a
+        // forced move. Same "no tutorial means yes" shape as its three neighbours, so the
+        // absence of a tutorial is still answered in one place per gate.
+        public bool IsTrayPickupAllowed(int slotIndex) => Tutorial == null || Tutorial.IsTrayPickupAllowed(slotIndex);
 
         public bool IsTrayDropAllowed(int slotIndex) => Tutorial == null || Tutorial.IsTrayDropAllowed(slotIndex);
 
@@ -1519,8 +1540,16 @@ namespace ExpoTheExplorer.Bootstrap
             {
                 foreach (var step in authored.Steps)
                 {
-                    steps.Add(TutorialStep.ForcedMove(
-                        step.SourceX, step.SourceY, step.TargetTraySlotIndex, step.Message, step.HighlightModification));
+                    // Switched on the KIND rather than translated field-by-field, because the
+                    // two shapes disagree about which source field means anything and both
+                    // sides deliberately fill the unused one with -1. A translation that
+                    // copied all four numbers across would turn every tray move into a forced
+                    // move on cell (-1,-1) -- a step nothing can complete.
+                    steps.Add(step.Kind == ResolvedTutorialStepKind.TrayMove
+                        ? TutorialStep.TrayMove(
+                            step.SourceTraySlotIndex, step.TargetTraySlotIndex, step.Message)
+                        : TutorialStep.ForcedMove(
+                            step.SourceX, step.SourceY, step.TargetTraySlotIndex, step.Message, step.HighlightModification));
                 }
             }
 
@@ -1658,10 +1687,91 @@ namespace ExpoTheExplorer.Bootstrap
         // there is nothing to pick up and no tray that will accept anything: the day would
         // read as a freeze. Aborting turns that into an ordinary day plus a sentence naming
         // the cell.
+        // The three tray views, by slot, filled by the trays THEMSELVES as they start (D-165).
+        //
+        // Registration rather than a serialized array, and the difference is not style: an
+        // array would have to be dragged onto the tray that happens to be a tutorial step's
+        // TARGET, which is a scene edit that depends on CONTENT -- author a tray move into a
+        // different Day and a different tray silently needs wiring it does not have. This is
+        // also not the reference LOOKUP this project refuses (no Find, no GetComponentIn-
+        // Children searching the scene): each tray hands over its own reference, exactly as
+        // TicketCardsView hands out the cards it spawned.
+        private readonly WorldTrayView[] trayViews = new WorldTrayView[GameState.TicketSlotCount];
+
+        public void RegisterTray(int slotIndex, WorldTrayView tray)
+        {
+            if (slotIndex < 0 || slotIndex >= trayViews.Length) return;
+            trayViews[slotIndex] = tray;
+        }
+
+        // The tray in that slot, or null before it has started (or if the scene has none --
+        // the main screen builds no trays at all, D-152). Every caller has to survive null,
+        // which is why this returns one instead of complaining: a tutorial step is enforced
+        // by the director whatever the views are doing.
+        public WorldTrayView TrayForSlot(int slotIndex) =>
+            slotIndex >= 0 && slotIndex < trayViews.Length ? trayViews[slotIndex] : null;
+
+        // What this Day seats in the trays at Day Start, or null when it seats nothing. The
+        // trays seed THEMSELVES from this (each one reads its own slot), which is what keeps
+        // the seeding free of cross-tray coordination and puts it where the BoardView and
+        // drop-path references it needs already live.
+        //
+        // A read-only view of the Day rather than a copy: CurrentDay stays private because
+        // handing the whole Day to a view would let any of them read the ticket sequence.
+        public IReadOnlyList<ResolvedTrayPreSeed> TrayPreSeedForCurrentDay => CurrentDay?.TrayPreSeed;
+
+        // Whether this Day authors an item into that tray at Day Start. Read straight off the
+        // Day rather than asked of the trays, because the answer has to be available BEFORE
+        // the seeding has run -- which is the whole reason its caller needs it.
+        private bool DaySeedsTray(int slotIndex)
+        {
+            var seeds = CurrentDay?.TrayPreSeed;
+            if (seeds == null) return false;
+
+            foreach (var seed in seeds)
+            {
+                if (seed != null && seed.TraySlotIndex == slotIndex) return true;
+            }
+
+            return false;
+        }
+
         private bool EnsureCurrentTutorialStepIsPossible()
         {
             var step = Tutorial?.Current;
             if (step == null) return false;
+
+            // A tray move is impossible for a DIFFERENT reason than a forced move, so it gets
+            // its own check rather than sharing the cell one: what has to be there is an item
+            // in the SOURCE TRAY, and the board has nothing to say about it. DayValidator
+            // already refuses a Day whose source tray nothing ever fills; this is the runtime
+            // half of that pair, catching the case the author cannot see -- a tray emptied by
+            // the play that led up to this step.
+            if (step.Kind == TutorialStepKind.TrayMove)
+            {
+                var sourceContents = TrayManager.GetContents(step.SourceTraySlotIndex);
+                if (sourceContents != null && sourceContents.Count > 0) return true;
+
+                // A tray this Day SEEDS counts as filled even while it is still empty, and
+                // that is not a loophole -- it is this check running too early. The seeding
+                // is deferred by a frame on purpose (the opening ticket fill clears every
+                // tray a few statements after this, and BoardView has not built its
+                // containers yet), so a Day whose FIRST step is a tray move would otherwise
+                // abort its own tutorial before the item it names has been put there.
+                //
+                // Only the first arm is ever early: by the time a later step reaches this,
+                // the seeding is long done, and an empty tray then is the real failure this
+                // guard exists for.
+                if (DaySeedsTray(step.SourceTraySlotIndex)) return true;
+
+                Debug.LogError(
+                    $"Day {CurrentDay.DayIndex}'s tutorial expects tray {step.SourceTraySlotIndex} to be holding an " +
+                    "item for its next step, but that tray is empty, so the move would be impossible. Ending the " +
+                    "tutorial and running the rest of the day normally. Check the Day's trayPreSeed block and the " +
+                    "order of the tutorial steps.", this);
+                Tutorial.Abort();
+                return false;
+            }
 
             // A step that is not a forced move names no cell, so there is nothing on the
             // board that could make it impossible. Without this it would be checked against

@@ -76,6 +76,15 @@ namespace ExpoTheExplorer.Systems.DaySystem
         // least one popup to show".
         public IReadOnlyList<ResolvedItemIntro> ItemIntros { get; }
 
+        // What is already sitting in a tray when this Day opens. NULL when the Day seats
+        // nothing, which is the normal case -- the same "absence is
+        // unrepresentable-as-half-configured" choice Tutorial and ItemIntros make above.
+        //
+        // Never empty when it is non-null: DayCatalogParser produces one only for an
+        // enabled block that resolved at least one item, so "there is a list" means "there
+        // is at least one tray to fill".
+        public IReadOnlyList<ResolvedTrayPreSeed> TrayPreSeed { get; }
+
         public DayDefinition(
             int dayIndex,
             int ticketsRequiredForDay,
@@ -84,7 +93,8 @@ namespace ExpoTheExplorer.Systems.DaySystem
             BoardDistributionSettings boardDistribution = null,
             TicketRuntimeSettings ticketRuntime = null,
             ResolvedTutorial tutorial = null,
-            IReadOnlyList<ResolvedItemIntro> itemIntros = null)
+            IReadOnlyList<ResolvedItemIntro> itemIntros = null,
+            IReadOnlyList<ResolvedTrayPreSeed> trayPreSeed = null)
         {
             DayIndex = dayIndex;
             TicketsRequiredForDay = ticketsRequiredForDay;
@@ -94,6 +104,27 @@ namespace ExpoTheExplorer.Systems.DaySystem
             TicketRuntime = ticketRuntime;
             Tutorial = tutorial;
             ItemIntros = itemIntros;
+            TrayPreSeed = trayPreSeed;
+        }
+    }
+
+    // One item this Day seats in one tray before the player has touched anything.
+    //
+    // It carries the FoodItemConfig rather than an id for the reason ResolvedItemIntro and
+    // ResolvedBoardSpawnEntry do: the thing seated in the tray and the thing the board
+    // hands out later are then the same asset by construction.
+    public class ResolvedTrayPreSeed
+    {
+        public int TraySlotIndex { get; }
+        public FoodItemConfig Item { get; }
+        public IReadOnlyList<Modification> Modifications { get; }
+
+        public ResolvedTrayPreSeed(
+            int traySlotIndex, FoodItemConfig item, IReadOnlyList<Modification> modifications)
+        {
+            TraySlotIndex = traySlotIndex;
+            Item = item;
+            Modifications = modifications;
         }
     }
 
@@ -188,22 +219,32 @@ namespace ExpoTheExplorer.Systems.DaySystem
         }
     }
 
-    // ONE authored shape: a move the player must make. There WAS a second, PowerupIntro,
-    // between D-083 and D-115, and its removal is worth a line rather than a silent
-    // deletion. It explained the three powerups, which meant a Day file could name a
+    // TWO authored shapes, both of them a move the player must make: one off the BOARD and
+    // into a tray, one out of one TRAY and into another (D-165). There WAS a third,
+    // PowerupIntro, between D-083 and D-115, and its removal is worth a line rather than a
+    // silent deletion. It explained the three powerups, which meant a Day file could name a
     // powerup -- and once each powerup carried its own introduction Day on PowerupConfig
     // (the user's decision, 2026-08-27), the two could disagree about which Day teaches
     // what, with nothing checking them against each other. So this side gave it up: a Day
     // owns its board, its tickets and the moves it forces, and the powerup asset owns when
     // its powerup is taught.
     //
-    // The kind survives as a STRING on TutorialStepJson, where it exists to reject a Day
-    // file still carrying the old value rather than to select between shapes -- see that
-    // field's comment for why deleting it would be the silent failure.
+    // The kind is now LOAD-BEARING rather than a rejection device: the two shapes share
+    // their target and their message and nothing else, and an unset int is 0 -- a real
+    // cell AND a real tray -- so only the kind can say which source field to trust. That
+    // is why it is carried here as a resolved enum instead of being left behind on the
+    // JSON, which is where it lived while there was only one shape to select.
     public class ResolvedTutorialStep
     {
+        public TutorialStepKind Kind { get; }
+
+        // ForcedMove only; meaningless when Kind is TrayMove -- see the class note.
         public int SourceX { get; }
         public int SourceY { get; }
+
+        // TrayMove only; meaningless when Kind is ForcedMove -- see the class note.
+        public int SourceTraySlotIndex { get; }
+
         public int TargetTraySlotIndex { get; }
 
         // Empty rather than null for an unauthored message, so every reader can ask
@@ -212,14 +253,63 @@ namespace ExpoTheExplorer.Systems.DaySystem
 
         public bool HighlightModification { get; }
 
+        // The board-cell shape. Kept as the parameter list it always had, with the kind
+        // filled in rather than asked for: every existing caller and every already-authored
+        // Day means ForcedMove by construction, and a call site that has to name the kind
+        // is a call site that can name the wrong one.
         public ResolvedTutorialStep(int sourceX, int sourceY, int targetTraySlotIndex, string message, bool highlightModification)
         {
+            Kind = TutorialStepKind.ForcedMove;
             SourceX = sourceX;
             SourceY = sourceY;
+            SourceTraySlotIndex = -1;
             TargetTraySlotIndex = targetTraySlotIndex;
             Message = message ?? string.Empty;
             HighlightModification = highlightModification;
         }
+
+        // The tray-to-tray shape. A named factory rather than a second constructor,
+        // because both shapes would otherwise be (int, int, int, string, bool)-adjacent
+        // and a transposed argument list would compile into the wrong kind of step.
+        //
+        // The unused cell is -1/-1 rather than 0/0 for the reason the JSON side cannot
+        // manage: 0,0 is a real cell, so a reader that forgot to check Kind would be
+        // handed a plausible answer instead of an obviously absent one.
+        public static ResolvedTutorialStep TrayMove(
+            int sourceTraySlotIndex, int targetTraySlotIndex, string message) =>
+            new(TutorialStepKind.TrayMove, -1, -1, sourceTraySlotIndex, targetTraySlotIndex, message, false);
+
+        private ResolvedTutorialStep(
+            TutorialStepKind kind,
+            int sourceX,
+            int sourceY,
+            int sourceTraySlotIndex,
+            int targetTraySlotIndex,
+            string message,
+            bool highlightModification)
+        {
+            Kind = kind;
+            SourceX = sourceX;
+            SourceY = sourceY;
+            SourceTraySlotIndex = sourceTraySlotIndex;
+            TargetTraySlotIndex = targetTraySlotIndex;
+            Message = message ?? string.Empty;
+            HighlightModification = highlightModification;
+        }
+    }
+
+    // The shapes a Day may author. Mirrored by ExpoTheExplorer.Systems.Tutorial's own enum
+    // of the same name -- that assembly references NOTHING on purpose (D-082), so it cannot
+    // take this type, and GameManager translates between them at the boundary exactly as it
+    // already did for the step itself.
+    public enum TutorialStepKind
+    {
+        // The board-cell-to-tray move, and the default for a reason: every Day authored
+        // before D-165 leaves `kind` empty, and empty has always meant this.
+        ForcedMove = 0,
+
+        // Out of one tray, into another (D-165).
+        TrayMove = 1,
     }
 
     public class ResolvedTicketEntry

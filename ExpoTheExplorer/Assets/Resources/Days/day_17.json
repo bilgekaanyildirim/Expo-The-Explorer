@@ -252,6 +252,10 @@
                     "message": ""
                 }
             ]
+        },
+        "trayPreSeed": {
+            "enabled": false,
+            "entries": []
         }
     },
     "editorMeta": {

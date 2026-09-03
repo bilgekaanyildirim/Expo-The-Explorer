@@ -761,6 +761,14 @@ namespace ExpoTheExplorer.Editor
         [UnityEngine.HideInInspector]
         public TutorialJson Tutorial;
 
+        // CARRIED, NOT EDITED, for exactly the reason above -- and the cost of forgetting it
+        // is the same shape: a Day whose tutorial takes an item OUT of a tray (D-165) depends
+        // on that item having been put there by this block, so a Save that dropped it would
+        // leave the tutorial pointing at an empty tray. No editor UI yet; day_03's block is
+        // authored by hand, and this is the pass-through that keeps it alive.
+        [UnityEngine.HideInInspector]
+        public TrayPreSeedJson TrayPreSeed;
+
         // Named for what it is since D-006 removed the override layer: these settings are not
         // overrides of anything, they are the record of how this Day's ticketSequence was
         // generated, and the input the next Generate uses.
@@ -1522,6 +1530,7 @@ namespace ExpoTheExplorer.Editor
                     boardTimeline = BoardTimeline.Select(e => e.ToJson()).ToArray(),
                     tutorial = Tutorial,
                     itemIntro = ToItemIntroJson(),
+                    trayPreSeed = TrayPreSeed,
                 },
                 editorMeta = EditorMeta.ToJson(),
             };
@@ -1542,7 +1551,13 @@ namespace ExpoTheExplorer.Editor
                 // implementation, so the Day Editor's warnings cannot disagree with what the
                 // game will actually show. The file name it logs under is this window, since
                 // that is where an unresolvable id would be looked at.
-                DayCatalogParser.ResolveItemIntros(ToItemIntroJson(), sharedCatalog, "Day Editor"));
+                DayCatalogParser.ResolveItemIntros(ToItemIntroJson(), sharedCatalog, "Day Editor"),
+                // Through the runtime parser for the third time and the third identical
+                // reason. This one is load-bearing for a DIFFERENT rule than the other two,
+                // though: DayValidator refuses a tray-move step whose source tray nothing
+                // fills, so leaving this out would make the editor report a correctly
+                // authored Day as broken on every Save.
+                DayCatalogParser.ResolveTrayPreSeed(TrayPreSeed, sharedCatalog, "Day Editor"));
         }
 
         // Written even when the box is unticked, and that is the point of the flag: the
@@ -1569,6 +1584,7 @@ namespace ExpoTheExplorer.Editor
                 BoardTimeline = (runtime?.boardTimeline ?? Array.Empty<BoardSpawnEntryJson>())
                     .Select(e => DayEditorBoardSpawnEntry.FromJson(e, catalog)).ToList(),
                 Tutorial = runtime?.tutorial,
+                TrayPreSeed = runtime?.trayPreSeed,
                 IntroduceNewItem = runtime?.itemIntro?.enabled ?? false,
                 ItemIntros = (runtime?.itemIntro?.items ?? Array.Empty<ItemIntroEntryJson>())
                     .Select(e => DayEditorItemIntro.FromJson(e, catalog)).ToList(),
@@ -1599,6 +1615,7 @@ namespace ExpoTheExplorer.Editor
             TicketSequence = restored.TicketSequence;
             BoardTimeline = restored.BoardTimeline;
             Tutorial = restored.Tutorial;
+            TrayPreSeed = restored.TrayPreSeed;
             IntroduceNewItem = restored.IntroduceNewItem;
             ItemIntros = restored.ItemIntros;
             EditorMeta = restored.EditorMeta;

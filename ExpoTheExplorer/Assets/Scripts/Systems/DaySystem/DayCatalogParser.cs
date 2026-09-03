@@ -92,7 +92,52 @@ namespace ExpoTheExplorer.Systems.DaySystem
 
             return new DayDefinition(runtime.dayIndex, runtime.ticketsRequiredForDay, ticketSequence, boardTimeline,
                 boardDistribution, ticketRuntime, ResolveTutorial(runtime.tutorial),
-                ResolveItemIntros(runtime.itemIntro, catalog, fileName));
+                ResolveItemIntros(runtime.itemIntro, catalog, fileName),
+                ResolveTrayPreSeed(runtime.trayPreSeed, catalog, fileName));
+        }
+
+        // What this Day seats in a tray before the player touches anything (D-165). Follows
+        // ResolveItemIntros rather than ResolveTutorial on the two questions that matter:
+        //
+        // A bad block is NOT fatal to the Day, and a bad ENTRY costs only itself. The
+        // entries are independent -- two seeded trays are two trays, not one sequence -- so
+        // an unknown id costs its own item and the rest still land. The tutorial cannot do
+        // that because its steps are a path and a hole in the middle strands the player;
+        // that difference is exactly why a TrayMove step naming an unseeded tray is caught
+        // by DayValidator at authoring time instead of being shrugged off here.
+        //
+        // Public for the reason the other two are: DayEditorModel.ToDayDefinition resolves
+        // the same block for its validation preview, and one rule with one implementation is
+        // what stops a Day validating in the editor and behaving differently at runtime.
+        public static IReadOnlyList<ResolvedTrayPreSeed> ResolveTrayPreSeed(
+            TrayPreSeedJson trayPreSeed, FoodCatalog catalog, string fileName)
+        {
+            if (trayPreSeed == null || !trayPreSeed.enabled) return null;
+
+            var seeded = new List<ResolvedTrayPreSeed>();
+            foreach (var entry in trayPreSeed.entries ?? Array.Empty<TrayPreSeedEntryJson>())
+            {
+                if (entry == null || string.IsNullOrEmpty(entry.itemId)) continue;
+
+                var item = catalog == null ? null : catalog.GetById(entry.itemId);
+                if (item == null)
+                {
+                    Debug.LogError(
+                        $"Day file '{fileName}': runtime.trayPreSeed names food id '{entry.itemId}', which is not in " +
+                        "the FoodCatalog. That tray opens empty.");
+                    continue;
+                }
+
+                var modifications = ResolveModifications(entry.modifications, catalog, fileName, out var modsOk);
+                if (!modsOk) continue;
+
+                seeded.Add(new ResolvedTrayPreSeed(entry.traySlotIndex, item, modifications));
+            }
+
+            // An enabled block that resolved nothing is treated as no block rather than as an
+            // empty one, which is what lets every reader take "there is a list" as "there is
+            // at least one tray to fill".
+            return seeded.Count > 0 ? seeded : null;
         }
 
         // The Day's "here is something new" popups. Like ResolveTutorial and unlike every
@@ -179,11 +224,12 @@ namespace ExpoTheExplorer.Systems.DaySystem
         // "enabled means present" would be free to disagree with this one about what a Day
         // file means, and the disagreement would only show up as a Day that validates in
         // the editor and behaves differently at runtime.
-        // The only value TutorialStepJson.kind may carry, spelled once. A const string
-        // rather than nameof() on an enum member, because there is no enum on this side any
-        // more -- what the Day files say is the thing being pinned, not a C# identifier that
-        // happens to match it today.
+        // The two values TutorialStepJson.kind may carry, spelled once each. Const strings
+        // rather than nameof() on the enum members, because what the Day files say is the
+        // thing being pinned, not a C# identifier that happens to match it today -- renaming
+        // ResolvedTutorialStep's enum must not silently invalidate every authored Day.
         private const string ForcedMoveKind = "ForcedMove";
+        private const string TrayMoveKind = "TrayMove";
 
         public static ResolvedTutorial ResolveTutorial(TutorialJson tutorial)
         {
@@ -200,23 +246,31 @@ namespace ExpoTheExplorer.Systems.DaySystem
                 // takes on its own enum string, and the same reason the field is a string in
                 // the first place.
                 //
-                // Since D-115 "ForcedMove" is the only accepted value, and this is the ONE
-                // place that says so. A Day file still carrying the removed "PowerupIntro"
-                // lands here and loses its tutorial with a sentence naming the value, which
-                // is the loud failure that removing the field entirely would have thrown away
-                // -- JsonUtility ignores keys it has no field for, so the step would have
-                // survived as a forced move on cell (0,0).
-                if (!string.IsNullOrEmpty(step.kind) && step.kind != ForcedMoveKind)
+                // "ForcedMove" (or empty, which has always meant it) and "TrayMove" (D-165)
+                // are the accepted values, and this is the ONE place that says so. A Day file
+                // still carrying the removed "PowerupIntro" lands here and loses its tutorial
+                // with a sentence naming the value, which is the loud failure that removing
+                // the field entirely would have thrown away -- JsonUtility ignores keys it
+                // has no field for, so the step would have survived as a forced move on cell
+                // (0,0).
+                var isTrayMove = step.kind == TrayMoveKind;
+                if (!isTrayMove && !string.IsNullOrEmpty(step.kind) && step.kind != ForcedMoveKind)
                 {
                     Debug.LogError(
-                        $"Tutorial step has kind '{step.kind}', and a Day may only author '{ForcedMoveKind}' steps. " +
-                        "The powerup tutorial moved to PowerupConfig, where each powerup names the Day that " +
-                        "introduces it. Dropping this Day's tutorial.");
+                        $"Tutorial step has kind '{step.kind}', and a Day may only author '{ForcedMoveKind}' or " +
+                        $"'{TrayMoveKind}' steps. The powerup tutorial moved to PowerupConfig, where each powerup " +
+                        "names the Day that introduces it. Dropping this Day's tutorial.");
                     return null;
                 }
 
-                steps.Add(new ResolvedTutorialStep(
-                    step.sourceX, step.sourceY, step.targetTraySlotIndex, step.message, step.highlightModification));
+                // The kind picks the source fields, and nothing else can: an unset int is 0,
+                // which is a real cell AND a real tray, so a step built from the wrong pair
+                // would be a plausible-looking step the player can never finish.
+                steps.Add(isTrayMove
+                    ? ResolvedTutorialStep.TrayMove(
+                        step.sourceTraySlotIndex, step.targetTraySlotIndex, step.message)
+                    : new ResolvedTutorialStep(
+                        step.sourceX, step.sourceY, step.targetTraySlotIndex, step.message, step.highlightModification));
             }
 
             // An enabled tutorial with no steps is treated as no tutorial rather than as an

@@ -235,10 +235,16 @@
             "items": [
                 {
                     "itemId": "fries",
+                    "modificationId": "",
+                    "isAddition": false,
                     "nameOverride": "",
                     "message": ""
                 }
             ]
+        },
+        "trayPreSeed": {
+            "enabled": false,
+            "entries": []
         }
     },
     "editorMeta": {

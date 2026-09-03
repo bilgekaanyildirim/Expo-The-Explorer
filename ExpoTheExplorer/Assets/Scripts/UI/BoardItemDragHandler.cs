@@ -175,11 +175,23 @@ namespace ExpoTheExplorer.UI
         // Over/Continue popup needs to block board input from.
         public void OnPointerDown(PointerEventData eventData)
         {
-            // The tutorial gate applies to BOARD cells only: cellX/cellY are stale leftovers
-            // while an item sits in a tray (see currentTraySlotIndex), so asking about them
-            // there would refuse a pickup based on a coordinate that means nothing.
-            var refusedByTutorial = !currentTraySlotIndex.HasValue && !gameManager.IsBoardPickupAllowed(cellX, cellY);
+            // TWO gates, because this object lives in two places. cellX/cellY are stale
+            // leftovers while an item sits in a tray (see currentTraySlotIndex), so the board
+            // gate cannot be asked about a seated item -- it would refuse or allow on a
+            // coordinate that means nothing. Which one applies is decided by where the item
+            // actually is, and exactly one of them is ever consulted.
+            //
+            // THE TRAY HALF IS NEW (D-165) AND IT CLOSES A HOLE. Until it existed, a seated
+            // item was asked NOTHING: the board gate was skipped for it and no other gate
+            // took its place, so while any tutorial step was armed every tray could still be
+            // freely emptied -- including during day_00's forced moves, where the player was
+            // supposedly locked to one cell and one tray. The tutorial now answers for both
+            // places an item can be picked up from, and refuses a tray no step has named.
+            var refusedByTutorial = currentTraySlotIndex.HasValue
+                ? !gameManager.IsTrayPickupAllowed(currentTraySlotIndex.Value)
+                : !gameManager.IsBoardPickupAllowed(cellX, cellY);
             pickupRefused = CurrentItem == null || gameManager.State.IsAwaitingContinue || refusedByTutorial;
+
             if (pickupRefused) return;
 
             // The day starts HERE on its first frame of play (D-162). After the gate above and
@@ -531,6 +543,27 @@ namespace ExpoTheExplorer.UI
 
                 Destroy(gameObject);
             }
+            else if (!wasOnBoard && !gameManager.IsBoardRelocationAllowed()
+                     && gameManager.TrayForSlot(pickupSourceTraySlotIndex.Value) is { } sourceTray
+                     && sourceTray.TryAcceptReturnDrop(this))
+            {
+                // A tray pickup dropped somewhere invalid WHILE A TUTORIAL STEP IS ARMED goes
+                // back to the tray it came from, because the board is not a legal destination
+                // for it and the branch below would put it there anyway (D-165c).
+                //
+                // THIS IS THE SOFTLOCK THE STEP ABOVE ALREADY GUARDS AGAINST, arriving by the
+                // one door D-165 opened. That guard was written for a BOARD pickup parked on
+                // another cell; a tray pickup could not happen during a tutorial at all until
+                // tray pickups became possible, so this branch was never reachable and never
+                // gated. Reaching it scattered the item to the first free cell -- (0,0) -- and
+                // a tray-move step refuses every board cell, so nothing on screen was
+                // draggable and no tray would accept anything. The day was over.
+                //
+                // Going back into the tray restores the MODEL as well as the view:
+                // OnBeginDrag removed this item from that slot's contents, and the accept path
+                // is what puts it back, so TrayManager's count stays honest.
+                haptics?.Request(HapticMoment.DropRejected);
+            }
             else if (!wasOnBoard)
             {
                 // A tray pickup dropped somewhere invalid — it still needs
@@ -632,7 +665,11 @@ namespace ExpoTheExplorer.UI
             // below instead, and neither buzzes: that drop is the one that publishes
             // OrderDelivered or costs a life, and both of those outrank this tick in
             // the same frame anyway.
-            haptics?.Request(HapticMoment.ItemDroppedInTray);
+            //
+            // And a ZERO travel multiplier does not buzz either, for a different reason: it
+            // is the Day-Start seed (D-165), an item nobody dropped. A buzz on the frame a
+            // day opens would report a move the player did not make.
+            if (travelMultiplier > 0f) haptics?.Request(HapticMoment.ItemDroppedInTray);
 
             SeatInSlot(slotTransform, slotIndex, travelMultiplier, seatScale);
         }
@@ -693,6 +730,35 @@ namespace ExpoTheExplorer.UI
             var worldPos = transform.position;
             transform.SetParent(slotTransform, false);
             transform.position = worldPos;
+
+            // A ZERO travel multiplier means "this item is already there", and DOTween cannot
+            // say that: a zero-duration tween does not apply on the frame it is created, so
+            // the item keeps its BOARD position and BOARD scale until the next tween update
+            // -- and for the Day-Start seed (D-165), which is the only caller that passes 0,
+            // that is the frame the player opens the day looking at. The symptom was a seeded
+            // drink sitting a third too large and off-centre in its slot, because
+            // TrayItemWorldSizeFor shrinks a drink the most.
+            //
+            // So the destination is written directly and the tweens below are still created
+            // over it: they then animate from the final value to the same final value, which
+            // costs nothing and keeps this method's contract -- it returns a live tween, and
+            // PlaceInSlotAndDeliver hangs its OnComplete on it.
+            if (travelMultiplier <= 0f)
+            {
+                // KILLED FIRST, and this is the half that actually bit. A seeded item reaches
+                // a tray by being placed on the board and taken straight off it, and that
+                // placement makes BoardView.RefreshCell treat it as newly appearing -- so a
+                // POP-IN scale tween is already running on this transform when we get here,
+                // created before ours and animating toward the item's full board size. Writing
+                // the final scale under it just gives that tween a new starting point to grow
+                // away from, which is exactly what a seeded drink did: it settled, then swelled
+                // back to board size. A seeded item is not appearing on the board, so none of
+                // that animation belongs to it.
+                transform.DOKill();
+                transform.localPosition = Vector3.zero;
+                transform.localScale = boardScale * seatScale;
+            }
+
             positionTween = transform
                 .DOLocalMove(Vector3.zero, animConfig.TraySettleDuration * travelMultiplier)
                 .SetEase(Ease.OutBack);

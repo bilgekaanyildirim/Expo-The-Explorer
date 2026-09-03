@@ -74,6 +74,7 @@ namespace ExpoTheExplorer.Systems.DaySystem
             ValidateBoardDistribution(day.BoardDistribution, day.TicketRuntime, warnings);
             ValidateDayStartBoard(day, errors);
             ValidateTutorial(day, errors);
+            ValidateTrayPreSeed(day, errors);
             ValidateItemIntros(day, allowedFoods, warnings);
 
             return new DayValidationResult(errors, warnings);
@@ -216,16 +217,23 @@ namespace ExpoTheExplorer.Systems.DaySystem
             }
 
             errors.Add(
-                $"Day Start board: none of the first {ticketsOnScreenAtOpen} ticket(s) can be completed from it. " +
-                "A Day that places items on the Day Start board opens with exactly those items -- nothing is spawned on top -- " +
-                "so at least one of the tickets on screen must be servable from the board as authored.");
+                $"Day Start opening items: none of the first {ticketsOnScreenAtOpen} ticket(s) can be completed from them. " +
+                "A Day that places items on the Day Start board opens with exactly those items plus whatever it seats in the trays " +
+                "-- nothing is spawned on top -- so at least one of the tickets on screen must be servable from them as authored.");
         }
 
-        // The board as the multiset the player actually gets to pick from. Counted the same
-        // way a tray is counted (RequiredItemKey: food + modification combo, order-
-        // independent), so an item carrying a modification nobody ordered is a DIFFERENT
-        // key rather than a loose match -- which is exactly how the delivery check will
-        // read it when the player hands it in.
+        // Everything the player can reach when the Day opens, as the multiset they get to
+        // pick from. Counted the same way a tray is counted (RequiredItemKey: food +
+        // modification combo, order-independent), so an item carrying a modification nobody
+        // ordered is a DIFFERENT key rather than a loose match -- which is exactly how the
+        // delivery check will read it when the player hands it in.
+        //
+        // THE TRAYS COUNT TOO (D-165), and leaving them out is not a conservative omission
+        // but a wrong answer: a seeded item can be taken back out of its tray and carried to
+        // another one -- that is the mechanic day_03 exists to teach -- so it is as available
+        // to the opening tickets as anything lying on the board. Before this, day_03 was
+        // reported as unplayable because the cola its first order needs opens in a tray
+        // rather than on the board.
         private static Dictionary<RequiredItemKey, int> CountDayStartBoardItems(DayDefinition day)
         {
             var counts = new Dictionary<RequiredItemKey, int>();
@@ -238,12 +246,30 @@ namespace ExpoTheExplorer.Systems.DaySystem
                 // wherever the board has room rather than at the authored cell -- which
                 // matters to the tutorial rule above, because that one names a CELL. This
                 // rule only asks whether the item is on the board at all, and it is.
-                var key = new RequiredItemKey(spawn.Item, spawn.Modifications ?? Array.Empty<Modification>());
-                counts.TryGetValue(key, out var count);
-                counts[key] = count + 1;
+                Add(counts, spawn.Item, spawn.Modifications);
+            }
+
+            foreach (var seed in day.TrayPreSeed ?? Array.Empty<ResolvedTrayPreSeed>())
+            {
+                if (seed == null || seed.Item == null) continue;
+
+                // WHICH tray it sits in is deliberately ignored: this rule asks what the
+                // player can get their hands on, and every seated item can be dragged out of
+                // its tray and into any other.
+                Add(counts, seed.Item, seed.Modifications);
             }
 
             return counts;
+
+            static void Add(
+                Dictionary<RequiredItemKey, int> counts,
+                FoodItemConfig item,
+                IReadOnlyList<Modification> modifications)
+            {
+                var key = new RequiredItemKey(item, modifications ?? Array.Empty<Modification>());
+                counts.TryGetValue(key, out var count);
+                counts[key] = count + 1;
+            }
         }
 
         // Judged through TicketRequirements, the same rule TraySlot.Matches judges a real
@@ -290,13 +316,22 @@ namespace ExpoTheExplorer.Systems.DaySystem
             {
                 var step = tutorial.Steps[i];
 
-                // No kind check any more: since D-115 every step a Day may author IS a
-                // forced move, so every rule below applies to every step. The skip that used
-                // to stand here existed for the panel step, which has moved to PowerupConfig.
-
+                // The target tray is the one thing BOTH shapes have, so it is checked before
+                // the kind splits them.
                 if (step.TargetTraySlotIndex < 0 || step.TargetTraySlotIndex >= GameState.TicketSlotCount)
                 {
                     errors.Add($"Tutorial step {i + 1}: target tray {step.TargetTraySlotIndex} does not exist -- there are {GameState.TicketSlotCount} trays, so it must be 0..{GameState.TicketSlotCount - 1}.");
+                }
+
+                // A TrayMove's source is a TRAY, so every board-cell rule below is not just
+                // inapplicable to it but actively wrong: its cell is -1/-1 by construction
+                // and no boardTimeline entry will ever match. Its own rules run instead and
+                // then this step is done. (Since D-115 and until D-165 there was no kind
+                // check here at all, because there was only one shape left.)
+                if (step.Kind == TutorialStepKind.TrayMove)
+                {
+                    ValidateTrayMoveStep(day, tutorial, i, errors);
+                    continue;
                 }
 
                 // EVERY step's source cell is checked against the Day Start board, and for
@@ -330,16 +365,110 @@ namespace ExpoTheExplorer.Systems.DaySystem
             // Two steps sending the player to the same cell is always an authoring slip: the
             // first one consumes that item, so the second could never be completed. A warning
             // would be too weak -- this is a guaranteed softlock, not a smell.
+            //
+            // ForcedMove steps only. Two TrayMoves share the cell -1/-1 by construction, so
+            // without the kind filter this rule would report every pair of them as a duplicate
+            // -- a false error on a Day that is perfectly authored.
             for (var i = 0; i < tutorial.Steps.Count; i++)
             {
+                if (tutorial.Steps[i].Kind != TutorialStepKind.ForcedMove) continue;
+
                 for (var j = i + 1; j < tutorial.Steps.Count; j++)
                 {
+                    if (tutorial.Steps[j].Kind != TutorialStepKind.ForcedMove) continue;
                     if (tutorial.Steps[i].SourceX != tutorial.Steps[j].SourceX) continue;
                     if (tutorial.Steps[i].SourceY != tutorial.Steps[j].SourceY) continue;
 
                     errors.Add($"Tutorial steps {i + 1} and {j + 1} both use source cell ({tutorial.Steps[i].SourceX}, {tutorial.Steps[i].SourceY}), but step {i + 1} takes that item off the board, so step {j + 1} could never be finished.");
                 }
             }
+        }
+
+        // The Day's opening tray contents (D-165). ERRORS rather than warnings, on the same
+        // line ValidateItemIntros draws: an introduction is a greeting and a bad one still
+        // leaves a playable Day, but a seeded tray is part of the BOARD STATE the player is
+        // handed -- a tutorial step can be locked on it, and a slot index that does not exist
+        // means an item that silently never appears.
+        //
+        // What is NOT checked here: whether the seeded item is something that tray's ticket
+        // wants. It usually is not -- day_03 seats a drink in the second tray precisely so
+        // the tutorial can move it to the FIRST order -- so a rule about it would fire on
+        // exactly the case this block was built for.
+        private static void ValidateTrayPreSeed(DayDefinition day, List<string> errors)
+        {
+            var seeds = day.TrayPreSeed;
+            if (seeds == null) return;
+
+            for (var i = 0; i < seeds.Count; i++)
+            {
+                var seed = seeds[i];
+                if (seed == null) continue;
+
+                if (seed.TraySlotIndex < 0 || seed.TraySlotIndex >= GameState.TicketSlotCount)
+                {
+                    errors.Add($"Day Start tray pre-seed {i + 1}: tray {seed.TraySlotIndex} does not exist -- there are {GameState.TicketSlotCount} trays, so it must be 0..{GameState.TicketSlotCount - 1}.");
+                    continue;
+                }
+
+                // Two items seated in one tray is legal (a tray holds several), but two
+                // entries that name the SAME tray and the SAME food are almost always a
+                // duplicated row rather than a deliberate pair, and the second one is
+                // invisible on screen -- it stacks in the same slot.
+                for (var j = i + 1; j < seeds.Count; j++)
+                {
+                    if (seeds[j] == null) continue;
+                    if (seeds[j].TraySlotIndex != seed.TraySlotIndex) continue;
+                    if (seeds[j].Item != seed.Item) continue;
+
+                    errors.Add($"Day Start tray pre-seed {i + 1} and {j + 1} both put a '{(seed.Item != null ? seed.Item.Id : "?")}' in tray {seed.TraySlotIndex}, which stacks two items in one slot -- remove one, or seat the second in another tray.");
+                }
+            }
+        }
+
+        // A tray-to-tray step's own rules (D-165). The question this answers is the same one
+        // the board-cell rule answers for a ForcedMove -- "will the one item the player is
+        // allowed to touch actually be there when this step begins?" -- but the places an
+        // item can come from are different, so the check has to be.
+        private static void ValidateTrayMoveStep(
+            DayDefinition day, ResolvedTutorial tutorial, int stepIndex, List<string> errors)
+        {
+            var step = tutorial.Steps[stepIndex];
+
+            if (step.SourceTraySlotIndex < 0 || step.SourceTraySlotIndex >= GameState.TicketSlotCount)
+            {
+                errors.Add($"Tutorial step {stepIndex + 1}: source tray {step.SourceTraySlotIndex} does not exist -- there are {GameState.TicketSlotCount} trays, so it must be 0..{GameState.TicketSlotCount - 1}.");
+                return;
+            }
+
+            // Moving an item out of a tray and back into the same tray is not a move. It
+            // would also never complete: the runtime finishes the step on the target tray
+            // ACCEPTING a drop, and a tray the item never left has nothing to accept.
+            if (step.SourceTraySlotIndex == step.TargetTraySlotIndex)
+            {
+                errors.Add($"Tutorial step {stepIndex + 1}: source tray and target tray are both {step.SourceTraySlotIndex}, so there is no move to make.");
+                return;
+            }
+
+            // The source tray has to be HOLDING something when this step begins, and there
+            // are exactly two ways it can be: the Day seeded it, or an earlier step put an
+            // item there. Anything else is a step the player is locked on with nothing to
+            // pick up -- the tray-side twin of naming a cell the board never fills.
+            //
+            // "An earlier step" is a necessary rather than a sufficient condition, for the
+            // reason the board-cell rule already gives: a step in between could have moved
+            // that item on again. The runtime re-checks the live tray when the step begins;
+            // this catches the author who never put anything there at all.
+            foreach (var seed in day.TrayPreSeed ?? Array.Empty<ResolvedTrayPreSeed>())
+            {
+                if (seed != null && seed.TraySlotIndex == step.SourceTraySlotIndex) return;
+            }
+
+            for (var i = 0; i < stepIndex; i++)
+            {
+                if (tutorial.Steps[i].TargetTraySlotIndex == step.SourceTraySlotIndex) return;
+            }
+
+            errors.Add($"Tutorial step {stepIndex + 1}: nothing puts an item in the source tray {step.SourceTraySlotIndex} before this step runs -- no Day Start tray pre-seed fills it and no earlier step delivers into it, so there would be nothing to pick up.");
         }
 
         // WHAT THIS METHOD CAN AND CANNOT SEE -- worth stating, because getting it wrong
