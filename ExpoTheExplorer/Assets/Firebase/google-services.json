@@ -7,6 +7,25 @@
   "client": [
     {
       "client_info": {
+        "mobilesdk_app_id": "1:483837410952:android:57b7a8e4bece2eb5e4e93d",
+        "android_client_info": {
+          "package_name": "com.game.expotheexplorer"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD6GEkQ-0IznaksetAg4C-ZQulFH0EUbeA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:483837410952:android:b6522edaaff047e3e4e93d",
         "android_client_info": {
           "package_name": "com.karanaka.expotheexplorer"
