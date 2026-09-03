@@ -1,0 +1,70 @@
+stages: [start, build, archive, deploy, notify]
+
+workflow:
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^ios_/
+    - when: never
+
+variables:
+  BUILD_ID: "$CI_PROJECT_PATH_SLUG-$CI_PIPELINE_IID-$CI_COMMIT_SHORT_SHA"
+
+slack_start:
+  stage: start
+  tags: [ios]
+  allow_failure: true
+  variables:
+    GIT_STRATEGY: none
+  script:
+    - /usr/local/intern-ci/notify-slack.sh start
+
+build_unity:
+  stage: build
+  tags: [ios]
+  script:
+    - /usr/local/intern-ci/build-unity.sh
+  cache:
+    key: "$CI_PROJECT_PATH_SLUG-ios"
+    paths: [Library/]
+  artifacts:
+    paths: [unity-build.log]
+    expire_in: 7 days
+    when: always
+
+archive_ios:
+  stage: archive
+  tags: [ios]
+  needs: [build_unity]
+  variables:
+    GIT_STRATEGY: none
+  script:
+    - /usr/local/intern-ci/archive-ios.sh
+
+deploy_testflight:
+  stage: deploy
+  tags: [ios]
+  needs: [archive_ios]
+  timeout: 45 minutes
+  variables:
+    GIT_STRATEGY: none
+  script:
+    - sudo -n -u signer /usr/local/intern-ci/export-upload.sh "$BUILD_ID"
+
+slack_success:
+  stage: notify
+  tags: [ios]
+  when: on_success
+  allow_failure: true
+  variables:
+    GIT_STRATEGY: none
+  script:
+    - /usr/local/intern-ci/notify-slack.sh ok
+
+slack_failure:
+  stage: notify
+  tags: [ios]
+  when: on_failure
+  allow_failure: true
+  variables:
+    GIT_STRATEGY: none
+  script:
+    - /usr/local/intern-ci/notify-slack.sh fail
