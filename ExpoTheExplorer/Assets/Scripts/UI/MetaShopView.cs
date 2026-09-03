@@ -133,12 +133,15 @@ namespace ExpoTheExplorer.UI
         [Tooltip("The confirm popup's root. Active only while a purchase is being previewed.")]
         [SerializeField] private GameObject confirmPopup;
 
-        // There was a full-screen backdrop button here that cancelled on a tap outside the
-        // box (MS6). The user removed it from the scene, so it is gone from the code too
-        // (D-038): CANCEL is now the only way out of a preview. The other thing it did --
-        // eating taps meant for the map behind -- costs nothing, because the ScrollRect is
-        // already disabled for the duration of a preview (D-032), so a drag that lands
-        // behind the popup cannot pan anything.
+        // THE POPUP CATCHES ITS OWN OUTSIDE TAPS AGAIN, and this reverses D-038. That turn
+        // deleted the authored backdrop at the user's request, on the reasoning that CANCEL
+        // should be the only way out and that eating taps "costs nothing, because the
+        // ScrollRect is already disabled". The second half was the mistake: the ScrollRect
+        // is not the only thing under this popup. ConfirmPopup is a full-screen stretch with
+        // NO Graphic on it, and the main screen's "Continue Day" button is a sibling of this
+        // whole shop under the same Canvas -- so a tap beside the box hit nothing here, fell
+        // through, and STARTED THE DAY out from under a purchase the player was still
+        // deciding on. See CreateConfirmCatcher for why it is built rather than authored.
         [Tooltip("The popup's box — the part that MOVES. Positioned above the previewed prop each time, with a bottom-centre pivot, so its lower edge sits just over the ghost.")]
         [SerializeField] private RectTransform confirmBox;
 
@@ -199,6 +202,15 @@ namespace ExpoTheExplorer.UI
         // chain again -- by then the host may be half torn down.
         private GameState watchedState;
 
+        // The transparent full-screen button under the confirm box. Held only so its
+        // listener can be taken off in OnDestroy the way every other listener here is --
+        // the object itself needs no lifetime management, because it is a CHILD of
+        // confirmPopup and therefore goes on and off with the popup and dies with the scene.
+        // That parenting is the whole trick: "when is the catcher up" is not a second
+        // question this state machine has to answer, it is the same activeSelf the popup
+        // already has.
+        private Button confirmCatcher;
+
         // Keeps the popup off the very edge when the previewed prop sits at a corner of the
         // map. Not serialized: it is a "do not touch the screen border" constant, not a look.
         private const float ScreenMargin = 24f;
@@ -252,6 +264,14 @@ namespace ExpoTheExplorer.UI
             confirmBuyButton.onClick.AddListener(OnConfirmBuyClicked);
             confirmCancelButton.onClick.AddListener(ClosePreview);
 
+            // Built here rather than in ShowPreview: it is one object for the life of the
+            // screen, and creating it on the first preview would put a GameObject allocation
+            // inside a tap the player is watching an animation land on. Safe at this point in
+            // Start because confirmPopup is a REQUIRED reference -- ValidateReferences has
+            // already returned by the time this line runs.
+            confirmCatcher = CreateConfirmCatcher();
+            if (confirmCatcher != null) confirmCatcher.onClick.AddListener(ClosePreview);
+
             // THE TWO EVENTS SetOpen CANNOT COVER. Every transition of this state machine
             // ends in ApplyVisibility, which re-asks the badge's question -- so the screen
             // opening, the shop opening and closing, a preview going up and coming down, and
@@ -286,6 +306,7 @@ namespace ExpoTheExplorer.UI
             if (backdropButton != null) backdropButton.onClick.RemoveListener(OnCloseClicked);
             if (confirmBuyButton != null) confirmBuyButton.onClick.RemoveListener(OnConfirmBuyClicked);
             if (confirmCancelButton != null) confirmCancelButton.onClick.RemoveListener(ClosePreview);
+            if (confirmCatcher != null) confirmCatcher.onClick.RemoveListener(ClosePreview);
 
             watchedState?.SoftMoneyChanged.Unsubscribe(OnWatchedMoneyChanged);
             if (grounds != null) grounds.ViewedLocationChanged.Unsubscribe(OnViewedLocationChanged);
@@ -554,6 +575,59 @@ namespace ExpoTheExplorer.UI
         // button, closing the shop -- all of them arrive here, which is what makes "when
         // does the ghost go away" a question with a single answer. Safe to call when
         // nothing is being previewed, because every caller would otherwise need to check.
+        // A transparent, full-screen button as the popup's FIRST child. Three properties of
+        // that placement do all the work:
+        //
+        //   inside confirmPopup -- it is shown and hidden by the SetActive this state machine
+        //                          already makes, so the catcher's visibility is not a second
+        //                          thing to keep in step (D-024's lesson, applied to a
+        //                          catcher rather than to a ghost);
+        //   FIRST sibling       -- UGUI hit-tests children after their parent and later
+        //                          siblings over earlier ones, so Box and its BUY and CANCEL
+        //                          keep winning every tap that actually lands on them;
+        //   stretched 0..1      -- ConfirmPopup is itself anchored 0..1 with a zero
+        //                          sizeDelta, so this covers the whole canvas and nothing
+        //                          behind the popup is reachable while it is up. "Continue
+        //                          Day" is the one that mattered.
+        //
+        // BUILT, NOT AUTHORED, unlike nearly everything else on this screen, and D-038 is the
+        // reason: the last full-screen backdrop here WAS a scene object, and a scene object is
+        // precisely what got deleted. A serialized field would be a slot the scene does not
+        // fill, and the bug would come back silently the next time this popup is re-authored.
+        // MetaGroundsView.CreateSkipCatcher makes the same call for the same reason.
+        //
+        // The click goes to ClosePreview, the exit door that already exists: an outside tap is
+        // a change of mind, which is exactly what CANCEL means, and a second way out with its
+        // own idea of what to clean up is how a ghost survives the panel that summoned it.
+        private Button CreateConfirmCatcher()
+        {
+            if (confirmPopup == null) return null;
+
+            var catcher = new GameObject("ConfirmCatcher", typeof(RectTransform), typeof(Image), typeof(Button));
+            var rect = (RectTransform)catcher.transform;
+            rect.SetParent(confirmPopup.transform, worldPositionStays: false);
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+            rect.SetAsFirstSibling();
+
+            var image = catcher.GetComponent<Image>();
+            // Fully transparent and still hit-testable: an Image raycasts against its RECT,
+            // not against pixel alpha, unless an alpha threshold is set -- and none is. A
+            // visible dim was considered and rejected: the box is placed over the ghost so the
+            // player can see WHERE the prop would stand, and dimming the map would hide the
+            // very thing being previewed.
+            image.color = new Color(0f, 0f, 0f, 0f);
+            image.raycastTarget = true;
+
+            var button = catcher.GetComponent<Button>();
+            button.targetGraphic = image;
+            button.transition = Selectable.Transition.None;
+
+            return button;
+        }
+
         private void ClosePreview()
         {
             if (pendingItem == null) return;
@@ -863,12 +937,13 @@ namespace ExpoTheExplorer.UI
             if (rowsParent == null) missing.Add(nameof(rowsParent));
             if (rowTemplate == null) missing.Add(nameof(rowTemplate));
 
-            // The popup's four interactive parts are required too. An unwired cancel or
-            // cancel button is the worst case on this screen, and more so since the backdrop
-            // was removed (D-038) made it the ONLY way out: an unwired one strands the
-            // player in a preview with a ghost on the map and no way back, which is the leak
-            // this whole part exists to make impossible. The two LABELS are optional by
-            // contrast -- they only say what is being bought.
+            // The popup's four interactive parts are required too. An unwired cancel button
+            // strands the player in a preview with a ghost on the map and no way back, which
+            // is the leak this whole part exists to make impossible. It is no longer the ONLY
+            // way out -- the catcher built above cancels on an outside tap, which is a second
+            // door and deliberately so -- but it stays required: a catcher is invisible, and
+            // "tap somewhere" is not a thing a player can be expected to discover. The two
+            // LABELS are optional by contrast -- they only say what is being bought.
             if (confirmPopup == null) missing.Add(nameof(confirmPopup));
             if (confirmBuyButton == null) missing.Add(nameof(confirmBuyButton));
             if (confirmCancelButton == null) missing.Add(nameof(confirmCancelButton));
