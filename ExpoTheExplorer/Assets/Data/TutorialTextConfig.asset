@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 949d3124113e346ebad546f936bb38f3, type: 3}
   m_Name: TutorialTextConfig
   m_EditorClassIdentifier: ExpoTheExplorer.Data::ExpoTheExplorer.Data.TutorialTextConfig
-  welcomeTitle: Welcome to the expo
+  welcomeTitle: Welcome to the Expo
   welcomeBody: You're running the food stall. Every customer brings one order - drag
     the matching items off the board into their tray before their patience runs out.
     Serve them well and the day pays.
