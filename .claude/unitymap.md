@@ -1,4 +1,4 @@
-<!-- stamp: 2026-09-03T07:47Z source-sig:efe4619871d0 scenes:2 prefabs:16 generator:python-fallback status: DEGRADED 415 missing-script -->
+<!-- stamp: 2026-09-03T13:02Z source-sig:ef6ad12ffb4b scenes:2 prefabs:16 generator:python-fallback status: DEGRADED 417 missing-script -->
 # unitymap — scene and prefab structure
 
 Read this instead of opening a `.unity`/`.prefab` file. Tree indentation is
@@ -71,7 +71,7 @@ Unity menu item Tools > unity-dev > Export unitymap.
 - MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/MetaUnlockPopup.prefab | Label
 - MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/MetaUnlockPopup.prefab | MetaUnlockPopup
 - MISSING SCRIPT | ExpoTheExplorer/Assets/Prefabs/UI/MetaUnlockPopup.prefab | Panel
-- ... 266 more
+- ... 268 more
 
 ## PREFAB ExpoTheExplorer/Assets/Prefabs/Confetti.prefab   (1 object(s))
 - Confetti  [RectTransform, ParticleSystem, ParticleSystemRenderer]  refs: LightsModule=NULL, ShapeModule=NULL, SubModule=NULL, UVModule=NULL, moveWithCustomTransform=NULL
@@ -358,7 +358,7 @@ Unity menu item Tools > unity-dev > Export unitymap.
 - * NoKeysPopup  (prefab instance of ExpoTheExplorer/Assets/Prefabs/UI/NoKeysPopup.prefab)
 - * PowerupShop  (prefab instance of ExpoTheExplorer/Assets/Prefabs/UI/PowerupShop.prefab)
 
-## SCENE ExpoTheExplorer/Assets/Scenes/SampleScene.unity   (120 object(s))
+## SCENE ExpoTheExplorer/Assets/Scenes/SampleScene.unity   (122 object(s))
 - LifeLostHeart  [LifeLostHeartView, Transform]  refs: animConfig=set, slotHearts=set
 - Main Camera  [AudioListener, MISSING SCRIPT (guid:a79441f3), Camera, Transform]
 - Popup Canvas  [GameOverPopupView, MISSING SCRIPT (guid:dc42784c), MISSING SCRIPT (guid:0cd44c10), Canvas, RectTransform, NoKeysPopupView]  refs: animConfig=set, gameManager=set, gemButton=set, haptics=set, livesRefillText=set, mainMenuButton=set, noKeysPopup=set, popupRoot=set, retryButton=set, animConfig=set, closeButton=set, countdownText=set, gemButton=set, gemCostLabel=set, haptics=set, notEnoughGemsLabel=set, popupRoot=set, sessionHost=set
@@ -368,10 +368,12 @@ Unity menu item Tools > unity-dev > Export unitymap.
       - HeartIcon  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
         - LivesRefillText  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:f4688fdb)]  refs: parentLinkedComponent=NULL
       - GemButton  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, MISSING SCRIPT (guid:4e29b1a8), HapticButton]  refs: haptics=set
+        - Image (1)  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
+        - Image  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
       - MainMenuButton  [MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, RectTransform, HapticButton]  refs: haptics=set
       - RetryButton  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, MISSING SCRIPT (guid:4e29b1a8), HapticButton]  refs: haptics=set
   - DayCompletePopup  [RectTransform, DayCompletePopupView, DayRewardFlightView]  refs: animConfig=set, confettiPrefab=set, gameManager=set, goBackButton=set, nextDayButton=set, ordersDeliveredCountText=set, ordersDeliveredValueText=set, popupRoot=set, retryButton=set, rewardFlight=set, star1Filled=set, star2Filled=set, star3Filled=set, starScoreBar=set, tipsValueText=set, totalText=set, coinFlightTarget=set, coinSprite=set, flightRoot=set, gameManager=set, gemFlightTarget=set, gemSprite=set, haptics=set, scoreBar=set
-    - PopupRoot [inactive]  [RectTransform]
+    - PopupRoot  [RectTransform]
       - Background  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
       - Title  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
       - ReceiptBody  [RectTransform]
@@ -392,7 +394,7 @@ Unity menu item Tools > unity-dev > Export unitymap.
           - Coin  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
       - ButtonsRow  [RectTransform]
         - NextDayButton [inactive]  [RectTransform, MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, HapticButton]  refs: haptics=set
-        - RetryButton  [RectTransform, MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, HapticButton]  refs: haptics=set
+        - RetryButton [inactive]  [RectTransform, MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, HapticButton]  refs: haptics=set
         - ContinueButton  [RectTransform, MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, HapticButton]  refs: haptics=set
       - StarScoreBar  [RectTransform, StarScoreBarView]  refs: fill=set
         - Background  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
