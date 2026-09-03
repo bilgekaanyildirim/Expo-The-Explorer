@@ -259,9 +259,26 @@
      must see GameManager, so it belongs to Assembly-CSharp and could not compile inside an
      asmdef assembly.
 
-     DELIBERATELY NOT A FRAMEWORK. There is one authored step, so there is no step list, no
-     interface and no state machine -- abstraction-level.md's default answer. A second
-     tutorial moment is the thing that would justify those, and it does not exist yet. -->
+     STILL NOT A FRAMEWORK, and D-165 is the test it passed. This entry used to read "there
+     is one authored step, so there is no step list, no interface and no state machine -- a
+     second tutorial moment is the thing that would justify those, and it does not exist
+     yet." That moment arrived (day_03 teaches that an item can be taken back OUT of a tray),
+     and what it bought was one enum member, one named factory and the branches that read
+     them -- no interface, no state machine, no registry. The step list itself had already
+     been earned by D-083's second step.
+
+     WHAT THE SECOND SHAPE COST INSTEAD is a `kind` that is load-bearing again: a forced
+     move's source is a board cell, a tray move's is a slot index, they share nothing but
+     their target and their message, and an unset int is 0 -- a real cell AND a real tray --
+     so only the kind can say which pair to trust. Both sides write the unused source as -1
+     rather than 0 for that reason. D-115 had demoted `kind` to a rejection device when it
+     deleted the only other shape; this restored its original job.
+
+     A DAY CAN NOW ALSO SEAT AN ITEM IN A TRAY (`runtime.trayPreSeed`), which is what a tray
+     move takes its item from. It is a separate block rather than a flag on boardTimeline
+     because that one names a CELL and is played into BoardGrid, while this one never touches
+     the grid -- and it is still content living beside the board it describes, so DayValidator
+     can check the pairing the same way it checks a forced move's cell. -->
 
 - CelebrationSystem — the confetti a payoff throws: two authored cannons, fired once and gone — depends on: -
 <!-- CelebrationSystem, added 2026-08-29 (decisions.md D-131). The arrow is `-` and, like
