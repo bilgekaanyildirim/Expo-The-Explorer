@@ -12,9 +12,9 @@ namespace ExpoTheExplorer.UI
     // purchases know, so they cannot be laid out in the Editor ahead of time.
     //
     // A pure BIND component. It decides nothing: whether an item is listed at all comes
-    // from MetaPurchase.ShopItems, and whether it can be afforded comes from
-    // MetaPurchase.Evaluate (which Ş5 will surface here). This class turns four values
-    // into four references and reports the tap.
+    // from MetaPurchase.ShopItems, and whether it can be afforded is worked out by
+    // MetaShopView and handed in as a bool. This class turns those values into references
+    // and reports the tap.
     public class MetaShopRowView : MonoBehaviour
     {
         [SerializeField] private Image iconImage;
@@ -22,13 +22,11 @@ namespace ExpoTheExplorer.UI
         [SerializeField] private TMP_Text priceLabel;
         [SerializeField] private Button buyButton;
 
-        [Tooltip("Dims the whole row when the player cannot afford it. Optional — without it the row simply does not dim.")]
-        [SerializeField] private CanvasGroup group;
-
-        [Tooltip("How faded an unaffordable row looks. Over the panel's dark background, less alpha reads as darker, which is what was asked for.")]
+        [Tooltip("How faded the BUY button looks on a row the player cannot afford. The rest of the row -- icon, name, price -- stays at full strength.")]
         [SerializeField, Range(0.1f, 1f)] private float unaffordableAlpha = 0.4f;
 
         private Action onBuy;
+        private CanvasGroup buyGroup;
 
         // Wired ONCE, in Awake, rather than in Bind. Bind is called once per clone today,
         // but a listener added there would stack silently the first time anything rebinds
@@ -36,12 +34,39 @@ namespace ExpoTheExplorer.UI
         // have. The stored callback is what changes; the subscription does not.
         private void Awake()
         {
-            if (buyButton != null) buyButton.onClick.AddListener(HandleBuy);
+            if (buyButton == null) return;
+            buyButton.onClick.AddListener(HandleBuy);
+            EnsureBuyGroup();
         }
 
         private void OnDestroy()
         {
             if (buyButton != null) buyButton.onClick.RemoveListener(HandleBuy);
+        }
+
+        // BUILT, not authored. The CanvasGroup that fades the BUY could have been a
+        // serialized slot, but this screen has already made the opposite call twice
+        // (MetaShopView.CreateConfirmCatcher, MetaGroundsView.CreateSkipCatcher) for the
+        // reason that applies here too: the row template lives in the SCENE, so a slot the
+        // next re-author forgets to fill would drop the fade silently and nothing would
+        // report it. GetComponent runs first, so a template that does carry one is reused
+        // rather than doubled.
+        //
+        // A CanvasGroup's defaults are what make this safe: interactable and blocksRaycasts
+        // both start true, so an unaffordable BUY keeps its tap -- and it must, because that
+        // tap is what opens the preview. Only alpha is ever written.
+        //
+        // Idempotent and called from Bind as well as Awake: rows are cloned from an inactive
+        // template and switched on before Bind today, but a caller that ever binds first
+        // would otherwise lose the fade with no symptom.
+        private void EnsureBuyGroup()
+        {
+            if (buyGroup != null) return;
+            // Written as an explicit == null rather than ??, because ?? bypasses the
+            // operator UnityEngine.Object overloads and is the standard way to get a
+            // "not null but not alive" reference in Unity code.
+            var existing = buyButton.GetComponent<CanvasGroup>();
+            buyGroup = existing != null ? existing : buyButton.gameObject.AddComponent<CanvasGroup>();
         }
 
         public void Bind(
@@ -63,13 +88,24 @@ namespace ExpoTheExplorer.UI
                 buyButton.targetGraphic.color = buyColor;
             }
 
-            // Dimmed, not disabled. The BUY on a row the player cannot afford still opens the
-            // preview, because seeing where the prop would go and what it costs is exactly
-            // what makes it worth saving for -- turning the row off would make it dead
-            // furniture. The popup's own BUY is what refuses, and visibly (Ş5).
+            // THE BUY FADES, THE ROW DOES NOT. Ş5 dimmed the whole row through a CanvasGroup
+            // on its root, and the whole row going pale read as the prop itself being
+            // withdrawn -- but its icon, its name and its price are exactly what makes a prop
+            // worth saving for, so they now stay at full strength. Only the thing that would
+            // actually refuse carries the fade, on top of the red it already gets: the fade
+            // and the colour then say the same thing about the same button instead of the
+            // fade talking about the row and the colour about the button.
             //
-            // Alpha rather than interactable, so the group never swallows that tap.
-            if (group != null) group.alpha = affordable ? 1f : unaffordableAlpha;
+            // Dimmed, not disabled, and that much has not changed: the BUY on a row the
+            // player cannot afford still opens the preview, because seeing where the prop
+            // would go and what it costs is what makes it worth saving for -- turning it off
+            // would make the row dead furniture. Alpha rather than interactable, so the group
+            // never swallows that tap; the popup's own BUY is what refuses, and visibly.
+            if (buyButton != null)
+            {
+                EnsureBuyGroup();
+                buyGroup.alpha = affordable ? 1f : unaffordableAlpha;
+            }
 
             if (iconImage != null)
             {
