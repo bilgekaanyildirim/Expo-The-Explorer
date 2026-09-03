@@ -182,6 +182,17 @@ namespace ExpoTheExplorer.UI
             pickupRefused = CurrentItem == null || gameManager.State.IsAwaitingContinue || refusedByTutorial;
             if (pickupRefused) return;
 
+            // The day starts HERE on its first frame of play (D-162). After the gate above and
+            // before anything else, which is the whole of the placement argument: a press the
+            // Continue popup or the tutorial swallowed produced no move, so it must not start
+            // the clock either -- and a press that got through has started the day whatever
+            // happens to the gesture afterwards. A pickup the player immediately snaps back
+            // still counts; they have touched the board, which is what was being waited for.
+            //
+            // Idempotent on GameManager's side, so this is a bool compare on every press after
+            // the first rather than something this handler has to remember.
+            gameManager.NotifyPlayerInput();
+
             ApplyPickupVisuals(eventData);
 
             // After the gate, not before: a press the Continue popup swallowed produced

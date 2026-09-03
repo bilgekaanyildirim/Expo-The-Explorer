@@ -432,7 +432,19 @@ namespace ExpoTheExplorer.UI
             {
                 // Unchanged: TryUse decides on its own whether there was work to do, and a
                 // press with nothing to collect costs no charge (GDD 5.2).
-                manager.TryUse(type);
+                //
+                // The return value is now READ, for the second of the two inputs that start a
+                // held day (D-162). A powerup is counted as the day's first input because
+                // Auto-Collect fills a tray: without it a player could deliver whole orders
+                // with every clock still frozen. Gated on the effect having actually RUN, and
+                // that is the same "costs no charge" rule stated once more -- a press with
+                // nothing to collect changed nothing, so it must not start the clock either.
+                //
+                // The empty-charge branch below deliberately does NOT report input: that press
+                // opens the shop, and a player buying a powerup before their first move has
+                // not made one yet. The shop holds the clock itself while it is open (D-105),
+                // so closing it leaves the day exactly where this found it -- still waiting.
+                if (manager.TryUse(type)) gameManager.NotifyPlayerInput();
             }
             else if (!isForcedByTutorial)
             {

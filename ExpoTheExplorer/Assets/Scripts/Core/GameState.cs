@@ -109,6 +109,27 @@ namespace ExpoTheExplorer.Core
         // flag nobody owns, and the popup is the only thing that can set it.
         public bool IsPaused { get; set; }
 
+        // True from the moment a day is set up until the player's first accepted input
+        // (decisions.md D-162). Read by GameManager.Update, on the same line of reasoning as
+        // the three flags above: the seconds a player spends looking at a board they have
+        // never seen are not seconds their orders should be losing. A day is DEALT, not
+        // started, until a finger lands on it.
+        //
+        // ITS OWN FLAG rather than a fourth entry in GameManager.pauseHolders, and the
+        // argument is the one already written on that Update line: all four gates mean "hold
+        // the ticket clock", they are held by different things for different reasons, and a
+        // stuck clock has to be able to say WHICH one forgot to let go. There is a second
+        // reason here -- a day waiting to be touched is not paused. IsPaused means "a panel is
+        // up over a running day" and SettingsPopupView reads it that way; borrowing it would
+        // make a fresh day indistinguishable from an open menu.
+        //
+        // Single writer: GameManager -- set true at each of the four places a day begins
+        // (Awake, RetryDay, RetryCompletedDay, AdvanceToNextDay, all beside their
+        // ResetForNewDay call), cleared in NotifyPlayerInput. Every other file only asks.
+        // Deliberately NOT cleared when a day ends: the next day's own start sets it, and a
+        // flag several places clear is a flag nobody owns.
+        public bool IsAwaitingFirstInput { get; set; }
+
         // Carries the slot index alongside the ticket — WorldTrayView needs it
         // to tell whether a just-resolved batch on ITS OWN slot was a delivery
         // (plays the delivery-success lift/fade) as opposed to a wrong-order

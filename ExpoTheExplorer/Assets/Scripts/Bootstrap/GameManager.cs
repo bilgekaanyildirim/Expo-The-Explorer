@@ -241,6 +241,40 @@ namespace ExpoTheExplorer.Bootstrap
             State.IsPaused = pauseHolders.Count > 0;
         }
 
+        // The other half of D-162, and the reason it is a METHOD rather than the two callers
+        // assigning the flag: GameState.IsAwaitingFirstInput has one writer, and "one writer"
+        // has to be enforceable by reading this file rather than by remembering a rule. A
+        // pointer-down handler and a button handler both reaching into the state to clear a
+        // day-liveness flag is exactly the dual authority the root invariant forbids.
+        //
+        // Idempotent and free on every call after the first: the flag read short-circuits, so
+        // the cost on the hundreds of presses that follow is one bool compare. That is why the
+        // callers do not have to ask "is this the first one?" -- they just report input, which
+        // is the only question a drag handler can answer honestly.
+        //
+        // Publishes nothing. The clock starting is not an event anyone needs to react to: the
+        // timer bars already read RemainingSeconds every frame (see NotifyTutorialOfTicket-
+        // Patience for why that polling exists), so they simply begin moving.
+        public void NotifyPlayerInput()
+        {
+            if (State == null || !State.IsAwaitingFirstInput) return;
+
+            State.IsAwaitingFirstInput = false;
+        }
+
+        // Called from each of the four places a day begins, beside their ResetForNewDay line.
+        // Four call sites rather than one buried in a shared helper because there IS no shared
+        // day-start method in this class -- the four paths differ in what they pay out, revert
+        // and persist, and the only thing they agree on is the reset block this sits in. A
+        // fifth day-start path added later has to add this line too; a day whose clock runs
+        // before it is touched is the bug, and it will be reported as one.
+        private void HoldClockUntilFirstInput()
+        {
+            if (State == null) return;
+
+            State.IsAwaitingFirstInput = true;
+        }
+
         public TicketSlotManager TicketSlotManager { get; private set; }
         public TrayManager TrayManager { get; private set; }
         public DayLifecycleManager DayLifecycleManager { get; private set; }
@@ -374,6 +408,12 @@ namespace ExpoTheExplorer.Bootstrap
             // line as every day after it. Nothing else here needs resetting (the state is
             // brand new), which is why this is the only day-start call.
             DayLifecycleManager.ResetForNewDay(CurrentDayTicketSeconds);
+
+            // BEFORE the opening fill below, not after: FillEmptySlots assigns the first three
+            // tickets and each assignment cascades into board playback, so the clock is already
+            // something that could tick by the time this method returns. Holding it first means
+            // the very first frame of a day is a still one.
+            HoldClockUntilFirstInput();
 
             // After TicketSlotManager exists, because the shared gate below reads it.
             RegisterPowerupEffects();
@@ -552,6 +592,20 @@ namespace ExpoTheExplorer.Bootstrap
             // combined condition would make it impossible to tell from a stuck clock which
             // one forgot to let go.
             if (State.IsPaused) return;
+
+            // A day that has been dealt but not yet touched does not run (D-162). Fourth gate
+            // on the same line for the same reason the third one is separate: this is not a
+            // pause, it is a day that has not started -- the board has just appeared, the
+            // player is reading three orders they have never seen, and every second of that
+            // reading used to come off their clocks. Cleared by NotifyPlayerInput below, from
+            // the first press the game ACCEPTS as play.
+            //
+            // Safe by construction against a day that never starts: the two callers that clear
+            // it are the two inputs a player cannot play without (a board item, a powerup), and
+            // both clear AFTER their own refusal gates -- so a press the Continue popup or the
+            // tutorial swallowed leaves the day waiting, which is correct, because that press
+            // did not start the day either.
+            if (State.IsAwaitingFirstInput) return;
 
             // The tutorial stops the clock for the WHOLE of its run, not only for the steps
             // that ask the player to read (D-097). It started as the reading gate alone, on
@@ -1091,6 +1145,13 @@ namespace ExpoTheExplorer.Bootstrap
             LivesManager.RefillForNewDay();
             DayLifecycleManager.ResetForNewDay(CurrentDayTicketSeconds);
 
+            // A retried day is a new day (D-162): the board has been cleared and re-seeded and
+            // three fresh orders are on their way in, so it gets the same still first frame the
+            // scene's opening one does. Also the case that makes this line matter most -- a
+            // retry is reached from a popup the player was mid-tap on, and without the hold the
+            // clock would start under a finger that has not touched the new board yet.
+            HoldClockUntilFirstInput();
+
             // Publishes DayRetried, which OnDayRetried answers with wallet.RevertToDayStart
             // -- so the money is already rolled back by the time the save below runs.
             State.DayRetried.Publish(ticketsBeforeRetry);
@@ -1137,6 +1198,11 @@ namespace ExpoTheExplorer.Bootstrap
             TicketSlotManager.ResetSlotsForNewDay();
             LivesManager.RefillForNewDay();
             DayLifecycleManager.ResetForNewDay(CurrentDayTicketSeconds);
+
+            // Same hold as the other three (D-162). A replay for stars is the run where a
+            // frozen opening is worth the most -- the player is here to beat their own score
+            // and is allowed to plan the first move before it costs them anything.
+            HoldClockUntilFirstInput();
 
             // Writes the reverted balance back to disk, unlike the failed-day
             // retry path: this day already COMPLETED, so OnDayCompleted has
@@ -1202,6 +1268,11 @@ namespace ExpoTheExplorer.Bootstrap
             TicketSlotManager.ResetSlotsForNewDay();
             LivesManager.RefillForNewDay();
             DayLifecycleManager.ResetForNewDay(CurrentDayTicketSeconds);
+
+            // The fourth and last day start (D-162). Next Day is pressed on a popup over the
+            // finished board, and the day behind it is rebuilt in this same call -- so without
+            // the hold the new day's first seconds are spent watching the popup close.
+            HoldClockUntilFirstInput();
 
             return true;
         }
