@@ -217,6 +217,26 @@ namespace ExpoTheExplorer.UI
 
         private readonly List<MetaShopRowView> rows = new();
 
+        // The CanvasGroup that fades the confirm popup's BUY, built on it rather than
+        // authored -- the same call MetaShopRowView.EnsureBuyGroup and CreateConfirmCatcher
+        // (D-159) make, for the same reason: everything on this screen lives in the SCENE,
+        // so a serialized slot is a slot the next re-author can forget to fill, and the bug
+        // returns with nothing reporting it.
+        private CanvasGroup confirmBuyGroup;
+
+        // "The player asked to go and earn the money for this prop." Raised when the confirm
+        // popup's BUY is pressed on something they cannot afford; the payload is the prop
+        // they were looking at, so a listener can say so.
+        //
+        // AN EVENT RATHER THAN A CALL, and the direction is the whole point (D-164). Starting
+        // a day is MainScreenView's business -- it owns Play and the two gates that guard it
+        // (the key gate D-069, the first-building gate D-090) -- but this view cannot hold a
+        // reference to it: MainScreen -> Tutorial -> MetaSystem is an existing chain, so a
+        // MainScreenView field here would close a cycle. Publishing leaves every arrow
+        // pointing MainScreen -> MetaSystem, and it also means this screen never learns what
+        // "go to the game" involves, which is what keeps those two gates un-duplicated.
+        public EventBus<MetaItemDefinition> PlayRequested { get; } = new();
+
         private void Start()
         {
             // Hidden BEFORE validating, and with null checks of its own, because a missing
@@ -510,22 +530,32 @@ namespace ExpoTheExplorer.UI
             if (confirmNameLabel != null) confirmNameLabel.text = RowName(item);
             if (confirmPriceLabel != null) confirmPriceLabel.text = item.Price.ToString();
 
-            // Visibly closed rather than silently refusing. Until Ş5 this button was live and
-            // did nothing when the money was short -- it called Evaluate, got NotEnoughMoney,
-            // logged, and left the screen unchanged, which is a dead button in every sense
-            // the plan warned about. The commit still re-checks everything; this only stops
-            // the player asking a question whose answer is already visible.
+            // LIVE EVEN WHEN THE MONEY IS SHORT, and that is a reversal of Ş5 rather than a
+            // slip back to what came before it (D-164). Ş5 closed this button because it was
+            // dead -- it called Evaluate, got NotEnoughMoney, logged, and left the screen
+            // exactly as it was, which is the worst kind of button. What changed is that
+            // pressing it now DOES something: it takes the player to the day, to go and earn
+            // the price. A disabled Button raises no onClick at all, so being pressable is
+            // not a look here, it is the mechanism.
             var session = sessionHost.Session;
             var affordable = session != null && item.Price <= session.State.SoftMoney;
-            confirmBuyButton.interactable = affordable;
+            confirmBuyButton.interactable = true;
 
-            // Red as well as closed. The disabled state darkens whatever base colour is
-            // here, so this reads as "red, and off" rather than as the generic grey a
-            // disabled button would otherwise be -- the reason is the price, and the colour
-            // says which reason.
+            // Red, and faded, and still pressable. Ş5 leaned on the DISABLED tint to darken
+            // the red for it; with the button live that tint is gone, so the fade has to be
+            // applied directly or an unaffordable BUY would come out brighter than an
+            // affordable one. Same pair of signals the row's BUY carries since D-163, and
+            // deliberately the same amount -- the row and the popup are two views of one
+            // refusal, and a player who saw the row dim expects the popup to agree.
             if (confirmBuyButton.targetGraphic != null)
             {
                 confirmBuyButton.targetGraphic.color = affordable ? buyAffordableColor : buyUnaffordableColor;
+            }
+
+            EnsureConfirmBuyGroup();
+            if (confirmBuyGroup != null)
+            {
+                confirmBuyGroup.alpha = affordable || rowTemplate == null ? 1f : rowTemplate.UnaffordableAlpha;
             }
 
             ApplyVisibility();
@@ -628,6 +658,24 @@ namespace ExpoTheExplorer.UI
             return button;
         }
 
+        // Built, not authored -- see confirmBuyGroup's own comment. Idempotent, and written
+        // as an explicit == null rather than ??, which bypasses the operator
+        // UnityEngine.Object overloads and is the standard way to end up holding a reference
+        // that is "not null" and not alive.
+        //
+        // A CanvasGroup's defaults are what make it safe to add blind: interactable and
+        // blocksRaycasts both start true, so the BUY keeps its tap -- which it must, since
+        // the tap is now the whole point.
+        private void EnsureConfirmBuyGroup()
+        {
+            if (confirmBuyGroup != null || confirmBuyButton == null) return;
+
+            var existing = confirmBuyButton.GetComponent<CanvasGroup>();
+            confirmBuyGroup = existing != null
+                ? existing
+                : confirmBuyButton.gameObject.AddComponent<CanvasGroup>();
+        }
+
         private void ClosePreview()
         {
             if (pendingItem == null) return;
@@ -665,6 +713,32 @@ namespace ExpoTheExplorer.UI
             // next change to that lifetime would break silently.
             var verdict = MetaPurchase.Evaluate(
                 location, item, session.OwnedMetaItemIds, session.State.CurrentDayIndex, session.State.SoftMoney);
+
+            // NO MONEY IS ANSWERED WITH THE WAY TO GET SOME (D-164). It is the one refusal
+            // the player can act on immediately, and the answer to it is a day -- so this
+            // press takes them there instead of buzzing at them. Every other verdict keeps
+            // the buzz below: "already yours" and "that area is locked" are not things a
+            // trip to the kitchen fixes.
+            //
+            // Branching on the VERDICT rather than re-comparing price against balance,
+            // because MetaPurchase is the single authority on why a buy is refused and this
+            // screen holding its own opinion is how the two come to disagree.
+            //
+            // Published rather than acted on: what "go and play" means -- the key gate, the
+            // first-building gate, the scene load -- belongs to MainScreenView, and this view
+            // deliberately does not know any of it. See PlayRequested for why the arrow
+            // points that way and not the other.
+            //
+            // The preview is left OPEN and the ghost left standing. If nobody is listening
+            // (the field is unwired on the main screen) the press falls back to exactly the
+            // logged refusal it was before, never to a bypass; and if someone is, the scene
+            // is about to be destroyed anyway.
+            if (verdict == MetaPurchaseVerdict.NotEnoughMoney)
+            {
+                Debug.Log($"'{item.Id}' costs {item.Price} and the player has {session.State.SoftMoney}: sending them to play.", this);
+                PlayRequested.Publish(item);
+                return;
+            }
 
             if (verdict != MetaPurchaseVerdict.Ok)
             {

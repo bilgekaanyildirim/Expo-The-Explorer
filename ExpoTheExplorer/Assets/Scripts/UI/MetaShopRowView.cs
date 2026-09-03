@@ -28,6 +28,16 @@ namespace ExpoTheExplorer.UI
         private Action onBuy;
         private CanvasGroup buyGroup;
 
+        // Read by MetaShopView so the confirm popup's BUY fades by the SAME amount a row's
+        // does. It is exposed rather than copied for the reason the two colours are handed
+        // in rather than chosen here (D-037): one authored number for "how faded an
+        // unaffordable BUY looks in this shop" cannot drift, and two can. The template is
+        // the natural place to keep it, because it is the object an author actually looks
+        // at while tuning the look -- and it is already a serialized reference on
+        // MetaShopView, so nothing new has to be wired and no new serialized field can
+        // arrive from the scene as a 0 that would make the button vanish.
+        public float UnaffordableAlpha => unaffordableAlpha;
+
         // Wired ONCE, in Awake, rather than in Bind. Bind is called once per clone today,
         // but a listener added there would stack silently the first time anything rebinds
         // an existing row -- and a BUY that fires twice is the worst bug this screen could

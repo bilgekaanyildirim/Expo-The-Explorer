@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using ExpoTheExplorer.Core;
+using ExpoTheExplorer.Data;
 using ExpoTheExplorer.Session;
 using ExpoTheExplorer.Systems.ProgressionSystem;
 using TMPro;
@@ -60,6 +61,20 @@ namespace ExpoTheExplorer.UI
         [Tooltip("Asked to point at the store when Play is pressed before the first building is bought. Assigned by the same menu item.")]
         [SerializeField] private MainScreenTutorialView tutorial;
 
+        // The meta shop, listened to so that its confirm popup's BUY can start the day when
+        // the player cannot afford the prop (D-164). THIS CLASS HOLDS THE REFERENCE, not the
+        // other way round: MainScreen -> Tutorial -> MetaSystem is an existing chain, and a
+        // MainScreenView field on the shop would close a cycle. Subscribing here keeps every
+        // arrow pointing MainScreen -> MetaSystem, and it keeps Play's two gates in ONE
+        // place -- the shop asks, this class decides, exactly as the button does.
+        //
+        // OPTIONAL, and it fails to the old behaviour rather than to a bypass: unwired, the
+        // shop's request reaches nobody and an unaffordable BUY logs its refusal the way it
+        // always did. That is the safe direction here, because the alternative to a missed
+        // drag would be a path into the game that skips the gates this method exists to run.
+        [Tooltip("The Meta Shop. Wire it so that an unaffordable BUY in its confirm popup starts the day. Leave empty and that button just refuses, as before.")]
+        [SerializeField] private MetaShopView shop;
+
         // Dragged in, never searched for. The project rule since 2026-08-21: no runtime
         // code resolves a scene reference by name or by type — every one is a serialized
         // field the author wires. That generalises the instruction D-013 already recorded
@@ -107,7 +122,19 @@ namespace ExpoTheExplorer.UI
             SetPlayLabel(profile.CurrentDayIndex + 1);
 
             playButton.onClick.AddListener(OnPlayClicked);
+
+            // The shop's own way of pressing Play. It lands on the identical method, gates
+            // included, because "the player asked to start the day" should not mean two
+            // different things depending on which control asked.
+            // != null rather than ?., which bypasses UnityEngine.Object's operator overload
+            // and would walk into a reference that is "not null" and not alive.
+            if (shop != null) shop.PlayRequested.Subscribe(OnShopAskedToPlay);
         }
+
+        // A named method rather than a lambda, so OnDestroy can hand Unsubscribe the same
+        // delegate instance -- a lambda would build a second one and the unsubscribe would
+        // silently do nothing.
+        private void OnShopAskedToPlay(MetaItemDefinition unaffordableProp) => OnPlayClicked();
 
         private void SetPlayLabel(int playerFacingDayNumber)
         {
@@ -125,6 +152,7 @@ namespace ExpoTheExplorer.UI
         private void OnDestroy()
         {
             if (playButton != null) playButton.onClick.RemoveListener(OnPlayClicked);
+            if (shop != null) shop.PlayRequested.Unsubscribe(OnShopAskedToPlay);
         }
 
         private void OnPlayClicked()
