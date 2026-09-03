@@ -713,7 +713,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 50, y: 150}
+  m_AnchoredPosition: {x: 0, y: 50}
   m_SizeDelta: {x: 132, y: 132}
   m_Pivot: {x: 0, y: 0}
 --- !u!222 &8104543577776876438
@@ -1832,8 +1832,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 0.46}
-  m_AnchoredPosition: {x: 0, y: 450}
-  m_SizeDelta: {x: -164, y: -250}
+  m_AnchoredPosition: {x: 0, y: 500}
+  m_SizeDelta: {x: -164, y: -350}
   m_Pivot: {x: 0.5, y: 0}
 --- !u!222 &5140036109531713546
 CanvasRenderer:
@@ -2674,18 +2674,21 @@ MonoBehaviour:
   openButton: {fileID: 5473969733768637515}
   closeButton: {fileID: 4067869770513045100}
   autoCollect:
+    root: {fileID: 1529214628949422945}
     buyButton: {fileID: 55424621017547483}
     ownedLabel: {fileID: 1161866152818400817}
     priceLabel: {fileID: 3071223440331708469}
     lockOverlay: {fileID: 0}
     lockLabel: {fileID: 0}
   timeReset:
+    root: {fileID: 788244786263038457}
     buyButton: {fileID: 7805873129082199082}
     ownedLabel: {fileID: 8029096431742880644}
     priceLabel: {fileID: 7006049826065637803}
     lockOverlay: {fileID: 0}
     lockLabel: {fileID: 0}
   noiseClear:
+    root: {fileID: 4215221511447129451}
     buyButton: {fileID: 3428376392303765627}
     ownedLabel: {fileID: 1896366731411079789}
     priceLabel: {fileID: 8217772571140064736}
@@ -2730,7 +2733,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
   m_AnchoredPosition: {x: 0, y: -256.90002}
-  m_SizeDelta: {x: -150, y: -274}
+  m_SizeDelta: {x: -150, y: -423.10004}
   m_Pivot: {x: 0.5, y: 1}
 --- !u!114 &7143859914334540444
 MonoBehaviour:

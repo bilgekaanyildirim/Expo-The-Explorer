@@ -47,7 +47,7 @@ namespace ExpoTheExplorer.UI
         [SerializeField] private Button previousButton;
         [SerializeField] private Button nextButton;
 
-        [Tooltip("Shown when a further location exists but is still locked — a COUNTDOWN to it, e.g. \"Next expo in 3 days\". Hidden once nothing is left to unlock. Sits above the purchase bar in the built screen.")]
+        [Tooltip("Shown when a further location exists but is still locked — a COUNTDOWN to it, e.g. \"Next location in 3 days\". Hidden once nothing is left to unlock. Sits above the purchase bar in the built screen.")]
         [SerializeField] private TMP_Text lockedHintLabel;
 
         // The two sentences that label carries, as DATA rather than as literals, so retyping
@@ -57,10 +57,10 @@ namespace ExpoTheExplorer.UI
         // one the user has already reworded once, which is exactly the signal that it belongs
         // in the Inspector.
         [Tooltip("The countdown sentence. {0} is the number of days left. Used for 2 days and up.")]
-        [SerializeField] private string nextLocationFormat = "Next expo in {0} days";
+        [SerializeField] private string nextLocationFormat = "Next location in {0} days";
 
         [Tooltip("Shown INSTEAD of the format above when only one day is left, so the player never reads \"in 1 days\".")]
-        [SerializeField] private string nextLocationSoonText = "Next expo tomorrow!";
+        [SerializeField] private string nextLocationSoonText = "Next location tomorrow!";
 
         // OPTIONAL as a group, exactly like the location bar above it and for the same reason
         // (D-025): a screen built before this existed has three nulls here and draws precisely

@@ -55,18 +55,21 @@ MonoBehaviour:
   openButton: {fileID: 0}
   closeButton: {fileID: 5158659557164174567}
   autoCollect:
+    root: {fileID: 6754705168529809817}
     buyButton: {fileID: 4147945066110250772}
     ownedLabel: {fileID: 6036017368375956387}
     priceLabel: {fileID: 739659619801740223}
     lockOverlay: {fileID: 0}
     lockLabel: {fileID: 0}
   timeReset:
+    root: {fileID: 9091547805009964349}
     buyButton: {fileID: 426277900666296545}
     ownedLabel: {fileID: 2986086816388735684}
     priceLabel: {fileID: 6168477808276653487}
     lockOverlay: {fileID: 0}
     lockLabel: {fileID: 0}
   noiseClear:
+    root: {fileID: 1382946363128314219}
     buyButton: {fileID: 4841114760709277}
     ownedLabel: {fileID: 4570368972461547893}
     priceLabel: {fileID: 5144118060188531801}
@@ -6153,7 +6156,7 @@ MonoBehaviour:
   m_ScaleFactor: 1
   m_ReferenceResolution: {x: 1080, y: 1920}
   m_ScreenMatchMode: 0
-  m_MatchWidthOrHeight: 0.5
+  m_MatchWidthOrHeight: 0
   m_PhysicalUnit: 3
   m_FallbackScreenDPI: 96
   m_DefaultSpriteDPI: 96

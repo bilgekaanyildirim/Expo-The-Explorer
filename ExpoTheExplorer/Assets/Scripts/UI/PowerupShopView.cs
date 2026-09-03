@@ -15,6 +15,12 @@ namespace ExpoTheExplorer.UI
     // Gems, and a BUY. This is the step that closes the economy loop -- earning (finishing
     // a day), buying (here) and spending (the day scene's panel) are finally connected.
     //
+    // IT ONLY LISTS WHAT HAS BEEN INTRODUCED (D-160, the user's decision on 2026-09-02). A
+    // powerup whose Day has not come is not a row here at all, and while none of them has
+    // come, the screen's store button is not there either. D-117's locked row -- named, with
+    // an owned count and a dead BUY -- is gone: a shop lists what is for sale, and a powerup
+    // is taught by the day scene's bar, which still draws its own lock.
+    //
     // IT NOW SELLS IN THE DAY SCENE TOO (D-105, the user's decision on 2026-08-27), which
     // reverses "buying lives on the menu, not in the day". The old rule's reason was that
     // opening a store mid-service suspends the very time pressure a powerup exists to
@@ -153,6 +159,16 @@ namespace ExpoTheExplorer.UI
             // would leave those rows buyable-looking until the panel was reopened.
             if (session?.State != null) session.State.GemsChanged.Subscribe(OnGemsChanged);
 
+            // AND THE DAY, since D-160 -- which row is listed at all now depends on it. The
+            // rows themselves would have been fine without this (Open refreshes before the
+            // panel appears, so they are never drawn stale), but the open button is on screen
+            // continuously, and a store button that only appeared after a scene reload would
+            // leave the Day that introduces the first powerup with no shop behind it.
+            //
+            // The same event PowerupBarView (D-117) and DayNumberView listen to, and the same
+            // reason: AdvanceToNextDay moves the index without reloading anything.
+            if (session?.State != null) session.State.CurrentDayIndexChanged.Subscribe(OnDayIndexChanged);
+
             RefreshAll();
         }
 
@@ -160,6 +176,7 @@ namespace ExpoTheExplorer.UI
         {
             if (manager != null) manager.ChargesChanged.Unsubscribe(OnChargesChanged);
             if (session?.State != null) session.State.GemsChanged.Unsubscribe(OnGemsChanged);
+            if (session?.State != null) session.State.CurrentDayIndexChanged.Unsubscribe(OnDayIndexChanged);
 
             if (openButton != null) openButton.onClick.RemoveListener(OnOpenClicked);
             if (backdropButton != null) backdropButton.onClick.RemoveListener(Close);
@@ -259,6 +276,8 @@ namespace ExpoTheExplorer.UI
 
         private void OnGemsChanged(int _) => RefreshAll();
 
+        private void OnDayIndexChanged(int _) => RefreshAll();
+
         // Redraws all three rather than only the row that moved, unlike the day scene's
         // panel. That is not an oversight: a purchase changes the shared balance, so every
         // row's affordability can change from one tap. Three rows at event frequency is far
@@ -272,6 +291,11 @@ namespace ExpoTheExplorer.UI
             // per row would invite three different answers if it ever did.
             var day = session?.CurrentDay;
 
+            // Counts what the player can actually see, for the open button below. Zero is a
+            // real and common state, not an edge case: all three powerups are introduced on
+            // Days 7, 8 and 10, so the shop has nothing to sell for the first six Days.
+            var listed = 0;
+
             foreach (var (type, ui) in rows)
             {
                 var price = manager?.GemCostOf(type) ?? 0;
@@ -281,6 +305,29 @@ namespace ExpoTheExplorer.UI
                 // direction the bar takes: a powerup nobody can buy because a reference was
                 // forgotten is a far worse outcome than one that unlocks a day early.
                 var locked = manager != null && day != null && !manager.IsUnlocked(type, day.DayIndex);
+
+                // NOT LISTED AT ALL until it has been introduced (D-160, the user's decision
+                // on 2026-09-02), which replaces D-117's locked-but-listed row. That row was
+                // the honest half of the fix -- it refused to sell and hid its price -- but
+                // what it left on screen was a powerup with a name, an owned count of zero
+                // and a dead BUY, which reads as a broken row rather than as a locked one.
+                // A shop lists what is for sale; the bar is where a powerup is taught.
+                //
+                // The row is hidden, not the row's contents: the layout group then closes the
+                // gap, where blanking three labels would leave an empty band behind.
+                // Hidden only if it CAN be, which is what `listed` has to count: a locked row
+                // with no Root stays on screen, so the open button that reaches it must stay
+                // too -- counting "unlocked" instead would hide the only way in to three rows
+                // the player can see.
+                var hidden = locked && ui.Root != null;
+                if (ui.Root != null) ui.Root.SetActive(!locked);
+
+                // Nothing below draws anything a hidden row could show, and skipping it is
+                // also what leaves the lock branch reachable only by a row with no Root --
+                // which is exactly what that branch is still there for.
+                if (hidden) continue;
+
+                listed++;
 
                 if (ui.LockOverlay != null) ui.LockOverlay.SetActive(locked);
                 if (ui.LockLabel != null && manager != null) ui.LockLabel.text = manager.LockLabelFor(type);
@@ -306,6 +353,18 @@ namespace ExpoTheExplorer.UI
                 // the price is in the row and the balance is in the HUD.
                 if (ui.BuyButton != null) ui.BuyButton.interactable = !locked && manager != null && gems >= price;
             }
+
+            // NO WAY IN WHILE THERE IS NOTHING TO SELL. This is the other half of not listing
+            // an unintroduced powerup: without it, the first six Days offer a store button
+            // that opens a sheet with a title and nothing under it, which is a worse thing to
+            // have built than the locked rows this replaced. It comes back on its own the
+            // moment the first powerup unlocks -- see the Day subscription in Start.
+            //
+            // Only the MAIN SCREEN has this button. The day scene wires none by design (an
+            // empty powerup in the bar is its opener), and that path cannot reach an empty
+            // shop anyway: a locked powerup in the bar is not pressable, so whatever opened
+            // the shop is itself a listed row.
+            if (openButton != null) openButton.gameObject.SetActive(listed > 0);
         }
 
         private void CollectRows()
@@ -341,6 +400,18 @@ namespace ExpoTheExplorer.UI
                         "player cannot see what it costs before tapping.", this);
                 }
 
+                // A warning rather than an error, and the row is still added: unwired, this
+                // powerup is listed before it is introduced -- the old D-117 behaviour, with
+                // the lock in place of the hiding -- and it still cannot be bought. Losing
+                // the sale over a missing reference would be the more expensive failure.
+                if (ui.Root == null)
+                {
+                    Debug.LogWarning(
+                        $"{nameof(PowerupShopView)} on '{name}': the '{fieldName}' row has no Root, so it stays in " +
+                        "the list before that powerup is introduced. Drag the row object (the parent of its Buy " +
+                        "button) in.", this);
+                }
+
                 rows.Add((type, ui));
             }
         }
@@ -371,6 +442,17 @@ namespace ExpoTheExplorer.UI
     [Serializable]
     public class PowerupShopRow
     {
+        // The whole row, switched off until the Day that introduces this powerup (D-160).
+        // It is the row object the three labels and the Buy button live under -- wire it to
+        // the parent of this row's Buy button, which is what the layout group arranges, so a
+        // hidden row closes its gap instead of leaving a hole in the list.
+        //
+        // A reference of its own rather than reading buyButton.transform.parent: the code
+        // would then be asserting a hierarchy shape it cannot see, and one reparented button
+        // would start hiding the wrong object -- or the whole sheet.
+        [Tooltip("The whole row object, hidden until the Day that introduces this powerup. Wire it to the parent of this row's Buy button.")]
+        [SerializeField] private GameObject root;
+
         [SerializeField] private Button buyButton;
 
         [Tooltip("Shows how many charges of this powerup the player already owns.")]
@@ -379,15 +461,18 @@ namespace ExpoTheExplorer.UI
         [Tooltip("Shows the Gem price of one charge, read from PowerupConfig — never typed into the scene.")]
         [SerializeField] private TMP_Text priceLabel;
 
-        // The author's inactive lock child, shown until the Day that introduces this powerup.
-        // Same shape as the bar's lockOverlay and optional for the same reason: unwired, the
-        // row still refuses to sell, it simply does not say why.
-        [Tooltip("Optional. The inactive lock object in this row, shown until the Day that introduces this powerup. The row refuses to sell whether or not this is wired.")]
+        // ONLY REACHED WHEN `root` IS UNWIRED, since D-160: a row that can hide is hidden,
+        // and a lock badge on a row nobody can see is nothing. It stays as the degradation
+        // for a forgotten `root` reference -- a visible row that refuses to sell should say
+        // why -- which is also why it is optional. Same shape as the bar's lockOverlay, and
+        // the bar's is the one that still draws in the normal case.
+        [Tooltip("Optional, and only used if this row's Root is left empty — a row with a Root is hidden outright until its Day. The row refuses to sell either way.")]
         [SerializeField] private GameObject lockOverlay;
 
         [Tooltip("Optional. The label inside the lock object, filled with the Day this powerup unlocks on.")]
         [SerializeField] private TMP_Text lockLabel;
 
+        public GameObject Root => root;
         public Button BuyButton => buyButton;
         public TMP_Text OwnedLabel => ownedLabel;
         public TMP_Text PriceLabel => priceLabel;
