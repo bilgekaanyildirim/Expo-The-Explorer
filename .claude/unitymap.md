@@ -1,4 +1,4 @@
-<!-- stamp: 2026-09-02T17:30Z source-sig:a04be3c320e3 scenes:2 prefabs:16 generator:python-fallback status: DEGRADED 418 missing-script -->
+<!-- stamp: 2026-09-03T07:47Z source-sig:efe4619871d0 scenes:2 prefabs:16 generator:python-fallback status: DEGRADED 415 missing-script -->
 # unitymap — scene and prefab structure
 
 Read this instead of opening a `.unity`/`.prefab` file. Tree indentation is
@@ -308,7 +308,7 @@ Unity menu item Tools > unity-dev > Export unitymap.
   - ItemArrow  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
   - CardArrow  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
 
-## SCENE ExpoTheExplorer/Assets/Scenes/MainScreen.unity   (53 object(s))
+## SCENE ExpoTheExplorer/Assets/Scenes/MainScreen.unity   (49 object(s))
 - EventSystem  [MISSING SCRIPT (guid:01614664), MISSING SCRIPT (guid:76c392e4), Transform]
 - Canvas  [MainScreenView, MISSING SCRIPT (guid:dc42784c), MISSING SCRIPT (guid:0cd44c10), Canvas, RectTransform, NoKeysPopupView]  refs: noKeysPopup=set, playButton=set, playLabel=set, sessionHost=set, tutorial=set, animConfig=NULL, closeButton=set, countdownText=set, gemButton=set, gemCostLabel=set, haptics=set, notEnoughGemsLabel=set, popupRoot=set, sessionHost=set
   - MetaGrounds  [RectTransform, MISSING SCRIPT (guid:1aa08ab6), MetaGroundsView]  refs: background=set, catalog=set, confettiPrefab=set, haptics=set, locationLabel=NULL, lockedHintLabel=set, nextButton=NULL, previousButton=NULL, purchaseProgressFill=set, purchaseProgressLabel=set, purchaseProgressRoot=set, scroll=set, sessionHost=set, unlockPopupPrefab=set
@@ -321,7 +321,7 @@ Unity menu item Tools > unity-dev > Export unitymap.
   - PlayButton  [MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, RectTransform, HapticButton]  refs: haptics=set
     - PlayButtonLabel  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
   - MetaShop  [RectTransform, MetaShopView]  refs: animConfig=NULL, backdropButton=set, canBuyBadge=set, closeButton=set, comingSoonLabel=set, confirmBox=set, confirmBuyButton=set, confirmCancelButton=set, confirmNameLabel=set, confirmPopup=set, confirmPriceLabel=set, grounds=set, haptics=set, marketButton=set, panel=set, rowTemplate=set, rowsParent=set, sessionHost=set
-    - Backdrop [inactive]  [RectTransform, MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
+    - Backdrop  [RectTransform, MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
       - Backdrop  [RectTransform, MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
         - Panel  [RectTransform, MISSING SCRIPT (guid:1aa08ab6), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
           - ListViewport  [RectTransform, MISSING SCRIPT (guid:3312d773)]
@@ -339,10 +339,6 @@ Unity menu item Tools > unity-dev > Export unitymap.
             - PRICE  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
           - CloseButton  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, MISSING SCRIPT (guid:4e29b1a8)]
             - Label  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
-        - Title  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
-        - Header  [RectTransform]
-          - NAME  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
-          - PRICE  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
         - ComingSoon [inactive]  [RectTransform, MISSING SCRIPT (guid:f4688fdb), CanvasRenderer]  refs: parentLinkedComponent=NULL
     - ConfirmPopup [inactive]  [RectTransform]
       - Box  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
@@ -375,7 +371,7 @@ Unity menu item Tools > unity-dev > Export unitymap.
       - MainMenuButton  [MISSING SCRIPT (guid:4e29b1a8), MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, RectTransform, HapticButton]  refs: haptics=set
       - RetryButton  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, MISSING SCRIPT (guid:4e29b1a8), HapticButton]  refs: haptics=set
   - DayCompletePopup  [RectTransform, DayCompletePopupView, DayRewardFlightView]  refs: animConfig=set, confettiPrefab=set, gameManager=set, goBackButton=set, nextDayButton=set, ordersDeliveredCountText=set, ordersDeliveredValueText=set, popupRoot=set, retryButton=set, rewardFlight=set, star1Filled=set, star2Filled=set, star3Filled=set, starScoreBar=set, tipsValueText=set, totalText=set, coinFlightTarget=set, coinSprite=set, flightRoot=set, gameManager=set, gemFlightTarget=set, gemSprite=set, haptics=set, scoreBar=set
-    - PopupRoot  [RectTransform]
+    - PopupRoot [inactive]  [RectTransform]
       - Background  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
       - Title  [RectTransform, MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer]
       - ReceiptBody  [RectTransform]

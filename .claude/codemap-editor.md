@@ -1,4 +1,4 @@
-<!-- stamp: dd0c26a 2026-09-03 status: DEGRADED 7 stale, 1 orphan, 30 missing-role -->
+<!-- stamp: 6adfc41 2026-09-03 status: DEGRADED 7 stale, 1 orphan, 29 missing-role -->
 <!-- The twelve one-shot scene/prefab builders under Assets/Scripts/UI/Editor (ConfettiSetup,
      HudCanvasPrefabSetup, MainScreenSceneBuilder, MainScreenSessionSetup, MainScreenTutorialSetup,
      MetaBackdropSetup, MetaGroundsSetup, MetaShopSetup, MetaUnlockPopupSetup, PowerupShopSetup,
