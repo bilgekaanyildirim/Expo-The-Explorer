@@ -1,0 +1,93 @@
+# Build farm'dan gelen dosyanin UYARLANMIS halidir -- README "degistirmeniz gereken
+# hicbir sey yok" diyor, cunku orijinali repo kokunun Unity projesi oldugunu varsayiyor.
+# Bu repoda oyle degil: kokte .claude/, docs/, tools/ var ve Unity projesi
+# ExpoTheExplorer/ altinda (Assets/, Packages/, ProjectSettings/ orada).
+#
+# Degisen tek sey YOL: Unity'ye dokunan uc job "cd ExpoTheExplorer" ile basliyor,
+# cache/artifact yollari hem kok hem alt klasor icin listeleniyor. Script'ler
+# (/usr/local/intern-ci/*.sh) build makinesinde, iceriklerini goremiyoruz: yollarini
+# calisma dizinine gore kuruyorlarsa bu yeter, $CI_PROJECT_DIR'e gore kuruyorlarsa
+# yetmez ve onlardan bir proje-yolu degiskeni istemek gerekir.
+# Job mantigi, stage sirasi, tag kurali ve imzalama adimi orijinaliyle aynidir.
+
+stages: [start, build, archive, deploy, notify]
+
+workflow:
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^ios_/
+    - when: never
+
+variables:
+  BUILD_ID: "$CI_PROJECT_PATH_SLUG-$CI_PIPELINE_IID-$CI_COMMIT_SHORT_SHA"
+  # Unity projesinin repo kokune gore yeri. Script'ler bir gun bunu kendileri
+  # okursa tek yerden degistirilir.
+  UNITY_PROJECT_DIR: ExpoTheExplorer
+
+slack_start:
+  stage: start
+  tags: [ios]
+  allow_failure: true
+  variables:
+    GIT_STRATEGY: none
+  script:
+    - /usr/local/intern-ci/notify-slack.sh start
+
+build_unity:
+  stage: build
+  tags: [ios]
+  script:
+    - cd "$UNITY_PROJECT_DIR" && /usr/local/intern-ci/build-unity.sh
+  cache:
+    key: "$CI_PROJECT_PATH_SLUG-ios"
+    # Ikisi de listeli: olmayan yol sessizce atlanir, boylece script hangi
+    # dizinde calisirsa calissin Library onbellege girer.
+    paths:
+      - ExpoTheExplorer/Library/
+      - Library/
+  artifacts:
+    # Ayni sebeple iki yol: log'u hangi dizine yazarsa yazsin toplanir.
+    paths:
+      - ExpoTheExplorer/unity-build.log
+      - unity-build.log
+    expire_in: 7 days
+    when: always
+
+archive_ios:
+  stage: archive
+  tags: [ios]
+  needs: [build_unity]
+  variables:
+    GIT_STRATEGY: none
+  script:
+    - cd "$UNITY_PROJECT_DIR" && /usr/local/intern-ci/archive-ios.sh
+
+deploy_testflight:
+  stage: deploy
+  tags: [ios]
+  needs: [archive_ios]
+  timeout: 45 minutes
+  variables:
+    GIT_STRATEGY: none
+  script:
+    # sudo calisma dizinini korur, yani signer da ExpoTheExplorer/ icinde calisir.
+    - cd "$UNITY_PROJECT_DIR" && sudo -n -u signer /usr/local/intern-ci/export-upload.sh "$BUILD_ID"
+
+slack_success:
+  stage: notify
+  tags: [ios]
+  when: on_success
+  allow_failure: true
+  variables:
+    GIT_STRATEGY: none
+  script:
+    - /usr/local/intern-ci/notify-slack.sh ok
+
+slack_failure:
+  stage: notify
+  tags: [ios]
+  when: on_failure
+  allow_failure: true
+  variables:
+    GIT_STRATEGY: none
+  script:
+    - /usr/local/intern-ci/notify-slack.sh fail

@@ -58,6 +58,12 @@
      does not have and should not gain). Both arrows are one-directional: neither DaySystem
      nor ProgressionSystem knows this exists, and neither would compile differently if it
      were deleted. -->
+- BuildTooling — the batch-mode entry point CI calls to produce the iOS Xcode project: stamps version/build number from the pipeline's env vars and writes the export-compliance key into Info.plist — depends on: -
+<!-- BuildTooling, added 2026-09-03: its own line for the DataTooling/PlayTesting reason --
+     it names no game type. It reads EditorBuildSettings, PlayerSettings and two CI
+     environment variables, and nothing in the game knows it exists. The file is supplied
+     BY the build farm and is kept byte-identical to their copy on purpose (see its codemap
+     note), so this system line exists to give it a real `sys:` -- not to invite edits. -->
 
 - BoardUI — runtime board grid rendering + drag/drop (BoardView, board-visual config assets) — depends on: -
 - EconomySystem — delivery payout formula (order value from food prices + a tip stepped through three tiers keyed on remaining-time ratio) + its balancing config — depends on: -
