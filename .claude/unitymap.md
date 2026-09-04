@@ -1,4 +1,4 @@
-<!-- stamp: 2026-09-03T15:47Z source-sig:30b1e7b6a125 scenes:2 prefabs:16 generator:python-fallback status: DEGRADED 417 missing-script -->
+<!-- stamp: 2026-09-04T09:21Z source-sig:f8328f5ab271 scenes:2 prefabs:18 generator:python-fallback status: DEGRADED 417 missing-script -->
 # unitymap — scene and prefab structure
 
 Read this instead of opening a `.unity`/`.prefab` file. Tree indentation is
@@ -76,11 +76,17 @@ Unity menu item Tools > unity-dev > Export unitymap.
 ## PREFAB ExpoTheExplorer/Assets/Prefabs/Confetti.prefab   (1 object(s))
 - Confetti  [RectTransform, ParticleSystem, ParticleSystemRenderer]  refs: LightsModule=NULL, ShapeModule=NULL, SubModule=NULL, UVModule=NULL, moveWithCustomTransform=NULL
 
-## PREFAB ExpoTheExplorer/Assets/Prefabs/TrayArea Variant.prefab   variant-of: ExpoTheExplorer/Assets/Prefabs/TrayArea.prefab   (4 object(s))
-- * TrayArea Variant  (prefab instance of ExpoTheExplorer/Assets/Prefabs/TrayArea.prefab)
+## PREFAB ExpoTheExplorer/Assets/Prefabs/TrayArea Variant.prefab   variant-of: ExpoTheExplorer/Assets/Prefabs/TrayArea3Item.prefab   (4 object(s))
+- * TrayArea Variant  (prefab instance of ExpoTheExplorer/Assets/Prefabs/TrayArea3Item.prefab)
 
-## PREFAB ExpoTheExplorer/Assets/Prefabs/TrayArea.prefab   (6 object(s))
-- TrayArea  [Transform, SpriteRenderer, BoxCollider2D, WorldTrayView]  refs: animConfig=set, boardView=NULL, drinkSlot=set, gameManager=NULL, highlightVisual=set, mainDishSlot=set, sideSlot=set, ticketCardsView=NULL, wrongVisual=set
+## PREFAB ExpoTheExplorer/Assets/Prefabs/TrayArea1Item.prefab   variant-of: ExpoTheExplorer/Assets/Prefabs/TrayArea3Item.prefab   (1 object(s))
+- * TrayArea1Item  (prefab instance of ExpoTheExplorer/Assets/Prefabs/TrayArea3Item.prefab)
+
+## PREFAB ExpoTheExplorer/Assets/Prefabs/TrayArea2Item.prefab   variant-of: ExpoTheExplorer/Assets/Prefabs/TrayArea3Item.prefab   (1 object(s))
+- * TrayArea2Item  (prefab instance of ExpoTheExplorer/Assets/Prefabs/TrayArea3Item.prefab)
+
+## PREFAB ExpoTheExplorer/Assets/Prefabs/TrayArea3Item.prefab   (6 object(s))
+- TrayArea3Item  [Transform, SpriteRenderer, BoxCollider2D, WorldTrayView]  refs: animConfig=set, boardView=NULL, drinkSlot=set, gameManager=NULL, highlightVisual=set, mainDishSlot=set, sideSlot=set, ticketCardsView=NULL, wrongVisual=set
   - MainDishSlot  [Transform]
   - SideSlot  [Transform]
   - DrinkSlot  [Transform]
@@ -459,10 +465,10 @@ Unity menu item Tools > unity-dev > Export unitymap.
   - BrokenHeart [inactive]  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
   - BrokenHeart (1) [inactive]  [RectTransform, CanvasRenderer, MISSING SCRIPT (guid:fe87c0e1)]
   - BrokenHeart (2) [inactive]  [MISSING SCRIPT (guid:fe87c0e1), CanvasRenderer, RectTransform]
-- * TrayArea (1)  (prefab instance of ExpoTheExplorer/Assets/Prefabs/TrayArea.prefab)
-- * TrayArea  (prefab instance of ExpoTheExplorer/Assets/Prefabs/TrayArea.prefab)
+- * TrayArea (1)  (prefab instance of ExpoTheExplorer/Assets/Prefabs/TrayArea3Item.prefab)
+- * TrayArea  (prefab instance of ExpoTheExplorer/Assets/Prefabs/TrayArea3Item.prefab)
 - * PowerupShop  (prefab instance of ExpoTheExplorer/Assets/Prefabs/UI/PowerupShop.prefab)
-- * TrayArea (2)  (prefab instance of ExpoTheExplorer/Assets/Prefabs/TrayArea.prefab)
+- * TrayArea (2)  (prefab instance of ExpoTheExplorer/Assets/Prefabs/TrayArea3Item.prefab)
 - * TicketCard UpDown  (prefab instance of ExpoTheExplorer/Assets/Prefabs/UI/Tickets/TicketCard UpDown.prefab)
 - * HUDCanvas  (prefab instance of ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab)
 - * NoKeysPopup  (prefab instance of ExpoTheExplorer/Assets/Prefabs/UI/NoKeysPopup.prefab)

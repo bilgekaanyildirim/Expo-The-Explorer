@@ -1,4 +1,4 @@
-<!-- stamp: 2026-09-04T07:38Z source-sig:da495089e7ba assets:50 prefabs:16 scenes:2 asmdefs:20 -->
+<!-- stamp: 2026-09-04T09:21Z source-sig:8442d523a108 assets:50 prefabs:18 scenes:2 asmdefs:20 -->
 # assetmap — asset inventory (data, prefabs, load surface, assemblies)
 
 Regenerate with `python3 .claude/hooks/build_assetmap.py`. `data-source.md`
@@ -84,8 +84,10 @@ the cost model reads the load-surface section before pricing a load.
 ## Prefabs
 
 - ExpoTheExplorer/Assets/Prefabs/Confetti.prefab | variant-of: - | scripts: -
-- ExpoTheExplorer/Assets/Prefabs/TrayArea Variant.prefab | variant-of: ExpoTheExplorer/Assets/Prefabs/TrayArea.prefab | scripts: -
-- ExpoTheExplorer/Assets/Prefabs/TrayArea.prefab | variant-of: - | scripts: WorldTrayView
+- ExpoTheExplorer/Assets/Prefabs/TrayArea Variant.prefab | variant-of: ExpoTheExplorer/Assets/Prefabs/TrayArea3Item.prefab | scripts: -
+- ExpoTheExplorer/Assets/Prefabs/TrayArea1Item.prefab | variant-of: ExpoTheExplorer/Assets/Prefabs/TrayArea3Item.prefab | scripts: -
+- ExpoTheExplorer/Assets/Prefabs/TrayArea2Item.prefab | variant-of: ExpoTheExplorer/Assets/Prefabs/TrayArea3Item.prefab | scripts: -
+- ExpoTheExplorer/Assets/Prefabs/TrayArea3Item.prefab | variant-of: - | scripts: WorldTrayView
 - ExpoTheExplorer/Assets/Prefabs/UI/CelebrationConfetti.prefab | variant-of: ExpoTheExplorer/Assets/Prefabs/Confetti.prefab | scripts: ConfettiView
 - ExpoTheExplorer/Assets/Prefabs/UI/HUDCanvas.prefab | variant-of: - | scripts: PowerupShopView, DayNumberView, HapticButton, KeysView, SoftMoneyView, GemsView, PowerupBarView, AutoCollectRunner
 - ExpoTheExplorer/Assets/Prefabs/UI/MainScreenTutorialStoreHint.prefab | variant-of: - | scripts: MainScreenStoreHintPopup
