@@ -273,25 +273,11 @@ MonoBehaviour:
       sortOrder: 0
       requiresAreaId: building
       unlocksArea: 1
-    - id: burgerplace
-      displayName: Burger Place
-      sprite: {fileID: 21300000, guid: 20831a145867f4f54b87ec802835be51, type: 3}
-      shopIcon: {fileID: 0}
-      unlock: 1
-      unlockMessage: "Congratulations, chef! \nMagic Burger is yours to run now."
-      unlockImage: {fileID: 21300000, guid: 8219fedc0259c4500918c7c405c3d17f, type: 3}
-      price: 0
-      unlockAtDayIndex: 15
-      normalizedPosition: {x: 0.51579505, y: 0.57076055}
-      pivot: {x: 0.5, y: 0}
-      sortOrder: 500
-      requiresAreaId: building
-      unlocksArea: 0
   - id: meta2
     displayName: Magic Burger
     backgroundSprite: {fileID: 21300000, guid: 9fc6569daf0904c458d21e263cc67f55, type: 3}
     backgroundBgSprite: {fileID: 0}
-    unlockAtDayIndex: 31
+    unlockAtDayIndex: 15
     unlockMessage: "Congratulations, chef! \nMagic Burger is yours to run now."
     unlockImage: {fileID: 21300000, guid: 8219fedc0259c4500918c7c405c3d17f, type: 3}
     items: []

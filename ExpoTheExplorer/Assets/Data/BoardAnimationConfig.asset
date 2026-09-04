@@ -44,6 +44,7 @@ MonoBehaviour:
   lifeLostHeartDuration: 2
   dayCompletePopupDelay: 1
   gameOverPopupDelay: 1
+  popupFadeInDuration: 0.2
   tutorialDimOpacity: 0.72
   tutorialGhostOpacity: 0.55
   tutorialGhostTravelDuration: 0.9
