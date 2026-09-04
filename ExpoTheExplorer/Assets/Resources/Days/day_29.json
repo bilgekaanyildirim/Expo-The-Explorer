@@ -1,7 +1,7 @@
 {
     "runtime": {
         "dayIndex": 29,
-        "ticketsRequiredForDay": 50,
+        "ticketsRequiredForDay": 200,
         "boardDistribution": {
             "noiseLeakCountLambda": 1.5,
             "guaranteedTicketCountMode": "Manual",
@@ -20,17 +20,163 @@
         },
         "ticketSequence": [
             {
-                "mainItemId": "hotdog",
+                "mainItemId": "burger",
                 "sideItemId": "matchacake",
-                "drinkItemId": "strawberrymatcha",
+                "drinkItemId": "",
+                "modifications": [
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "chocolatecookie",
+                "drinkItemId": "strawberrymilkshake",
+                "modifications": [
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "matchaicecream",
+                "drinkItemId": "sprite",
+                "modifications": [
+                    {
+                        "modificationId": "extra_patty",
+                        "isAddition": true
+                    },
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "matchacake",
+                "drinkItemId": "beer",
+                "modifications": [
+                    {
+                        "modificationId": "extra_patty",
+                        "isAddition": true
+                    },
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "mozerellasticks",
+                "drinkItemId": "strawberrymilkshake",
                 "modifications": [],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "",
+                "drinkItemId": "sprite",
+                "modifications": [
+                    {
+                        "modificationId": "extra_patty",
+                        "isAddition": true
+                    },
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "chocolateicecream",
+                "drinkItemId": "icematcha",
+                "modifications": [
+                    {
+                        "modificationId": "extramustard",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "",
+                "drinkItemId": "strawberrymilkshake",
+                "modifications": [
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "mozerellasticks",
+                "drinkItemId": "sprite",
+                "modifications": [
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": true
+                    }
+                ],
                 "patienceType": "Patient",
                 "customerNameOverride": "",
                 "timeLimitSecondsOverride": 0.0
             },
             {
                 "mainItemId": "hotdog",
-                "sideItemId": "matchacake",
+                "sideItemId": "",
+                "drinkItemId": "beer",
+                "modifications": [
+                    {
+                        "modificationId": "extraketchup",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "",
                 "drinkItemId": "sprite",
                 "modifications": [
                     {
@@ -44,347 +190,33 @@
             },
             {
                 "mainItemId": "burger",
-                "sideItemId": "matchacake",
-                "drinkItemId": "sprite",
-                "modifications": [
-                    {
-                        "modificationId": "extra_cheese",
-                        "isAddition": false
-                    }
-                ],
-                "patienceType": "Patient",
-                "customerNameOverride": "",
-                "timeLimitSecondsOverride": 0.0
-            },
-            {
-                "mainItemId": "hotdog",
-                "sideItemId": "matchadonut",
-                "drinkItemId": "icematcha",
-                "modifications": [
-                    {
-                        "modificationId": "extramayonnaise",
-                        "isAddition": true
-                    }
-                ],
-                "patienceType": "Impatient",
-                "customerNameOverride": "",
-                "timeLimitSecondsOverride": 0.0
-            },
-            {
-                "mainItemId": "burger",
-                "sideItemId": "doublechocolatecookie",
-                "drinkItemId": "strawberrymatcha",
-                "modifications": [
-                    {
-                        "modificationId": "extra_cheese",
-                        "isAddition": false
-                    },
-                    {
-                        "modificationId": "no_tomato",
-                        "isAddition": false
-                    },
-                    {
-                        "modificationId": "no_lettuce",
-                        "isAddition": false
-                    }
-                ],
-                "patienceType": "Normal",
-                "customerNameOverride": "",
-                "timeLimitSecondsOverride": 0.0
-            },
-            {
-                "mainItemId": "burger",
-                "sideItemId": "doublechocolatecookie",
-                "drinkItemId": "strawberrymatcha",
-                "modifications": [
-                    {
-                        "modificationId": "no_lettuce",
-                        "isAddition": false
-                    },
-                    {
-                        "modificationId": "extra_patty",
-                        "isAddition": true
-                    },
-                    {
-                        "modificationId": "extra_cheese",
-                        "isAddition": true
-                    }
-                ],
-                "patienceType": "Normal",
-                "customerNameOverride": "",
-                "timeLimitSecondsOverride": 0.0
-            },
-            {
-                "mainItemId": "hotdog",
-                "sideItemId": "doublechocolatecookie",
-                "drinkItemId": "strawberrymatcha",
-                "modifications": [],
-                "patienceType": "Impatient",
-                "customerNameOverride": "",
-                "timeLimitSecondsOverride": 0.0
-            },
-            {
-                "mainItemId": "burger",
-                "sideItemId": "",
-                "drinkItemId": "",
-                "modifications": [
-                    {
-                        "modificationId": "extra_cheese",
-                        "isAddition": false
-                    },
-                    {
-                        "modificationId": "no_lettuce",
-                        "isAddition": false
-                    },
-                    {
-                        "modificationId": "no_tomato",
-                        "isAddition": false
-                    }
-                ],
-                "patienceType": "Normal",
-                "customerNameOverride": "",
-                "timeLimitSecondsOverride": 0.0
-            },
-            {
-                "mainItemId": "hotdog",
-                "sideItemId": "chocolateicecream",
-                "drinkItemId": "strawberrymilkshake",
-                "modifications": [],
-                "patienceType": "Patient",
-                "customerNameOverride": "",
-                "timeLimitSecondsOverride": 0.0
-            },
-            {
-                "mainItemId": "burger",
-                "sideItemId": "",
-                "drinkItemId": "beer",
-                "modifications": [],
-                "patienceType": "Patient",
-                "customerNameOverride": "",
-                "timeLimitSecondsOverride": 0.0
-            },
-            {
-                "mainItemId": "hotdog",
-                "sideItemId": "vanillaicecream",
-                "drinkItemId": "strawberrymilkshake",
-                "modifications": [
-                    {
-                        "modificationId": "extramayonnaise",
-                        "isAddition": true
-                    }
-                ],
-                "patienceType": "Normal",
-                "customerNameOverride": "",
-                "timeLimitSecondsOverride": 0.0
-            },
-            {
-                "mainItemId": "burger",
-                "sideItemId": "doublechocolatecookie",
-                "drinkItemId": "strawberrymatcha",
-                "modifications": [
-                    {
-                        "modificationId": "no_tomato",
-                        "isAddition": false
-                    },
-                    {
-                        "modificationId": "no_lettuce",
-                        "isAddition": false
-                    },
-                    {
-                        "modificationId": "extra_cheese",
-                        "isAddition": true
-                    }
-                ],
-                "patienceType": "Normal",
-                "customerNameOverride": "",
-                "timeLimitSecondsOverride": 0.0
-            },
-            {
-                "mainItemId": "hotdog",
-                "sideItemId": "chocolateicecream",
-                "drinkItemId": "",
-                "modifications": [],
-                "patienceType": "Patient",
-                "customerNameOverride": "",
-                "timeLimitSecondsOverride": 0.0
-            },
-            {
-                "mainItemId": "hotdog",
-                "sideItemId": "vanillaicecream",
-                "drinkItemId": "sprite",
-                "modifications": [
-                    {
-                        "modificationId": "extramustard",
-                        "isAddition": true
-                    }
-                ],
-                "patienceType": "Patient",
-                "customerNameOverride": "",
-                "timeLimitSecondsOverride": 0.0
-            },
-            {
-                "mainItemId": "hotdog",
-                "sideItemId": "fries",
-                "drinkItemId": "icematcha",
-                "modifications": [
-                    {
-                        "modificationId": "extramustard",
-                        "isAddition": true
-                    }
-                ],
-                "patienceType": "Normal",
-                "customerNameOverride": "",
-                "timeLimitSecondsOverride": 0.0
-            },
-            {
-                "mainItemId": "burger",
-                "sideItemId": "matchadonut",
-                "drinkItemId": "strawberrymilkshake",
-                "modifications": [
-                    {
-                        "modificationId": "no_tomato",
-                        "isAddition": false
-                    },
-                    {
-                        "modificationId": "no_lettuce",
-                        "isAddition": false
-                    }
-                ],
-                "patienceType": "Impatient",
-                "customerNameOverride": "",
-                "timeLimitSecondsOverride": 0.0
-            },
-            {
-                "mainItemId": "hotdog",
-                "sideItemId": "matchadonut",
-                "drinkItemId": "sprite",
-                "modifications": [
-                    {
-                        "modificationId": "extramayonnaise",
-                        "isAddition": true
-                    }
-                ],
-                "patienceType": "Patient",
-                "customerNameOverride": "",
-                "timeLimitSecondsOverride": 0.0
-            },
-            {
-                "mainItemId": "hotdog",
                 "sideItemId": "crispyonion",
-                "drinkItemId": "beer",
-                "modifications": [
-                    {
-                        "modificationId": "extramustard",
-                        "isAddition": true
-                    }
-                ],
-                "patienceType": "Impatient",
-                "customerNameOverride": "",
-                "timeLimitSecondsOverride": 0.0
-            },
-            {
-                "mainItemId": "burger",
-                "sideItemId": "",
                 "drinkItemId": "fanta",
                 "modifications": [
                     {
+                        "modificationId": "extra_patty",
+                        "isAddition": true
+                    },
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    },
+                    {
                         "modificationId": "no_lettuce",
                         "isAddition": false
                     }
                 ],
                 "patienceType": "Patient",
-                "customerNameOverride": "",
-                "timeLimitSecondsOverride": 0.0
-            },
-            {
-                "mainItemId": "burger",
-                "sideItemId": "mozerellasticks",
-                "drinkItemId": "",
-                "modifications": [
-                    {
-                        "modificationId": "no_lettuce",
-                        "isAddition": false
-                    }
-                ],
-                "patienceType": "Impatient",
-                "customerNameOverride": "",
-                "timeLimitSecondsOverride": 0.0
-            },
-            {
-                "mainItemId": "burger",
-                "sideItemId": "matchaicecream",
-                "drinkItemId": "beer",
-                "modifications": [
-                    {
-                        "modificationId": "no_tomato",
-                        "isAddition": false
-                    }
-                ],
-                "patienceType": "Impatient",
                 "customerNameOverride": "",
                 "timeLimitSecondsOverride": 0.0
             },
             {
                 "mainItemId": "burger",
                 "sideItemId": "doublechocolatecookie",
-                "drinkItemId": "strawberrymilkshake",
-                "modifications": [
-                    {
-                        "modificationId": "extra_patty",
-                        "isAddition": true
-                    }
-                ],
-                "patienceType": "Normal",
-                "customerNameOverride": "",
-                "timeLimitSecondsOverride": 0.0
-            },
-            {
-                "mainItemId": "burger",
-                "sideItemId": "chocolateicecream",
-                "drinkItemId": "cola",
-                "modifications": [
-                    {
-                        "modificationId": "extra_patty",
-                        "isAddition": true
-                    },
-                    {
-                        "modificationId": "no_lettuce",
-                        "isAddition": false
-                    }
-                ],
-                "patienceType": "Normal",
-                "customerNameOverride": "",
-                "timeLimitSecondsOverride": 0.0
-            },
-            {
-                "mainItemId": "hotdog",
-                "sideItemId": "crispyonion",
-                "drinkItemId": "cola",
-                "modifications": [
-                    {
-                        "modificationId": "extramayonnaise",
-                        "isAddition": true
-                    }
-                ],
-                "patienceType": "Normal",
-                "customerNameOverride": "",
-                "timeLimitSecondsOverride": 0.0
-            },
-            {
-                "mainItemId": "burger",
-                "sideItemId": "matchadonut",
                 "drinkItemId": "beer",
                 "modifications": [
                     {
-                        "modificationId": "extra_cheese",
-                        "isAddition": false
-                    },
-                    {
                         "modificationId": "no_lettuce",
-                        "isAddition": false
-                    },
-                    {
-                        "modificationId": "no_tomato",
                         "isAddition": false
                     }
                 ],
@@ -393,13 +225,31 @@
                 "timeLimitSecondsOverride": 0.0
             },
             {
-                "mainItemId": "burger",
-                "sideItemId": "sufle",
-                "drinkItemId": "",
+                "mainItemId": "hotdog",
+                "sideItemId": "matchaicecream",
+                "drinkItemId": "sprite",
                 "modifications": [
                     {
-                        "modificationId": "extra_cheese",
+                        "modificationId": "extramustard",
                         "isAddition": true
+                    }
+                ],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "crispyonion",
+                "drinkItemId": "bluberrymilkshake",
+                "modifications": [
+                    {
+                        "modificationId": "extra_patty",
+                        "isAddition": true
+                    },
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
                     },
                     {
                         "modificationId": "no_lettuce",
@@ -411,44 +261,26 @@
                 "timeLimitSecondsOverride": 0.0
             },
             {
-                "mainItemId": "hotdog",
-                "sideItemId": "chocolateicecream",
-                "drinkItemId": "cola",
-                "modifications": [],
-                "patienceType": "Patient",
+                "mainItemId": "burger",
+                "sideItemId": "matchadonut",
+                "drinkItemId": "fanta",
+                "modifications": [
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Normal",
                 "customerNameOverride": "",
                 "timeLimitSecondsOverride": 0.0
             },
             {
                 "mainItemId": "hotdog",
                 "sideItemId": "chocolatecookie",
-                "drinkItemId": "cola",
+                "drinkItemId": "",
                 "modifications": [
                     {
-                        "modificationId": "extramustard",
-                        "isAddition": true
-                    }
-                ],
-                "patienceType": "Patient",
-                "customerNameOverride": "",
-                "timeLimitSecondsOverride": 0.0
-            },
-            {
-                "mainItemId": "burger",
-                "sideItemId": "matchaicecream",
-                "drinkItemId": "beer",
-                "modifications": [],
-                "patienceType": "Impatient",
-                "customerNameOverride": "",
-                "timeLimitSecondsOverride": 0.0
-            },
-            {
-                "mainItemId": "burger",
-                "sideItemId": "matchacake",
-                "drinkItemId": "cola",
-                "modifications": [
-                    {
-                        "modificationId": "extra_cheese",
+                        "modificationId": "extraketchup",
                         "isAddition": true
                     }
                 ],
@@ -459,8 +291,332 @@
             {
                 "mainItemId": "hotdog",
                 "sideItemId": "matchaicecream",
+                "drinkItemId": "sprite",
+                "modifications": [
+                    {
+                        "modificationId": "extramayonnaise",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "fries",
+                "drinkItemId": "fanta",
+                "modifications": [],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "vanillaicecream",
+                "drinkItemId": "strawberrymatcha",
+                "modifications": [],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "vanillaicecream",
+                "drinkItemId": "strawberrymilkshake",
+                "modifications": [
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": true
+                    },
+                    {
+                        "modificationId": "extra_patty",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "fries",
+                "drinkItemId": "sprite",
+                "modifications": [
+                    {
+                        "modificationId": "extra_patty",
+                        "isAddition": true
+                    },
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "vanillaicecream",
+                "drinkItemId": "fanta",
+                "modifications": [
+                    {
+                        "modificationId": "extraketchup",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "chocolateicecream",
+                "drinkItemId": "strawberrymilkshake",
+                "modifications": [
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "extra_patty",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "matchadonut",
+                "drinkItemId": "cola",
+                "modifications": [
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "matchaicecream",
+                "drinkItemId": "",
+                "modifications": [
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "vanillaicecream",
+                "drinkItemId": "icematcha",
+                "modifications": [
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "extra_patty",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "vanillaicecream",
+                "drinkItemId": "strawberrymilkshake",
+                "modifications": [
+                    {
+                        "modificationId": "extraketchup",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "vanillaicecream",
+                "drinkItemId": "icematcha",
+                "modifications": [
+                    {
+                        "modificationId": "extraketchup",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "sufle",
+                "drinkItemId": "fanta",
+                "modifications": [],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "chocolateicecream",
                 "drinkItemId": "cola",
                 "modifications": [],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "matchaicecream",
+                "drinkItemId": "vanillamilkshake",
+                "modifications": [
+                    {
+                        "modificationId": "extraketchup",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "sufle",
+                "drinkItemId": "strawberrymatcha",
+                "modifications": [
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "doublechocolatecookie",
+                "drinkItemId": "strawberrymilkshake",
+                "modifications": [
+                    {
+                        "modificationId": "extra_patty",
+                        "isAddition": true
+                    },
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "matchadonut",
+                "drinkItemId": "",
+                "modifications": [
+                    {
+                        "modificationId": "extra_patty",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "matchadonut",
+                "drinkItemId": "beer",
+                "modifications": [],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "matchadonut",
+                "drinkItemId": "sprite",
+                "modifications": [],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "chocolatecookie",
+                "drinkItemId": "strawberrymatcha",
+                "modifications": [
+                    {
+                        "modificationId": "extramayonnaise",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "chocolateicecream",
+                "drinkItemId": "sprite",
+                "modifications": [
+                    {
+                        "modificationId": "extraketchup",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "chocolatecookie",
+                "drinkItemId": "sprite",
+                "modifications": [],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "matchadonut",
+                "drinkItemId": "strawberrymilkshake",
+                "modifications": [
+                    {
+                        "modificationId": "extramayonnaise",
+                        "isAddition": true
+                    }
+                ],
                 "patienceType": "Patient",
                 "customerNameOverride": "",
                 "timeLimitSecondsOverride": 0.0
@@ -472,14 +628,104 @@
                 "modifications": [
                     {
                         "modificationId": "extra_cheese",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "chocolatecookie",
+                "drinkItemId": "beer",
+                "modifications": [],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "",
+                "drinkItemId": "fanta",
+                "modifications": [],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "vanillaicecream",
+                "drinkItemId": "icematcha",
+                "modifications": [
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "extra_patty",
                         "isAddition": true
+                    }
+                ],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "chocolatecookie",
+                "drinkItemId": "",
+                "modifications": [
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "matchaicecream",
+                "drinkItemId": "strawberrymilkshake",
+                "modifications": [
+                    {
+                        "modificationId": "extraketchup",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "fries",
+                "drinkItemId": "strawberrymilkshake",
+                "modifications": [
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
                     },
                     {
                         "modificationId": "extra_patty",
                         "isAddition": true
                     },
                     {
-                        "modificationId": "no_lettuce",
+                        "modificationId": "no_tomato",
                         "isAddition": false
                     }
                 ],
@@ -489,13 +735,23 @@
             },
             {
                 "mainItemId": "burger",
-                "sideItemId": "chocolateicecream",
-                "drinkItemId": "fanta",
+                "sideItemId": "mozerellasticks",
+                "drinkItemId": "sprite",
                 "modifications": [
                     {
-                        "modificationId": "no_tomato",
+                        "modificationId": "no_lettuce",
                         "isAddition": false
-                    },
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "vanillaicecream",
+                "drinkItemId": "beer",
+                "modifications": [
                     {
                         "modificationId": "extra_cheese",
                         "isAddition": true
@@ -506,9 +762,178 @@
                 "timeLimitSecondsOverride": 0.0
             },
             {
+                "mainItemId": "hotdog",
+                "sideItemId": "matchaicecream",
+                "drinkItemId": "sprite",
+                "modifications": [],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "crispyonion",
+                "drinkItemId": "strawberrymilkshake",
+                "modifications": [
+                    {
+                        "modificationId": "extraketchup",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "matchacake",
+                "drinkItemId": "strawberrymilkshake",
+                "modifications": [
+                    {
+                        "modificationId": "extramayonnaise",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
                 "mainItemId": "burger",
-                "sideItemId": "mozerellasticks",
-                "drinkItemId": "icematcha",
+                "sideItemId": "chocolateicecream",
+                "drinkItemId": "strawberrymatcha",
+                "modifications": [],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "matchaicecream",
+                "drinkItemId": "fanta",
+                "modifications": [],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "",
+                "drinkItemId": "beer",
+                "modifications": [
+                    {
+                        "modificationId": "extra_patty",
+                        "isAddition": true
+                    },
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "sufle",
+                "drinkItemId": "vanillamilkshake",
+                "modifications": [
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": true
+                    },
+                    {
+                        "modificationId": "extra_patty",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "sufle",
+                "drinkItemId": "bluberrymilkshake",
+                "modifications": [
+                    {
+                        "modificationId": "extramayonnaise",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "fries",
+                "drinkItemId": "sprite",
+                "modifications": [
+                    {
+                        "modificationId": "extraketchup",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "chocolateicecream",
+                "drinkItemId": "bluberrymilkshake",
+                "modifications": [
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "extra_patty",
+                        "isAddition": true
+                    },
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "sufle",
+                "drinkItemId": "fanta",
+                "modifications": [
+                    {
+                        "modificationId": "extramayonnaise",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "sufle",
+                "drinkItemId": "beer",
+                "modifications": [
+                    {
+                        "modificationId": "extramayonnaise",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "chocolateicecream",
+                "drinkItemId": "sprite",
                 "modifications": [
                     {
                         "modificationId": "extra_cheese",
@@ -521,12 +946,651 @@
             },
             {
                 "mainItemId": "burger",
+                "sideItemId": "chocolateicecream",
+                "drinkItemId": "cola",
+                "modifications": [
+                    {
+                        "modificationId": "extra_patty",
+                        "isAddition": true
+                    },
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "matchaicecream",
+                "drinkItemId": "cola",
+                "modifications": [],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "",
+                "drinkItemId": "strawberrymatcha",
+                "modifications": [
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "sufle",
+                "drinkItemId": "vanillamilkshake",
+                "modifications": [
+                    {
+                        "modificationId": "extramustard",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "sufle",
+                "drinkItemId": "vanillamilkshake",
+                "modifications": [
+                    {
+                        "modificationId": "extramayonnaise",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "doublechocolatecookie",
+                "drinkItemId": "icematcha",
+                "modifications": [
+                    {
+                        "modificationId": "extra_patty",
+                        "isAddition": true
+                    },
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "doublechocolatecookie",
+                "drinkItemId": "icematcha",
+                "modifications": [
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "doublechocolatecookie",
+                "drinkItemId": "cola",
+                "modifications": [
+                    {
+                        "modificationId": "extra_patty",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "fries",
+                "drinkItemId": "cola",
+                "modifications": [
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "matchaicecream",
+                "drinkItemId": "sprite",
+                "modifications": [],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
                 "sideItemId": "chocolatecookie",
+                "drinkItemId": "bluberrymilkshake",
+                "modifications": [
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "extra_patty",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "fries",
+                "drinkItemId": "fanta",
+                "modifications": [],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "matchadonut",
+                "drinkItemId": "",
+                "modifications": [],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "matchadonut",
+                "drinkItemId": "vanillamilkshake",
+                "modifications": [
+                    {
+                        "modificationId": "extramustard",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "",
+                "drinkItemId": "beer",
+                "modifications": [
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "crispyonion",
+                "drinkItemId": "strawberrymatcha",
+                "modifications": [],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "sufle",
+                "drinkItemId": "strawberrymatcha",
+                "modifications": [
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": true
+                    },
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "chocolatecookie",
+                "drinkItemId": "vanillamilkshake",
+                "modifications": [
+                    {
+                        "modificationId": "extraketchup",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "mozerellasticks",
                 "drinkItemId": "strawberrymilkshake",
+                "modifications": [
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": true
+                    },
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "matchacake",
+                "drinkItemId": "beer",
                 "modifications": [
                     {
                         "modificationId": "no_tomato",
                         "isAddition": false
+                    },
+                    {
+                        "modificationId": "extra_patty",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "sufle",
+                "drinkItemId": "beer",
+                "modifications": [],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "crispyonion",
+                "drinkItemId": "fanta",
+                "modifications": [
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "chocolateicecream",
+                "drinkItemId": "cola",
+                "modifications": [
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "extra_patty",
+                        "isAddition": true
+                    },
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "sufle",
+                "drinkItemId": "strawberrymilkshake",
+                "modifications": [],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "matchacake",
+                "drinkItemId": "vanillamilkshake",
+                "modifications": [
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "crispyonion",
+                "drinkItemId": "beer",
+                "modifications": [
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "crispyonion",
+                "drinkItemId": "beer",
+                "modifications": [
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "extra_patty",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "sufle",
+                "drinkItemId": "fanta",
+                "modifications": [
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "mozerellasticks",
+                "drinkItemId": "strawberrymatcha",
+                "modifications": [],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "sufle",
+                "drinkItemId": "sprite",
+                "modifications": [
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "crispyonion",
+                "drinkItemId": "",
+                "modifications": [
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "extra_patty",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "sufle",
+                "drinkItemId": "beer",
+                "modifications": [
+                    {
+                        "modificationId": "extra_patty",
+                        "isAddition": true
+                    },
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "",
+                "drinkItemId": "strawberrymilkshake",
+                "modifications": [
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "extra_patty",
+                        "isAddition": true
+                    },
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "doublechocolatecookie",
+                "drinkItemId": "strawberrymilkshake",
+                "modifications": [
+                    {
+                        "modificationId": "extraketchup",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "crispyonion",
+                "drinkItemId": "strawberrymilkshake",
+                "modifications": [
+                    {
+                        "modificationId": "extra_patty",
+                        "isAddition": true
+                    },
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "fries",
+                "drinkItemId": "sprite",
+                "modifications": [
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": true
+                    },
+                    {
+                        "modificationId": "extra_patty",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "fries",
+                "drinkItemId": "",
+                "modifications": [
+                    {
+                        "modificationId": "extraketchup",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "crispyonion",
+                "drinkItemId": "fanta",
+                "modifications": [],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "sufle",
+                "drinkItemId": "strawberrymatcha",
+                "modifications": [
+                    {
+                        "modificationId": "extramustard",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "mozerellasticks",
+                "drinkItemId": "sprite",
+                "modifications": [
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "fries",
+                "drinkItemId": "beer",
+                "modifications": [],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "mozerellasticks",
+                "drinkItemId": "beer",
+                "modifications": [],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "matchacake",
+                "drinkItemId": "sprite",
+                "modifications": [],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "chocolateicecream",
+                "drinkItemId": "sprite",
+                "modifications": [],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "mozerellasticks",
+                "drinkItemId": "beer",
+                "modifications": [
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": true
                     },
                     {
                         "modificationId": "no_lettuce",
@@ -543,11 +1607,7 @@
                 "drinkItemId": "icematcha",
                 "modifications": [
                     {
-                        "modificationId": "extra_patty",
-                        "isAddition": true
-                    },
-                    {
-                        "modificationId": "no_lettuce",
+                        "modificationId": "extra_cheese",
                         "isAddition": false
                     }
                 ],
@@ -557,7 +1617,80 @@
             },
             {
                 "mainItemId": "hotdog",
-                "sideItemId": "vanillaicecream",
+                "sideItemId": "matchadonut",
+                "drinkItemId": "fanta",
+                "modifications": [
+                    {
+                        "modificationId": "extramustard",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "sufle",
+                "drinkItemId": "bluberrymilkshake",
+                "modifications": [
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "fries",
+                "drinkItemId": "icematcha",
+                "modifications": [],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "",
+                "drinkItemId": "",
+                "modifications": [
+                    {
+                        "modificationId": "extraketchup",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "chocolatecookie",
+                "drinkItemId": "sprite",
+                "modifications": [],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "crispyonion",
+                "drinkItemId": "fanta",
+                "modifications": [],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "",
                 "drinkItemId": "icematcha",
                 "modifications": [
                     {
@@ -572,129 +1705,14 @@
             {
                 "mainItemId": "burger",
                 "sideItemId": "matchadonut",
-                "drinkItemId": "beer",
-                "modifications": [
-                    {
-                        "modificationId": "no_lettuce",
-                        "isAddition": false
-                    },
-                    {
-                        "modificationId": "extra_cheese",
-                        "isAddition": false
-                    },
-                    {
-                        "modificationId": "extra_patty",
-                        "isAddition": true
-                    }
-                ],
-                "patienceType": "Impatient",
-                "customerNameOverride": "",
-                "timeLimitSecondsOverride": 0.0
-            },
-            {
-                "mainItemId": "burger",
-                "sideItemId": "matchacake",
-                "drinkItemId": "icematcha",
-                "modifications": [
-                    {
-                        "modificationId": "extra_patty",
-                        "isAddition": true
-                    },
-                    {
-                        "modificationId": "no_tomato",
-                        "isAddition": false
-                    },
-                    {
-                        "modificationId": "extra_cheese",
-                        "isAddition": false
-                    }
-                ],
-                "patienceType": "Normal",
-                "customerNameOverride": "",
-                "timeLimitSecondsOverride": 0.0
-            },
-            {
-                "mainItemId": "burger",
-                "sideItemId": "fries",
-                "drinkItemId": "sprite",
-                "modifications": [
-                    {
-                        "modificationId": "no_lettuce",
-                        "isAddition": false
-                    },
-                    {
-                        "modificationId": "no_tomato",
-                        "isAddition": false
-                    },
-                    {
-                        "modificationId": "extra_cheese",
-                        "isAddition": true
-                    }
-                ],
-                "patienceType": "Normal",
-                "customerNameOverride": "",
-                "timeLimitSecondsOverride": 0.0
-            },
-            {
-                "mainItemId": "burger",
-                "sideItemId": "fries",
-                "drinkItemId": "strawberrymilkshake",
-                "modifications": [
-                    {
-                        "modificationId": "no_tomato",
-                        "isAddition": false
-                    },
-                    {
-                        "modificationId": "no_lettuce",
-                        "isAddition": false
-                    }
-                ],
-                "patienceType": "Patient",
-                "customerNameOverride": "",
-                "timeLimitSecondsOverride": 0.0
-            },
-            {
-                "mainItemId": "burger",
-                "sideItemId": "vanillaicecream",
-                "drinkItemId": "fanta",
-                "modifications": [
-                    {
-                        "modificationId": "extra_patty",
-                        "isAddition": true
-                    },
-                    {
-                        "modificationId": "no_tomato",
-                        "isAddition": false
-                    },
-                    {
-                        "modificationId": "no_lettuce",
-                        "isAddition": false
-                    }
-                ],
-                "patienceType": "Normal",
-                "customerNameOverride": "",
-                "timeLimitSecondsOverride": 0.0
-            },
-            {
-                "mainItemId": "burger",
-                "sideItemId": "sufle",
-                "drinkItemId": "fanta",
-                "modifications": [],
-                "patienceType": "Patient",
-                "customerNameOverride": "",
-                "timeLimitSecondsOverride": 0.0
-            },
-            {
-                "mainItemId": "burger",
-                "sideItemId": "vanillaicecream",
-                "drinkItemId": "strawberrymilkshake",
+                "drinkItemId": "strawberrymatcha",
                 "modifications": [
                     {
                         "modificationId": "extra_cheese",
                         "isAddition": false
                     },
                     {
-                        "modificationId": "no_lettuce",
+                        "modificationId": "no_tomato",
                         "isAddition": false
                     }
                 ],
@@ -704,8 +1722,231 @@
             },
             {
                 "mainItemId": "hotdog",
-                "sideItemId": "chocolateicecream",
+                "sideItemId": "vanillaicecream",
+                "drinkItemId": "",
+                "modifications": [
+                    {
+                        "modificationId": "extramayonnaise",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "matchaicecream",
                 "drinkItemId": "icematcha",
+                "modifications": [
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "",
+                "drinkItemId": "",
+                "modifications": [],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "crispyonion",
+                "drinkItemId": "vanillamilkshake",
+                "modifications": [
+                    {
+                        "modificationId": "extramayonnaise",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "mozerellasticks",
+                "drinkItemId": "beer",
+                "modifications": [
+                    {
+                        "modificationId": "extra_patty",
+                        "isAddition": true
+                    },
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "vanillaicecream",
+                "drinkItemId": "strawberrymilkshake",
+                "modifications": [
+                    {
+                        "modificationId": "extraketchup",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "matchadonut",
+                "drinkItemId": "sprite",
+                "modifications": [
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "extra_patty",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "",
+                "drinkItemId": "strawberrymatcha",
+                "modifications": [
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "extra_patty",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "matchaicecream",
+                "drinkItemId": "icematcha",
+                "modifications": [
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": true
+                    },
+                    {
+                        "modificationId": "extra_patty",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "crispyonion",
+                "drinkItemId": "strawberrymatcha",
+                "modifications": [],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "chocolatecookie",
+                "drinkItemId": "icematcha",
+                "modifications": [],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "matchaicecream",
+                "drinkItemId": "fanta",
+                "modifications": [
+                    {
+                        "modificationId": "extramustard",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "fries",
+                "drinkItemId": "vanillamilkshake",
+                "modifications": [
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "chocolateicecream",
+                "drinkItemId": "cola",
+                "modifications": [
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "chocolatecookie",
+                "drinkItemId": "bluberrymilkshake",
+                "modifications": [
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "chocolatecookie",
+                "drinkItemId": "sprite",
                 "modifications": [
                     {
                         "modificationId": "extramayonnaise",
@@ -718,8 +1959,591 @@
             },
             {
                 "mainItemId": "burger",
+                "sideItemId": "sufle",
+                "drinkItemId": "bluberrymilkshake",
+                "modifications": [
+                    {
+                        "modificationId": "extra_patty",
+                        "isAddition": true
+                    },
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "mozerellasticks",
+                "drinkItemId": "cola",
+                "modifications": [
+                    {
+                        "modificationId": "extraketchup",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "crispyonion",
+                "drinkItemId": "bluberrymilkshake",
+                "modifications": [
+                    {
+                        "modificationId": "extramayonnaise",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "matchacake",
+                "drinkItemId": "strawberrymilkshake",
+                "modifications": [
+                    {
+                        "modificationId": "extramayonnaise",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "doublechocolatecookie",
+                "drinkItemId": "beer",
+                "modifications": [
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": true
+                    },
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "chocolatecookie",
+                "drinkItemId": "strawberrymatcha",
+                "modifications": [
+                    {
+                        "modificationId": "extraketchup",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "chocolateicecream",
+                "drinkItemId": "fanta",
+                "modifications": [
+                    {
+                        "modificationId": "extramustard",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "",
+                "drinkItemId": "beer",
+                "modifications": [
+                    {
+                        "modificationId": "extra_patty",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "chocolateicecream",
+                "drinkItemId": "strawberrymilkshake",
+                "modifications": [
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": true
+                    },
+                    {
+                        "modificationId": "extra_patty",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "",
+                "drinkItemId": "strawberrymilkshake",
+                "modifications": [
+                    {
+                        "modificationId": "extramustard",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "crispyonion",
+                "drinkItemId": "beer",
+                "modifications": [
+                    {
+                        "modificationId": "extramustard",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "",
+                "drinkItemId": "beer",
+                "modifications": [],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "fries",
+                "drinkItemId": "strawberrymilkshake",
+                "modifications": [],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "fries",
+                "drinkItemId": "icematcha",
+                "modifications": [
+                    {
+                        "modificationId": "extra_patty",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "matchaicecream",
+                "drinkItemId": "fanta",
+                "modifications": [
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "fries",
+                "drinkItemId": "sprite",
+                "modifications": [
+                    {
+                        "modificationId": "extramayonnaise",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "chocolateicecream",
+                "drinkItemId": "strawberrymatcha",
+                "modifications": [
+                    {
+                        "modificationId": "extraketchup",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "crispyonion",
+                "drinkItemId": "beer",
+                "modifications": [],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "fries",
+                "drinkItemId": "strawberrymatcha",
+                "modifications": [
+                    {
+                        "modificationId": "extramayonnaise",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "chocolatecookie",
+                "drinkItemId": "beer",
+                "modifications": [
+                    {
+                        "modificationId": "extra_patty",
+                        "isAddition": true
+                    },
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "matchacake",
+                "drinkItemId": "sprite",
+                "modifications": [],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "matchadonut",
+                "drinkItemId": "strawberrymatcha",
+                "modifications": [],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "",
+                "drinkItemId": "cola",
+                "modifications": [
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "matchaicecream",
+                "drinkItemId": "strawberrymatcha",
+                "modifications": [
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "extra_patty",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
                 "sideItemId": "mozerellasticks",
                 "drinkItemId": "sprite",
+                "modifications": [
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "extra_patty",
+                        "isAddition": true
+                    },
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "chocolateicecream",
+                "drinkItemId": "fanta",
+                "modifications": [
+                    {
+                        "modificationId": "extramayonnaise",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "matchacake",
+                "drinkItemId": "bluberrymilkshake",
+                "modifications": [
+                    {
+                        "modificationId": "extramustard",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "mozerellasticks",
+                "drinkItemId": "strawberrymilkshake",
+                "modifications": [
+                    {
+                        "modificationId": "extramayonnaise",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "vanillaicecream",
+                "drinkItemId": "vanillamilkshake",
+                "modifications": [
+                    {
+                        "modificationId": "extramustard",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "chocolatecookie",
+                "drinkItemId": "beer",
+                "modifications": [],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "",
+                "drinkItemId": "vanillamilkshake",
+                "modifications": [
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "doublechocolatecookie",
+                "drinkItemId": "icematcha",
+                "modifications": [
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": true
+                    },
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "chocolatecookie",
+                "drinkItemId": "bluberrymilkshake",
+                "modifications": [
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "",
+                "drinkItemId": "bluberrymilkshake",
+                "modifications": [],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "fries",
+                "drinkItemId": "beer",
+                "modifications": [
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "mozerellasticks",
+                "drinkItemId": "cola",
+                "modifications": [
+                    {
+                        "modificationId": "extra_patty",
+                        "isAddition": true
+                    },
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "fries",
+                "drinkItemId": "sprite",
+                "modifications": [],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "crispyonion",
+                "drinkItemId": "cola",
+                "modifications": [
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": true
+                    },
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "mozerellasticks",
+                "drinkItemId": "icematcha",
+                "modifications": [
+                    {
+                        "modificationId": "extraketchup",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "chocolateicecream",
+                "drinkItemId": "strawberrymilkshake",
+                "modifications": [],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "mozerellasticks",
+                "drinkItemId": "vanillamilkshake",
                 "modifications": [
                     {
                         "modificationId": "extra_patty",
@@ -728,13 +2552,68 @@
                     {
                         "modificationId": "no_tomato",
                         "isAddition": false
+                    }
+                ],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "chocolatecookie",
+                "drinkItemId": "",
+                "modifications": [],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "matchadonut",
+                "drinkItemId": "icematcha",
+                "modifications": [
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": true
                     },
+                    {
+                        "modificationId": "extra_patty",
+                        "isAddition": true
+                    },
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "chocolateicecream",
+                "drinkItemId": "icematcha",
+                "modifications": [
                     {
                         "modificationId": "extra_cheese",
                         "isAddition": false
                     }
                 ],
-                "patienceType": "Impatient",
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "mozerellasticks",
+                "drinkItemId": "strawberrymatcha",
+                "modifications": [
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Patient",
                 "customerNameOverride": "",
                 "timeLimitSecondsOverride": 0.0
             },
@@ -752,14 +2631,205 @@
                         "isAddition": false
                     }
                 ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "matchacake",
+                "drinkItemId": "sprite",
+                "modifications": [
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": true
+                    },
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
+                    }
+                ],
                 "patienceType": "Impatient",
                 "customerNameOverride": "",
                 "timeLimitSecondsOverride": 0.0
             },
             {
                 "mainItemId": "burger",
+                "sideItemId": "",
+                "drinkItemId": "beer",
+                "modifications": [],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "crispyonion",
+                "drinkItemId": "",
+                "modifications": [
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "mozerellasticks",
+                "drinkItemId": "cola",
+                "modifications": [],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
                 "sideItemId": "doublechocolatecookie",
-                "drinkItemId": "sprite",
+                "drinkItemId": "cola",
+                "modifications": [
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "vanillaicecream",
+                "drinkItemId": "strawberrymatcha",
+                "modifications": [
+                    {
+                        "modificationId": "extraketchup",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "matchacake",
+                "drinkItemId": "beer",
+                "modifications": [
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "doublechocolatecookie",
+                "drinkItemId": "bluberrymilkshake",
+                "modifications": [],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "chocolateicecream",
+                "drinkItemId": "strawberrymatcha",
+                "modifications": [
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "matchadonut",
+                "drinkItemId": "strawberrymatcha",
+                "modifications": [
+                    {
+                        "modificationId": "extraketchup",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Patient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "fries",
+                "drinkItemId": "beer",
+                "modifications": [
+                    {
+                        "modificationId": "extra_patty",
+                        "isAddition": true
+                    },
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "matchacake",
+                "drinkItemId": "strawberrymatcha",
+                "modifications": [
+                    {
+                        "modificationId": "extramustard",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "doublechocolatecookie",
+                "drinkItemId": "strawberrymilkshake",
+                "modifications": [
+                    {
+                        "modificationId": "extramayonnaise",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "matchacake",
+                "drinkItemId": "cola",
                 "modifications": [
                     {
                         "modificationId": "no_lettuce",
@@ -772,8 +2842,30 @@
             },
             {
                 "mainItemId": "burger",
-                "sideItemId": "vanillaicecream",
-                "drinkItemId": "strawberrymilkshake",
+                "sideItemId": "chocolateicecream",
+                "drinkItemId": "strawberrymatcha",
+                "modifications": [
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": true
+                    },
+                    {
+                        "modificationId": "extra_patty",
+                        "isAddition": true
+                    },
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "crispyonion",
+                "drinkItemId": "vanillamilkshake",
                 "modifications": [
                     {
                         "modificationId": "no_tomato",
@@ -784,26 +2876,324 @@
                         "isAddition": true
                     }
                 ],
-                "patienceType": "Normal",
+                "patienceType": "Patient",
                 "customerNameOverride": "",
                 "timeLimitSecondsOverride": 0.0
             },
             {
                 "mainItemId": "hotdog",
-                "sideItemId": "vanillaicecream",
+                "sideItemId": "matchacake",
+                "drinkItemId": "fanta",
+                "modifications": [
+                    {
+                        "modificationId": "extramustard",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "chocolatecookie",
                 "drinkItemId": "strawberrymilkshake",
                 "modifications": [
                     {
-                        "modificationId": "extraketchup",
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "extra_patty",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "matchaicecream",
+                "drinkItemId": "fanta",
+                "modifications": [
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": true
+                    }
+                ],
+                "patienceType": "Impatient",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "hotdog",
+                "sideItemId": "crispyonion",
+                "drinkItemId": "fanta",
+                "modifications": [
+                    {
+                        "modificationId": "extramustard",
                         "isAddition": true
                     }
                 ],
                 "patienceType": "Patient",
                 "customerNameOverride": "",
                 "timeLimitSecondsOverride": 0.0
+            },
+            {
+                "mainItemId": "burger",
+                "sideItemId": "vanillaicecream",
+                "drinkItemId": "strawberrymatcha",
+                "modifications": [
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
+                    }
+                ],
+                "patienceType": "Normal",
+                "customerNameOverride": "",
+                "timeLimitSecondsOverride": 0.0
             }
         ],
-        "boardTimeline": [],
+        "boardTimeline": [
+            {
+                "triggerStepIndex": -1,
+                "itemId": "burger",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 0,
+                "y": 3
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "burger",
+                "modifications": [
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
+                    }
+                ],
+                "useExactCell": true,
+                "x": 1,
+                "y": 3
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "burger",
+                "modifications": [
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": false
+                    }
+                ],
+                "useExactCell": true,
+                "x": 2,
+                "y": 3
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "burger",
+                "modifications": [
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    }
+                ],
+                "useExactCell": true,
+                "x": 3,
+                "y": 3
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "burger",
+                "modifications": [
+                    {
+                        "modificationId": "extra_patty",
+                        "isAddition": true
+                    }
+                ],
+                "useExactCell": true,
+                "x": 4,
+                "y": 3
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "burger",
+                "modifications": [
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": true
+                    }
+                ],
+                "useExactCell": true,
+                "x": 0,
+                "y": 2
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "burger",
+                "modifications": [
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    }
+                ],
+                "useExactCell": true,
+                "x": 1,
+                "y": 2
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "burger",
+                "modifications": [
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": false
+                    }
+                ],
+                "useExactCell": true,
+                "x": 2,
+                "y": 2
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "burger",
+                "modifications": [
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": true
+                    }
+                ],
+                "useExactCell": true,
+                "x": 3,
+                "y": 2
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "burger",
+                "modifications": [
+                    {
+                        "modificationId": "extra_cheese",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "extra_patty",
+                        "isAddition": true
+                    },
+                    {
+                        "modificationId": "no_tomato",
+                        "isAddition": false
+                    },
+                    {
+                        "modificationId": "no_lettuce",
+                        "isAddition": false
+                    }
+                ],
+                "useExactCell": true,
+                "x": 4,
+                "y": 2
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "vanillaicecream",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 0,
+                "y": 1
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "chocolateicecream",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 1,
+                "y": 1
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "matchaicecream",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 2,
+                "y": 1
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "sufle",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 3,
+                "y": 1
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "matchacake",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 4,
+                "y": 1
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "icematcha",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 0,
+                "y": 0
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "strawberrymilkshake",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 1,
+                "y": 0
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "vanillamilkshake",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 2,
+                "y": 0
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "bluberrymilkshake",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 3,
+                "y": 0
+            },
+            {
+                "triggerStepIndex": -1,
+                "itemId": "beer",
+                "modifications": [],
+                "useExactCell": true,
+                "x": 4,
+                "y": 0
+            }
+        ],
         "tutorial": {
             "enabled": false,
             "steps": []
