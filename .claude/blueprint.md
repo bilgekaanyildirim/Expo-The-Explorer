@@ -720,8 +720,10 @@
      references -- so it was deleted with the other orphan assets (S-03). It is in git
      history if the variant is ever wanted back. -->
 - TicketCard UpDown — TicketSystem — variant-of: TicketCard — spawned by TicketCardsView
-- TrayArea — TraySystem — variant-of: - — authoring (three instances placed by hand in SampleScene)
-<!-- Became a prefab on 2026-08-30, during D-140. It had been three separate scene objects,
+- TrayArea3Item — TraySystem — variant-of: - — authoring (three instances placed by hand in SampleScene)
+<!-- Renamed from TrayArea on 2026-09-04 (D-167) when it gained two smaller siblings; the GUID is
+     unchanged, so the scene's three instances and every reference to it still point here. It is
+     the BASE of the other two and the layout a three-item ticket gets. Became a prefab on 2026-08-30, during D-140. It had been three separate scene objects,
      which is why the tray's three item slots had to be authored three times and why the
      first attempt at respacing them was nine transforms. The prefab is where the tray's
      LAYOUT lives -- MainDishSlot (-0.26, 0), SideSlot (0.38, 0.26), DrinkSlot (0.38, -0.25),
@@ -735,6 +737,21 @@
      the prefab was first created, and the symptom is quiet -- ValidateReferences logs, sets
      isValid false, and that tray silently refuses every drop. Same rule, same reason, as
      the HUDCanvas line above. -->
+- TrayArea1Item — TraySystem — variant-of: TrayArea3Item — authoring (layout source, in no scene)
+- TrayArea2Item — TraySystem — variant-of: TrayArea3Item — authoring (layout source, in no scene)
+<!-- D-167 (2026-09-04). The tray a ticket of that many items stands in. Neither is ever
+     INSTANTIATED: the scene keeps its three TrayArea3Item instances and WorldTrayView copies the
+     matching variant's slot presence and positions onto its own three slots, because a tray
+     instance carries scene-only references and a registration that a per-ticket rebuild would
+     have to re-establish mid-delivery. So these are read as DATA, through serialized
+     WorldTrayView fields on TrayArea3Item -- which is why the variants must keep their
+     WorldTrayView component with the deleted slots left NULL: that null is the authoring, and
+     re-pointing a variant's sideSlot at something would silently give a small tray a slot back.
+     1Item deletes SideSlot and DrinkSlot and centres MainDishSlot on x; 2Item deletes DrinkSlot
+     and centres SideSlot on y. Sprite, collider and scale are the base's in both -- a small
+     order gets a full-size tray with fewer places, which is the authored intent. Give one of
+     them its own sprite and the copy-the-layout approach stops being equivalent to using the
+     prefab; widen WorldTrayView.ApplySlotLayout in the same turn. -->
 - TrayArea Variant — TraySystem — variant-of: TrayArea — authoring (layout reference only, in no scene)
 <!-- Not a shipped prefab: the user built it during D-140 to eyeball the tray layout, with
      real food sprites parented under the three slots at hand-picked scales. Those scales are

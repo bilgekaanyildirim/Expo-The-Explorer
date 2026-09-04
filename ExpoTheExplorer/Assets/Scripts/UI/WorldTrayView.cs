@@ -42,6 +42,33 @@ namespace ExpoTheExplorer.UI
         [Tooltip("Needed to look up this slot's TicketCardView so its own exit/entry animation can sync with a successful delivery's lift-off.")]
         [SerializeField] private TicketCardsView ticketCardsView;
 
+        // The three authored tray layouts, one per ticket size. A tray belongs to a TICKET
+        // (D-129) and so does the shape it stands in: a one-item order gets one centred
+        // slot, not one filled slot and two empty holes.
+        //
+        // These are PREFAB references, and that is the whole reason this works at all. The
+        // scene's three trays carry references that only exist in a scene (gameManager,
+        // boardView, ticketCardsView) plus a per-instance slotIndex, they register
+        // themselves with GameManager in Awake, and AutoCollectRunner, TutorialDirector and
+        // BoardItemDragHandler all hold live references to the instance -- so swapping the
+        // OBJECT for a different prefab on every ticket would mean re-establishing all of
+        // that in the middle of a delivery cascade. Nothing is instantiated or destroyed
+        // here. The tray keeps its identity and ADOPTS the chosen prefab's layout, which is
+        // the only thing the three prefabs actually differ in (TrayArea2Item deletes
+        // DrinkSlot and centres SideSlot on y; TrayArea1Item deletes both and centres
+        // MainDishSlot on x; sprite, collider and rest scale are identical in all three).
+        //
+        // Typed as WorldTrayView rather than GameObject so the layout is read off the
+        // prefab's OWN mainDishSlot/sideSlot/drinkSlot fields -- the variants null the slots
+        // they remove, so "does this size have a Side slot" is already authored there and
+        // nothing has to be looked up by name.
+        [Tooltip("Optional — the tray layout for a one-item ticket (TrayArea1Item). Unwired, a tray keeps its authored slots whatever the ticket asks for.")]
+        [SerializeField] private WorldTrayView oneItemLayout;
+        [Tooltip("Optional — the tray layout for a two-item ticket (TrayArea2Item).")]
+        [SerializeField] private WorldTrayView twoItemLayout;
+        [Tooltip("Optional — the tray layout for a three-item ticket (TrayArea3Item, i.e. this prefab itself).")]
+        [SerializeField] private WorldTrayView threeItemLayout;
+
 
         // This tray's drop target. Taken from its own GameObject rather than serialized: it is
         // the collider that makes OnDrop fire, so it is never anywhere else, and a slot nobody
@@ -93,6 +120,15 @@ namespace ExpoTheExplorer.UI
         // grow/lift/fade or slot-clear to FINISH before taking it away. Written in exactly
         // one place (SetTrayAnimating below) so the two cannot drift apart.
         private bool trayAnimating;
+
+        // The ticket this tray's slots are currently ARRANGED for -- not the one it is
+        // holding items for. Held so RefreshTrayLayout can tell "same order, nothing to do"
+        // from "a new order, possibly a different size", and so the two callers of
+        // ApplyTicketLayout can both be unconditional without either doing the work twice.
+        // Compared by reference: a slot handed a second ticket that happens to want the same
+        // three foods is still a different order, and re-applying an identical layout costs
+        // three SetActive calls that change nothing.
+        private Ticket layoutTicket;
 
         private bool HasTicket => gameManager.State.TicketSlots[slotIndex] != null;
 
@@ -146,6 +182,12 @@ namespace ExpoTheExplorer.UI
             // the player never saw arrive.
             trayShown = HasTicket;
             if (!trayShown) ApplyHiddenState();
+
+            // The opening ticket's layout, applied before anything can be seated in it --
+            // ahead of ScheduleTrayPreSeed below, which is what puts a Day-authored item
+            // into this tray a tween tick from now. Same Awake ordering as trayShown above
+            // makes this the real first ticket rather than a not-yet-started day's null.
+            ApplyTicketLayout();
 
             // Subscribe, then sync -- the same shape BoardView uses for CellChanged, and
             // for the same reason: the FIRST arm happens in GameManager.Awake, before any
@@ -577,13 +619,75 @@ namespace ExpoTheExplorer.UI
             return false;
         }
 
-        private Transform SlotFor(FoodCategory category) => category switch
+        // A slot this tray does not currently HAVE answers null, exactly as an unwired one
+        // does, and that is what makes the smaller layouts safe with no change to the
+        // overflow chain below: ResolvePlacementCategory already skips a null slot, so an
+        // item can never be seated into a slot that is switched off and invisible. Deciding
+        // it here rather than at each reader is the point -- SlotFor is what "this tray has
+        // a Side" means, and two definitions of that is how an item ends up parented to
+        // something nobody can see.
+        private Transform SlotFor(FoodCategory category)
         {
-            FoodCategory.Main => mainDishSlot,
-            FoodCategory.Side => sideSlot,
-            FoodCategory.Drink => drinkSlot,
+            var slot = category switch
+            {
+                FoodCategory.Main => mainDishSlot,
+                FoodCategory.Side => sideSlot,
+                FoodCategory.Drink => drinkSlot,
+                _ => null,
+            };
+
+            return slot != null && slot.gameObject.activeSelf ? slot : null;
+        }
+
+        // Arranges the three slots the way the layout prefab for this ticket's item count
+        // authored them: a slot the prefab deleted is switched off, a slot it kept is
+        // switched on and moved to the position it holds THERE. The tray object itself is
+        // untouched -- see the layout fields for why nothing is instantiated.
+        //
+        // Reference-compared against the last ticket applied, so this is a no-op on every
+        // call but the ones that matter, and both callers can be unconditional.
+        //
+        // A null ticket is left alone deliberately: a slot with no order is a tray on its
+        // way out (D-129), and rearranging one mid-departure would rearrange something the
+        // player is watching shrink for no reason. The next ticket brings its own layout.
+        private void ApplyTicketLayout()
+        {
+            var ticket = gameManager.State.TicketSlots[slotIndex];
+            if (ticket == null || ReferenceEquals(ticket, layoutTicket)) return;
+
+            var source = LayoutSourceFor(ticket.RequiredItems.Count);
+            layoutTicket = ticket;
+            if (source == null) return;
+
+            ApplySlotLayout(mainDishSlot, source.mainDishSlot);
+            ApplySlotLayout(sideSlot, source.sideSlot);
+            ApplySlotLayout(drinkSlot, source.drinkSlot);
+        }
+
+        // Unwired answers null and the tray simply keeps the slots it was authored with,
+        // which is the behaviour this file had before layouts existed -- a forgotten drag
+        // costs a three-slot tray on a one-item order, never a broken one. An item count
+        // outside 1..3 cannot happen (a ticket always has a Main and at most one Side and
+        // one Drink) and answers null for the same reason.
+        private WorldTrayView LayoutSourceFor(int requiredItemCount) => requiredItemCount switch
+        {
+            1 => oneItemLayout,
+            2 => twoItemLayout,
+            3 => threeItemLayout,
             _ => null,
         };
+
+        // Presence AND position come from the same source slot, because in these prefabs
+        // they are one authoring act: TrayArea2Item does not merely delete DrinkSlot, it
+        // then re-centres SideSlot in the room that freed up.
+        private static void ApplySlotLayout(Transform slot, Transform source)
+        {
+            if (slot == null) return;
+
+            var present = source != null;
+            slot.gameObject.SetActive(present);
+            if (present) slot.localPosition = source.localPosition;
+        }
 
         // Where a second item of the same category should overflow to when
         // its own slot is already occupied (e.g. a wrong-order drop landing
@@ -620,6 +724,21 @@ namespace ExpoTheExplorer.UI
             {
                 var slot = SlotFor(fallback);
                 if (slot != null && slot.childCount == 0) return fallback;
+            }
+
+            // Every slot occupied. Falling back to the item's own is the original last
+            // resort and still the right one -- but only if this tray HAS that slot: since
+            // a smaller layout switches slots off, the own-category answer can now be one
+            // that does not exist, and returning it would hand SeatInSlot a null parent and
+            // put the item nowhere. Unreachable in practice (a tray never holds more items
+            // than its ticket needs, and a layout always has that many slots), which is
+            // exactly why it is worth being cheap and total here rather than trusting the
+            // arithmetic to hold through the next content change.
+            if (SlotFor(category) != null) return category;
+
+            foreach (var fallback in OverflowOrder[category])
+            {
+                if (SlotFor(fallback) != null) return fallback;
             }
 
             return category;
@@ -1014,6 +1133,12 @@ namespace ExpoTheExplorer.UI
         // the next entrance it may hold different ones.
         private void PlayTrayEntrance()
         {
+            // Before a single renderer is touched, so the tray that grows in is already the
+            // right SHAPE for the order it is arriving for. This is the main path -- a
+            // delivery's next ticket, a retry, a new Day -- and the poll in Update exists
+            // only for the one case that never comes through here.
+            ApplyTicketLayout();
+
             var renderers = GetComponentsInChildren<SpriteRenderer>(true);
 
             trayShown = true;
@@ -1237,7 +1362,30 @@ namespace ExpoTheExplorer.UI
             if (deliveryInProgress && deliveringItem == null) deliveryInProgress = false;
 
             RefreshClearedTray();
+            RefreshTrayLayout();
             RefreshTrayPresence();
+        }
+
+        // The one ticket change PlayTrayEntrance does not cover: a TIMEOUT, where
+        // TicketSlotManager cancels the order and hands this slot the next one immediately.
+        // The tray never leaves and never comes back, so nothing plays an entrance, and
+        // without this poll the tray would keep the departed order's shape for the whole of
+        // the new one.
+        //
+        // Runs AFTER RefreshClearedTray, and that order is the safety: a timeout scatters
+        // the tray's contents and RefreshClearedTray sets the animating flag for
+        // SlotClearDuration, so the guards below hold the rearrangement until those items
+        // are gone. Switching a slot off while an item is still parented to it would take
+        // the item off screen with it -- the same "single writer of a visible object" hazard
+        // ClearSlot and the wrong-order shake already step around.
+        //
+        // Cost: one array read and a reference compare per tray per frame (3 trays, memory
+        // tier), the same shape and the same order of magnitude as the two polls beside it.
+        private void RefreshTrayLayout()
+        {
+            if (deliveryInProgress || trayAnimating || lastKnownCount != 0) return;
+
+            ApplyTicketLayout();
         }
 
         // Whether this tray is drawn follows one fact and one only: does its slot
