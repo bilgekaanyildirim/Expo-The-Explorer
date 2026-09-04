@@ -12,10 +12,12 @@ namespace ExpoTheExplorer.Systems.MetaSystem
     // when there was one such place. Now there are two, so the arithmetic moved here rather
     // than being copied.
     //
-    // There is no scale field in the catalog on purpose (D-015): a prop's size is DERIVED from
-    // how wide the background is being drawn, so re-exporting the art at another resolution
-    // changes nothing about where anything sits. That derivation is PropScale, and it is the
-    // reason this is a function rather than data.
+    // A prop's size is DERIVED from how wide the background is being drawn, so re-exporting
+    // the art at another resolution changes nothing about where anything sits. That
+    // derivation is PropScale, and it is the reason this is a function rather than data.
+    // MetaItemDefinition.Scale rides on top of it as a per-prop nudge (added 2026-09-04, the
+    // one field D-015 left the door open for) -- a multiplier, never a size, which is what
+    // keeps the derivation above intact.
     //
     // Pure arithmetic, no Unity objects, no side effects -- so it can be reasoned about (and
     // tested) without a scene.
@@ -33,13 +35,19 @@ namespace ExpoTheExplorer.Systems.MetaSystem
             return backgroundWidth / backgroundSprite.rect.width;
         }
 
-        // The prop's size at that scale. Its art is its size -- there is no per-prop scale to
-        // author, and adding one would make the same prop two different sizes on the two
-        // screens the moment somebody set it in one place.
+        // The prop's size at that scale: its art, times how far the background got scaled,
+        // times the prop's own authored nudge.
+        //
+        // That third factor is why the danger this comment used to warn about -- "the same
+        // prop two different sizes on the two screens the moment somebody set it in one
+        // place" -- did not arrive with it. The nudge is read HERE, in the one function both
+        // screens and the editor canvas call, so there is no second place to set it in. A
+        // caller that multiplies MetaItemDefinition.Scale in for itself is the bug; this
+        // function already did it.
         public static Vector2 PropSize(MetaItemDefinition item, float scale)
         {
             if (item?.Sprite == null) return Vector2.zero;
-            return item.Sprite.rect.size * scale;
+            return item.Sprite.rect.size * (scale * item.Scale);
         }
 
         // The prop's whole rect inside a background area of this size, with the prop's PIVOT

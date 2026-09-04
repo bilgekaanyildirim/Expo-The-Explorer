@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using ExpoTheExplorer.Data;
+using ExpoTheExplorer.Systems.MetaSystem;
 using UnityEditor;
 using UnityEngine;
 
@@ -12,6 +13,18 @@ namespace ExpoTheExplorer.Editor
     {
         internal int SelectedIndex = -1;
         internal int DraggingIndex = -1;
+
+        // The scale handle's own drag, kept apart from DraggingIndex because the two mean
+        // opposite things about the same mouse gesture: one moves the prop, the other
+        // resizes it, and a press that starts on the handle must never do both.
+        internal int ScalingIndex = -1;
+
+        // Captured on the press, not recomputed per frame: a resize is
+        // "start scale x how much further the cursor is now than it was", so both halves
+        // of that ratio have to come from the same moment. Deriving it incrementally from
+        // Event.delta instead would accumulate its own rounding over a long drag.
+        internal float ScaleAtDragStart = 1f;
+        internal float DistanceAtDragStart = 1f;
 
         // 1 = the background fitted to the canvas. Above that the background overflows and
         // Pan decides which part is visible.
@@ -55,11 +68,27 @@ namespace ExpoTheExplorer.Editor
             Zoom = 1f;
             Pan = Vector2.zero;
         }
+
+        // Both drags end here rather than each case clearing its own field, so a mouse-up
+        // that arrives in an unexpected order cannot leave one of them armed -- an armed
+        // ScalingIndex would resize a prop on the next unrelated drag.
+        internal void EndDrag()
+        {
+            DraggingIndex = -1;
+            ScalingIndex = -1;
+        }
     }
 
     // The one thing this editor window exists for: draw a location's background at its
     // real aspect and let props be DRAGGED onto it, instead of typing twenty pairs of
     // normalized floats. Everything else in the window is fields Unity could have drawn.
+    //
+    // Two gestures, both the same argument: dragging the prop moves it, dragging the grip
+    // at its top-right corner SCALES it (2026-09-04). A size is judged against the art
+    // around it and nothing else, so typing 0.8 and recompiling to look is the wrong loop
+    // -- the same reason the position was never a pair of typed floats. The grip writes
+    // MetaItemDefinition.scale, which is a real authored field the game reads; this is not
+    // a preview-only zoom.
     //
     // Every mutation goes through SerializedProperty rather than assigning to the plain
     // MetaLocation objects directly. That is not ceremony: the locations live inside a
@@ -92,6 +121,20 @@ namespace ExpoTheExplorer.Editor
         private const float MinZoom = 1f;
         private const float MaxZoom = 12f;
         private const float ZoomPerNotch = 0.1f;
+
+        // The square you grab to resize the selected prop. A CONSTANT number of screen
+        // pixels, deliberately not scaled with the zoom: it is a piece of chrome, and a
+        // handle that shrank as you zoomed out would be unhittable on exactly the small
+        // props (a 70x104 plant draws ~20px in a fitted 853x1844 background) that need
+        // resizing most.
+        private const float ScaleHandleSize = 10f;
+
+        // Wide bounds on purpose. This is an authoring nudge, and the author is looking at
+        // the result while they drag -- the limits are here to keep a slip from putting a
+        // prop at zero (invisible, and nothing on screen says why) or at a size that paints
+        // over the whole canvas, not to express an opinion about what looks right.
+        private const float MinPropScale = 0.05f;
+        private const float MaxPropScale = 10f;
 
         internal static void Draw(
             Rect area,
@@ -143,10 +186,12 @@ namespace ExpoTheExplorer.Editor
 
                 DayEditorSpriteGUI.DrawTexCoords(backgroundRect, background);
 
-                // Props are authored against the background at ONE resolution (D-015: no
-                // per-prop scale field), so a prop's size here is its own pixel size times
-                // however much the background got scaled. Deriving it the same way the
-                // runtime will is what keeps this a preview rather than a second opinion.
+                // How much the background got scaled to fit this canvas -- and ONLY that.
+                // The prop's own authored nudge is not folded in here: RectFor asks
+                // MetaLayout.PropSize, which applies it, so this stays the same number the
+                // runtime passes and there is exactly one place that knows about both
+                // factors. Deriving it the way the runtime does is what keeps this a
+                // preview rather than a second opinion.
                 var scale = backgroundRect.width / background.rect.width;
 
                 var items = locationProperty?.FindPropertyRelative("items");
@@ -217,7 +262,27 @@ namespace ExpoTheExplorer.Editor
             // position actually refers to, and seeing it is what makes a bottom-centre
             // pivot legible while dragging.
             EditorGUI.DrawRect(new Rect(anchor.x - 2f, anchor.y - 2f, 4f, 4f), colour);
+
+            // The resize grip, at the TOP-RIGHT of the outline. Top rather than bottom
+            // because the default pivot is bottom-centre: the prop's contact point stays
+            // put while it grows, so the bottom edge is the one that does not move and
+            // putting a grip there would look like it does nothing.
+            var handle = ScaleHandleRect(rect);
+            EditorGUI.DrawRect(handle, colour);
+            EditorGUI.DrawRect(
+                new Rect(handle.x + 2f, handle.y + 2f, handle.width - 4f, handle.height - 4f),
+                new Color(0.16f, 0.16f, 0.16f));
         }
+
+        // Centred ON the corner rather than tucked inside it, so the grip reads as
+        // belonging to the outline and stays grabbable when the prop is smaller than the
+        // grip itself -- which is the normal case for a small prop at zoom 1.
+        private static Rect ScaleHandleRect(Rect propRect) =>
+            new(
+                propRect.xMax - ScaleHandleSize * 0.5f,
+                propRect.y - ScaleHandleSize * 0.5f,
+                ScaleHandleSize,
+                ScaleHandleSize);
 
         private static void HandleInput(
             MetaLocation location,
@@ -271,13 +336,22 @@ namespace ExpoTheExplorer.Editor
                     e.Use();
                     return;
 
+                // Before the move case, because a press on the grip sets ScalingIndex and
+                // deliberately leaves DraggingIndex clear -- ordering them this way makes
+                // "one gesture does one thing" true by structure rather than by both cases
+                // agreeing to check the other's field.
+                case EventType.MouseDrag when state.ScalingIndex >= 0:
+                    ScaleSelected(items, state, backgroundRect, e.mousePosition);
+                    e.Use();
+                    return;
+
                 case EventType.MouseDrag when state.DraggingIndex >= 0:
                     DragSelected(items, state, backgroundRect, e.delta);
                     e.Use();
                     return;
 
-                case EventType.MouseUp when state.DraggingIndex >= 0:
-                    state.DraggingIndex = -1;
+                case EventType.MouseUp when state.DraggingIndex >= 0 || state.ScalingIndex >= 0:
+                    state.EndDrag();
                     e.Use();
                     return;
             }
@@ -318,6 +392,12 @@ namespace ExpoTheExplorer.Editor
             var order = SortedIndices(location);
             var scale = backgroundRect.width / location.BackgroundSprite.rect.width;
 
+            // The grip wins over every prop, including ones drawn in front of the selected
+            // one. It is a 10px target on something the author has already picked out, and
+            // the alternative -- a prop overlapping that corner swallowing the press -- is
+            // a resize that silently turns into a move of the wrong thing.
+            if (BeginScaleAt(location, state, backgroundRect, scale, mouse)) return;
+
             for (var i = order.Length - 1; i >= 0; i--)
             {
                 var index = order[i];
@@ -341,6 +421,72 @@ namespace ExpoTheExplorer.Editor
             // A click on empty canvas clears the selection rather than keeping a highlight
             // on something the user has visually moved away from.
             state.SelectedIndex = -1;
+        }
+
+        // True when the press landed on the selected prop's resize grip, in which case the
+        // gesture is a resize and the caller must not fall through to selection.
+        private static bool BeginScaleAt(
+            MetaLocation location, MetaLayoutState state, Rect backgroundRect, float scale, Vector2 mouse)
+        {
+            var index = state.SelectedIndex;
+            if (index < 0 || index >= location.Items.Count || state.IsHidden(index)) return false;
+
+            var item = location.Items[index];
+            if (item?.Sprite == null) return false;
+
+            if (!ScaleHandleRect(RectFor(item, backgroundRect, scale)).Contains(mouse)) return false;
+
+            state.ScalingIndex = index;
+            state.ScaleAtDragStart = item.Scale;
+
+            // The floor is what makes a pivot sitting ON the grip survivable: with a
+            // (1, 1) pivot the anchor IS the top-right corner, so the starting distance is
+            // ~0 and the ratio below would be an instant jump to the clamp. One pixel of
+            // floor turns that into an ordinary, if very sensitive, drag.
+            state.DistanceAtDragStart =
+                Mathf.Max(1f, Vector2.Distance(AnchorFor(item, backgroundRect), mouse));
+
+            return true;
+        }
+
+        // Resize by RATIO from the anchor: however much further the cursor is from the
+        // prop's contact point than when the drag began, the prop is that much bigger. It
+        // is measured from the anchor rather than from the grip's own corner because the
+        // anchor is the one point that does not move while scaling -- the same reason the
+        // grip sits opposite it.
+        //
+        // Position is read from the SerializedProperty, not from the plain MetaLocation:
+        // the prop may have been dragged earlier in this same repaint, and the plain object
+        // does not catch up until ApplyModifiedProperties.
+        private static void ScaleSelected(
+            SerializedProperty items, MetaLayoutState state, Rect backgroundRect, Vector2 mouse)
+        {
+            if (state.ScalingIndex >= items.arraySize)
+            {
+                state.ScalingIndex = -1;
+                return;
+            }
+
+            var element = items.GetArrayElementAtIndex(state.ScalingIndex);
+            var scaleProperty = element.FindPropertyRelative("scale");
+            var positionProperty = element.FindPropertyRelative("normalizedPosition");
+            if (scaleProperty == null || positionProperty == null)
+            {
+                state.ScalingIndex = -1;
+                return;
+            }
+
+            var position = positionProperty.vector2Value;
+            var anchor = new Vector2(
+                backgroundRect.x + position.x * backgroundRect.width,
+                // yMax minus, for the reason AnchorFor gives: a normalized Y of 0 is the
+                // bottom of the art while GUI Y grows downward.
+                backgroundRect.yMax - position.y * backgroundRect.height);
+
+            var ratio = Vector2.Distance(anchor, mouse) / state.DistanceAtDragStart;
+
+            scaleProperty.floatValue =
+                Mathf.Clamp(state.ScaleAtDragStart * ratio, MinPropScale, MaxPropScale);
         }
 
         private static void DragSelected(
@@ -388,7 +534,13 @@ namespace ExpoTheExplorer.Editor
 
         private static Rect RectFor(MetaItemDefinition item, Rect backgroundRect, float scale)
         {
-            var size = item.Sprite.rect.size * scale;
+            // Asked of MetaLayout rather than multiplied out here, which is the change that
+            // made a per-prop scale safe to add at all. This file used to keep its own copy
+            // of "sprite pixels times the background's fit scale"; a second factor in that
+            // formula would have been a second place to forget it, and the editor quietly
+            // disagreeing with the game about a prop's size is precisely the
+            // preview-that-lies failure this canvas exists to avoid.
+            var size = MetaLayout.PropSize(item, scale);
             var anchor = AnchorFor(item, backgroundRect);
 
             // pivot is expressed in UI terms (y = 0 is the sprite's BOTTOM), so the top

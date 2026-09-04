@@ -537,6 +537,12 @@ namespace ExpoTheExplorer.Editor
             Field(item, "pivot");
             Field(item, "sortOrder");
 
+            // Beside the placement fields, because it is one: where a prop stands and how
+            // big it stands there are the same question asked twice. Typed here AND draggable
+            // by the grip on the canvas, for the reason the position is both -- roughing a
+            // size out is done by eye, and matching two props exactly is done by number.
+            Field(item, "scale");
+
             EditorGUILayout.Space(2f);
             Field(item, "requiresAreaId");
             Field(item, "unlocksArea");

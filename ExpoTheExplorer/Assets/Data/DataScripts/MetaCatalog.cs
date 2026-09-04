@@ -86,6 +86,9 @@ namespace ExpoTheExplorer.Data
         [Tooltip("Draw order within the location. Higher draws in front. This is the depth of a top-down scene: a prop nearer the bottom of the art is nearer the camera and needs a higher value than one behind it.")]
         [SerializeField] private int sortOrder;
 
+        [Tooltip("A NUDGE on this prop's size, on top of the size its own art already gives it. 1 = exactly as authored, which is what every prop drew at before this field existed. It grows around the Pivot, so a prop with the default bottom-centre pivot stays planted on the ground as it changes size. Only the grounds and the day-scene backdrop read it — a shop row's icon is a list picture, not a prop standing somewhere.")]
+        [SerializeField, Min(0.01f)] private float scale = 1f;
+
         [Tooltip("Leave empty for a prop that is available from the start. Otherwise the id of an area-expansion item IN THIS SAME LOCATION that must be owned first -- the paved square gates the props that stand on it. Pointing at another location's area is a validation error.")]
         [SerializeField] private string requiresAreaId;
 
@@ -119,16 +122,24 @@ namespace ExpoTheExplorer.Data
         public Vector2 NormalizedPosition => normalizedPosition;
         public Vector2 Pivot => pivot;
         public int SortOrder => sortOrder;
+
+        // The nudge D-015 said to add only when a prop actually needed one, added 2026-09-04
+        // for exactly that reason. It is a MULTIPLIER on the derived size, never a size: the
+        // art times the background's fit scale is still what decides how big a prop is, so
+        // re-exporting a location's background at another resolution changes nothing here.
+        // One number, not a per-axis pair -- a prop is a picture of a thing, and squashing it
+        // on one axis is a mistake the field should not be able to express.
+        //
+        // GUARDED at the accessor rather than trusted. A float added to a class whose .asset
+        // was written before it deserializes at this initializer (1), so no authored prop
+        // changes size -- but a hand-edited or force-zeroed 0 would shrink a prop to nothing
+        // and leave NOTHING on screen to explain it, which reads as missing art or a broken
+        // resolver. Falling back to 1 makes that failure loud in the only way that helps:
+        // the prop is simply there, at the size its art gives it.
+        public float Scale => scale > 0f ? scale : 1f;
+
         public string RequiresAreaId => requiresAreaId;
         public bool UnlocksArea => unlocksArea;
-
-        // NOTE there is deliberately no size or scale field. Every sprite in a location
-        // is authored against that location's background at one resolution, so a prop's
-        // size in canvas units follows from its own pixel size times the background's
-        // scale factor -- authoring a size again would be a second authority that can
-        // disagree with the art. If a single prop ever needs a nudge, that is the point
-        // to add one field, not before (FoodItemConfig.overallScale is the precedent for
-        // what that would look like).
 
         public MetaItemDefinition() { }
 
@@ -146,7 +157,8 @@ namespace ExpoTheExplorer.Data
             string displayName = null,
             Vector2 normalizedPosition = default,
             Vector2 pivot = default,
-            int sortOrder = 0)
+            int sortOrder = 0,
+            float scale = 1f)
         {
             this.id = id;
             this.displayName = displayName;
@@ -158,6 +170,7 @@ namespace ExpoTheExplorer.Data
             this.normalizedPosition = normalizedPosition;
             this.pivot = pivot;
             this.sortOrder = sortOrder;
+            this.scale = scale;
             this.requiresAreaId = requiresAreaId;
             this.unlocksArea = unlocksArea;
         }
