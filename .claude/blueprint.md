@@ -744,7 +744,11 @@
      matching variant's slot presence and positions onto its own three slots, because a tray
      instance carries scene-only references and a registration that a per-ticket rebuild would
      have to re-establish mid-delivery. So these are read as DATA, through serialized
-     WorldTrayView fields on TrayArea3Item -- which is why the variants must keep their
+     WorldTrayView fields on TrayArea3Item -- TWO of them, oneItemLayout and twoItemLayout.
+     There is deliberately no third: the three-item layout is TrayArea3Item's OWN authored
+     state, snapshotted in Awake, because a field for it can only be dragged to the prefab
+     being edited and Unity remaps that internal reference to the instance, which is the
+     D-167a bug. This is also why the variants must keep their
      WorldTrayView component with the deleted slots left NULL: that null is the authoring, and
      re-pointing a variant's sideSlot at something would silently give a small tray a slot back.
      1Item deletes SideSlot and DrinkSlot and centres MainDishSlot on x; 2Item deletes DrinkSlot

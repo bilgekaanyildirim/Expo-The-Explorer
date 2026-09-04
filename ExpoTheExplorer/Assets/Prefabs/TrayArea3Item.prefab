@@ -288,6 +288,9 @@ MonoBehaviour:
   animConfig: {fileID: 11400000, guid: 836ace345c29845f1b25f60bb6a89488, type: 2}
   boardView: {fileID: 0}
   ticketCardsView: {fileID: 0}
+  oneItemLayout: {fileID: 4921907488735403243, guid: d51049f75c1ce44d68d769e87391cfee, type: 3}
+  twoItemLayout: {fileID: 6442537003631962892, guid: 8f44a0f3250dd4e99a176092df547df6, type: 3}
+  threeItemLayout: {fileID: 5789243086846807500}
 --- !u!1 &6222521535847504649
 GameObject:
   m_ObjectHideFlags: 0

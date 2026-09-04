@@ -64,6 +64,18 @@ PrefabInstance:
       propertyPath: drinkSlot
       value: 
       objectReference: {fileID: 0}
+    - target: {fileID: 5789243086846807500, guid: b6215602ece1746c38f19825f227970f, type: 3}
+      propertyPath: oneItemLayout
+      value: 
+      objectReference: {fileID: 4921907488735403243}
+    - target: {fileID: 5789243086846807500, guid: b6215602ece1746c38f19825f227970f, type: 3}
+      propertyPath: twoItemLayout
+      value: 
+      objectReference: {fileID: 6442537003631962892, guid: 8f44a0f3250dd4e99a176092df547df6, type: 3}
+    - target: {fileID: 5789243086846807500, guid: b6215602ece1746c38f19825f227970f, type: 3}
+      propertyPath: threeItemLayout
+      value: 
+      objectReference: {fileID: 5789243086846807500, guid: b6215602ece1746c38f19825f227970f, type: 3}
     m_RemovedComponents: []
     m_RemovedGameObjects:
     - {fileID: 6271390234925081720, guid: b6215602ece1746c38f19825f227970f, type: 3}
@@ -71,3 +83,14 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: b6215602ece1746c38f19825f227970f, type: 3}
+--- !u!114 &4921907488735403243 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5789243086846807500, guid: b6215602ece1746c38f19825f227970f, type: 3}
+  m_PrefabInstance: {fileID: 1448370323686379815}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0e8ba12d11004acbad0b8cd18cfbbd4d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ExpoTheExplorer.UI.WorldTrayView

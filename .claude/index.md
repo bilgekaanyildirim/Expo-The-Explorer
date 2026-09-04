@@ -30,7 +30,7 @@ maps and never invents a name.
 | TelemetrySystem | core | ExpoTheExplorer/Assets/Scripts/Systems/TelemetrySystem/ITelemetrySink.cs, ExpoTheExplorer/Assets/Scripts/Systems/TelemetrySystem/RunStatus.cs (+12) | - | - | - | OK |
 | Testing | core | ExpoTheExplorer/Assets/Tests/EditMode/ExpoTheExplorer.Tests.EditMode.asmdef, ExpoTheExplorer/Assets/Tests/EditMode/BoardGridTests.cs (+6) | - | - | - | OK |
 | TicketSystem | core, ui | ExpoTheExplorer/Assets/Data/DataScripts/TicketCardVisualsConfig.cs, ExpoTheExplorer/Assets/Data/DataScripts/TicketRuntimeSettings.cs (+11) | - | TicketCard, TicketCard UpDown | ExpoTheExplorer/Assets/Data, ExpoTheExplorer/Assets/Data/FoodData/Burger, ExpoTheExplorer/Assets/Data/FoodData/Hotdog | OK |
-| TraySystem | core, ui | ExpoTheExplorer/Assets/Scripts/Systems/TraySystem/TrayManager.cs, ExpoTheExplorer/Assets/Scripts/Systems/TraySystem/ExpoTheExplorer.Systems.TraySystem.asmdef (+2) | - | TrayArea, TrayArea Variant | - | OK |
+| TraySystem | core, ui | ExpoTheExplorer/Assets/Scripts/Systems/TraySystem/TrayManager.cs, ExpoTheExplorer/Assets/Scripts/Systems/TraySystem/ExpoTheExplorer.Systems.TraySystem.asmdef (+2) | - | TrayArea3Item, TrayArea1Item, TrayArea2Item, TrayArea Variant | - | OK |
 | Tutorial | core, ui | ExpoTheExplorer/Assets/Scripts/Systems/Tutorial/TutorialDirector.cs, ExpoTheExplorer/Assets/Data/DataScripts/TutorialTextConfig.cs (+9) | - | TutorialPowerupIntro, TutorialPowerupSpotlight, TutorialStepHints, MainScreenTutorialWelcome, MainScreenTutorialStoreHint | ExpoTheExplorer/Assets/Data | OK |
 
 ## Gaps

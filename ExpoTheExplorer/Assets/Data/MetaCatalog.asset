@@ -33,6 +33,7 @@ MonoBehaviour:
       normalizedPosition: {x: 0.51, y: 0.65}
       pivot: {x: 0.5, y: 0}
       sortOrder: 0
+      scale: 1
       requiresAreaId: 
       unlocksArea: 1
     - id: tent
@@ -47,6 +48,7 @@ MonoBehaviour:
       normalizedPosition: {x: 0.404, y: 0.7328448}
       pivot: {x: 0.5, y: 0}
       sortOrder: 20
+      scale: 1
       requiresAreaId: fryer
       unlocksArea: 0
     - id: trashBin
@@ -61,6 +63,7 @@ MonoBehaviour:
       normalizedPosition: {x: 0.86193156, y: 0.68225783}
       pivot: {x: 0.5, y: 0}
       sortOrder: 2
+      scale: 1
       requiresAreaId: building
       unlocksArea: 0
     - id: sign
@@ -75,6 +78,7 @@ MonoBehaviour:
       normalizedPosition: {x: 0.103050165, y: 0.67408985}
       pivot: {x: 0.5, y: 0}
       sortOrder: 3
+      scale: 1
       requiresAreaId: building
       unlocksArea: 0
     - id: plant
@@ -89,6 +93,7 @@ MonoBehaviour:
       normalizedPosition: {x: 0.78710204, y: 0.6384596}
       pivot: {x: 0.5, y: 0}
       sortOrder: 4
+      scale: 1
       requiresAreaId: building
       unlocksArea: 0
     - id: lamp1
@@ -103,6 +108,7 @@ MonoBehaviour:
       normalizedPosition: {x: 0.76556367, y: 0.145}
       pivot: {x: 0.5, y: 0}
       sortOrder: 5
+      scale: 1
       requiresAreaId: building
       unlocksArea: 0
     - id: lamp2
@@ -117,6 +123,7 @@ MonoBehaviour:
       normalizedPosition: {x: 0.4068196, y: 0.12}
       pivot: {x: 0.5, y: 0}
       sortOrder: 6
+      scale: 1
       requiresAreaId: building
       unlocksArea: 0
     - id: hotdogSign
@@ -128,9 +135,10 @@ MonoBehaviour:
       unlockImage: {fileID: 0}
       price: 200
       unlockAtDayIndex: 0
-      normalizedPosition: {x: 0.45340985, y: 0.8017242}
+      normalizedPosition: {x: 0.39483225, y: 0.8023876}
       pivot: {x: 0.5, y: 0}
       sortOrder: 7
+      scale: 1
       requiresAreaId: building
       unlocksArea: 0
     - id: fences
@@ -145,6 +153,7 @@ MonoBehaviour:
       normalizedPosition: {x: 0.5, y: 0.08}
       pivot: {x: 0.5, y: 0}
       sortOrder: 8
+      scale: 1
       requiresAreaId: building
       unlocksArea: 0
     - id: square
@@ -159,6 +168,7 @@ MonoBehaviour:
       normalizedPosition: {x: 0.5, y: 0.2}
       pivot: {x: 0.5, y: 0}
       sortOrder: 1
+      scale: 1
       requiresAreaId: building
       unlocksArea: 1
     - id: table1
@@ -173,6 +183,7 @@ MonoBehaviour:
       normalizedPosition: {x: 0.7551746, y: 0.29308453}
       pivot: {x: 0.5, y: 0}
       sortOrder: 9
+      scale: 1
       requiresAreaId: square
       unlocksArea: 0
     - id: table2
@@ -187,6 +198,7 @@ MonoBehaviour:
       normalizedPosition: {x: 0.79307324, y: 0.47707692}
       pivot: {x: 0.5, y: 0}
       sortOrder: 10
+      scale: 1
       requiresAreaId: square
       unlocksArea: 0
     - id: table3
@@ -201,6 +213,7 @@ MonoBehaviour:
       normalizedPosition: {x: 0.22870068, y: 0.4760147}
       pivot: {x: 0.5, y: 0}
       sortOrder: 11
+      scale: 1
       requiresAreaId: square
       unlocksArea: 0
     - id: table4
@@ -215,6 +228,7 @@ MonoBehaviour:
       normalizedPosition: {x: 0.26805273, y: 0.2648209}
       pivot: {x: 0.5, y: 0}
       sortOrder: 12
+      scale: 1
       requiresAreaId: square
       unlocksArea: 0
     - id: fountain
@@ -229,6 +243,7 @@ MonoBehaviour:
       normalizedPosition: {x: 0.5029283, y: 0.36635092}
       pivot: {x: 0.5, y: 0}
       sortOrder: 15
+      scale: 1
       requiresAreaId: square
       unlocksArea: 0
     - id: saucesStand
@@ -243,6 +258,7 @@ MonoBehaviour:
       normalizedPosition: {x: 0.35, y: 0.7038461}
       pivot: {x: 0.5, y: 0}
       sortOrder: 13
+      scale: 1
       requiresAreaId: building
       unlocksArea: 0
     - id: drinkFridge
@@ -257,6 +273,7 @@ MonoBehaviour:
       normalizedPosition: {x: 0.66571146, y: 0.64541924}
       pivot: {x: 0.5, y: 0}
       sortOrder: 14
+      scale: 1
       requiresAreaId: building
       unlocksArea: 0
     - id: fryer
@@ -271,6 +288,7 @@ MonoBehaviour:
       normalizedPosition: {x: 0.37850678, y: 0.7231951}
       pivot: {x: 0.5, y: 0}
       sortOrder: 0
+      scale: 1
       requiresAreaId: building
       unlocksArea: 1
     - id: burgersign
@@ -282,9 +300,10 @@ MonoBehaviour:
       unlockImage: {fileID: 21300000, guid: fc1c903145d394742ab8a5cd8dd8364f, type: 3}
       price: 0
       unlockAtDayIndex: 15
-      normalizedPosition: {x: 0.37850678, y: 0.7231951}
+      normalizedPosition: {x: 0.6597883, y: 0.79016954}
       pivot: {x: 0.5, y: 0}
       sortOrder: 0
+      scale: 0.30096224
       requiresAreaId: building
       unlocksArea: 1
   - id: meta2

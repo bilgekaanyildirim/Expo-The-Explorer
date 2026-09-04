@@ -62,12 +62,18 @@ namespace ExpoTheExplorer.UI
         // prefab's OWN mainDishSlot/sideSlot/drinkSlot fields -- the variants null the slots
         // they remove, so "does this size have a Side slot" is already authored there and
         // nothing has to be looked up by name.
-        [Tooltip("Optional — the tray layout for a one-item ticket (TrayArea1Item). Unwired, a tray keeps its authored slots whatever the ticket asks for.")]
+        // THE THREE-ITEM LAYOUT IS NOT ONE OF THESE FIELDS. It is this tray's own authored
+        // state, snapshotted in Awake (authoredMain/Side/Drink below) — because the scene's
+        // trays ARE TrayArea3Item instances, so the full layout is already standing right
+        // here. A `threeItemLayout` field existed for exactly one commit and was the bug
+        // D-167a fixes: Unity REMAPS a prefab-internal reference to the instance when it
+        // instantiates, so a field dragged to "the prefab I am editing" arrives in the scene
+        // pointing at ITSELF, and restoring the big layout became a self-copy that changed
+        // nothing.
+        [Tooltip("Optional — the tray layout for a one-item ticket (TrayArea1Item). Unwired, a one-item order simply gets the full three-slot tray.")]
         [SerializeField] private WorldTrayView oneItemLayout;
-        [Tooltip("Optional — the tray layout for a two-item ticket (TrayArea2Item).")]
+        [Tooltip("Optional — the tray layout for a two-item ticket (TrayArea2Item). Unwired, a two-item order simply gets the full three-slot tray.")]
         [SerializeField] private WorldTrayView twoItemLayout;
-        [Tooltip("Optional — the tray layout for a three-item ticket (TrayArea3Item, i.e. this prefab itself).")]
-        [SerializeField] private WorldTrayView threeItemLayout;
 
 
         // This tray's drop target. Taken from its own GameObject rather than serialized: it is
@@ -130,6 +136,33 @@ namespace ExpoTheExplorer.UI
         // three SetActive calls that change nothing.
         private Ticket layoutTicket;
 
+        // One slot's authored arrangement: whether this layout HAS the slot at all, and
+        // where it sits when it does. Read either off a layout prefab's own slot transform
+        // (a variant nulls the slots it deletes, so a missing slot answers false) or off
+        // this tray's own slots in Awake.
+        private readonly struct SlotLayout
+        {
+            public SlotLayout(Transform slot)
+            {
+                Present = slot != null && slot.gameObject.activeSelf;
+                LocalPosition = slot != null ? slot.localPosition : Vector3.zero;
+            }
+
+            public bool Present { get; }
+            public Vector3 LocalPosition { get; }
+        }
+
+        // This tray's layout AS AUTHORED, captured in Awake before any ticket can rearrange
+        // it — the three-item layout, and the answer whenever a smaller layout is unwired.
+        // Snapshotted rather than read back from the object on demand, which is the entire
+        // fix in D-167a: once a two-item order has moved SideSlot and switched DrinkSlot
+        // off, the object no longer remembers what it started as, and a slot's Transform
+        // reference stays perfectly valid while its GameObject is inactive — so "read my own
+        // slots" would answer with the small tray's arrangement and call it the big one.
+        private SlotLayout authoredMain;
+        private SlotLayout authoredSide;
+        private SlotLayout authoredDrink;
+
         private bool HasTicket => gameManager.State.TicketSlots[slotIndex] != null;
 
         // Every animation boundary in this view goes through here rather than calling the
@@ -144,6 +177,14 @@ namespace ExpoTheExplorer.UI
         {
             isValid = ValidateReferences();
             dropCollider = GetComponent<Collider2D>();
+
+            // Before anything else in this class runs, and that is the point: the first
+            // ApplyTicketLayout can only happen in Start, so what is captured here is what
+            // the prefab authored.
+            authoredMain = new SlotLayout(mainDishSlot);
+            authoredSide = new SlotLayout(sideSlot);
+            authoredDrink = new SlotLayout(drinkSlot);
+
             if (highlightVisual != null) highlightVisual.SetActive(false);
             if (wrongVisual != null) wrongVisual.SetActive(false);
 
@@ -657,36 +698,45 @@ namespace ExpoTheExplorer.UI
 
             var source = LayoutSourceFor(ticket.RequiredItems.Count);
             layoutTicket = ticket;
-            if (source == null) return;
 
-            ApplySlotLayout(mainDishSlot, source.mainDishSlot);
-            ApplySlotLayout(sideSlot, source.sideSlot);
-            ApplySlotLayout(drinkSlot, source.drinkSlot);
+            ApplySlotLayout(mainDishSlot, source != null ? new SlotLayout(source.mainDishSlot) : authoredMain);
+            ApplySlotLayout(sideSlot, source != null ? new SlotLayout(source.sideSlot) : authoredSide);
+            ApplySlotLayout(drinkSlot, source != null ? new SlotLayout(source.drinkSlot) : authoredDrink);
         }
 
-        // Unwired answers null and the tray simply keeps the slots it was authored with,
-        // which is the behaviour this file had before layouts existed -- a forgotten drag
-        // costs a three-slot tray on a one-item order, never a broken one. An item count
-        // outside 1..3 cannot happen (a ticket always has a Main and at most one Side and
-        // one Drink) and answers null for the same reason.
-        private WorldTrayView LayoutSourceFor(int requiredItemCount) => requiredItemCount switch
+        // Null means "this tray's own authored layout", which is the right answer twice
+        // over: for a three-item order, because these trays ARE TrayArea3Item instances, and
+        // for a smaller order whose field nobody dragged, because a forgotten drag should
+        // cost a three-slot tray on a one-item order and never a tray still wearing the
+        // PREVIOUS order's shape. An item count outside 1..3 cannot happen (a ticket always
+        // has a Main and at most one Side and one Drink) and lands on the same answer.
+        //
+        // A field pointing at this very component is treated as unwired rather than obeyed.
+        // That is not defensiveness about a typo: dragging the prefab you are editing into
+        // one of these fields produces a prefab-INTERNAL reference, which Unity silently
+        // remaps to the instance, and obeying it would copy every slot's position onto
+        // itself while reading a switched-off slot's still-valid Transform as "present".
+        private WorldTrayView LayoutSourceFor(int requiredItemCount)
         {
-            1 => oneItemLayout,
-            2 => twoItemLayout,
-            3 => threeItemLayout,
-            _ => null,
-        };
+            var source = requiredItemCount switch
+            {
+                1 => oneItemLayout,
+                2 => twoItemLayout,
+                _ => null,
+            };
 
-        // Presence AND position come from the same source slot, because in these prefabs
-        // they are one authoring act: TrayArea2Item does not merely delete DrinkSlot, it
-        // then re-centres SideSlot in the room that freed up.
-        private static void ApplySlotLayout(Transform slot, Transform source)
+            return source == this ? null : source;
+        }
+
+        // Presence AND position are applied together, because in these prefabs they are one
+        // authoring act: TrayArea2Item does not merely delete DrinkSlot, it then re-centres
+        // SideSlot in the room that freed up.
+        private static void ApplySlotLayout(Transform slot, SlotLayout layout)
         {
             if (slot == null) return;
 
-            var present = source != null;
-            slot.gameObject.SetActive(present);
-            if (present) slot.localPosition = source.localPosition;
+            slot.gameObject.SetActive(layout.Present);
+            if (layout.Present) slot.localPosition = layout.LocalPosition;
         }
 
         // Where a second item of the same category should overflow to when
